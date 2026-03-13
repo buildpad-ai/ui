@@ -1,11 +1,14 @@
 /**
  * API Request Helper
- * 
- * Makes requests to local API routes (server-side proxy to DaaS backend)
- * or directly to DaaS when configured via DaaSProvider/setGlobalDaaSConfig.
+ *
+ * Makes requests directly to the DaaS backend.
+ * The browser calls DaaS directly — no proxy routes are used.
+ * Configure via DaaSProvider (React) or setGlobalDaaSConfig (non-React).
+ *
+ * CORS is handled on the DaaS side via the CORS_ORIGINS environment variable.
  */
 
-import { buildApiUrl, getApiHeaders, type DaaSConfig } from './daas-context';
+import { buildApiUrl, getApiHeadersAsync, type DaaSConfig } from './daas-context';
 
 export interface ApiRequestOptions extends RequestInit {
   /** Optional DaaS config override */
@@ -13,19 +16,20 @@ export interface ApiRequestOptions extends RequestInit {
 }
 
 /**
- * Make request to local API route or direct to DaaS
+ * Make a request directly to the DaaS backend.
+ * Automatically resolves the full DaaS URL and includes the auth token.
  */
 export async function apiRequest<T = unknown>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
   const { daasConfig, ...fetchOptions } = options;
-  
-  // Build URL (handles proxy vs direct mode)
+
+  // Build full DaaS URL from path (e.g. /api/items/orders → https://daas.example.com/api/items/orders)
   const url = buildApiUrl(path, daasConfig);
-  
-  // Get headers (includes auth token in direct mode)
-  const headers = getApiHeaders(daasConfig);
+
+  // Get auth headers (async — resolves dynamic Supabase JWT if needed)
+  const headers = await getApiHeadersAsync(daasConfig);
   
   const response = await fetch(url, {
     ...fetchOptions,

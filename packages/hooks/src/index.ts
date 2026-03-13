@@ -28,11 +28,13 @@ export {
 } from './usePermissions';
 export {
   useDaaSContext,
+  useIsDaaSReady,
   useIsDirectDaaSMode,
   DaaSProvider,
   type DaaSConfig,
   type DaaSContextValue,
   type DaaSProviderProps,
+  type DaaSUser,
 } from './useDaaSContext';
 
 // Relation hooks

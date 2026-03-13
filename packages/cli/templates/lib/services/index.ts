@@ -16,14 +16,17 @@ export {
   type FieldPermissions,
 } from "./permissions";
 
-// DaaS Context Provider for direct API access (bypassing proxy routes)
+// DaaS Context Provider — browser calls DaaS directly, no Next.js proxy needed.
+// CORS is handled on the DaaS side via CORS_ORIGINS env variable.
 export {
   DaaSProvider,
   buildApiUrl,
   getApiHeaders,
+  getApiHeadersAsync,
   getGlobalDaaSConfig,
   setGlobalDaaSConfig,
   useDaaSContext,
+  useIsDaaSReady,
   useIsDirectDaaSMode,
   type DaaSConfig,
   type DaaSContextValue,

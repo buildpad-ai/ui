@@ -77,6 +77,9 @@
     "supabase": [
       "@supabase/ssr@^0.5",
       "@supabase/supabase-js@^2"
+    ],
+    "oauth": [
+      "jose"
     ]
   },
   "lib": {
@@ -316,12 +319,8 @@
     },
     "api-routes": {
       "name": "api-routes",
-      "description": "DaaS proxy API routes for auth, fields, items, relations, files, and permissions",
+      "description": "Server-side Supabase auth routes for Next.js (login, logout, callback, user)",
       "files": [
-        {
-          "source": "cli/templates/api/auth-headers.ts",
-          "target": "lib/api/auth-headers.ts"
-        },
         {
           "source": "cli/templates/api/auth-login-route.ts",
           "target": "app/api/auth/login/route.ts"
@@ -341,38 +340,6 @@
         {
           "source": "cli/templates/api/login-page.tsx",
           "target": "app/login/page.tsx"
-        },
-        {
-          "source": "cli/templates/api/fields-route.ts",
-          "target": "app/api/fields/[collection]/route.ts"
-        },
-        {
-          "source": "cli/templates/api/items-route.ts",
-          "target": "app/api/items/[collection]/route.ts"
-        },
-        {
-          "source": "cli/templates/api/items-id-route.ts",
-          "target": "app/api/items/[collection]/[id]/route.ts"
-        },
-        {
-          "source": "cli/templates/api/relations-route.ts",
-          "target": "app/api/relations/route.ts"
-        },
-        {
-          "source": "cli/templates/api/files-route.ts",
-          "target": "app/api/files/route.ts"
-        },
-        {
-          "source": "cli/templates/api/files-id-route.ts",
-          "target": "app/api/files/[id]/route.ts"
-        },
-        {
-          "source": "cli/templates/api/collections-route.ts",
-          "target": "app/api/collections/route.ts"
-        },
-        {
-          "source": "cli/templates/api/permissions-me-route.ts",
-          "target": "app/api/permissions/me/route.ts"
         }
       ],
       "internalDependencies": [
@@ -426,8 +393,82 @@
           "target": "lib/supabase/middleware.ts"
         },
         {
+          "source": "cli/templates/supabase/admin.ts",
+          "target": "lib/supabase/admin.ts"
+        },
+        {
           "source": "cli/templates/middleware/middleware.ts",
           "target": "middleware.ts"
+        }
+      ]
+    },
+    "external-oauth": {
+      "name": "external-oauth",
+      "description": "External OAuth2/OIDC integration where Next.js acts as the OAuth client. Supports Azure AD, Google, Okta, Auth0, and generic OIDC providers. Includes PKCE, AES-256-GCM state encryption, JIT user provisioning, and multi-source claim extraction.",
+      "dependencies": [
+        "jose"
+      ],
+      "internalDependencies": [
+        "supabase-auth",
+        "api-routes"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/lib/oauth/config.ts",
+          "target": "lib/oauth/config.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/pkce.ts",
+          "target": "lib/oauth/pkce.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/validate.ts",
+          "target": "lib/oauth/validate.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/index.ts",
+          "target": "lib/oauth/index.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-callback-oauth-route.ts",
+          "target": "app/api/auth/callback/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-oauth-provider-route.ts",
+          "target": "app/api/auth/oauth/[provider]/route.ts"
+        },
+        {
+          "source": "cli/templates/components/auth/OAuthLoginButtons.tsx",
+          "target": "components/auth/OAuthLoginButtons.tsx"
+        }
+      ]
+    },
+    "scope-routes": {
+      "name": "scope-routes",
+      "description": "DaaS multi-tenant scope system — ScopeProvider context, ScopeSwitcher, error handling, and onboarding page. Calls DaaS directly; no proxy routes needed.",
+      "internalDependencies": [
+        "supabase-auth"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/lib/scope/context.tsx",
+          "target": "lib/scope/context.tsx"
+        },
+        {
+          "source": "cli/templates/lib/scope/use-scope-error.ts",
+          "target": "lib/scope/use-scope-error.ts"
+        },
+        {
+          "source": "cli/templates/lib/scope/index.ts",
+          "target": "lib/scope/index.ts"
+        },
+        {
+          "source": "cli/templates/components/scope-switcher.tsx",
+          "target": "components/ScopeSwitcher.tsx"
+        },
+        {
+          "source": "cli/templates/app/select-scope/page.tsx",
+          "target": "app/select-scope/page.tsx"
         }
       ]
     }

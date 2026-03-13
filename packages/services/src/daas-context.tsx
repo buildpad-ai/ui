@@ -4,20 +4,26 @@ import { createContext, useContext, useMemo, useState, useEffect, useCallback, t
 
 /**
  * DaaS Configuration
- * 
- * Configuration for direct DaaS API access (bypassing Next.js proxy routes).
- * Used in environments like Storybook where proxy routes don't exist.
- * 
- * Authentication Methods Supported (mirrors DaaS architecture):
- * 1. Cookie-Based Sessions - For browser requests (automatic)
- * 2. Static Tokens - For programmatic access (DaaS-style)
- * 3. JWT Bearer Tokens - For API clients with Supabase Auth
+ *
+ * Configuration for direct DaaS API access.
+ * The browser calls the DaaS backend directly — no Next.js proxy needed.
+ * CORS is handled on the DaaS side via the CORS_ORIGINS env variable.
+ *
+ * Authentication: provide a static `token` (Storybook/testing) or a `getToken`
+ * async callback (Next.js apps using Supabase session JWT).
  */
 export interface DaaSConfig {
-  /** DaaS API base URL (e.g., https://xxx.buildpad-daas.xtremax.com) */
+  /** DaaS API base URL, e.g. https://xxx.buildpad-daas.xtremax.com */
   url: string;
-  /** Static authentication token for API access */
-  token: string;
+  /** Static auth token — for Storybook or programmatic access only. */
+  token?: string;
+  /**
+   * Async function to retrieve the current auth token dynamically.
+   * Use in Next.js apps: `() => supabase.auth.getSession().then(s => s.data.session?.access_token ?? null)`
+   * Refreshed on mount and whenever `onAuthChange` is triggered.
+   * If both `token` and `getToken` are provided, `token` takes precedence.
+   */
+  getToken?: () => Promise<string | null>;
 }
 
 /**
@@ -40,14 +46,14 @@ export interface DaaSUser {
  * DaaS Context Value
  */
 export interface DaaSContextValue {
-  /** DaaS configuration (null if using proxy routes) */
+  /** DaaS configuration */
   config: DaaSConfig | null;
-  /** Whether direct DaaS mode is enabled */
-  isDirectMode: boolean;
-  /** Build full API URL for a path */
+  /** Build full DaaS URL for a path (always direct, never proxy) */
   buildUrl: (path: string) => string;
-  /** Get authorization headers */
+  /** Get synchronous auth headers using the currently-stored token */
   getHeaders: () => Record<string, string>;
+  /** Async: refresh the stored token by calling config.getToken() */
+  refreshToken: () => Promise<void>;
   /** Current authenticated user (null if not authenticated) */
   user: DaaSUser | null;
   /** Whether user is admin */
@@ -66,139 +72,147 @@ const DaaSContext = createContext<DaaSContextValue | null>(null);
  * DaaSProvider Props
  */
 export interface DaaSProviderProps {
-  /** DaaS configuration for direct API access */
+  /** DaaS configuration. URL falls back to `NEXT_PUBLIC_BUILDPAD_DAAS_URL` env var. */
   config?: DaaSConfig | null;
-  /** Auto-fetch user on mount (default: true when config is provided) */
+  /** Auto-fetch user on mount (default: true) */
   autoFetchUser?: boolean;
   /** Callback when user is authenticated */
   onAuthenticated?: (user: DaaSUser) => void;
   /** Callback when auth fails */
   onAuthError?: (error: Error) => void;
-  /** Children */
   children: ReactNode;
 }
 
 /**
  * DaaSProvider
- * 
- * Provides DaaS configuration and authentication context to services and hooks.
- * When configured with URL and token, services will call DaaS directly
- * instead of using Next.js proxy routes.
- * 
- * Authentication follows DaaS architecture:
- * - Static tokens for programmatic access (DaaS-style)
- * - Cookie-based sessions for browser requests
- * - Full RBAC permissions applied at application layer
- * 
+ *
+ * Configures global DaaS URL and authentication for all services and components.
+ * The browser calls DaaS directly — no proxy routes are used.
+ *
  * @example
  * ```tsx
- * // In Storybook or testing environment
- * <DaaSProvider 
- *   config={{ url: 'https://xxx.buildpad-daas.xtremax.com', token: 'xxx' }}
- *   onAuthenticated={(user) => console.log('Authenticated:', user)}
+ * // In Next.js app layout (Supabase JWT)
+ * import { createBrowserClient } from '@supabase/ssr';
+ * const supabase = createBrowserClient(
+ *   process.env.NEXT_PUBLIC_SUPABASE_URL!,
+ *   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+ * );
+ *
+ * <DaaSProvider
+ *   config={{
+ *     url: process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL!,
+ *     getToken: () => supabase.auth.getSession().then(({ data }) => data.session?.access_token ?? null),
+ *   }}
  * >
- *   <VForm collection="articles" />
+ *   <App />
  * </DaaSProvider>
- * 
- * // In Next.js app (uses proxy routes)
- * <DaaSProvider>
+ *
+ * // In Storybook or testing with static token
+ * <DaaSProvider
+ *   config={{ url: 'https://xxx.buildpad-daas.xtremax.com', token: 'your-static-token' }}
+ * >
  *   <VForm collection="articles" />
  * </DaaSProvider>
  * ```
  */
-export function DaaSProvider({ 
-  config, 
-  children, 
-  autoFetchUser,
+export function DaaSProvider({
+  config,
+  children,
+  autoFetchUser = true,
   onAuthenticated,
   onAuthError,
 }: DaaSProviderProps) {
+  // Resolve URL: from prop or from env var
+  const resolvedUrl = config?.url ?? (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL : undefined) ?? null;
+
+  // Token storage: static token wins; otherwise dynamic from getToken()
+  const [dynamicToken, setDynamicToken] = useState<string | null>(null);
+  const effectiveToken = config?.token ?? dynamicToken;
+
   const [user, setUser] = useState<DaaSUser | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const isDirectMode = Boolean(config?.url && config?.token);
+  /** Refresh the stored dynamic token */
+  const refreshToken = useCallback(async () => {
+    if (config?.token) return; // static token — nothing to refresh
+    if (!config?.getToken) return;
+    const tok = await config.getToken();
+    setDynamicToken(tok ?? null);
+  }, [config]);
 
-  // Default: auto-fetch in direct mode; opt-in for proxy mode
-  const shouldAutoFetch = autoFetchUser ?? isDirectMode;
+  // Initial token fetch
+  useEffect(() => {
+    refreshToken();
+  }, [refreshToken]);
 
-  // Build URL helper
+  /** Build a full DaaS URL from a path like /api/items/orders */
   const buildUrl = useCallback((path: string): string => {
-    if (isDirectMode && config) {
-      const baseUrl = config.url.replace(/\/$/, '');
-      const cleanPath = path.startsWith('/') ? path : `/${path}`;
-      const daasPath = cleanPath.replace(/^\/api/, '');
-      return `${baseUrl}${daasPath}`;
+    if (!resolvedUrl) {
+      throw new Error(
+        'DaaS URL is not configured. Set NEXT_PUBLIC_BUILDPAD_DAAS_URL or provide config.url to DaaSProvider.'
+      );
     }
-    return path;
-  }, [isDirectMode, config]);
+    const baseUrl = resolvedUrl.replace(/\/$/, '');
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${baseUrl}${cleanPath}`;
+  }, [resolvedUrl]);
 
-  // Get headers helper
+  /** Sync headers using the currently-stored token */
   const getHeaders = useCallback((): Record<string, string> => {
-    if (isDirectMode && config) {
-      return {
-        'Authorization': `Bearer ${config.token}`,
-        'Content-Type': 'application/json',
-      };
-    }
-    return {
-      'Content-Type': 'application/json',
-    };
-  }, [isDirectMode, config]);
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (effectiveToken) headers['Authorization'] = `Bearer ${effectiveToken}`;
+    return headers;
+  }, [effectiveToken]);
 
-  // Fetch current user
+  /** Fetch current user */
   const refreshUser = useCallback(async (): Promise<void> => {
+    if (!resolvedUrl) return;
     try {
       setAuthLoading(true);
       setAuthError(null);
-      
-      const url = buildUrl('/api/users/me');
-      const response = await fetch(url, {
+
+      const response = await fetch(buildUrl('/api/auth/me'), {
         headers: getHeaders(),
         credentials: 'include',
       });
-      
+
       if (!response.ok) {
-        if (response.status === 401) {
-          setUser(null);
-          return;
-        }
+        if (response.status === 401) { setUser(null); return; }
         throw new Error(`Authentication failed: ${response.status}`);
       }
-      
+
       const data = await response.json();
       const userData = data.data || data;
-      
       setUser(userData);
       onAuthenticated?.(userData);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
-      setAuthError(errorMessage);
+      const msg = err instanceof Error ? err.message : 'Authentication failed';
+      setAuthError(msg);
       setUser(null);
-      onAuthError?.(err instanceof Error ? err : new Error(errorMessage));
+      onAuthError?.(err instanceof Error ? err : new Error(msg));
     } finally {
       setAuthLoading(false);
     }
-  }, [buildUrl, getHeaders, onAuthenticated, onAuthError]);
+  }, [resolvedUrl, buildUrl, getHeaders, onAuthenticated, onAuthError]);
 
-  // Auto-fetch user when enabled (direct mode: by default, proxy mode: opt-in)
   useEffect(() => {
-    if (shouldAutoFetch) {
+    if (autoFetchUser && resolvedUrl) {
       refreshUser();
     }
-  }, [shouldAutoFetch, isDirectMode, config?.token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoFetchUser, resolvedUrl, effectiveToken]); // re-run when token changes
 
   const value = useMemo<DaaSContextValue>(() => ({
     config: config ?? null,
-    isDirectMode,
     buildUrl,
     getHeaders,
+    refreshToken,
     user,
     isAdmin: user?.admin_access ?? false,
     authLoading,
     authError,
     refreshUser,
-  }), [config, isDirectMode, buildUrl, getHeaders, user, authLoading, authError, refreshUser]);
+  }), [config, buildUrl, getHeaders, refreshToken, user, authLoading, authError, refreshUser]);
 
   return (
     <DaaSContext.Provider value={value}>
@@ -208,89 +222,97 @@ export function DaaSProvider({
 }
 
 /**
- * Hook to access DaaS context
- * 
- * Returns null if not inside a DaaSProvider (falls back to proxy mode)
+ * Hook to access DaaS context.
+ * Throws if used outside a DaaSProvider.
  */
 export function useDaaSContext(): DaaSContextValue {
   const context = useContext(DaaSContext);
-  
-  // If no provider, return default (proxy mode) behavior
   if (!context) {
-    return {
-      config: null,
-      isDirectMode: false,
-      buildUrl: (path: string) => path,
-      getHeaders: () => ({ 'Content-Type': 'application/json' }),
-      user: null,
-      isAdmin: false,
-      authLoading: false,
-      authError: null,
-      refreshUser: async () => {},
-    };
+    throw new Error('useDaaSContext must be used inside a <DaaSProvider>. Wrap your root layout with DaaSProvider.');
   }
-  
   return context;
 }
 
 /**
- * Hook to check if direct DaaS mode is enabled
+ * Hook to check if DaaS is configured and ready.
  */
-export function useIsDirectDaaSMode(): boolean {
-  const context = useDaaSContext();
-  return context.isDirectMode;
+export function useIsDaaSReady(): boolean {
+  const context = useContext(DaaSContext);
+  return Boolean(context?.config?.url ?? process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL);
 }
 
-// Global config for non-React contexts (e.g., services called outside components)
+// ---------------------------------------------------------------------------
+// Global (non-React) helpers — for services called outside React components
+// ---------------------------------------------------------------------------
+
 let globalDaaSConfig: DaaSConfig | null = null;
 
-/**
- * Set global DaaS configuration
- * 
- * Use this to configure DaaS access in non-React contexts.
- * The React context takes precedence when available.
- */
+/** Set global DaaS config for non-React contexts (e.g. server actions, test setup) */
 export function setGlobalDaaSConfig(config: DaaSConfig | null) {
   globalDaaSConfig = config;
 }
 
-/**
- * Get global DaaS configuration
- */
+/** Get global DaaS config */
 export function getGlobalDaaSConfig(): DaaSConfig | null {
   return globalDaaSConfig;
 }
 
 /**
- * Build URL for API request (works without React context)
+ * Build full DaaS URL for a path (non-React, reads global config or env var).
+ * Path should include the full route, e.g. `/api/items/orders`.
  */
 export function buildApiUrl(path: string, config?: DaaSConfig | null): string {
   const effectiveConfig = config ?? globalDaaSConfig;
-  
-  if (effectiveConfig?.url && effectiveConfig?.token) {
-    const baseUrl = effectiveConfig.url.replace(/\/$/, '');
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const daasPath = cleanPath.replace(/^\/api/, '');
-    return `${baseUrl}${daasPath}`;
+  const baseUrl =
+    effectiveConfig?.url ??
+    (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL : undefined);
+
+  if (!baseUrl) {
+    throw new Error(
+      'DaaS URL is not configured. Set NEXT_PUBLIC_BUILDPAD_DAAS_URL or call setGlobalDaaSConfig().'
+    );
   }
-  
-  return path;
+
+  const cleanBase = baseUrl.replace(/\/$/, '');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${cleanBase}${cleanPath}`;
 }
 
 /**
- * Get headers for API request (works without React context)
+ * Get auth headers for the given config (non-React, sync).
+ * Returns Bearer token header if token is available in config.
+ * For dynamic tokens (getToken callback), this returns no auth header —
+ * use `getApiHeadersAsync` for reliable token access.
  */
 export function getApiHeaders(config?: DaaSConfig | null): Record<string, string> {
   const effectiveConfig = config ?? globalDaaSConfig;
-  
-  if (effectiveConfig?.url && effectiveConfig?.token) {
-    return {
-      'Authorization': `Bearer ${effectiveConfig.token}`,
-      'Content-Type': 'application/json',
-    };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (effectiveConfig?.token) {
+    headers['Authorization'] = `Bearer ${effectiveConfig.token}`;
   }
-  
-  return {
-    'Content-Type': 'application/json',
-  };
+  return headers;
+}
+
+/**
+ * Get auth headers async — calls `getToken()` callback if no static token.
+ * Use this in services when dynamic JWT tokens are needed.
+ */
+export async function getApiHeadersAsync(config?: DaaSConfig | null): Promise<Record<string, string>> {
+  const effectiveConfig = config ?? globalDaaSConfig;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  if (effectiveConfig?.token) {
+    headers['Authorization'] = `Bearer ${effectiveConfig.token}`;
+  } else if (effectiveConfig?.getToken) {
+    const tok = await effectiveConfig.getToken();
+    if (tok) headers['Authorization'] = `Bearer ${tok}`;
+  }
+
+  return headers;
+}
+
+/** @deprecated Use useDaaSContext() instead. Kept for backward compatibility. */
+export function useIsDirectDaaSMode(): boolean {
+  const context = useContext(DaaSContext);
+  return Boolean(context);
 }
