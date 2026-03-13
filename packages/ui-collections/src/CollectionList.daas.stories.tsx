@@ -388,7 +388,7 @@ pnpm dev:host
               enableResize
               enableReorder
               enableHeaderMenu
-              limit={25}
+              limit={10}
               onCreate={() => addLog(`Create new item in "${collection}"`)}
               onItemClick={(item) => addLog(`Clicked: ${JSON.stringify(item)?.slice(0, 80)}`)}
               onEdit={(item) => addLog(`Edit: ${JSON.stringify(item)?.slice(0, 80)}`)}

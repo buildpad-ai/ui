@@ -407,11 +407,14 @@ test.describe('CollectionList Storybook - Filter Panel', () => {
 // ============================================================================
 
 test.describe('CollectionList Storybook - Create Button', () => {
-  test('should show create button when enableCreate is true', async ({ page }) => {
+  test('should show create button with icon and label when enableCreate is true', async ({ page }) => {
     await goToStory(page, 'collections-collectionlist--with-create-button');
 
     const createBtn = page.locator('[data-testid="collection-list-create"]');
     await expect(createBtn).toBeVisible();
+
+    // Button should show "Create item" label
+    await expect(createBtn).toContainText('Create item');
   });
 
   test('should fire onCreate callback when create button is clicked', async ({ page }) => {
@@ -443,17 +446,6 @@ test.describe('CollectionList Storybook - Toolbar & Item Count', () => {
 
     const toolbar = page.locator('[data-testid="collection-list-toolbar"]');
     await expect(toolbar).toBeVisible();
-  });
-
-  test('should display item count in the toolbar', async ({ page }) => {
-    await goToStory(page, 'collections-collectionlist--default');
-
-    const itemCount = page.locator('[data-testid="collection-list-item-count"]');
-    await expect(itemCount).toBeVisible();
-
-    // Should show "10 items" (mock has 10 items)
-    const text = await itemCount.textContent();
-    expect(text).toMatch(/\d+ items?/);
   });
 
   test('should show footer with page size selector', async ({ page }) => {
@@ -663,5 +655,70 @@ test.describe('CollectionList Storybook - Restricted Fields', () => {
     expect(joined).not.toContain('author');
     expect(joined).not.toContain('category');
     expect(joined).not.toContain('word count');
+  });
+});
+
+// ============================================================================
+// Test Suite: Action Button Labels (icon + text)
+// ============================================================================
+
+test.describe('CollectionList Storybook - Action Button Labels', () => {
+  test('should show create button with "Create item" label', async ({ page }) => {
+    await goToStory(page, 'collections-collectionlist--with-create-button');
+
+    const createBtn = page.locator('[data-testid="collection-list-create"]');
+    await expect(createBtn).toBeVisible();
+    await expect(createBtn).toContainText('Create item');
+  });
+
+  test('should show bulk delete button with "Delete" label when items are selected', async ({ page }) => {
+    await goToStory(page, 'collections-collectionlist--with-built-in-delete');
+
+    // Select first row
+    const checkboxes = page.locator('.v-table tbody input[type="checkbox"]');
+    await checkboxes.nth(0).click({ force: true });
+
+    const deleteBtn = page.locator('[data-testid="bulk-action-delete"]');
+    await expect(deleteBtn).toBeVisible({ timeout: 5000 });
+    await expect(deleteBtn).toContainText('Delete');
+  });
+
+  test('should show bulk action buttons with labels when items are selected', async ({ page }) => {
+    await goToStory(page, 'collections-collectionlist--no-create-permission');
+
+    // Select a row to reveal bulk actions
+    const checkboxes = page.locator('.v-table tbody input[type="checkbox"]');
+    await checkboxes.nth(0).click({ force: true });
+
+    const bulkActions = page.locator('[data-testid="collection-list-bulk-actions"]');
+    await expect(bulkActions).toBeVisible({ timeout: 5000 });
+
+    // Custom bulk action buttons should show label text
+    const deleteAction = page.locator('[data-testid="bulk-action-0"]');
+    await expect(deleteAction).toContainText('Delete');
+
+    const archiveAction = page.locator('[data-testid="bulk-action-1"]');
+    await expect(archiveAction).toContainText('Archive');
+  });
+});
+
+// ============================================================================
+// Test Suite: Built-in Delete Permission Gating
+// ============================================================================
+
+test.describe('CollectionList Storybook - Delete Permission Gating', () => {
+  test('should show built-in delete button as disabled when user lacks delete permission', async ({ page }) => {
+    await goToStory(page, 'collections-collectionlist--read-only-permissions');
+
+    // Select a row
+    const checkboxes = page.locator('.v-table tbody input[type="checkbox"]');
+    await checkboxes.nth(0).click({ force: true });
+
+    const bulkActions = page.locator('[data-testid="collection-list-bulk-actions"]');
+    await expect(bulkActions).toBeVisible({ timeout: 5000 });
+
+    // The custom bulk action for delete (requiredPermission: "delete") should be disabled
+    const deleteAction = page.locator('[data-testid="bulk-action-0"]');
+    await expect(deleteAction).toBeDisabled();
   });
 });

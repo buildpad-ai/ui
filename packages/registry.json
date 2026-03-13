@@ -1859,6 +1859,26 @@
         {
           "source": "ui-collections/src/CollectionList.tsx",
           "target": "components/ui/collection-list.tsx"
+        },
+        {
+          "source": "ui-collections/src/CollectionList.css",
+          "target": "components/ui/collection-list.css"
+        },
+        {
+          "source": "ui-collections/src/CollectionListToolbar.tsx",
+          "target": "components/ui/collection-list-toolbar.tsx"
+        },
+        {
+          "source": "ui-collections/src/CollectionListFooter.tsx",
+          "target": "components/ui/collection-list-footer.tsx"
+        },
+        {
+          "source": "ui-collections/src/DeleteConfirmModal.tsx",
+          "target": "components/ui/delete-confirm-modal.tsx"
+        },
+        {
+          "source": "ui-collections/src/BulkActionsBar.tsx",
+          "target": "components/ui/bulk-actions-bar.tsx"
         }
       ],
       "dependencies": [

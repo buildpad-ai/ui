@@ -140,13 +140,25 @@ const SAMPLE_ITEMS = {
     { id: 2, title: "Post 2", status: "draft", body: "Body 2" },
     { id: 3, title: "Post 3", status: "published", body: "Body 3" },
   ],
-  meta: { total_count: 3, filter_count: 3 },
+  meta: { page: 1, limit: 25, total: 3 },
 };
+
+/** Aggregate count response matching Directus format */
+function makeCountResponse(count: number) {
+  return { data: [{ count: { id: count } }] };
+}
 
 function setupDefaultMocks() {
   mockFieldsReadAll.mockResolvedValue(SAMPLE_FIELDS);
   mockPermissionsGetAccess.mockResolvedValue({});
-  mockApiRequest.mockResolvedValue(SAMPLE_ITEMS);
+  // apiRequest is called for items fetch AND aggregate count queries.
+  // Route by URL: aggregate queries contain "aggregate", items queries don't.
+  mockApiRequest.mockImplementation((url: string) => {
+    if (url.includes("aggregate")) {
+      return Promise.resolve(makeCountResponse(3));
+    }
+    return Promise.resolve(SAMPLE_ITEMS);
+  });
 }
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -196,13 +208,6 @@ describe("CollectionList", () => {
       });
     });
 
-    it("shows item count display", async () => {
-      renderList();
-
-      await waitFor(() => {
-        expect(screen.getByTestId("collection-list-item-count")).toBeInTheDocument();
-      });
-    });
   });
 
   // =====================================================================
@@ -397,7 +402,7 @@ describe("CollectionList", () => {
       expect(screen.getByTestId("collection-list-create")).toBeDisabled();
     });
 
-    it("does not show bulk delete when deleteAllowed is false", async () => {
+    it("disables bulk delete when deleteAllowed is false", async () => {
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -420,8 +425,160 @@ describe("CollectionList", () => {
         expect(screen.getByTestId("collection-list-bulk-actions")).toBeInTheDocument();
       });
 
-      // Bulk delete should not be present because deleteAllowed is false
-      expect(screen.queryByTestId("bulk-action-delete")).not.toBeInTheDocument();
+      // Bulk delete should be present but disabled because deleteAllowed is false
+      expect(screen.getByTestId("bulk-action-delete")).toBeInTheDocument();
+      expect(screen.getByTestId("bulk-action-delete")).toBeDisabled();
+    });
+
+    it("disables bulk action buttons based on requiredPermission", async () => {
+      mockPermissionsGetAccess.mockResolvedValueOnce({
+        posts: {
+          read: { fields: ["*"] },
+          // no create, update, or delete permissions
+        },
+      });
+
+      const bulkActions = [
+        {
+          label: "Delete All",
+          color: "red",
+          requiredPermission: "delete" as const,
+          action: vi.fn(),
+        },
+        {
+          label: "Archive",
+          requiredPermission: "update" as const,
+          action: vi.fn(),
+        },
+        {
+          label: "Export",
+          action: vi.fn(),
+        },
+      ];
+
+      renderList({ enableSelection: true, bulkActions });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+
+      // Select first item
+      fireEvent.click(screen.getByTestId("vtable-select-0"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("collection-list-bulk-actions")).toBeInTheDocument();
+      });
+
+      // Delete All (requiredPermission: delete) - should be disabled
+      expect(screen.getByTestId("bulk-action-0")).toBeDisabled();
+
+      // Archive (requiredPermission: update) - should be disabled
+      expect(screen.getByTestId("bulk-action-1")).toBeDisabled();
+
+      // Export (no requiredPermission) - should be enabled
+      expect(screen.getByTestId("bulk-action-2")).toBeEnabled();
+    });
+  });
+
+  // =====================================================================
+  // Action Button Labels
+  // =====================================================================
+  describe("action button labels", () => {
+    it("create button shows icon and label text", async () => {
+      const onCreate = vi.fn();
+      renderList({ enableCreate: true, onCreate });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("collection-list-create")).toBeInTheDocument();
+      });
+
+      // Button should contain text "Create item"
+      expect(screen.getByTestId("collection-list-create")).toHaveTextContent("Create item");
+    });
+
+    it("bulk delete button shows icon and label text", async () => {
+      renderList({ enableSelection: true, enableDelete: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+
+      // Select first item
+      fireEvent.click(screen.getByTestId("vtable-select-0"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("bulk-action-delete")).toBeInTheDocument();
+      });
+
+      // Button should contain text "Delete"
+      expect(screen.getByTestId("bulk-action-delete")).toHaveTextContent("Delete");
+    });
+
+    it("custom bulk action buttons show labels", async () => {
+      const bulkActions = [
+        {
+          label: "Archive",
+          requiredPermission: "update" as const,
+          action: vi.fn(),
+        },
+      ];
+
+      renderList({ enableSelection: true, bulkActions });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId("vtable-select-0"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("bulk-action-0")).toBeInTheDocument();
+      });
+
+      // Button should contain text "Archive"
+      expect(screen.getByTestId("bulk-action-0")).toHaveTextContent("Archive");
+    });
+  });
+
+  // =====================================================================
+  // Pagination (inside VTable footer)
+  // =====================================================================
+  describe("pagination", () => {
+    it("shows pagination when there are multiple pages", async () => {
+      // Return enough items to require pagination (more than 25)
+      mockApiRequest.mockImplementation((url: string) => {
+        if (url.includes("aggregate")) {
+          return Promise.resolve(makeCountResponse(50));
+        }
+        return Promise.resolve({
+          data: Array.from({ length: 25 }, (_, i) => ({
+            id: i + 1,
+            title: `Post ${i + 1}`,
+            status: "published",
+          })),
+          meta: { page: 1, limit: 25, total: 50 },
+        });
+      });
+
+      renderList({ limit: 25 });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("collection-list-footer")).toBeInTheDocument();
+      });
+
+      // Should show item count
+      expect(screen.getByTestId("collection-list-footer-count")).toBeInTheDocument();
+    });
+
+    it("does not show pagination control when only one page", async () => {
+      renderList();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("vtable-mock")).toBeInTheDocument();
+      });
+
+      // Default mock data has 3 items with limit 25 = 1 page — no pagination control
+      expect(screen.queryByTestId("collection-list-pagination-control")).not.toBeInTheDocument();
     });
   });
 
@@ -443,7 +600,12 @@ describe("CollectionList", () => {
   // =====================================================================
   describe("empty state", () => {
     it("shows empty message when no items", async () => {
-      mockApiRequest.mockResolvedValue({ data: [], meta: { total_count: 0 } });
+      mockApiRequest.mockImplementation((url: string) => {
+        if (url.includes("aggregate")) {
+          return Promise.resolve(makeCountResponse(0));
+        }
+        return Promise.resolve({ data: [], meta: { page: 1, limit: 25, total: 0 } });
+      });
 
       renderList();
 
