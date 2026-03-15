@@ -44,6 +44,7 @@ export type CollectionAccess = Record<
 
 // In-memory cache (per tab lifetime) to avoid redundant /permissions/me calls
 let _cachedAccess: CollectionAccess | null = null;
+let _cachedIsAdmin = false;
 let _cachePromise: Promise<CollectionAccess> | null = null;
 let _cacheTime = 0;
 const CACHE_TTL = 30_000; // 30 seconds
@@ -74,10 +75,11 @@ export class PermissionsService {
 
     _cachePromise = (async () => {
       try {
-        const response = await apiRequest<{ data: CollectionAccess }>(
+        const response = await apiRequest<{ data: CollectionAccess; isAdmin?: boolean }>(
           "/api/permissions/me",
         );
         _cachedAccess = response.data ?? {};
+        _cachedIsAdmin = response.isAdmin === true;
         _cacheTime = Date.now();
         return _cachedAccess;
       } catch (err) {
@@ -93,6 +95,11 @@ export class PermissionsService {
     })();
 
     return _cachePromise;
+  }
+
+  /** Whether the current user is an admin (populated after getMyCollectionAccess resolves) */
+  static get isAdmin(): boolean {
+    return _cachedIsAdmin;
   }
 
   /**
@@ -119,6 +126,7 @@ export class PermissionsService {
   /** Invalidate the cached /permissions/me response */
   static clearCache(): void {
     _cachedAccess = null;
+    _cachedIsAdmin = false;
     _cachePromise = null;
     _cacheTime = 0;
   }

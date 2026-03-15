@@ -256,9 +256,10 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         if (cancelled) return;
 
         // ── Derive CRUD permission flags (mirrors DaaS useCollectionPermissions) ──
-        // An empty access map means either admin or failed fetch → assume full access.
+        // Admin users get full access; otherwise check specific collection permissions.
         const accessMap = (collectionAccess ?? {}) as Record<string, Record<string, CollectionActionAccess>>;
         const access = accessMap[collection] || {};
+        const isAdmin = PermissionsService.isAdmin;
         const isEmptyAccess = Object.keys(accessMap).length === 0;
 
         const readAccess: CollectionActionAccess | undefined = access.read;
@@ -266,9 +267,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         const updateAccess: CollectionActionAccess | undefined = access.update;
         const deleteAccess: CollectionActionAccess | undefined = access.delete;
 
-        const canCreate = isEmptyAccess || !!createAccess;
-        const canUpdate = isEmptyAccess || !!updateAccess;
-        const canDelete = isEmptyAccess || !!deleteAccess;
+        const canCreate = isAdmin || isEmptyAccess || !!createAccess;
+        const canUpdate = isAdmin || isEmptyAccess || !!updateAccess;
+        const canDelete = isAdmin || isEmptyAccess || !!deleteAccess;
 
         setCreateAllowed(canCreate);
         setUpdateAllowed(canUpdate);
@@ -277,7 +278,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         // Determine archive permission (like DaaS: requires update + archive field in writable fields)
         let canArchive = false;
         if (archiveField && canUpdate) {
-          if (isEmptyAccess) {
+          if (isAdmin || isEmptyAccess) {
             canArchive = true;
           } else if (updateAccess?.fields) {
             canArchive = updateAccess.fields.includes("*") || updateAccess.fields.includes(archiveField);
@@ -288,7 +289,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         if (!cancelled) {
           onPermissionsLoaded?.({
             createAllowed: canCreate,
-            readAllowed: isEmptyAccess || !!readAccess,
+            readAllowed: isAdmin || isEmptyAccess || !!readAccess,
             updateAllowed: canUpdate,
             deleteAllowed: canDelete,
             archiveAllowed: canArchive,
@@ -297,7 +298,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
         // ── Readable fields (for column filtering) ──
         let permFields: string[] | null = null;
-        if (!isEmptyAccess && readAccess) {
+        if (!isAdmin && !isEmptyAccess && readAccess) {
           permFields = readAccess.fields ?? null;
           if (permFields && permFields.includes("*")) permFields = null;
         }

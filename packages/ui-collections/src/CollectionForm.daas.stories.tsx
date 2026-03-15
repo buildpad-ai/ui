@@ -21,12 +21,14 @@ import {
   IconCloudDownload,
   IconUser,
   IconShield,
-  IconLock,
   IconExternalLink,
   IconDatabase,
 } from '@tabler/icons-react';
 import { CollectionForm } from './CollectionForm';
-import { DaaSProvider, useDaaSContext } from '@buildpad/services';
+import { DaaSProvider } from '@buildpad/services';
+
+/** Stable config reference for proxy mode — empty URL produces relative /api/* paths */
+const PROXY_DAAS_CONFIG = { url: '' } as const;
 
 /**
  * CollectionForm - DaaS Connected Playground
@@ -123,31 +125,16 @@ async function fetchItemIdsFromDaaS(collection: string): Promise<(string | numbe
 // Auth Status Component
 // ============================================================================
 
-const AuthStatus: React.FC = () => {
-  const { user, isAdmin, authLoading, authError } = useDaaSContext();
+interface AuthStatusProps {
+  user: ConnectionStatus['user'] | null;
+}
 
-  if (authLoading) {
-    return (
-      <Paper p="sm" withBorder>
-        <Group gap="xs">
-          <IconUser size={16} />
-          <Text size="sm" c="dimmed">Loading user...</Text>
-        </Group>
-      </Paper>
-    );
-  }
-
-  if (authError) {
-    return (
-      <Alert color="red" icon={<IconLock size={16} />} title="Auth Error">
-        {authError}
-      </Alert>
-    );
-  }
-
+const AuthStatus: React.FC<AuthStatusProps> = ({ user }) => {
   if (!user) {
     return null;
   }
+
+  const isAdmin = user.admin_access;
 
   return (
     <Paper p="sm" withBorder>
@@ -315,7 +302,7 @@ pnpm dev:host
 
   // ── Connected ──
   return (
-    <DaaSProvider autoFetchUser>
+    <DaaSProvider config={PROXY_DAAS_CONFIG} autoFetchUser={false}>
       <Stack gap="lg">
         {/* Connection Info */}
         <Paper p="md" withBorder>
@@ -343,7 +330,7 @@ pnpm dev:host
         </Paper>
 
         {/* Auth Status */}
-        <AuthStatus />
+        <AuthStatus user={connectionStatus.user} />
 
         {/* Collection Picker */}
         <Paper p="md" withBorder>
