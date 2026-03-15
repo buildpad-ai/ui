@@ -37,6 +37,7 @@ function omitKeys(
 export type InterfaceType =
   | "input"
   | "input-code"
+  | "input-hash"
   | "input-multiline"
   | "input-autocomplete-api"
   | "input-block-editor"
@@ -72,7 +73,8 @@ export type InterfaceType =
   | "workflow-button"
   | "group-detail"
   | "group-accordion"
-  | "group-raw";
+  | "group-raw"
+  | "system-token";
 
 export interface InterfaceConfig {
   /** Interface component type */
@@ -170,6 +172,17 @@ function getExplicitInterface(
         props: {
           language: (options?.language as string) || "json",
           lineNumber: true,
+          ...options,
+        },
+      };
+
+    // Hash input (server-side hashed values like passwords)
+    case "input-hash":
+      return {
+        type: "input-hash",
+        props: {
+          placeholder: options?.placeholder as string,
+          masked: options?.masked !== false,
           ...options,
         },
       };
@@ -575,6 +588,15 @@ function getExplicitInterface(
     case "group-raw":
       return {
         type: "group-raw",
+        props: {
+          ...options,
+        },
+      };
+
+    // System Token (secure token generation/management)
+    case "system-token":
+      return {
+        type: "system-token",
         props: {
           ...options,
         },

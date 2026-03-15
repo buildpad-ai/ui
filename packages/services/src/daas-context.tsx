@@ -148,7 +148,7 @@ export function DaaSProvider({
 
   /** Build a full DaaS URL from a path like /api/items/orders */
   const buildUrl = useCallback((path: string): string => {
-    if (!resolvedUrl) {
+    if (resolvedUrl == null) {
       throw new Error(
         'DaaS URL is not configured. Set NEXT_PUBLIC_BUILDPAD_DAAS_URL or provide config.url to DaaSProvider.'
       );
@@ -172,7 +172,7 @@ export function DaaSProvider({
       setAuthLoading(true);
       setAuthError(null);
 
-      const response = await fetch(buildUrl('/api/auth/me'), {
+      const response = await fetch(buildUrl('/api/users/me'), {
         headers: getHeaders(),
         credentials: 'include',
       });
@@ -213,6 +213,17 @@ export function DaaSProvider({
     authError,
     refreshUser,
   }), [config, buildUrl, getHeaders, refreshToken, user, authLoading, authError, refreshUser]);
+
+  // Sync config to global eagerly so non-React services (FieldsService, etc.)
+  // have access before child useEffect hooks fire (React runs child effects first).
+  const resolvedConfig = config ? { ...config, token: effectiveToken || config.token } : null;
+  if (resolvedConfig) {
+    setGlobalDaaSConfig(resolvedConfig);
+  }
+  // Clear global config only on unmount
+  useEffect(() => {
+    return () => { setGlobalDaaSConfig(null); };
+  }, []);
 
   return (
     <DaaSContext.Provider value={value}>
@@ -267,7 +278,7 @@ export function buildApiUrl(path: string, config?: DaaSConfig | null): string {
     effectiveConfig?.url ??
     (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL : undefined);
 
-  if (!baseUrl) {
+  if (baseUrl == null) {
     throw new Error(
       'DaaS URL is not configured. Set NEXT_PUBLIC_BUILDPAD_DAAS_URL or call setGlobalDaaSConfig().'
     );

@@ -580,6 +580,73 @@
       }
     },
     {
+      "name": "input-hash",
+      "title": "InputHash",
+      "description": "Hashed input interface for securely storing values like passwords. Shows lock icon indicator for existing hashed values.",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/input-hash/InputHash.tsx",
+          "target": "components/ui/input-hash.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-hash",
+        "name": "Hash",
+        "icon": "IconFingerprint",
+        "types": [
+          "hash"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "other",
+        "order": 4,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "system-token",
+      "title": "SystemToken",
+      "description": "Token generator interface with generate, copy, and remove actions. Used for API tokens and system authentication keys.",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/system-token/SystemToken.tsx",
+          "target": "components/ui/system-token.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "services",
+        "hooks"
+      ],
+      "interface": {
+        "id": "system-token",
+        "name": "Token",
+        "icon": "IconKey",
+        "types": [
+          "hash"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "other",
+        "order": 5,
+        "supported": true,
+        "hasOptions": false
+      }
+    },
+    {
       "name": "input-block-editor",
       "title": "InputBlockEditor",
       "description": "Block-based content editor using EditorJS (SSR-safe wrapper)",
