@@ -39,7 +39,8 @@
     "./rich-text-html": "./src/rich-text-html/index.ts",
     "./rich-text-markdown": "./src/rich-text-markdown/index.ts",
     "./map": "./src/map/index.ts",
-    "./workflow-button": "./src/workflow-button/index.ts"
+    "./workflow-button": "./src/workflow-button/index.ts",
+    "./system-token": "./src/system-token/index.ts"
   },
   "peerDependencies": {
     "@mantine/core": "^8.0.0",
