@@ -188,15 +188,16 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         const deleteAccess: CollectionActionAccess | undefined = access.delete;
 
         // Determine create/update/delete allowed
-        // If the access map is empty (admin or failed fetch), assume full access
+        // Admin users get full access; empty map (failed fetch) also assumes full access
+        const isAdmin = PermissionsService.isAdmin;
         const isEmptyAccess = Object.keys(collectionAccess || {}).length === 0;
-        setCreateAllowed(isEmptyAccess || !!createAccess);
-        setUpdateAllowed(isEmptyAccess || !!updateAccess);
-        setDeleteAllowed(isEmptyAccess || !!deleteAccess);
+        setCreateAllowed(isAdmin || isEmptyAccess || !!createAccess);
+        setUpdateAllowed(isAdmin || isEmptyAccess || !!updateAccess);
+        setDeleteAllowed(isAdmin || isEmptyAccess || !!deleteAccess);
 
         // Compute readable field names
         let readFields: string[] | null = null;
-        if (!isEmptyAccess && readAccess) {
+        if (!isAdmin && !isEmptyAccess && readAccess) {
           readFields = readAccess.fields || null; // null = wildcard
           if (readFields && readFields.includes("*")) readFields = null;
         }
@@ -205,7 +206,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // Compute writable field names for the current action
         const actionAccess = mode === "create" ? createAccess : updateAccess;
         let writeFields: string[] | null = null;
-        if (!isEmptyAccess && actionAccess) {
+        if (!isAdmin && !isEmptyAccess && actionAccess) {
           writeFields = actionAccess.fields || null;
           if (writeFields && writeFields.includes("*")) writeFields = null;
         }

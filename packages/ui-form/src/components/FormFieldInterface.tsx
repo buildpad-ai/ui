@@ -44,7 +44,7 @@ function getDefaultInterfaceForType(type: string | undefined | null): InterfaceT
     case 'uuid':
       return 'input';
     case 'hash':
-      return 'input'; // closest available interface
+      return 'input-hash';
     case 'geometry':
       return 'map';
     default:
@@ -115,6 +115,7 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
       // Text inputs
       'input': 'Input',
       'input-code': 'InputCode',
+      'input-hash': 'InputHash',
       'input-multiline': 'Textarea',
       'input-autocomplete-api': 'AutocompleteAPI',
       'input-block-editor': 'InputBlockEditor',
@@ -170,6 +171,9 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
       
       // Workflow
       'workflow-button': 'WorkflowButton',
+
+      // System Token
+      'system-token': 'SystemToken',
     };
     
     // For relational interfaces, prefer the full implementation (ListM2M, SelectDropdownM2O, ListO2M)
@@ -224,8 +228,20 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   // When nonEditable, suppress onChange and mark disabled+readonly
   const isEffectivelyReadonly = readonly || nonEditable;
 
+  // DaaS omits hash field values (e.g. password) from API responses for security.
+  // Directus uses a server-side 'conceal' transformer to return '**********' instead.
+  // Synthesize the same indicator so InputHash can detect an existing hashed value.
+  const effectiveValue = useMemo(() => {
+    if (value !== undefined && value !== null) return value;
+    const isHashField = field.meta?.special?.includes?.('hash') || field.type === 'hash';
+    if (isHashField && interfaceConfig.type === 'input-hash') return '**********';
+    const isConcealField = field.meta?.special?.includes?.('conceal');
+    if (isConcealField && interfaceConfig.type === 'system-token') return '**********';
+    return value;
+  }, [value, field, interfaceConfig.type]);
+
   const interfaceProps: any = {
-    value,
+    value: effectiveValue,
     onChange: nonEditable ? undefined : onChange,
     disabled: disabled || isEffectivelyReadonly,
     readonly: isEffectivelyReadonly,

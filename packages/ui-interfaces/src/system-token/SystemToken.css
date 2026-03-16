@@ -1,0 +1,9 @@
+/* Match Directus: placeholder text in primary/blue when a token is securely saved */
+.system-token-saved::placeholder {
+  color: var(--mantine-color-blue-6) !important;
+  opacity: 1;
+}
+
+.system-token-clear-icon:hover {
+  color: var(--mantine-color-red-6) !important;
+}
