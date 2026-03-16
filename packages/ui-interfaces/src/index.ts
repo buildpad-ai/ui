@@ -22,6 +22,12 @@ export { Textarea } from './textarea';
 export type { TextareaProps } from './textarea';
 export { InputCode } from './input-code';
 export type { InputCodeProps } from './input-code';
+export { InputHash } from './input-hash';
+export type { InputHashProps } from './input-hash';
+
+// System Token
+export { SystemToken } from './system-token';
+export type { SystemTokenProps } from './system-token';
 
 // Select / Dropdown
 export { SelectDropdown } from './select-dropdown';

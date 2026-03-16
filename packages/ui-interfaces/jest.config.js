@@ -3,6 +3,7 @@ const config = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
   moduleNameMapper: {
+    '\\.(css|less|scss|sass)$': '<rootDir>/src/__tests__/__mocks__/styleMock.js',
     '^@buildpad/types$': '<rootDir>/../types/src/index.ts',
     '^@buildpad/services$': '<rootDir>/../services/src/index.ts',
     '^@buildpad/hooks$': '<rootDir>/../hooks/src/index.ts',

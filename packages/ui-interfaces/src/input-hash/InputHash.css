@@ -1,0 +1,5 @@
+/* Match Directus: placeholder text in primary/blue when a hash value is stored */
+.input-hash-hashed::placeholder {
+  color: var(--mantine-color-blue-6) !important;
+  opacity: 1;
+}
