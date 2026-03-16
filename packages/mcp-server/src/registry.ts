@@ -39,6 +39,7 @@ export interface LibModule {
   files?: Array<{ source: string; target: string }>;
   path?: string;
   target?: string;
+  dependencies?: string[];
   internalDependencies?: string[];
 }
 

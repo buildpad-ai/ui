@@ -597,6 +597,7 @@ export async function add(
 
   // Determine which components to add
   let componentsToAdd: ComponentEntry[] = [];
+  let libModulesToInstall: string[] = [];
 
   if (all) {
     componentsToAdd = registry.components;
@@ -612,9 +613,15 @@ export async function add(
     for (const name of components) {
       const component = findComponentWithSuggestions(name, registry);
       if (!component) {
-        process.exit(1);
+        // Fall back: check if it's a lib module (e.g. external-oauth, supabase-auth, api-routes)
+        if (registry.lib[name]) {
+          libModulesToInstall.push(name);
+        } else {
+          process.exit(1);
+        }
+      } else {
+        componentsToAdd.push(component);
       }
-      componentsToAdd.push(component);
     }
   } else {
     // Interactive selection
@@ -655,7 +662,7 @@ export async function add(
     componentsToAdd = registry.components.filter(c => selected?.includes(c.name));
   }
 
-  if (componentsToAdd.length === 0) {
+  if (componentsToAdd.length === 0 && libModulesToInstall.length === 0) {
     console.log(chalk.yellow('\n✓ No components selected\n'));
     return;
   }
@@ -697,7 +704,8 @@ export async function add(
     return;
   }
 
-  console.log(chalk.bold(`\n📦 Adding ${componentsToAdd.length} component(s)...\n`));
+  const totalItems = componentsToAdd.length + libModulesToInstall.length;
+  console.log(chalk.bold(`\n📦 Adding ${totalItems} item(s)...\n`));
 
   const spinner = ora('Processing...').start();
   const allDeps = new Set<string>();
@@ -708,6 +716,12 @@ export async function add(
     // Signal non-interactive mode so already-installed components are silently skipped
     if (nonInteractive || all) {
       sharedInstalling.add('__nonInteractive__');
+    }
+
+    // Install any lib modules requested directly (e.g. buildpad add external-oauth)
+    for (const libName of libModulesToInstall) {
+      spinner.text = `Installing lib module: ${libName}...`;
+      await copyLibModule(libName, registry, config, cwd, spinner);
     }
 
     for (const component of componentsToAdd) {
