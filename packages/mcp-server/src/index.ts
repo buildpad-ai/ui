@@ -23,6 +23,7 @@ import {
   getComponentsByCategory,
   getCategories,
   getRegistry,
+  getLibModule,
   type ComponentMetadata,
 } from './registry.js';
 
@@ -257,13 +258,15 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   if (uri.startsWith('buildpad://components/')) {
     const componentName = uri.replace('buildpad://components/', '');
     const component = getComponent(componentName);
+    const libModule = !component ? getLibModule(componentName) : undefined;
 
-    if (!component) {
+    if (!component && !libModule) {
       throw new Error(`Component not found: ${componentName}`);
     }
 
     // Get source from first file in files array
-    const sourcePath = component.files[0]?.source;
+    const files = component ? component.files : libModule!.files ?? [];
+    const sourcePath = files[0]?.source;
     const source = sourcePath ? readSourceFile(sourcePath) : null;
 
     if (!source) {
@@ -493,13 +496,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       const component = getComponent(componentName);
-      if (!component) {
+      const libModule = !component ? getLibModule(componentName) : undefined;
+      if (!component && !libModule) {
         throw new Error(`Component not found: ${componentName}`);
+      }
+
+      // If it's a lib module (e.g. external-oauth, supabase-auth), return its info directly
+      if (libModule) {
+        const libFiles: Record<string, string> = {};
+        for (const file of (libModule.files ?? [])) {
+          const content = readSourceFile(file.source);
+          if (content) libFiles[file.target] = content;
+        }
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              name: libModule.name,
+              description: libModule.description,
+              type: 'lib-module',
+              files: libModule.files,
+              dependencies: libModule.dependencies ?? [],
+              internalDependencies: libModule.internalDependencies ?? [],
+              allSources: libFiles,
+              installCommand: `npx @buildpad/cli add ${libModule.name}`,
+            }, null, 2),
+          }],
+        };
       }
 
       // Get source from all files in files array (for components with multiple files)
       const sources: Record<string, string> = {};
-      for (const file of component.files) {
+      for (const file of component!.files) {
         const content = readSourceFile(file.source);
         if (content) {
           sources[file.target] = content;
@@ -507,7 +535,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // Primary source is the first file
-      const primarySource = component.files[0]?.source;
+      const primarySource = component!.files[0]?.source;
       const source = primarySource ? readSourceFile(primarySource) : null;
 
       return {
@@ -519,12 +547,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 ...component,
                 source: source || 'Source code not available',
                 allSources: sources,
-                installCommand: `cd /path/to/buildpad-ui && pnpm cli add ${component.name} --project /path/to/your-project`,
+                installCommand: `cd /path/to/buildpad-ui && pnpm cli add ${component!.name} --project /path/to/your-project`,
                 installNote: '⚠️ @buildpad/cli is NOT on npm. You must use the CLI from a local clone of buildpad-ui.',
                 copyOwn: {
                   description: 'Copy this component to your project using the CLI from buildpad-ui, or manually copy the source code below.',
-                  targetPath: component.files[0]?.target || `components/ui/${component.name}.tsx`,
-                  peerDependencies: component.dependencies,
+                  targetPath: component!.files[0]?.target || `components/ui/${component!.name}.tsx`,
+                  peerDependencies: component!.dependencies,
                 },
               },
               null,
@@ -542,11 +570,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       const component = getComponent(componentName);
-      if (!component) {
+      const libModule = !component ? getLibModule(componentName) : undefined;
+      if (!component && !libModule) {
         throw new Error(`Component not found: ${componentName}`);
       }
 
-      const example = generateUsageExample(component);
+      if (libModule) {
+        return {
+          content: [{
+            type: 'text',
+            text: `// Lib module: ${libModule.name}\n// Install via CLI:\n// npx @buildpad/cli add ${libModule.name}\n\n// ${libModule.description}`,
+          }],
+        };
+      }
+
+      const example = generateUsageExample(component!);
 
       return {
         content: [
@@ -805,14 +843,51 @@ your-project/
       }
 
       const component = getComponent(componentName);
-      if (!component) {
+      const libModule = !component ? getLibModule(componentName) : undefined;
+      if (!component && !libModule) {
         throw new Error(`Component not found: ${componentName}`);
+      }
+
+      // If it's a lib module (e.g. external-oauth), resolve and return its files directly
+      if (libModule) {
+        const registry = getRegistry();
+        const allLibFiles: Array<{ path: string; content: string; module: string }> = [];
+        const visited = new Set<string>();
+        const resolveLib = (name: string) => {
+          if (visited.has(name)) return;
+          visited.add(name);
+          const mod = registry.lib[name];
+          if (!mod) return;
+          for (const dep of (mod.internalDependencies ?? [])) resolveLib(dep);
+          for (const file of (mod.files ?? [])) {
+            const content = readSourceFile(file.source);
+            if (content) allLibFiles.push({ path: file.target, content, module: name });
+          }
+        };
+        resolveLib(componentName);
+        const allDeps = [...new Set(
+          [...visited].flatMap(n => (registry.lib[n]?.dependencies ?? []).map((d: string) => d.replace(/@[^@/]*$/, '')))
+        )];
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              name: libModule.name,
+              description: libModule.description,
+              type: 'lib-module',
+              files: allLibFiles,
+              peerDependencies: allDeps,
+              installCommand: `npx @buildpad/cli add ${libModule.name}`,
+              instructions: `## Install lib module: ${libModule.name}\n\n\`\`\`bash\nnpx @buildpad/cli add ${libModule.name}\n\`\`\`\n\n${libModule.description}\n\nFiles installed:\n${allLibFiles.map(f => `- \`${f.path}\` (${f.module})`).join('\n')}${allDeps.length ? `\n\n### npm dependencies\n\`\`\`bash\npnpm add ${allDeps.join(' ')}\n\`\`\`` : ''}`,
+            }, null, 2),
+          }],
+        };
       }
 
       // Collect all files for this component
       const files: Array<{ path: string; content: string }> = [];
       
-      for (const file of component.files) {
+      for (const file of component!.files) {
         const content = readSourceFile(file.source);
         if (content) {
           files.push({
@@ -825,10 +900,10 @@ your-project/
       // If includeLib and component has internal dependencies, include those too
       const libFiles: Array<{ path: string; content: string; module: string }> = [];
       
-      if (includeLib && component.internalDependencies?.length > 0) {
+      if (includeLib && component!.internalDependencies?.length > 0) {
         const registry = getRegistry();
         
-        for (const dep of component.internalDependencies) {
+        for (const dep of component!.internalDependencies) {
           const libModule = registry.lib[dep];
           if (libModule) {
             if (libModule.files) {
@@ -857,9 +932,9 @@ your-project/
       }
 
       const result = {
-        component: component.name,
-        title: component.title,
-        description: component.description,
+        component: component!.name,
+        title: component!.title,
+        description: component!.description,
         
         // Primary component file
         files: files,
@@ -868,14 +943,14 @@ your-project/
         libFiles: libFiles.length > 0 ? libFiles : undefined,
         
         // Dependencies to install via npm/pnpm
-        peerDependencies: component.dependencies,
+        peerDependencies: component!.dependencies,
         
         // Install command (must use local CLI, not npx)
-        cliCommand: `cd /path/to/buildpad-ui && pnpm cli add ${component.name} --project /path/to/your-project`,
+        cliCommand: `cd /path/to/buildpad-ui && pnpm cli add ${component!.name} --project /path/to/your-project`,
         cliNote: '⚠️ @buildpad/cli is NOT on npm. You must use the CLI from a local clone of buildpad-ui.',
         
         // Instructions
-        instructions: `## Copy & Own: ${component.title}
+        instructions: `## Copy & Own: ${component!.title}
 
 ⚠️ **IMPORTANT:** @buildpad/cli is NOT published to npm.
 You must use the CLI from a local clone of buildpad-ui.
@@ -888,7 +963,7 @@ You must use the CLI from a local clone of buildpad-ui.
 
 **Add component (from buildpad-ui directory):**
 \`\`\`bash
-pnpm cli add ${component.name} --project /path/to/your-project
+pnpm cli add ${component!.name} --project /path/to/your-project
 \`\`\`
 
 ### Option 2: Manual Copy
@@ -898,14 +973,14 @@ ${libFiles.length > 0 ? `
 2. Copy required lib modules:
 ${libFiles.map(f => `   - \`${f.path}\` (${f.module})`).join('\n')}` : ''}
 
-${component.dependencies.length > 0 ? `3. Install peer dependencies:
+${component!.dependencies.length > 0 ? `3. Install peer dependencies:
 \`\`\`bash
-pnpm add ${component.dependencies.join(' ')}
+pnpm add ${component!.dependencies.join(' ')}
 \`\`\`` : ''}
 
 ### Usage
 \`\`\`tsx
-import { ${component.title} } from '@/components/ui/${component.name}';
+import { ${component!.title} } from '@/components/ui/${component!.name}';
 \`\`\`
 `,
       };
