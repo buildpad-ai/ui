@@ -19,6 +19,7 @@ import { fileURLToPath } from 'url';
 import {
   PACKAGES,
   getAllComponents,
+  getAllLibModules,
   getComponent,
   getComponentsByCategory,
   getCategories,
@@ -439,6 +440,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: 'list_lib_modules',
+        description: 'List all available CLI lib modules (e.g. external-oauth, supabase-auth, api-routes) that can be added via `buildpad add <name>`. These are infrastructure/auth modules, separate from UI components.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
         name: 'get_rbac_pattern',
         description: 'Get RBAC (Role-Based Access Control) setup patterns for DaaS applications. Returns complete MCP tool call sequences to set up roles, policies, access, and permissions with dynamic variables.',
         inputSchema: {
@@ -484,6 +493,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           {
             type: 'text',
             text: JSON.stringify(components, null, 2),
+          },
+        ],
+      };
+    }
+
+    case 'list_lib_modules': {
+      const libModules = getAllLibModules().map(m => ({
+        name: m.name,
+        description: m.description,
+        dependencies: m.dependencies ?? [],
+        internalDependencies: m.internalDependencies ?? [],
+        installCommand: `npx @buildpad/cli add ${m.name}`,
+        files: (m.files ?? []).map(f => f.target),
+      }));
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(libModules, null, 2),
           },
         ],
       };
