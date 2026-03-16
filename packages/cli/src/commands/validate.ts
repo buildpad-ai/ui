@@ -585,7 +585,7 @@ function generateSuggestions(
   
   if (missingApiDir || missingRouteCount > 0 || missingAuthHelper) {
     suggestions.push(
-      `Install API routes and auth helpers: pnpm cli add api-routes --cwd .`
+      `Install API routes and auth helpers: npx @buildpad/cli@latest add api-routes --cwd .`
     );
   }
   

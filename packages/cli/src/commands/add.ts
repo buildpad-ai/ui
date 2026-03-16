@@ -611,14 +611,15 @@ export async function add(
     }
   } else if (components.length > 0) {
     for (const name of components) {
+      // Check lib modules first — before searching components so we don't print
+      // "Component not found" for valid lib module names like api-routes, supabase-auth.
+      if (registry.lib[name]) {
+        libModulesToInstall.push(name);
+        continue;
+      }
       const component = findComponentWithSuggestions(name, registry);
       if (!component) {
-        // Fall back: check if it's a lib module (e.g. external-oauth, supabase-auth, api-routes)
-        if (registry.lib[name]) {
-          libModulesToInstall.push(name);
-        } else {
-          process.exit(1);
-        }
+        process.exit(1);
       } else {
         componentsToAdd.push(component);
       }
