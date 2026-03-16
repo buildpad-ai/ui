@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-table",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Dynamic table component (VTable) for Buildpad projects - inspired by DaaS v-table",
   "type": "module",
   "main": "./dist/index.js",
