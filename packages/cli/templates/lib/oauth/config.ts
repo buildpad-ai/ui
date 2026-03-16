@@ -28,9 +28,38 @@ export interface OAuthProviderConfig {
   scopes: string[];
   /** Additional authorization parameters */
   authParams?: Record<string, string>;
+  /**
+   * End-session endpoint URL for IdP Single Logout (SLO).
+   * When present, POST /api/auth/logout will include `idpLogoutUrl` in the response
+   * and GET /api/auth/logout will redirect the browser to this endpoint.
+   */
+  logoutUrl?: string;
+  /**
+   * Query parameter name used to pass the post-logout redirect URI to the IdP.
+   * Defaults to 'post_logout_redirect_uri'. Auth0 uses 'returnTo'.
+   */
+  logoutRedirectParam?: string;
 }
 
 export type SupportedProvider = 'generic' | 'azure' | 'google' | 'okta' | 'auth0';
+
+/**
+ * Build the full IdP end-session URL including the post-logout redirect.
+ * Returns null when the provider has no `logoutUrl` configured.
+ *
+ * @param config   - Resolved provider configuration
+ * @param postLogoutUri - Where the browser should land after IdP logout
+ */
+export function buildLogoutUrl(
+  config: OAuthProviderConfig,
+  postLogoutUri: string
+): string | null {
+  if (!config.logoutUrl) return null;
+  const url = new URL(config.logoutUrl);
+  const param = config.logoutRedirectParam ?? 'post_logout_redirect_uri';
+  url.searchParams.set(param, postLogoutUri);
+  return url.toString();
+}
 
 /**
  * Generic OAuth2/OIDC provider configuration.
@@ -55,6 +84,9 @@ export function getGenericOAuthConfig(): OAuthProviderConfig {
     authParams: process.env.OAUTH_AUTH_PARAMS
       ? JSON.parse(process.env.OAUTH_AUTH_PARAMS)
       : undefined,
+    // Optional: set OAUTH_LOGOUT_URL to enable IdP SLO
+    logoutUrl: process.env.OAUTH_LOGOUT_URL,
+    logoutRedirectParam: process.env.OAUTH_LOGOUT_REDIRECT_PARAM,
   };
 }
 
@@ -76,6 +108,8 @@ export function getAzureADConfig(): OAuthProviderConfig {
     authParams: {
       prompt: 'select_account', // Force account selection
     },
+    // Azure AD v2 end-session endpoint
+    logoutUrl: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/logout`,
   };
 }
 
@@ -92,6 +126,9 @@ export function getGoogleConfig(): OAuthProviderConfig {
     jwksUri: 'https://www.googleapis.com/oauth2/v3/certs',
     issuer: 'https://accounts.google.com',
     scopes: ['openid', 'email', 'profile'],
+    // Google supports token revocation but has no standard OIDC end_session_endpoint.
+    // Set GOOGLE_LOGOUT_URL env var to override if your workspace domain requires it.
+    logoutUrl: process.env.GOOGLE_LOGOUT_URL,
   };
 }
 
@@ -110,6 +147,8 @@ export function getOktaConfig(): OAuthProviderConfig {
     jwksUri: `https://${domain}/oauth2/default/v1/keys`,
     issuer: `https://${domain}/oauth2/default`,
     scopes: ['openid', 'email', 'profile'],
+    // Okta end-session endpoint
+    logoutUrl: `https://${domain}/oauth2/default/v1/logout`,
   };
 }
 
@@ -128,6 +167,9 @@ export function getAuth0Config(): OAuthProviderConfig {
     jwksUri: `https://${domain}/.well-known/jwks.json`,
     issuer: `https://${domain}/`,
     scopes: ['openid', 'email', 'profile'],
+    // Auth0 v2 logout endpoint — uses 'returnTo' instead of 'post_logout_redirect_uri'
+    logoutUrl: `https://${domain}/v2/logout`,
+    logoutRedirectParam: 'returnTo',
   };
 }
 

@@ -263,6 +263,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Store which provider was used so the logout route can trigger IdP SLO
+    response.cookies.set('oauth_provider', oauthState.provider, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
     console.log('OAuth: Session set — redirecting to', redirectUrl.pathname);
 
     return response;
