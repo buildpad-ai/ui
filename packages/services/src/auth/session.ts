@@ -216,7 +216,7 @@ export async function createAuthenticatedClient(): Promise<AuthenticatedClient> 
     // Query user by static token
     const { data: userData, error: tokenError } = await serviceClient
       .from('daas_users')
-      .select('id, email, first_name, last_name, status, role, admin_access')
+      .select('id, email, first_name, last_name, status, admin_access')
       .eq('token', token)
       .single();
     
@@ -228,6 +228,15 @@ export async function createAuthenticatedClient(): Promise<AuthenticatedClient> 
     if (userData.status !== 'active') {
       throw new AuthenticationError('Authentication failed: user is not active');
     }
+
+    // Get user's primary role via junction table
+    const { data: primaryRole } = await serviceClient
+      .from('daas_user_roles')
+      .select('role_id')
+      .eq('user_id', userData.id)
+      .order('sort', { ascending: true })
+      .limit(1)
+      .maybeSingle();
     
     // Create a user object compatible with Supabase User type
     const staticUser: User = {
@@ -237,7 +246,7 @@ export async function createAuthenticatedClient(): Promise<AuthenticatedClient> 
       user_metadata: {
         first_name: userData.first_name,
         last_name: userData.last_name,
-        role: userData.role,
+        role: primaryRole?.role_id ?? null,
         admin_access: userData.admin_access,
       },
       aud: 'authenticated',
@@ -340,18 +349,21 @@ export async function isAdmin(): Promise<boolean> {
 export async function getUserRole(): Promise<string | null> {
   const { supabase, user } = await createAuthenticatedClient();
   
+  // Get primary role via junction table (multi-role architecture)
   const { data, error } = await supabase
-    .from('daas_users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+    .from('daas_user_roles')
+    .select('role_id')
+    .eq('user_id', user.id)
+    .order('sort', { ascending: true })
+    .limit(1)
+    .maybeSingle();
   
   if (error) {
     console.error('Error getting user role:', error);
     return null;
   }
   
-  return data?.role ?? null;
+  return data?.role_id ?? null;
 }
 
 /**
@@ -378,7 +390,7 @@ export async function getUserProfile() {
       theme,
       status,
       admin_access,
-      role:daas_roles(id, name, icon)
+      roles:daas_user_roles(...daas_roles(id, name, icon))
     `)
     .eq('id', user.id)
     .single();

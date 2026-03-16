@@ -63,7 +63,8 @@ export interface DaaSUser {
   last_name: string | null;
   avatar: string | null;
   status: string;
-  role: string | null;
+  role?: string | null;
+  roles?: { id: string; name: string; icon?: string | null }[];
   admin_access: boolean;
   language: string;
   theme: string;

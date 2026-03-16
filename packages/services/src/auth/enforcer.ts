@@ -448,6 +448,17 @@ export async function getPermissionFilters(
     return null; // No filter = full access
   }
   
+  // Get user's primary role via junction table
+  const { data: primaryRole } = await supabase
+    .from('daas_user_roles')
+    .select('role_id')
+    .eq('user_id', user.id)
+    .order('sort', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  
+  const roleId = primaryRole?.role_id || undefined;
+  
   // Get user's policies
   const { data: policyIds } = await supabase.rpc('get_user_policies', { user_id: user.id });
   
@@ -496,12 +507,12 @@ export async function getPermissionFilters(
 
   // Combine filters with OR logic
   if (filters.length === 1) {
-    return resolveFilterDynamicValues(filters[0], user.id, userData?.role);
+    return resolveFilterDynamicValues(filters[0], user.id, roleId);
   }
 
   return resolveFilterDynamicValues(
     { _or: filters },
     user.id,
-    userData?.role
+    roleId
   );
 }
