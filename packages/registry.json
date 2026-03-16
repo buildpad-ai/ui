@@ -319,7 +319,7 @@
     },
     "api-routes": {
       "name": "api-routes",
-      "description": "Server-side Supabase auth routes for Next.js (login, logout, callback, user)",
+      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files)",
       "files": [
         {
           "source": "cli/templates/api/auth-login-route.ts",
@@ -340,6 +340,30 @@
         {
           "source": "cli/templates/api/login-page.tsx",
           "target": "app/login/page.tsx"
+        },
+        {
+          "source": "cli/templates/lib/api-auth-headers.ts",
+          "target": "lib/api/auth-headers.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-fields-route.ts",
+          "target": "app/api/fields/[collection]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-items-collection-route.ts",
+          "target": "app/api/items/[collection]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-items-id-route.ts",
+          "target": "app/api/items/[collection]/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-relations-route.ts",
+          "target": "app/api/relations/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-route.ts",
+          "target": "app/api/files/route.ts"
         }
       ],
       "internalDependencies": [

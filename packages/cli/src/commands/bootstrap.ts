@@ -16,6 +16,7 @@ import path from 'path';
 import chalk from 'chalk';
 import { init } from './init.js';
 import { add } from './add.js';
+import { fix } from './fix.js';
 import { validate } from './validate.js';
 
 /**
@@ -111,9 +112,12 @@ export async function bootstrap(options: {
         const structuralErrors = result.errors.filter((e: { code: string }) => e.code !== 'TYPESCRIPT_ERROR');
         
         if (tsErrors.length > 0) {
-          console.log(chalk.yellow(`\n⚠ ${tsErrors.length} TypeScript type error(s) detected in component files.`));
-          console.log(chalk.yellow('  These may cause build failures. Run "pnpm cli fix --cwd ." to attempt auto-fix,'));
-          console.log(chalk.yellow('  or ensure all component dependencies are installed.\n'));
+          console.log(chalk.yellow(`\n⚠ ${tsErrors.length} TypeScript type error(s) detected. Auto-fixing...\n`));
+          try {
+            await fix({ cwd, yes: true });
+          } catch {
+            console.log(chalk.yellow('  Auto-fix encountered issues. Run "npx @buildpad/cli@latest fix --cwd ." to retry.\n'));
+          }
         }
         
         if (structuralErrors.length > 0) {

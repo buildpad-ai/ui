@@ -186,7 +186,8 @@ async function copyLibModule(
   registry: Registry,
   config: Config,
   cwd: string,
-  spinner: Ora
+  spinner: Ora,
+  overwrite = false
 ): Promise<boolean> {
   const libModule = registry.lib[moduleName];
   if (!libModule) {
@@ -194,9 +195,14 @@ async function copyLibModule(
     return false;
   }
 
-  // Check if already installed
-  if (config.installedLib.includes(moduleName)) {
-    return true;
+  // Check if already installed — skip only when NOT overwriting and all files exist on disk
+  if (config.installedLib.includes(moduleName) && !overwrite) {
+    // Verify files actually exist; if any are missing, continue to re-copy
+    const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
+    const allExist = (libModule.files ?? []).every((f: { target: string }) =>
+      fs.existsSync(path.join(srcDir, f.target))
+    );
+    if (allExist) return true;
   }
 
   // First, install dependencies
@@ -246,7 +252,9 @@ async function copyLibModule(
     }
   }
 
-  config.installedLib.push(moduleName);
+  if (!config.installedLib.includes(moduleName)) {
+    config.installedLib.push(moduleName);
+  }
   spinner.succeed(`Installed lib: ${moduleName}`);
   return true;
 }
@@ -611,14 +619,15 @@ export async function add(
     }
   } else if (components.length > 0) {
     for (const name of components) {
+      // Check lib modules first — before searching components so we don't print
+      // "Component not found" for valid lib module names like api-routes, supabase-auth.
+      if (registry.lib[name]) {
+        libModulesToInstall.push(name);
+        continue;
+      }
       const component = findComponentWithSuggestions(name, registry);
       if (!component) {
-        // Fall back: check if it's a lib module (e.g. external-oauth, supabase-auth, api-routes)
-        if (registry.lib[name]) {
-          libModulesToInstall.push(name);
-        } else {
-          process.exit(1);
-        }
+        process.exit(1);
       } else {
         componentsToAdd.push(component);
       }
@@ -719,9 +728,10 @@ export async function add(
     }
 
     // Install any lib modules requested directly (e.g. buildpad add external-oauth)
+    // Use overwrite=true so missing files from updated registry versions get copied.
     for (const libName of libModulesToInstall) {
       spinner.text = `Installing lib module: ${libName}...`;
-      await copyLibModule(libName, registry, config, cwd, spinner);
+      await copyLibModule(libName, registry, config, cwd, spinner, true);
     }
 
     for (const component of componentsToAdd) {
