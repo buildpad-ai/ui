@@ -58,6 +58,7 @@ export async function GET() {
         avatar: user.user_metadata?.avatar || null,
         status: 'active',
         role: null,
+        roles: [],
         admin_access: false,
       },
     });
