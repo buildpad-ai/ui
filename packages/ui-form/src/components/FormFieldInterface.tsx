@@ -174,6 +174,9 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
 
       // System Token
       'system-token': 'SystemToken',
+
+      // System Permissions
+      'system-permissions': 'SystemPermissions',
     };
     
     // For relational interfaces, prefer the full implementation (ListM2M, SelectDropdownM2O, ListO2M)

@@ -221,13 +221,17 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           ) {
             return false;
           }
-          // Exclude alias fields UNLESS they are group interfaces
+          // Exclude alias fields UNLESS they are group, presentation, or system interfaces
           if (f.type === "alias") {
             const isGroup = f.meta?.special?.includes?.("group");
             const isPresentation =
               f.meta?.interface === "presentation-divider" ||
               f.meta?.interface === "presentation-notice";
-            if (!isGroup && !isPresentation) {
+            const isRelationalAlias =
+              f.meta?.special?.includes?.("o2m") ||
+              f.meta?.special?.includes?.("m2m") ||
+              f.meta?.special?.includes?.("m2a");
+            if (!isGroup && !isPresentation && !isRelationalAlias) {
               return false;
             }
           }

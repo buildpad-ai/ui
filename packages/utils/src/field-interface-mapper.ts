@@ -74,7 +74,8 @@ export type InterfaceType =
   | "group-detail"
   | "group-accordion"
   | "group-raw"
-  | "system-token";
+  | "system-token"
+  | "system-permissions";
 
 export interface InterfaceConfig {
   /** Interface component type */
@@ -597,6 +598,15 @@ function getExplicitInterface(
     case "system-token":
       return {
         type: "system-token",
+        props: {
+          ...options,
+        },
+      };
+
+    // System Permissions (permission management for policies)
+    case "system-permissions":
+      return {
+        type: "system-permissions",
         props: {
           ...options,
         },

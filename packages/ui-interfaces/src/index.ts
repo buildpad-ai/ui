@@ -29,6 +29,10 @@ export type { InputHashProps } from './input-hash';
 export { SystemToken } from './system-token';
 export type { SystemTokenProps } from './system-token';
 
+// System Permissions
+export { SystemPermissions } from './system-permissions';
+export type { SystemPermissionsProps, PermissionGroup, PermissionAlterations } from './system-permissions';
+
 // Select / Dropdown
 export { SelectDropdown } from './select-dropdown';
 export type { SelectDropdownProps, SelectOption } from './select-dropdown';
