@@ -671,6 +671,44 @@
       }
     },
     {
+      "name": "system-permissions",
+      "title": "SystemPermissions",
+      "description": "Permissions management interface with collection-based CRUD permission toggles. Used for policy permission editing with full/custom/none access levels.",
+      "category": "relational",
+      "files": [
+        {
+          "source": "ui-interfaces/src/system-permissions/SystemPermissions.tsx",
+          "target": "components/ui/system-permissions.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/SystemPermissions.css",
+          "target": "components/ui/system-permissions.css"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "services"
+      ],
+      "interface": {
+        "id": "system-permissions",
+        "name": "Permissions",
+        "icon": "IconSettings",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "o2m"
+        ],
+        "group": "system",
+        "order": 6,
+        "supported": true,
+        "hasOptions": false
+      }
+    },
+    {
       "name": "input-block-editor",
       "title": "InputBlockEditor",
       "description": "Block-based content editor using EditorJS (SSR-safe wrapper)",

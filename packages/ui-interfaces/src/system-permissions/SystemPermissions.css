@@ -1,0 +1,9 @@
+/* SystemPermissions — minimal styles (most UI via Mantine components) */
+
+.hover-highlight:hover {
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme="dark"] .hover-highlight:hover {
+  background-color: var(--mantine-color-dark-5);
+}
