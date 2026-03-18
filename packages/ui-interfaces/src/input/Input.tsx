@@ -48,6 +48,12 @@ export interface InputProps {
   maxLength?: number;
   /** Description/help text */
   description?: string;
+  // DaaS schema metadata props — destructured and discarded to prevent forwarding
+  // to DOM elements (which would trigger React unknown-prop warnings).
+  primaryKey?: string | number | null;
+  nullable?: boolean;
+  autofocus?: boolean;
+  defaultValue?: string | number | null;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(({
@@ -73,6 +79,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   step = 1,
   maxLength,
   description,
+  // Destructure DaaS schema metadata props to prevent them from being forwarded
+  // to DOM elements (which causes React unknown-prop warnings).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  primaryKey: _primaryKey,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  nullable: _nullable,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  autofocus: _autofocus,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  defaultValue: _defaultValue,
   ...props
 }, ref) => {
   const [showPassword, { toggle }] = useDisclosure(false);

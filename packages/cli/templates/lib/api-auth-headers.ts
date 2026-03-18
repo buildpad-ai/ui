@@ -43,7 +43,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
  *
  * @throws If neither env var is set.
  */
-export function getDaaSUrl(): string {
+export function getDaasUrl(): string {
   const url =
     process.env.BUILDPAD_DAAS_URL ??
     process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL;

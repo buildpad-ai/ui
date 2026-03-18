@@ -9,6 +9,9 @@
 // Basic utilities
 export { cn, formatFileSize, getFileCategory, getAssetUrl, slugify, slugify as generateSlug, debounce, isValidPrimaryKey, deepMerge, generateId } from '../common-utils';
 
+// New item detection
+export { isNewItem, isExistingItem } from '../is-new-item';
+
 // Field interface mapping (from @buildpad/utils)
 export { 
   getFieldInterface,

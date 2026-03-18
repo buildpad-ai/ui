@@ -57,7 +57,7 @@ var SaveOptions = ({
       import_core.ActionIcon,
       {
         variant: "filled",
-        size: "md",
+        size: "input-sm",
         disabled,
         "aria-label": "More save options",
         style: {
@@ -147,9 +147,11 @@ var CollectionForm = ({
   onSuccess,
   onCancel,
   onNavigateToCreate,
+  onDelete,
   excludeFields,
   includeFields,
-  showSaveOptions = false
+  showSaveOptions = false,
+  showDelete
 }) => {
   const stableDefaultValues = (0, import_react.useMemo)(
     () => defaultValues || EMPTY_OBJECT,
@@ -173,6 +175,8 @@ var CollectionForm = ({
   const [deleteAllowed, setDeleteAllowed] = (0, import_react.useState)(false);
   const [readableFieldNames, setReadableFieldNames] = (0, import_react.useState)(null);
   const [writableFieldNames, setWritableFieldNames] = (0, import_react.useState)(null);
+  const [deleting, setDeleting] = (0, import_react.useState)(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = (0, import_react.useState)(false);
   const dataLoadedRef = (0, import_react.useRef)(false);
   const lastLoadKey = (0, import_react.useRef)("");
   (0, import_react.useEffect)(() => {
@@ -195,19 +199,20 @@ var CollectionForm = ({
         const createAccess = access.create;
         const updateAccess = access.update;
         const deleteAccess = access.delete;
+        const isAdmin = import_services.PermissionsService.isAdmin;
         const isEmptyAccess = Object.keys(collectionAccess || {}).length === 0;
-        setCreateAllowed(isEmptyAccess || !!createAccess);
-        setUpdateAllowed(isEmptyAccess || !!updateAccess);
-        setDeleteAllowed(isEmptyAccess || !!deleteAccess);
+        setCreateAllowed(isAdmin || isEmptyAccess || !!createAccess);
+        setUpdateAllowed(isAdmin || isEmptyAccess || !!updateAccess);
+        setDeleteAllowed(isAdmin || isEmptyAccess || !!deleteAccess);
         let readFields = null;
-        if (!isEmptyAccess && readAccess) {
+        if (!isAdmin && !isEmptyAccess && readAccess) {
           readFields = readAccess.fields || null;
           if (readFields && readFields.includes("*")) readFields = null;
         }
         setReadableFieldNames(readFields);
         const actionAccess = mode === "create" ? createAccess : updateAccess;
         let writeFields = null;
-        if (!isEmptyAccess && actionAccess) {
+        if (!isAdmin && !isEmptyAccess && actionAccess) {
           writeFields = actionAccess.fields || null;
           if (writeFields && writeFields.includes("*")) writeFields = null;
         }
@@ -259,10 +264,9 @@ var CollectionForm = ({
           }
         }
         if (mode === "edit" && id) {
-          const response = await (0, import_services.apiRequest)(
-            `/api/items/${collection}/${id}`
-          );
-          initialData = { ...initialData, ...response.data };
+          const itemsService = new import_services.ItemsService(collection);
+          const item = await itemsService.readOne(id);
+          initialData = { ...initialData, ...item };
         }
         setFormData(initialData);
         setInitialFormData(initialData);
@@ -354,6 +358,7 @@ var CollectionForm = ({
           delete dataToSave[f];
         }
       });
+      const itemsService = new import_services.ItemsService(collection);
       if (mode === "edit" && id) {
         const changedData = {};
         for (const [key, value] of Object.entries(dataToSave)) {
@@ -361,20 +366,14 @@ var CollectionForm = ({
             changedData[key] = value;
           }
         }
-        await (0, import_services.apiRequest)(`/api/items/${collection}/${id}`, {
-          method: "PATCH",
-          body: JSON.stringify(changedData)
-        });
+        await itemsService.updateOne(id, changedData);
         setSuccess(true);
         setInitialFormData({ ...formData });
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
           delete copyData.id;
-          const copyResponse = await (0, import_services.apiRequest)(
-            `/api/items/${collection}`,
-            { method: "POST", body: JSON.stringify(copyData) }
-          );
-          onSuccess?.({ ...copyData, id: copyResponse.data?.id });
+          const copyResult = await itemsService.createOne(copyData);
+          onSuccess?.({ ...copyData, id: copyResult?.id });
           return;
         }
         if (afterSave === "add-new") {
@@ -383,11 +382,8 @@ var CollectionForm = ({
         }
         onSuccess?.({ ...dataToSave, id });
       } else {
-        const response = await (0, import_services.apiRequest)(
-          `/api/items/${collection}`,
-          { method: "POST", body: JSON.stringify(dataToSave) }
-        );
-        const newId = response.data?.id;
+        const result = await itemsService.createOne(dataToSave);
+        const newId = result?.id;
         setSuccess(true);
         if (afterSave === "add-new") {
           onSuccess?.({ ...dataToSave, id: newId });
@@ -419,6 +415,24 @@ var CollectionForm = ({
     setSuccess(false);
     setError(null);
   }, [initialFormData]);
+  const handleDelete = async () => {
+    if (!id || mode !== "edit") return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const itemsService = new import_services.ItemsService(collection);
+      await itemsService.deleteOne(id);
+      setDeleteConfirmOpen(false);
+      onDelete?.();
+    } catch (err) {
+      console.error("Error deleting item:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete item");
+      setDeleteConfirmOpen(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+  const canShowDelete = (showDelete ?? (mode === "edit" && !!id)) && deleteAllowed;
   if (loading) {
     return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_core2.Paper, { p: "md", pos: "relative", mih: 200, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_core2.LoadingOverlay, { visible: true }) });
   }
@@ -476,6 +490,19 @@ var CollectionForm = ({
         )) })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Group, { justify: "flex-end", mt: "md", children: [
+        canShowDelete && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          import_core2.Button,
+          {
+            variant: "subtle",
+            color: "red",
+            onClick: () => setDeleteConfirmOpen(true),
+            leftSection: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_icons_react2.IconTrash, { size: 16 }),
+            disabled: saving || deleting,
+            "data-testid": "form-delete-btn",
+            style: { marginRight: "auto" },
+            children: "Delete"
+          }
+        ),
         onCancel && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           import_core2.Button,
           {
@@ -513,22 +540,366 @@ var CollectionForm = ({
           )
         ] })
       ] })
-    ] }) })
+    ] }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+      import_core2.Modal,
+      {
+        opened: deleteConfirmOpen,
+        onClose: () => setDeleteConfirmOpen(false),
+        title: "Confirm Delete",
+        centered: true,
+        size: "sm",
+        "data-testid": "delete-confirm-modal",
+        children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Stack, { gap: "md", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_core2.Text, { size: "sm", children: "Are you sure you want to delete this item? This action cannot be undone." }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Group, { justify: "flex-end", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              import_core2.Button,
+              {
+                variant: "default",
+                onClick: () => setDeleteConfirmOpen(false),
+                disabled: deleting,
+                children: "Cancel"
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+              import_core2.Button,
+              {
+                color: "red",
+                onClick: handleDelete,
+                loading: deleting,
+                "data-testid": "delete-confirm-btn",
+                children: "Delete"
+              }
+            )
+          ] })
+        ] })
+      }
+    )
   ] });
 };
 
 // src/CollectionList.tsx
-var import_core4 = require("@mantine/core");
+var import_core8 = require("@mantine/core");
 var import_services2 = require("@buildpad/services");
 var import_ui_table = require("@buildpad/ui-table");
-var import_icons_react4 = require("@tabler/icons-react");
+var import_icons_react6 = require("@tabler/icons-react");
 var import_react3 = require("react");
+
+// src/CollectionListFooter.tsx
+var import_core3 = require("@mantine/core");
+var import_jsx_runtime3 = require("react/jsx-runtime");
+var CollectionListFooter = ({
+  itemCountDisplay,
+  limit,
+  onLimitChange,
+  page,
+  onPageChange,
+  totalPages
+}) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "collection-list-footer", "data-testid": "collection-list-footer", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Text, { size: "sm", c: "dimmed", "data-testid": "collection-list-footer-count", children: itemCountDisplay }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "sm", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: 4, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Text, { size: "xs", c: "dimmed", children: "Per page:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          import_core3.Select,
+          {
+            value: String(limit),
+            onChange: (value) => {
+              if (value) {
+                onLimitChange(Number(value));
+              }
+            },
+            data: ["10", "25", "50", "100"],
+            size: "xs",
+            className: "collection-list-per-page-select",
+            "data-testid": "collection-list-per-page"
+          }
+        )
+      ] }),
+      totalPages > 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        import_core3.Pagination,
+        {
+          value: page,
+          onChange: onPageChange,
+          total: totalPages,
+          size: "sm",
+          "data-testid": "collection-list-pagination-control"
+        }
+      )
+    ] })
+  ] });
+};
+
+// src/CollectionListToolbar.tsx
+var import_core5 = require("@mantine/core");
+var import_icons_react4 = require("@tabler/icons-react");
+
+// src/BulkActionsBar.tsx
+var import_core4 = require("@mantine/core");
+var import_icons_react3 = require("@tabler/icons-react");
+var import_jsx_runtime4 = require("react/jsx-runtime");
+var BulkActionsBar = ({
+  selectedIds,
+  enableDelete,
+  deleteAllowed,
+  createAllowed,
+  updateAllowed,
+  bulkActions,
+  onDeleteRequest,
+  onClearSelection
+}) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Group, { gap: "xs", "data-testid": "collection-list-bulk-actions", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Badge, { variant: "light", size: "lg", children: [
+      selectedIds.length,
+      " selected"
+    ] }),
+    enableDelete && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Tooltip, { label: deleteAllowed ? "Delete selected" : "Not allowed", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      import_core4.Button,
+      {
+        variant: "light",
+        color: "red",
+        size: "compact-sm",
+        leftSection: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconTrash, { size: 16 }),
+        onClick: () => deleteAllowed && onDeleteRequest(selectedIds),
+        disabled: !deleteAllowed,
+        "data-testid": "bulk-action-delete",
+        children: "Delete"
+      }
+    ) }),
+    bulkActions.map((action, index) => {
+      const permKey = action.requiredPermission;
+      const permAllowed = !permKey || permKey === "create" && createAllowed || permKey === "update" && updateAllowed || permKey === "delete" && deleteAllowed;
+      return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        import_core4.Tooltip,
+        {
+          label: permAllowed ? action.label : "Not allowed",
+          children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            import_core4.Button,
+            {
+              variant: "light",
+              color: action.color,
+              size: "compact-sm",
+              leftSection: action.icon || (action.requiredPermission === "delete" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconTrash, { size: 16 }) : action.requiredPermission === "update" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconEdit, { size: 16 }) : action.requiredPermission === "create" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconPlus, { size: 16 }) : null),
+              onClick: () => permAllowed && action.action(selectedIds),
+              disabled: !permAllowed,
+              "data-testid": `bulk-action-${index}`,
+              children: action.label
+            }
+          )
+        },
+        index
+      );
+    }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      import_core4.ActionIcon,
+      {
+        variant: "subtle",
+        onClick: onClearSelection,
+        title: "Clear selection",
+        "data-testid": "collection-list-clear-selection",
+        children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconX, { size: 16 })
+      }
+    )
+  ] });
+};
+
+// src/CollectionListToolbar.tsx
+var import_jsx_runtime5 = require("react/jsx-runtime");
+var CollectionListToolbar = ({
+  enableSearch,
+  search,
+  onSearchChange,
+  enableFilter,
+  filterPanelOpen,
+  activeFilterCount,
+  onToggleFilterPanel,
+  archiveField,
+  archiveFilterMode,
+  onArchiveFilterChange,
+  onRefresh,
+  enableSelection,
+  selectedIds,
+  enableDelete,
+  deleteAllowed,
+  createAllowed,
+  updateAllowed,
+  bulkActions,
+  onDeleteRequest,
+  onClearSelection,
+  enableCreate,
+  onCreate
+}) => {
+  const showBulkActions = enableSelection && selectedIds.length > 0;
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "collection-list-toolbar", "data-testid": "collection-list-toolbar", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_core5.Group, { gap: "xs", children: [
+      enableSearch && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        import_core5.TextInput,
+        {
+          placeholder: "Search...",
+          leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconSearch, { size: 16 }),
+          value: search,
+          onChange: (e) => onSearchChange(e.currentTarget.value),
+          rightSection: search ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+            import_core5.ActionIcon,
+            {
+              variant: "subtle",
+              size: "xs",
+              onClick: () => onSearchChange(""),
+              "aria-label": "Clear search",
+              children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconX, { size: 12 })
+            }
+          ) : void 0,
+          size: "sm",
+          className: "collection-list-search",
+          "data-testid": "collection-list-search"
+        }
+      ),
+      enableFilter && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Tooltip, { label: filterPanelOpen ? "Hide filters" : "Show filters", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+        import_core5.ActionIcon,
+        {
+          variant: activeFilterCount > 0 ? "filled" : "subtle",
+          color: activeFilterCount > 0 ? "blue" : void 0,
+          onClick: onToggleFilterPanel,
+          title: "Toggle filter panel",
+          "data-testid": "collection-list-filter-toggle",
+          pos: "relative",
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconFilter, { size: 16 }),
+            activeFilterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+              import_core5.Badge,
+              {
+                size: "xs",
+                circle: true,
+                color: "red",
+                className: "collection-list-filter-badge",
+                "data-testid": "collection-list-filter-count",
+                children: activeFilterCount
+              }
+            )
+          ]
+        }
+      ) }),
+      archiveField && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        import_core5.Select,
+        {
+          value: archiveFilterMode,
+          onChange: (val) => {
+            if (val) onArchiveFilterChange(val);
+          },
+          data: [
+            { value: "all", label: "All Items" },
+            { value: "unarchived", label: "Active Items" },
+            { value: "archived", label: "Archived Items" }
+          ],
+          size: "sm",
+          leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconArchive, { size: 14 }),
+          "data-testid": "collection-list-archive-filter",
+          style: { width: 160 }
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        import_core5.ActionIcon,
+        {
+          variant: "subtle",
+          onClick: onRefresh,
+          title: "Refresh",
+          "data-testid": "collection-list-refresh",
+          children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconRefresh, { size: 16 })
+        }
+      )
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_core5.Group, { gap: "xs", children: [
+      showBulkActions && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        BulkActionsBar,
+        {
+          selectedIds,
+          enableDelete,
+          deleteAllowed,
+          createAllowed,
+          updateAllowed,
+          bulkActions,
+          onDeleteRequest,
+          onClearSelection
+        }
+      ),
+      enableCreate && onCreate && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Tooltip, { label: createAllowed ? "Create item" : "Not allowed", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+        import_core5.Button,
+        {
+          variant: "filled",
+          color: "blue",
+          size: "compact-sm",
+          leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconPlus, { size: 18 }),
+          onClick: createAllowed ? onCreate : void 0,
+          disabled: !createAllowed,
+          "data-testid": "collection-list-create",
+          "aria-label": createAllowed ? "Create item" : "Create item (not allowed)",
+          children: "Create item"
+        }
+      ) })
+    ] })
+  ] });
+};
+
+// src/DeleteConfirmModal.tsx
+var import_core6 = require("@mantine/core");
+var import_jsx_runtime6 = require("react/jsx-runtime");
+var DeleteConfirmModal = ({
+  opened,
+  count,
+  loading,
+  onConfirm,
+  onCancel
+}) => {
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+    import_core6.Modal,
+    {
+      opened,
+      onClose: onCancel,
+      title: "Confirm Delete",
+      centered: true,
+      size: "sm",
+      "data-testid": "delete-confirm-modal",
+      children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Stack, { gap: "md", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Text, { size: "sm", children: [
+          "Are you sure you want to delete ",
+          count,
+          " ",
+          count === 1 ? "item" : "items",
+          "? This action cannot be undone."
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Group, { justify: "flex-end", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            import_core6.Button,
+            {
+              variant: "default",
+              onClick: onCancel,
+              disabled: loading,
+              children: "Cancel"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            import_core6.Button,
+            {
+              color: "red",
+              onClick: onConfirm,
+              loading,
+              "data-testid": "delete-confirm-btn",
+              children: "Delete"
+            }
+          )
+        ] })
+      ] })
+    }
+  );
+};
 
 // src/FilterPanel.tsx
 var import_react2 = require("react");
-var import_core3 = require("@mantine/core");
-var import_icons_react3 = require("@tabler/icons-react");
-var import_jsx_runtime3 = require("react/jsx-runtime");
+var import_core7 = require("@mantine/core");
+var import_icons_react5 = require("@tabler/icons-react");
+var import_jsx_runtime7 = require("react/jsx-runtime");
 var STRING_OPERATORS = [
   { label: "Equals", value: "_eq", needsValue: true },
   { label: "Not equals", value: "_neq", needsValue: true },
@@ -658,9 +1029,9 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
   const operators = getOperatorsForType(selectedField?.type || "string");
   const operatorData = operators.map((o) => ({ value: o.value, label: o.label }));
   const currentOp = operators.find((o) => o.value === rule.operator);
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "xs", wrap: "nowrap", "data-testid": "filter-rule", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-      import_core3.Select,
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", wrap: "nowrap", "data-testid": "filter-rule", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      import_core7.Select,
       {
         value: rule.field,
         onChange: (val) => {
@@ -677,8 +1048,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         searchable: true
       }
     ),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-      import_core3.Select,
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      import_core7.Select,
       {
         value: rule.operator,
         onChange: (val) => {
@@ -695,8 +1066,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
     currentOp?.needsValue && (() => {
       const type = selectedField?.type || "string";
       if (["integer", "bigInteger", "float", "decimal"].includes(type)) {
-        return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-          import_core3.NumberInput,
+        return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+          import_core7.NumberInput,
           {
             value: typeof rule.value === "number" ? rule.value : void 0,
             onChange: (val) => onChange({ ...rule, value: val }),
@@ -708,8 +1079,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         );
       }
       if (type === "boolean") {
-        return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-          import_core3.Select,
+        return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+          import_core7.Select,
           {
             value: rule.value === true ? "true" : rule.value === false ? "false" : "",
             onChange: (val) => onChange({ ...rule, value: val === "true" }),
@@ -720,8 +1091,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
           }
         );
       }
-      return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-        import_core3.TextInput,
+      return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        import_core7.TextInput,
         {
           value: typeof rule.value === "string" ? rule.value : "",
           onChange: (e) => onChange({ ...rule, value: e.currentTarget.value }),
@@ -732,8 +1103,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         }
       );
     })(),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-      import_core3.ActionIcon,
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      import_core7.ActionIcon,
       {
         variant: "subtle",
         color: "red",
@@ -741,7 +1112,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         onClick: onRemove,
         disabled,
         title: "Remove filter",
-        children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_icons_react3.IconTrash, { size: 14 })
+        children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconTrash, { size: 14 })
       }
     )
   ] });
@@ -814,40 +1185,40 @@ var FilterPanel = ({
   }, [rootGroup, emitChange]);
   const filterCount = rootGroup.rules.length;
   if (collapsible && collapsed) {
-    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "xs", "data-testid": "filter-panel-collapsed", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-        import_core3.Button,
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", "data-testid": "filter-panel-collapsed", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        import_core7.Button,
         {
           variant: "subtle",
           size: "xs",
-          leftSection: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_icons_react3.IconFilter, { size: 14 }),
-          rightSection: filterCount > 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Badge, { size: "xs", circle: true, children: filterCount }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_icons_react3.IconChevronDown, { size: 14 }),
+          leftSection: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconFilter, { size: 14 }),
+          rightSection: filterCount > 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Badge, { size: "xs", circle: true, children: filterCount }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconChevronDown, { size: 14 }),
           onClick: () => setCollapsed(false),
           children: "Filters"
         }
       ),
-      filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.ActionIcon, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, title: "Clear all filters", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_icons_react3.IconX, { size: 12 }) })
+      filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.ActionIcon, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, title: "Clear all filters", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconX, { size: 12 }) })
     ] });
   }
-  const content = /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Stack, { gap: "xs", "data-testid": "filter-panel", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { justify: "space-between", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "xs", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_icons_react3.IconFilter, { size: 16, style: { color: "var(--mantine-color-dimmed)" } }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Text, { size: "sm", fw: 600, children: "Filters" }),
-        filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Badge, { size: "xs", variant: "light", children: [
+  const content = /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Stack, { gap: "xs", "data-testid": "filter-panel", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { justify: "space-between", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconFilter, { size: 16, style: { color: "var(--mantine-color-dimmed)" } }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "sm", fw: 600, children: "Filters" }),
+        filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Badge, { size: "xs", variant: "light", children: [
           filterCount,
           " active"
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "xs", children: [
-        filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Button, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, children: "Clear all" }),
-        collapsible && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.ActionIcon, { variant: "subtle", size: "xs", onClick: () => setCollapsed(true), children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_icons_react3.IconChevronUp, { size: 14 }) })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
+        filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, children: "Clear all" }),
+        collapsible && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.ActionIcon, { variant: "subtle", size: "xs", onClick: () => setCollapsed(true), children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconChevronUp, { size: 14 }) })
       ] })
     ] }),
-    rootGroup.rules.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "xs", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Text, { size: "xs", c: "dimmed", children: "Match" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-        import_core3.Button,
+    rootGroup.rules.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "xs", c: "dimmed", children: "Match" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        import_core7.Button,
         {
           variant: rootGroup.logical === "_and" ? "filled" : "outline",
           size: "compact-xs",
@@ -855,8 +1226,8 @@ var FilterPanel = ({
           children: "ALL"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-        import_core3.Button,
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        import_core7.Button,
         {
           variant: rootGroup.logical === "_or" ? "filled" : "outline",
           size: "compact-xs",
@@ -865,29 +1236,29 @@ var FilterPanel = ({
         }
       )
     ] }),
-    rootGroup.rules.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Text, { size: "sm", c: "dimmed", children: 'No filter rules. Click "Add filter" to get started.' }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Stack, { gap: 6, children: rootGroup.rules.map((rule, index) => {
+    rootGroup.rules.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "sm", c: "dimmed", children: 'No filter rules. Click "Add filter" to get started.' }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Stack, { gap: 6, children: rootGroup.rules.map((rule, index) => {
       if ("logical" in rule) {
-        return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "xs", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Badge, { variant: "outline", size: "sm", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Badge, { variant: "outline", size: "sm", children: [
             rule.logical === "_and" ? "AND" : "OR",
             " group (",
             rule.rules.length,
             " rules)"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-            import_core3.ActionIcon,
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+            import_core7.ActionIcon,
             {
               variant: "subtle",
               color: "red",
               size: "xs",
               onClick: () => removeRule(index),
               disabled,
-              children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_icons_react3.IconTrash, { size: 12 })
+              children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconTrash, { size: 12 })
             }
           )
         ] }, rule.id);
       }
-      return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+      return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         RuleRow,
         {
           rule,
@@ -899,11 +1270,11 @@ var FilterPanel = ({
         rule.id
       );
     }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "xs", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Menu, { position: "bottom-start", withArrow: true, shadow: "sm", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Button, { variant: "subtle", size: "xs", leftSection: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_icons_react3.IconPlus, { size: 14 }), children: "Add filter" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Menu.Dropdown, { children: fields.map((f) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-          import_core3.Menu.Item,
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Menu, { position: "bottom-start", withArrow: true, shadow: "sm", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", leftSection: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconPlus, { size: 14 }), children: "Add filter" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Menu.Dropdown, { children: fields.map((f) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+          import_core7.Menu.Item,
           {
             onClick: () => {
               const ops = getOperatorsForType(f.type);
@@ -920,15 +1291,15 @@ var FilterPanel = ({
           f.field
         )) })
       ] }),
-      maxDepth > 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Button, { variant: "subtle", size: "xs", color: "dimmed", onClick: addGroup, children: "Add group" })
+      maxDepth > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", color: "dimmed", onClick: addGroup, children: "Add group" })
     ] })
   ] });
   if (mode === "inline") return content;
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Paper, { withBorder: true, p: "sm", "data-testid": "filter-panel-container", children: content });
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Paper, { withBorder: true, p: "sm", "data-testid": "filter-panel-container", children: content });
 };
 
 // src/CollectionList.tsx
-var import_jsx_runtime4 = require("react/jsx-runtime");
+var import_jsx_runtime8 = require("react/jsx-runtime");
 var SYSTEM_FIELDS2 = [
   "user_created",
   "user_updated",
@@ -947,7 +1318,7 @@ var CollectionList = ({
   enableFilter = false,
   bulkActions = [],
   fields: displayFields,
-  limit: initialLimit = 25,
+  limit: initialLimit = 10,
   enableSearch = true,
   enableSort = true,
   enableResize = true,
@@ -963,15 +1334,19 @@ var CollectionList = ({
   unarchiveValue = "draft",
   onItemClick,
   onCreate,
+  onEdit,
+  enableDelete = false,
+  onDeleteSuccess,
   onFieldsChange,
   onSortChange: onSortChangeProp,
-  onFilterChange
+  onFilterChange,
+  onPermissionsLoaded
 }) => {
   const [allFields, setAllFields] = (0, import_react3.useState)([]);
   const [visibleFieldKeys, setVisibleFieldKeys] = (0, import_react3.useState)([]);
   const [items, setItems] = (0, import_react3.useState)([]);
   const [totalCount, setTotalCount] = (0, import_react3.useState)(0);
-  const [filterCount, setFilterCount] = (0, import_react3.useState)(null);
+  const [filterCount, setFilterCount] = (0, import_react3.useState)(0);
   const [selectedItems, setSelectedItems] = (0, import_react3.useState)([]);
   const [loading, setLoading] = (0, import_react3.useState)(true);
   const [error, setError] = (0, import_react3.useState)(null);
@@ -982,18 +1357,61 @@ var CollectionList = ({
   const [archiveFilterMode, setArchiveFilterMode] = (0, import_react3.useState)("all");
   const [filterPanelOpen, setFilterPanelOpen] = (0, import_react3.useState)(false);
   const [internalFilter, setInternalFilter] = (0, import_react3.useState)(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = (0, import_react3.useState)(false);
+  const [deletingIds, setDeletingIds] = (0, import_react3.useState)([]);
+  const [deleteLoading, setDeleteLoading] = (0, import_react3.useState)(false);
   const [headerOverrides, setHeaderOverrides] = (0, import_react3.useState)({});
   const rowHeight = rowHeightProp ?? SPACING_HEIGHT[tableSpacing] ?? 48;
   const [readableFields, setReadableFields] = (0, import_react3.useState)(null);
+  const [createAllowed, setCreateAllowed] = (0, import_react3.useState)(true);
+  const [updateAllowed, setUpdateAllowed] = (0, import_react3.useState)(true);
+  const [deleteAllowed, setDeleteAllowed] = (0, import_react3.useState)(true);
   (0, import_react3.useEffect)(() => {
     let cancelled = false;
     const loadFieldsAndPermissions = async () => {
       try {
-        const [fieldsResult, permFields] = await Promise.all([
+        const [fieldsResult, collectionAccess] = await Promise.all([
           new import_services2.FieldsService().readAll(collection),
-          import_services2.PermissionsService.getReadableFields(collection).catch(() => null)
+          import_services2.PermissionsService.getMyCollectionAccess().catch(() => ({}))
         ]);
         if (cancelled) return;
+        const accessMap = collectionAccess ?? {};
+        const access = accessMap[collection] || {};
+        const isAdmin = import_services2.PermissionsService.isAdmin;
+        const isEmptyAccess = Object.keys(accessMap).length === 0;
+        const readAccess = access.read;
+        const createAccess = access.create;
+        const updateAccess = access.update;
+        const deleteAccess = access.delete;
+        const canCreate = isAdmin || isEmptyAccess || !!createAccess;
+        const canUpdate = isAdmin || isEmptyAccess || !!updateAccess;
+        const canDelete = isAdmin || isEmptyAccess || !!deleteAccess;
+        setCreateAllowed(canCreate);
+        setUpdateAllowed(canUpdate);
+        setDeleteAllowed(canDelete);
+        let canArchive = false;
+        if (archiveField && canUpdate) {
+          if (isAdmin || isEmptyAccess) {
+            canArchive = true;
+          } else if (updateAccess?.fields) {
+            canArchive = updateAccess.fields.includes("*") || updateAccess.fields.includes(archiveField);
+          }
+        }
+        if (!cancelled) {
+          onPermissionsLoaded?.({
+            createAllowed: canCreate,
+            readAllowed: isAdmin || isEmptyAccess || !!readAccess,
+            updateAllowed: canUpdate,
+            deleteAllowed: canDelete,
+            archiveAllowed: canArchive
+          });
+        }
+        let permFields = null;
+        if (!isAdmin && !isEmptyAccess && readAccess) {
+          permFields = readAccess.fields ?? null;
+          if (permFields && permFields.includes("*")) permFields = null;
+        }
+        setReadableFields(permFields);
         let visible = fieldsResult.filter((f) => {
           if (SYSTEM_FIELDS2.includes(f.field)) return false;
           if (f.type === "alias") return false;
@@ -1001,8 +1419,7 @@ var CollectionList = ({
           if (isHidden) return false;
           return true;
         });
-        setReadableFields(permFields);
-        const hasRestriction = permFields && permFields.length > 0 && !permFields.includes("*");
+        const hasRestriction = permFields !== null && permFields.length > 0;
         if (hasRestriction) {
           const accessibleSet = new Set(permFields);
           visible = visible.filter((f) => accessibleSet.has(f.field));
@@ -1070,8 +1487,7 @@ var CollectionList = ({
       setError(null);
       const query = {
         limit,
-        page,
-        meta: "total_count,filter_count"
+        page
       };
       const fieldsToFetch = [...visibleFieldKeys];
       if (!fieldsToFetch.includes(primaryKeyField)) {
@@ -1109,14 +1525,14 @@ var CollectionList = ({
       const rawResponse = await (0, import_services2.apiRequest)(`/api/items/${collection}${queryString ? `?${queryString}` : ""}`);
       if (Array.isArray(rawResponse)) {
         setItems(rawResponse);
-        setTotalCount(rawResponse.length);
-        setFilterCount(null);
+        setFilterCount(rawResponse.length);
       } else {
         setItems(rawResponse.data || []);
-        const total = rawResponse.meta?.total_count || rawResponse.data?.length || 0;
-        const filtered = rawResponse.meta?.filter_count ?? null;
-        setTotalCount(total);
-        setFilterCount(filtered !== null && filtered !== total ? filtered : null);
+        if (rawResponse.meta?.total != null) {
+          setFilterCount(rawResponse.meta.total);
+        } else {
+          setFilterCount(rawResponse.data?.length ?? 0);
+        }
       }
     } catch (err) {
       console.error("Error loading items:", err);
@@ -1138,11 +1554,25 @@ var CollectionList = ({
     archiveFilterMode,
     archiveValue
   ]);
+  const getTotalCount = (0, import_react3.useCallback)(async () => {
+    try {
+      const params = new URLSearchParams({
+        "aggregate[count]": primaryKeyField
+      });
+      const response = await (0, import_services2.apiRequest)(`/api/items/${collection}?${params.toString()}`);
+      const count = Number(response.data?.[0]?.count?.[primaryKeyField] ?? 0);
+      setTotalCount(count);
+    } catch {
+    }
+  }, [collection, primaryKeyField]);
   (0, import_react3.useEffect)(() => {
     if (visibleFieldKeys.length > 0) {
       loadItems();
     }
   }, [loadItems, visibleFieldKeys.length]);
+  (0, import_react3.useEffect)(() => {
+    getTotalCount();
+  }, [getTotalCount]);
   (0, import_react3.useEffect)(() => {
     setPage(1);
   }, [search, filter, internalFilter]);
@@ -1165,7 +1595,7 @@ var CollectionList = ({
       };
     });
   }, [visibleFieldKeys, permittedFields, headerOverrides, enableSort]);
-  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+  const totalPages = Math.max(1, Math.ceil(filterCount / limit));
   const selectedIds = (0, import_react3.useMemo)(() => {
     return selectedItems.map(
       (item) => typeof item === "object" && item !== null ? item[primaryKeyField] : item
@@ -1222,51 +1652,51 @@ var CollectionList = ({
   const renderHeaderContextMenu = (0, import_react3.useCallback)(
     (header) => {
       if (!enableHeaderMenu) return null;
-      return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "collection-list-context-menu", role: "menu", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Menu.Label, { children: "Sort" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+      return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "collection-list-context-menu", role: "menu", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: "Sort" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
           "div",
           {
             role: "menuitem",
             className: "mantine-Menu-item collection-list-context-menu-item",
             onClick: () => handleSortChange({ by: header.value, desc: false }),
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconSortAscending, { size: 14 }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", children: "Sort ascending" })
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconSortAscending, { size: 14 }),
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: "Sort ascending" })
             ]
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
           "div",
           {
             role: "menuitem",
             className: "mantine-Menu-item collection-list-context-menu-item",
             onClick: () => handleSortChange({ by: header.value, desc: true }),
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconSortDescending, { size: 14 }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", children: "Sort descending" })
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconSortDescending, { size: 14 }),
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: "Sort descending" })
             ]
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "collection-list-context-menu-divider" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Menu.Label, { children: "Alignment" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "collection-list-context-menu-divider" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: "Alignment" }),
         [
           {
             align: "left",
-            icon: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconAlignLeft, { size: 14 }),
+            icon: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconAlignLeft, { size: 14 }),
             label: "Align left"
           },
           {
             align: "center",
-            icon: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconAlignCenter, { size: 14 }),
+            icon: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconAlignCenter, { size: 14 }),
             label: "Align center"
           },
           {
             align: "right",
-            icon: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconAlignRight, { size: 14 }),
+            icon: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconAlignRight, { size: 14 }),
             label: "Align right"
           }
-        ].map(({ align, icon, label }) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+        ].map(({ align, icon, label }) => /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
           "div",
           {
             role: "menuitem",
@@ -1274,21 +1704,21 @@ var CollectionList = ({
             onClick: () => handleAlignChange(header.value, align),
             children: [
               icon,
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", children: label })
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: label })
             ]
           },
           align
         )),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "collection-list-context-menu-divider" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "collection-list-context-menu-divider" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
           "div",
           {
             role: "menuitem",
             className: "mantine-Menu-item collection-list-context-menu-item danger",
             onClick: () => removeField(header.value),
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconEyeOff, { size: 14 }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", children: "Hide field" })
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconEyeOff, { size: 14 }),
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: "Hide field" })
             ]
           }
         )
@@ -1299,9 +1729,6 @@ var CollectionList = ({
   const hiddenFields = (0, import_react3.useMemo)(() => {
     return permittedFields.filter((f) => !visibleFieldKeys.includes(f.field));
   }, [permittedFields, visibleFieldKeys]);
-  const hasAppliedFilter = (0, import_react3.useMemo)(() => {
-    return search.trim().length > 0 || filter && Object.keys(filter).length > 0 || internalFilter && Object.keys(internalFilter).length > 0 || archiveField && archiveFilterMode !== "all";
-  }, [search, filter, internalFilter, archiveField, archiveFilterMode]);
   const fieldTypeRenderCell = (0, import_react3.useCallback)(
     (item, header) => {
       const fieldMeta = permittedFields.find((f) => f.field === header.value);
@@ -1310,16 +1737,16 @@ var CollectionList = ({
       if (value === null || value === void 0) return null;
       const fieldType = fieldMeta.type;
       if (fieldType === "boolean") {
-        return value ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconCheck, { size: 16, color: "var(--mantine-color-green-6)", "aria-label": "Yes" }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconX, { size: 16, color: "var(--mantine-color-gray-4)", "aria-label": "No" });
+        return value ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconCheck, { size: 16, color: "var(--mantine-color-green-6)", "aria-label": "Yes" }) : /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconX, { size: 16, color: "var(--mantine-color-gray-4)", "aria-label": "No" });
       }
       if (fieldType === "timestamp" || fieldType === "dateTime" || fieldType === "date") {
         try {
           const dateObj = new Date(value);
           if (isNaN(dateObj.getTime())) return null;
           if (fieldType === "date") {
-            return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", truncate: "end", children: dateObj.toLocaleDateString() });
+            return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: dateObj.toLocaleDateString() });
           }
-          return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", truncate: "end", children: dateObj.toLocaleString() });
+          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: dateObj.toLocaleString() });
         } catch {
           return null;
         }
@@ -1327,16 +1754,16 @@ var CollectionList = ({
       if (fieldType === "integer" || fieldType === "float" || fieldType === "decimal" || fieldType === "bigInteger") {
         const num = Number(value);
         if (!isNaN(num)) {
-          return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", truncate: "end", children: num.toLocaleString() });
+          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: num.toLocaleString() });
         }
         return null;
       }
       if (fieldType === "json") {
-        return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Badge, { variant: "light", size: "sm", color: "gray", children: "JSON" });
+        return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Badge, { variant: "light", size: "sm", color: "gray", children: "JSON" });
       }
       if (fieldType === "uuid") {
         const str = String(value);
-        return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Tooltip, { label: str, openDelay: 300, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Text, { size: "sm", truncate: "end", style: { maxWidth: 120 }, children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Tooltip, { label: str, openDelay: 300, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Text, { size: "sm", truncate: "end", style: { maxWidth: 120 }, children: [
           str.substring(0, 8),
           "\u2026"
         ] }) });
@@ -1347,11 +1774,11 @@ var CollectionList = ({
   );
   const renderHeaderAppend = (0, import_react3.useCallback)(() => {
     if (!enableAddField || hiddenFields.length === 0) return null;
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Menu, { position: "bottom-end", withArrow: true, shadow: "md", closeOnItemClick: true, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.ActionIcon, { variant: "subtle", size: "sm", title: "Add field", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconPlus, { size: 16 }) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Menu.Dropdown, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Menu.Label, { children: "Add field" }),
-        hiddenFields.map((f) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Menu.Item, { onClick: () => addField(f.field), children: f.meta?.note || f.field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) }, f.field))
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Menu, { position: "bottom-end", withArrow: true, shadow: "md", closeOnItemClick: true, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.ActionIcon, { variant: "subtle", size: "sm", title: "Add field", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconPlus, { size: 16 }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Menu.Dropdown, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: "Add field" }),
+        hiddenFields.map((f) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Item, { onClick: () => addField(f.field), children: f.meta?.note || f.field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) }, f.field))
       ] })
     ] });
   }, [enableAddField, hiddenFields, addField]);
@@ -1367,153 +1794,101 @@ var CollectionList = ({
     onFilterChange?.(null);
     setFilterPanelOpen(false);
   }, [onFilterChange]);
+  const handleDeleteRequest = (0, import_react3.useCallback)(
+    (ids) => {
+      if (ids.length === 0) return;
+      setDeletingIds(ids);
+      setDeleteConfirmOpen(true);
+    },
+    []
+  );
+  const handleDeleteConfirm = (0, import_react3.useCallback)(async () => {
+    if (deletingIds.length === 0) return;
+    setDeleteLoading(true);
+    try {
+      const itemsService = new import_services2.ItemsService(collection);
+      await itemsService.deleteMany(deletingIds, primaryKeyField);
+      setDeleteConfirmOpen(false);
+      setDeletingIds([]);
+      setSelectedItems([]);
+      onDeleteSuccess?.(deletingIds);
+      loadItems();
+      getTotalCount();
+    } catch (err) {
+      console.error("Error deleting items:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete items");
+      setDeleteConfirmOpen(false);
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess]);
+  const handleDeleteCancel = (0, import_react3.useCallback)(() => {
+    setDeleteConfirmOpen(false);
+    setDeletingIds([]);
+  }, []);
+  const isFiltered = (0, import_react3.useMemo)(() => {
+    return search.trim().length > 0 || filter && Object.keys(filter).length > 0 || internalFilter && Object.keys(internalFilter).length > 0 || archiveField && archiveFilterMode !== "all";
+  }, [search, filter, internalFilter, archiveField, archiveFilterMode]);
   const itemCountDisplay = (0, import_react3.useMemo)(() => {
     if (loading) return "Loading...";
-    const displayTotal = filterCount !== null ? filterCount : totalCount;
-    if (displayTotal === 0) return "No items";
-    const from = Math.min((page - 1) * limit + 1, displayTotal);
-    const to = Math.min(page * limit, displayTotal);
-    let text = `${from}\u2013${to} of ${displayTotal} items`;
-    if (filterCount !== null) {
-      text += ` (filtered from ${totalCount})`;
+    if (filterCount === 0) return "No items";
+    const from = Math.min((page - 1) * limit + 1, filterCount);
+    const to = Math.min(page * limit, filterCount);
+    if (isFiltered && filterCount < totalCount) {
+      if (filterCount <= limit) {
+        return `${filterCount} item${filterCount !== 1 ? "s" : ""} (filtered from ${totalCount})`;
+      }
+      return `${from}\u2013${to} of ${filterCount} items (filtered from ${totalCount})`;
     }
-    return text;
-  }, [loading, totalCount, filterCount, page, limit]);
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Stack, { gap: 0, "data-testid": "collection-list", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "collection-list-toolbar", "data-testid": "collection-list-toolbar", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Group, { gap: "xs", children: [
-        enableSearch && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          import_core4.TextInput,
-          {
-            placeholder: "Search...",
-            leftSection: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconSearch, { size: 16 }),
-            value: search,
-            onChange: (e) => setSearch(e.currentTarget.value),
-            rightSection: search ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-              import_core4.ActionIcon,
-              {
-                variant: "subtle",
-                size: "xs",
-                onClick: () => setSearch(""),
-                "aria-label": "Clear search",
-                children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconX, { size: 12 })
-              }
-            ) : void 0,
-            size: "sm",
-            className: "collection-list-search",
-            "data-testid": "collection-list-search"
-          }
-        ),
-        enableFilter && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Tooltip, { label: filterPanelOpen ? "Hide filters" : "Show filters", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
-          import_core4.ActionIcon,
-          {
-            variant: activeFilterCount > 0 ? "filled" : "subtle",
-            color: activeFilterCount > 0 ? "blue" : void 0,
-            onClick: () => setFilterPanelOpen((v) => !v),
-            title: "Toggle filter panel",
-            "data-testid": "collection-list-filter-toggle",
-            pos: "relative",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconFilter, { size: 16 }),
-              activeFilterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-                import_core4.Badge,
-                {
-                  size: "xs",
-                  circle: true,
-                  color: "red",
-                  className: "collection-list-filter-badge",
-                  "data-testid": "collection-list-filter-count",
-                  children: activeFilterCount
-                }
-              )
-            ]
-          }
-        ) }),
-        archiveField && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          import_core4.Select,
-          {
-            value: archiveFilterMode,
-            onChange: (val) => {
-              if (val) setArchiveFilterMode(val);
-            },
-            data: [
-              { value: "all", label: "All Items" },
-              { value: "unarchived", label: "Active Items" },
-              { value: "archived", label: "Archived Items" }
-            ],
-            size: "sm",
-            leftSection: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconArchive, { size: 14 }),
-            "data-testid": "collection-list-archive-filter",
-            style: { width: 160 }
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          import_core4.ActionIcon,
-          {
-            variant: "subtle",
-            onClick: loadItems,
-            title: "Refresh",
-            "data-testid": "collection-list-refresh",
-            children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconRefresh, { size: 16 })
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Group, { gap: "xs", children: [
-        enableSelection && selectedIds.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Group, { gap: "xs", "data-testid": "collection-list-bulk-actions", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Badge, { variant: "light", size: "lg", children: [
-            selectedIds.length,
-            " selected"
-          ] }),
-          bulkActions.map((action, index) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Tooltip, { label: action.label, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-            import_core4.ActionIcon,
-            {
-              variant: "light",
-              color: action.color,
-              onClick: () => action.action(selectedIds),
-              "data-testid": `bulk-action-${index}`,
-              children: action.icon || /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconEdit, { size: 16 })
-            }
-          ) }, index)),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-            import_core4.ActionIcon,
-            {
-              variant: "subtle",
-              onClick: () => setSelectedItems([]),
-              title: "Clear selection",
-              "data-testid": "collection-list-clear-selection",
-              children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconX, { size: 16 })
-            }
-          )
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", c: "dimmed", "data-testid": "collection-list-item-count", children: itemCountDisplay }),
-        enableCreate && onCreate && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Tooltip, { label: "Create item", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          import_core4.ActionIcon,
-          {
-            variant: "filled",
-            color: "blue",
-            size: "md",
-            onClick: onCreate,
-            "data-testid": "collection-list-create",
-            children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconPlus, { size: 18 })
-          }
-        ) })
-      ] })
-    ] }),
-    enableFilter && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Collapse, { in: filterPanelOpen, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "collection-list-filter-panel", "data-testid": "collection-list-filter-panel", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Group, { justify: "space-between", mb: "xs", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", fw: 600, children: "Filters" }),
-        activeFilterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          import_core4.Button,
+    if (filterCount <= limit) {
+      return `${filterCount} item${filterCount !== 1 ? "s" : ""}`;
+    }
+    return `${from}\u2013${to} of ${filterCount} items`;
+  }, [loading, totalCount, filterCount, page, limit, isFiltered]);
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Stack, { gap: 0, "data-testid": "collection-list", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+      CollectionListToolbar,
+      {
+        enableSearch,
+        search,
+        onSearchChange: setSearch,
+        enableFilter,
+        filterPanelOpen,
+        activeFilterCount,
+        onToggleFilterPanel: () => setFilterPanelOpen((v) => !v),
+        archiveField,
+        archiveFilterMode,
+        onArchiveFilterChange: setArchiveFilterMode,
+        onRefresh: loadItems,
+        enableSelection,
+        selectedIds,
+        enableDelete,
+        deleteAllowed,
+        createAllowed,
+        updateAllowed,
+        bulkActions,
+        onDeleteRequest: handleDeleteRequest,
+        onClearSelection: () => setSelectedItems([]),
+        enableCreate,
+        onCreate
+      }
+    ),
+    enableFilter && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Collapse, { in: filterPanelOpen, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "collection-list-filter-panel", "data-testid": "collection-list-filter-panel", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Group, { justify: "space-between", mb: "xs", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", fw: 600, children: "Filters" }),
+        activeFilterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+          import_core8.Button,
           {
             variant: "subtle",
             size: "compact-xs",
-            leftSection: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconFilterOff, { size: 14 }),
+            leftSection: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconFilterOff, { size: 14 }),
             onClick: handleClearFilter,
             "data-testid": "collection-list-clear-filters",
             children: "Clear all"
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
         FilterPanel,
         {
           fields: permittedFields,
@@ -1523,17 +1898,17 @@ var CollectionList = ({
         }
       )
     ] }) }),
-    error && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-      import_core4.Alert,
+    error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+      import_core8.Alert,
       {
-        icon: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react4.IconAlertCircle, { size: 16 }),
+        icon: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconAlertCircle, { size: 16 }),
         color: "red",
         "data-testid": "collection-list-error",
         mt: "xs",
         children: error
       }
     ),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
       import_ui_table.VTable,
       {
         headers,
@@ -1548,52 +1923,42 @@ var CollectionList = ({
         fixedHeader: true,
         loading,
         loadingText: "Loading items...",
-        noItemsText: hasAppliedFilter ? "No results \u2014 try adjusting your search or filters" : "No items in this collection",
+        noItemsText: isFiltered ? "No results \u2014 try adjusting your search or filters" : "No items in this collection",
         rowHeight,
         selectionUseKeys: true,
         clickable: !!onItemClick,
         renderCell: fieldTypeRenderCell,
         renderHeaderContextMenu: enableHeaderMenu ? renderHeaderContextMenu : void 0,
         renderHeaderAppend: enableAddField ? renderHeaderAppend : void 0,
-        renderFooter: () => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "collection-list-footer", "data-testid": "collection-list-footer", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "sm", c: "dimmed", "data-testid": "collection-list-footer-count", children: itemCountDisplay }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Group, { gap: "sm", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Group, { gap: 4, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Text, { size: "xs", c: "dimmed", children: "Per page:" }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-                import_core4.Select,
-                {
-                  value: String(limit),
-                  onChange: (value) => {
-                    if (value) {
-                      setLimit(Number(value));
-                      setPage(1);
-                    }
-                  },
-                  data: ["25", "50", "100", "250"],
-                  size: "xs",
-                  className: "collection-list-per-page-select",
-                  "data-testid": "collection-list-per-page"
-                }
-              )
-            ] }),
-            totalPages > 1 && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-              import_core4.Pagination,
-              {
-                value: page,
-                onChange: setPage,
-                total: totalPages,
-                size: "sm",
-                "data-testid": "collection-list-pagination-control"
-              }
-            )
-          ] })
-        ] }),
+        renderFooter: () => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+          CollectionListFooter,
+          {
+            itemCountDisplay,
+            limit,
+            onLimitChange: (val) => {
+              setLimit(val);
+              setPage(1);
+            },
+            page,
+            onPageChange: setPage,
+            totalPages
+          }
+        ),
         onUpdate: setSelectedItems,
         onSortChange: handleSortChange,
         onHeadersChange: handleHeadersChange,
         onRowClick: onItemClick ? ({ item }) => onItemClick(item) : void 0,
         "data-testid": "collection-list-table"
+      }
+    ),
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+      DeleteConfirmModal,
+      {
+        opened: deleteConfirmOpen,
+        count: deletingIds.length,
+        loading: deleteLoading,
+        onConfirm: handleDeleteConfirm,
+        onCancel: handleDeleteCancel
       }
     )
   ] });
@@ -1601,22 +1966,22 @@ var CollectionList = ({
 
 // src/ContentNavigation.tsx
 var import_react4 = require("react");
-var import_core5 = require("@mantine/core");
-var import_icons_react5 = require("@tabler/icons-react");
-var import_jsx_runtime5 = require("react/jsx-runtime");
+var import_core9 = require("@mantine/core");
+var import_icons_react7 = require("@tabler/icons-react");
+var import_jsx_runtime9 = require("react/jsx-runtime");
 function CollectionIcon({ icon, color }) {
   const iconColor = color || void 0;
   const size = 18;
   switch (icon) {
     case "box":
-      return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconBox, { size, color: iconColor });
+      return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconBox, { size, color: iconColor });
     case "folder":
     case "folder_open":
-      return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconFolder, { size, color: iconColor });
+      return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconFolder, { size, color: iconColor });
     case "database":
-      return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconDatabase, { size, color: iconColor });
+      return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconDatabase, { size, color: iconColor });
     default:
-      return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconTable, { size, color: iconColor });
+      return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconTable, { size, color: iconColor });
   }
 }
 function NavigationItem({
@@ -1670,8 +2035,8 @@ function NavigationItem({
       onToggleGroup(node.collection);
     }
   };
-  const label = /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Group, { gap: 4, wrap: "nowrap", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-    import_core5.Text,
+  const label = /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Group, { gap: 4, wrap: "nowrap", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+    import_core9.Text,
     {
       size: dense ? "sm" : void 0,
       fw: isActive ? 600 : 400,
@@ -1680,9 +2045,9 @@ function NavigationItem({
       children: node.name || node.collection
     }
   ) });
-  const contextMenu = isAdmin && hasSchema ? /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_core5.Menu, { shadow: "md", width: 200, position: "bottom-start", withArrow: true, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-      import_core5.ActionIcon,
+  const contextMenu = isAdmin && hasSchema ? /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(import_core9.Menu, { shadow: "md", width: 200, position: "bottom-start", withArrow: true, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      import_core9.ActionIcon,
       {
         variant: "subtle",
         size: "xs",
@@ -1691,28 +2056,28 @@ function NavigationItem({
         },
         style: { opacity: 0, transition: "opacity 150ms" },
         className: "nav-item-action",
-        children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconSettings, { size: 14 })
+        children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconSettings, { size: 14 })
       }
     ) }),
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Menu.Dropdown, { children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-      import_core5.Menu.Item,
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Menu.Dropdown, { children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      import_core9.Menu.Item,
       {
-        leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconDatabase, { size: 14 }),
+        leftSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconDatabase, { size: 14 }),
         onClick: () => onEditCollection?.(node.collection),
         children: "Edit Collection"
       }
     ) })
   ] }) : null;
   if (isGroupWithContent) {
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_jsx_runtime5.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
-      import_core5.NavLink,
+    return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_jsx_runtime9.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
+      import_core9.NavLink,
       {
         label,
-        leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(CollectionIcon, { icon: node.icon, color: node.color }),
-        rightSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_core5.Group, { gap: 4, children: [
+        leftSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(CollectionIcon, { icon: node.icon, color: node.color }),
+        rightSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(import_core9.Group, { gap: 4, children: [
           contextMenu,
-          !isLocked && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-            import_icons_react5.IconChevronRight,
+          !isLocked && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+            import_icons_react7.IconChevronRight,
             {
               size: 14,
               style: {
@@ -1737,7 +2102,7 @@ function NavigationItem({
           }
         },
         children: [
-          node.children.map((child) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+          node.children.map((child) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
             NavigationItem,
             {
               node: child,
@@ -1754,12 +2119,12 @@ function NavigationItem({
             },
             child.collection
           )),
-          collectionBookmarks.map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-            import_core5.NavLink,
+          collectionBookmarks.map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+            import_core9.NavLink,
             {
-              label: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Text, { size: "sm", truncate: true, children: bookmark.bookmark || "Untitled Bookmark" }),
-              leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-                import_icons_react5.IconBookmark,
+              label: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { size: "sm", truncate: true, children: bookmark.bookmark || "Untitled Bookmark" }),
+              leftSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+                import_icons_react7.IconBookmark,
                 {
                   size: 16,
                   color: bookmark.color || void 0,
@@ -1775,11 +2140,11 @@ function NavigationItem({
       }
     ) });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-    import_core5.NavLink,
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+    import_core9.NavLink,
     {
       label,
-      leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(CollectionIcon, { icon: node.icon, color: node.color }),
+      leftSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(CollectionIcon, { icon: node.icon, color: node.color }),
       rightSection: contextMenu,
       active: isActive,
       onClick: handleClick,
@@ -1821,8 +2186,8 @@ var ContentNavigation = ({
     [onSearchChange]
   );
   if (loading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Stack, { gap: "xs", p: "md", children: Array.from({ length: 6 }).map((_, i) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-      import_core5.Box,
+    return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Stack, { gap: "xs", p: "md", children: Array.from({ length: 6 }).map((_, i) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      import_core9.Box,
       {
         h: dense ? 28 : 36,
         bg: "var(--mantine-color-gray-1)",
@@ -1832,25 +2197,25 @@ var ContentNavigation = ({
     )) });
   }
   if (rootCollections.length === 0) {
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_core5.Stack, { gap: "md", p: "md", align: "center", justify: "center", style: { minHeight: 200 }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconBox, { size: 48, color: "var(--mantine-color-gray-5)" }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Text, { c: "dimmed", ta: "center", size: "sm", children: "No collections available" }),
-      isAdmin && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Text, { c: "dimmed", ta: "center", size: "xs", children: "Create your first collection in the data model settings" })
+    return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(import_core9.Stack, { gap: "md", p: "md", align: "center", justify: "center", style: { minHeight: 200 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconBox, { size: 48, color: "var(--mantine-color-gray-5)" }),
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { c: "dimmed", ta: "center", size: "sm", children: "No collections available" }),
+      isAdmin && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { c: "dimmed", ta: "center", size: "xs", children: "Create your first collection in the data model settings" })
     ] });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_core5.Stack, { gap: 0, style: { minHeight: "100%" }, children: [
-    showSearch && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Box, { p: "sm", pb: 0, style: { position: "sticky", top: 0, zIndex: 1 }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-      import_core5.TextInput,
+  return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(import_core9.Stack, { gap: 0, style: { minHeight: "100%" }, children: [
+    showSearch && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Box, { p: "sm", pb: 0, style: { position: "sticky", top: 0, zIndex: 1 }, children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      import_core9.TextInput,
       {
         value: search,
         onChange: (e) => handleSearchChange(e.currentTarget.value),
         placeholder: "Search collections...",
-        leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconSearch, { size: 16 }),
+        leftSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconSearch, { size: 16 }),
         size: dense ? "xs" : "sm",
         type: "search"
       }
     ) }),
-    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.ScrollArea, { style: { flex: 1 }, p: "xs", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("nav", { children: rootCollections.map((node) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+    /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.ScrollArea, { style: { flex: 1 }, p: "xs", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("nav", { children: rootCollections.map((node) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
       NavigationItem,
       {
         node,
@@ -1867,8 +2232,8 @@ var ContentNavigation = ({
       },
       node.collection
     )) }) }),
-    hasHiddenCollections && onToggleHidden && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
-      import_core5.Box,
+    hasHiddenCollections && onToggleHidden && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+      import_core9.Box,
       {
         p: "xs",
         style: {
@@ -1876,14 +2241,14 @@ var ContentNavigation = ({
           position: "sticky",
           bottom: 0
         },
-        children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
-          import_core5.UnstyledButton,
+        children: /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(
+          import_core9.UnstyledButton,
           {
             onClick: onToggleHidden,
             style: { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "4px 8px" },
             children: [
-              showHidden ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconEyeOff, { size: 16 }) : /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react5.IconEye, { size: 16 }),
-              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Text, { size: "xs", c: "dimmed", children: showHidden ? "Hide hidden collections" : "Show hidden collections" })
+              showHidden ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconEyeOff, { size: 16 }) : /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconEye, { size: 16 }),
+              /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { size: "xs", c: "dimmed", children: showHidden ? "Hide hidden collections" : "Show hidden collections" })
             ]
           }
         )
@@ -1894,10 +2259,10 @@ var ContentNavigation = ({
 
 // src/ContentLayout.tsx
 var import_react5 = require("react");
-var import_core6 = require("@mantine/core");
+var import_core10 = require("@mantine/core");
 var import_hooks = require("@mantine/hooks");
-var import_icons_react6 = require("@tabler/icons-react");
-var import_jsx_runtime6 = require("react/jsx-runtime");
+var import_icons_react8 = require("@tabler/icons-react");
+var import_jsx_runtime10 = require("react/jsx-runtime");
 var ContentLayout = ({
   title,
   icon,
@@ -1924,8 +2289,8 @@ var ContentLayout = ({
     },
     []
   );
-  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
-    import_core6.AppShell,
+  return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+    import_core10.AppShell,
     {
       navbar: {
         width: sidebarWidth,
@@ -1939,10 +2304,10 @@ var ContentLayout = ({
       } : void 0,
       padding: 0,
       children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.AppShell.Navbar, { p: 0, children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.AppShell.Section, { grow: true, component: import_core6.ScrollArea, children: sidebar }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.AppShell.Main, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
-            import_core6.Box,
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.AppShell.Navbar, { p: 0, children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.AppShell.Section, { grow: true, component: import_core10.ScrollArea, children: sidebar }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_core10.AppShell.Main, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
+            import_core10.Box,
             {
               py: "sm",
               px: "md",
@@ -1956,9 +2321,9 @@ var ContentLayout = ({
                 backgroundColor: "var(--mantine-color-body)"
               },
               children: [
-                (breadcrumbs || headline) && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Group, { gap: 4, mb: 4, children: [
-                  isMobile && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
-                    import_core6.Burger,
+                (breadcrumbs || headline) && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_core10.Group, { gap: 4, mb: 4, children: [
+                  isMobile && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+                    import_core10.Burger,
                     {
                       opened: sidebarOpened,
                       onClick: toggleSidebar,
@@ -1966,14 +2331,14 @@ var ContentLayout = ({
                       hiddenFrom: "sm"
                     }
                   ),
-                  !isMobile && !sidebarOpened && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.ActionIcon, { variant: "subtle", onClick: toggleSidebar, size: "sm", mr: 4, children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_icons_react6.IconMenu2, { size: 16 }) }),
-                  breadcrumbs && breadcrumbs.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
-                    import_core6.Breadcrumbs,
+                  !isMobile && !sidebarOpened && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.ActionIcon, { variant: "subtle", onClick: toggleSidebar, size: "sm", mr: 4, children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_icons_react8.IconMenu2, { size: 16 }) }),
+                  breadcrumbs && breadcrumbs.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+                    import_core10.Breadcrumbs,
                     {
-                      separator: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_icons_react6.IconChevronRight, { size: 12 }),
+                      separator: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_icons_react8.IconChevronRight, { size: 12 }),
                       style: { fontSize: "var(--mantine-font-size-xs)" },
-                      children: breadcrumbs.map((item, idx) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
-                        import_core6.Anchor,
+                      children: breadcrumbs.map((item, idx) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+                        import_core10.Anchor,
                         {
                           href: item.href || "#",
                           size: "xs",
@@ -1987,27 +2352,27 @@ var ContentLayout = ({
                   ),
                   headline
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Group, { justify: "space-between", wrap: "nowrap", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Group, { gap: "sm", wrap: "nowrap", style: { minWidth: 0 }, children: [
-                    showBack && onBack && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.ActionIcon, { variant: "subtle", onClick: onBack, size: "md", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
-                      import_icons_react6.IconChevronRight,
+                /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_core10.Group, { justify: "space-between", wrap: "nowrap", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_core10.Group, { gap: "sm", wrap: "nowrap", style: { minWidth: 0 }, children: [
+                    showBack && onBack && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.ActionIcon, { variant: "subtle", onClick: onBack, size: "md", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+                      import_icons_react8.IconChevronRight,
                       {
                         size: 18,
                         style: { transform: "rotate(180deg)" }
                       }
                     ) }),
-                    icon && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.Box, { c: iconColor, style: { display: "flex", alignItems: "center" }, children: icon }),
-                    loading ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.Skeleton, { width: 200, height: 28 }) : title && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.Title, { order: 3, lineClamp: 1, style: { minWidth: 0 }, children: title }),
+                    icon && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.Box, { c: iconColor, style: { display: "flex", alignItems: "center" }, children: icon }),
+                    loading ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.Skeleton, { width: 200, height: 28 }) : title && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.Title, { order: 3, lineClamp: 1, style: { minWidth: 0 }, children: title }),
                     titleAppend
                   ] }),
-                  actions && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.Group, { gap: "xs", wrap: "nowrap", children: actions })
+                  actions && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.Group, { gap: "xs", wrap: "nowrap", children: actions })
                 ] })
               ]
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.Box, { style: { flex: 1 }, children })
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.Box, { style: { flex: 1 }, children })
         ] }),
-        sidebarDetail && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.AppShell.Aside, { p: "md", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.AppShell.Section, { grow: true, component: import_core6.ScrollArea, children: sidebarDetail }) })
+        sidebarDetail && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.AppShell.Aside, { p: "md", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(import_core10.AppShell.Section, { grow: true, component: import_core10.ScrollArea, children: sidebarDetail }) })
       ]
     }
   );

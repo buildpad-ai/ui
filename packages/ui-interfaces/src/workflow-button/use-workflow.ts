@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isNewItem } from '@buildpad/utils';
 import type {
   UseWorkflowOptions,
   UseWorkflowReturn,

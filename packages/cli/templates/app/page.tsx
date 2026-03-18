@@ -1,3 +1,5 @@
+"use client";
+
 import { Button, Group, Stack, Text, Title } from "@mantine/core";
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
 

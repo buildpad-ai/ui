@@ -32,7 +32,7 @@ import {
   Text,
 } from "@mantine/core";
 import { FieldsService, ItemsService, PermissionsService, apiRequest } from "@buildpad/services";
-import type { CollectionActionAccess } from "@buildpad/services";
+import type { CollectionActionAccess, CollectionAccess } from "@buildpad/services";
 import type { Field } from "@buildpad/types";
 import { VForm } from "@buildpad/ui-form";
 import { IconAlertCircle, IconCheck, IconTrash, IconX } from "@tabler/icons-react";
@@ -178,7 +178,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         const fieldsService = new FieldsService();
         const [allFields, collectionAccess] = await Promise.all([
           fieldsService.readAll(collection),
-          PermissionsService.getMyCollectionAccess().catch(() => ({})),
+          PermissionsService.getMyCollectionAccess().catch(() => ({} as CollectionAccess)),
         ]);
 
         const access = collectionAccess?.[collection] || {};

@@ -4,13 +4,14 @@ import {
   Button,
   Group as Group2,
   LoadingOverlay,
+  Modal,
   Paper,
   Stack,
   Text as Text2
 } from "@mantine/core";
-import { FieldsService, PermissionsService, apiRequest } from "@buildpad/services";
+import { FieldsService, ItemsService, PermissionsService } from "@buildpad/services";
 import { VForm } from "@buildpad/ui-form";
-import { IconAlertCircle, IconCheck as IconCheck2, IconX } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck as IconCheck2, IconTrash, IconX } from "@tabler/icons-react";
 import {
   useCallback,
   useEffect,
@@ -51,7 +52,7 @@ var SaveOptions = ({
       ActionIcon,
       {
         variant: "filled",
-        size: "md",
+        size: "input-sm",
         disabled,
         "aria-label": "More save options",
         style: {
@@ -141,9 +142,11 @@ var CollectionForm = ({
   onSuccess,
   onCancel,
   onNavigateToCreate,
+  onDelete,
   excludeFields,
   includeFields,
-  showSaveOptions = false
+  showSaveOptions = false,
+  showDelete
 }) => {
   const stableDefaultValues = useMemo(
     () => defaultValues || EMPTY_OBJECT,
@@ -167,6 +170,8 @@ var CollectionForm = ({
   const [deleteAllowed, setDeleteAllowed] = useState(false);
   const [readableFieldNames, setReadableFieldNames] = useState(null);
   const [writableFieldNames, setWritableFieldNames] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const dataLoadedRef = useRef(false);
   const lastLoadKey = useRef("");
   useEffect(() => {
@@ -189,19 +194,20 @@ var CollectionForm = ({
         const createAccess = access.create;
         const updateAccess = access.update;
         const deleteAccess = access.delete;
+        const isAdmin = PermissionsService.isAdmin;
         const isEmptyAccess = Object.keys(collectionAccess || {}).length === 0;
-        setCreateAllowed(isEmptyAccess || !!createAccess);
-        setUpdateAllowed(isEmptyAccess || !!updateAccess);
-        setDeleteAllowed(isEmptyAccess || !!deleteAccess);
+        setCreateAllowed(isAdmin || isEmptyAccess || !!createAccess);
+        setUpdateAllowed(isAdmin || isEmptyAccess || !!updateAccess);
+        setDeleteAllowed(isAdmin || isEmptyAccess || !!deleteAccess);
         let readFields = null;
-        if (!isEmptyAccess && readAccess) {
+        if (!isAdmin && !isEmptyAccess && readAccess) {
           readFields = readAccess.fields || null;
           if (readFields && readFields.includes("*")) readFields = null;
         }
         setReadableFieldNames(readFields);
         const actionAccess = mode === "create" ? createAccess : updateAccess;
         let writeFields = null;
-        if (!isEmptyAccess && actionAccess) {
+        if (!isAdmin && !isEmptyAccess && actionAccess) {
           writeFields = actionAccess.fields || null;
           if (writeFields && writeFields.includes("*")) writeFields = null;
         }
@@ -253,10 +259,9 @@ var CollectionForm = ({
           }
         }
         if (mode === "edit" && id) {
-          const response = await apiRequest(
-            `/api/items/${collection}/${id}`
-          );
-          initialData = { ...initialData, ...response.data };
+          const itemsService = new ItemsService(collection);
+          const item = await itemsService.readOne(id);
+          initialData = { ...initialData, ...item };
         }
         setFormData(initialData);
         setInitialFormData(initialData);
@@ -348,6 +353,7 @@ var CollectionForm = ({
           delete dataToSave[f];
         }
       });
+      const itemsService = new ItemsService(collection);
       if (mode === "edit" && id) {
         const changedData = {};
         for (const [key, value] of Object.entries(dataToSave)) {
@@ -355,20 +361,14 @@ var CollectionForm = ({
             changedData[key] = value;
           }
         }
-        await apiRequest(`/api/items/${collection}/${id}`, {
-          method: "PATCH",
-          body: JSON.stringify(changedData)
-        });
+        await itemsService.updateOne(id, changedData);
         setSuccess(true);
         setInitialFormData({ ...formData });
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
           delete copyData.id;
-          const copyResponse = await apiRequest(
-            `/api/items/${collection}`,
-            { method: "POST", body: JSON.stringify(copyData) }
-          );
-          onSuccess?.({ ...copyData, id: copyResponse.data?.id });
+          const copyResult = await itemsService.createOne(copyData);
+          onSuccess?.({ ...copyData, id: copyResult?.id });
           return;
         }
         if (afterSave === "add-new") {
@@ -377,11 +377,8 @@ var CollectionForm = ({
         }
         onSuccess?.({ ...dataToSave, id });
       } else {
-        const response = await apiRequest(
-          `/api/items/${collection}`,
-          { method: "POST", body: JSON.stringify(dataToSave) }
-        );
-        const newId = response.data?.id;
+        const result = await itemsService.createOne(dataToSave);
+        const newId = result?.id;
         setSuccess(true);
         if (afterSave === "add-new") {
           onSuccess?.({ ...dataToSave, id: newId });
@@ -413,6 +410,24 @@ var CollectionForm = ({
     setSuccess(false);
     setError(null);
   }, [initialFormData]);
+  const handleDelete = async () => {
+    if (!id || mode !== "edit") return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const itemsService = new ItemsService(collection);
+      await itemsService.deleteOne(id);
+      setDeleteConfirmOpen(false);
+      onDelete?.();
+    } catch (err) {
+      console.error("Error deleting item:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete item");
+      setDeleteConfirmOpen(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+  const canShowDelete = (showDelete ?? (mode === "edit" && !!id)) && deleteAllowed;
   if (loading) {
     return /* @__PURE__ */ jsx2(Paper, { p: "md", pos: "relative", mih: 200, children: /* @__PURE__ */ jsx2(LoadingOverlay, { visible: true }) });
   }
@@ -470,6 +485,19 @@ var CollectionForm = ({
         )) })
       ] }),
       /* @__PURE__ */ jsxs2(Group2, { justify: "flex-end", mt: "md", children: [
+        canShowDelete && /* @__PURE__ */ jsx2(
+          Button,
+          {
+            variant: "subtle",
+            color: "red",
+            onClick: () => setDeleteConfirmOpen(true),
+            leftSection: /* @__PURE__ */ jsx2(IconTrash, { size: 16 }),
+            disabled: saving || deleting,
+            "data-testid": "form-delete-btn",
+            style: { marginRight: "auto" },
+            children: "Delete"
+          }
+        ),
         onCancel && /* @__PURE__ */ jsx2(
           Button,
           {
@@ -507,28 +535,61 @@ var CollectionForm = ({
           )
         ] })
       ] })
-    ] }) })
+    ] }) }),
+    /* @__PURE__ */ jsx2(
+      Modal,
+      {
+        opened: deleteConfirmOpen,
+        onClose: () => setDeleteConfirmOpen(false),
+        title: "Confirm Delete",
+        centered: true,
+        size: "sm",
+        "data-testid": "delete-confirm-modal",
+        children: /* @__PURE__ */ jsxs2(Stack, { gap: "md", children: [
+          /* @__PURE__ */ jsx2(Text2, { size: "sm", children: "Are you sure you want to delete this item? This action cannot be undone." }),
+          /* @__PURE__ */ jsxs2(Group2, { justify: "flex-end", children: [
+            /* @__PURE__ */ jsx2(
+              Button,
+              {
+                variant: "default",
+                onClick: () => setDeleteConfirmOpen(false),
+                disabled: deleting,
+                children: "Cancel"
+              }
+            ),
+            /* @__PURE__ */ jsx2(
+              Button,
+              {
+                color: "red",
+                onClick: handleDelete,
+                loading: deleting,
+                "data-testid": "delete-confirm-btn",
+                children: "Delete"
+              }
+            )
+          ] })
+        ] })
+      }
+    )
   ] });
 };
 
 // src/CollectionList.tsx
 import {
-  ActionIcon as ActionIcon3,
+  ActionIcon as ActionIcon5,
   Alert as Alert2,
-  Badge as Badge2,
-  Button as Button3,
+  Badge as Badge4,
+  Button as Button6,
   Collapse as Collapse2,
-  Group as Group4,
+  Group as Group8,
   Menu as Menu3,
-  Pagination,
-  Select as Select2,
-  Stack as Stack3,
-  Text as Text4,
-  TextInput as TextInput2,
-  Tooltip
+  Stack as Stack4,
+  Text as Text6,
+  Tooltip as Tooltip3
 } from "@mantine/core";
 import {
   FieldsService as FieldsService2,
+  ItemsService as ItemsService2,
   PermissionsService as PermissionsService2,
   apiRequest as apiRequest2
 } from "@buildpad/services";
@@ -538,45 +599,386 @@ import {
   IconAlignCenter,
   IconAlignLeft,
   IconAlignRight,
-  IconArchive,
   IconCheck as IconCheck3,
-  IconEdit,
   IconEyeOff,
-  IconFilter as IconFilter2,
   IconFilterOff,
+  IconPlus as IconPlus5,
+  IconSortAscending,
+  IconSortDescending,
+  IconX as IconX5
+} from "@tabler/icons-react";
+import { useCallback as useCallback3, useEffect as useEffect2, useMemo as useMemo3, useState as useState3 } from "react";
+
+// src/CollectionListFooter.tsx
+import {
+  Group as Group3,
+  Pagination,
+  Select,
+  Text as Text3
+} from "@mantine/core";
+import { jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
+var CollectionListFooter = ({
+  itemCountDisplay,
+  limit,
+  onLimitChange,
+  page,
+  onPageChange,
+  totalPages
+}) => {
+  return /* @__PURE__ */ jsxs3("div", { className: "collection-list-footer", "data-testid": "collection-list-footer", children: [
+    /* @__PURE__ */ jsx3(Text3, { size: "sm", c: "dimmed", "data-testid": "collection-list-footer-count", children: itemCountDisplay }),
+    /* @__PURE__ */ jsxs3(Group3, { gap: "sm", children: [
+      /* @__PURE__ */ jsxs3(Group3, { gap: 4, children: [
+        /* @__PURE__ */ jsx3(Text3, { size: "xs", c: "dimmed", children: "Per page:" }),
+        /* @__PURE__ */ jsx3(
+          Select,
+          {
+            value: String(limit),
+            onChange: (value) => {
+              if (value) {
+                onLimitChange(Number(value));
+              }
+            },
+            data: ["10", "25", "50", "100"],
+            size: "xs",
+            className: "collection-list-per-page-select",
+            "data-testid": "collection-list-per-page"
+          }
+        )
+      ] }),
+      totalPages > 1 && /* @__PURE__ */ jsx3(
+        Pagination,
+        {
+          value: page,
+          onChange: onPageChange,
+          total: totalPages,
+          size: "sm",
+          "data-testid": "collection-list-pagination-control"
+        }
+      )
+    ] })
+  ] });
+};
+
+// src/CollectionListToolbar.tsx
+import {
+  ActionIcon as ActionIcon3,
+  Badge as Badge2,
+  Button as Button3,
+  Group as Group5,
+  Select as Select2,
+  TextInput,
+  Tooltip as Tooltip2
+} from "@mantine/core";
+import {
+  IconArchive,
+  IconFilter,
   IconPlus as IconPlus3,
   IconRefresh,
   IconSearch,
-  IconSortAscending,
-  IconSortDescending,
   IconX as IconX3
 } from "@tabler/icons-react";
-import { useCallback as useCallback3, useEffect as useEffect2, useMemo as useMemo3, useState as useState3 } from "react";
+
+// src/BulkActionsBar.tsx
+import {
+  ActionIcon as ActionIcon2,
+  Badge,
+  Button as Button2,
+  Group as Group4,
+  Tooltip
+} from "@mantine/core";
+import {
+  IconEdit,
+  IconPlus as IconPlus2,
+  IconTrash as IconTrash2,
+  IconX as IconX2
+} from "@tabler/icons-react";
+import { jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
+var BulkActionsBar = ({
+  selectedIds,
+  enableDelete,
+  deleteAllowed,
+  createAllowed,
+  updateAllowed,
+  bulkActions,
+  onDeleteRequest,
+  onClearSelection
+}) => {
+  return /* @__PURE__ */ jsxs4(Group4, { gap: "xs", "data-testid": "collection-list-bulk-actions", children: [
+    /* @__PURE__ */ jsxs4(Badge, { variant: "light", size: "lg", children: [
+      selectedIds.length,
+      " selected"
+    ] }),
+    enableDelete && /* @__PURE__ */ jsx4(Tooltip, { label: deleteAllowed ? "Delete selected" : "Not allowed", children: /* @__PURE__ */ jsx4(
+      Button2,
+      {
+        variant: "light",
+        color: "red",
+        size: "compact-sm",
+        leftSection: /* @__PURE__ */ jsx4(IconTrash2, { size: 16 }),
+        onClick: () => deleteAllowed && onDeleteRequest(selectedIds),
+        disabled: !deleteAllowed,
+        "data-testid": "bulk-action-delete",
+        children: "Delete"
+      }
+    ) }),
+    bulkActions.map((action, index) => {
+      const permKey = action.requiredPermission;
+      const permAllowed = !permKey || permKey === "create" && createAllowed || permKey === "update" && updateAllowed || permKey === "delete" && deleteAllowed;
+      return /* @__PURE__ */ jsx4(
+        Tooltip,
+        {
+          label: permAllowed ? action.label : "Not allowed",
+          children: /* @__PURE__ */ jsx4(
+            Button2,
+            {
+              variant: "light",
+              color: action.color,
+              size: "compact-sm",
+              leftSection: action.icon || (action.requiredPermission === "delete" ? /* @__PURE__ */ jsx4(IconTrash2, { size: 16 }) : action.requiredPermission === "update" ? /* @__PURE__ */ jsx4(IconEdit, { size: 16 }) : action.requiredPermission === "create" ? /* @__PURE__ */ jsx4(IconPlus2, { size: 16 }) : null),
+              onClick: () => permAllowed && action.action(selectedIds),
+              disabled: !permAllowed,
+              "data-testid": `bulk-action-${index}`,
+              children: action.label
+            }
+          )
+        },
+        index
+      );
+    }),
+    /* @__PURE__ */ jsx4(
+      ActionIcon2,
+      {
+        variant: "subtle",
+        onClick: onClearSelection,
+        title: "Clear selection",
+        "data-testid": "collection-list-clear-selection",
+        children: /* @__PURE__ */ jsx4(IconX2, { size: 16 })
+      }
+    )
+  ] });
+};
+
+// src/CollectionListToolbar.tsx
+import { jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
+var CollectionListToolbar = ({
+  enableSearch,
+  search,
+  onSearchChange,
+  enableFilter,
+  filterPanelOpen,
+  activeFilterCount,
+  onToggleFilterPanel,
+  archiveField,
+  archiveFilterMode,
+  onArchiveFilterChange,
+  onRefresh,
+  enableSelection,
+  selectedIds,
+  enableDelete,
+  deleteAllowed,
+  createAllowed,
+  updateAllowed,
+  bulkActions,
+  onDeleteRequest,
+  onClearSelection,
+  enableCreate,
+  onCreate
+}) => {
+  const showBulkActions = enableSelection && selectedIds.length > 0;
+  return /* @__PURE__ */ jsxs5("div", { className: "collection-list-toolbar", "data-testid": "collection-list-toolbar", children: [
+    /* @__PURE__ */ jsxs5(Group5, { gap: "xs", children: [
+      enableSearch && /* @__PURE__ */ jsx5(
+        TextInput,
+        {
+          placeholder: "Search...",
+          leftSection: /* @__PURE__ */ jsx5(IconSearch, { size: 16 }),
+          value: search,
+          onChange: (e) => onSearchChange(e.currentTarget.value),
+          rightSection: search ? /* @__PURE__ */ jsx5(
+            ActionIcon3,
+            {
+              variant: "subtle",
+              size: "xs",
+              onClick: () => onSearchChange(""),
+              "aria-label": "Clear search",
+              children: /* @__PURE__ */ jsx5(IconX3, { size: 12 })
+            }
+          ) : void 0,
+          size: "sm",
+          className: "collection-list-search",
+          "data-testid": "collection-list-search"
+        }
+      ),
+      enableFilter && /* @__PURE__ */ jsx5(Tooltip2, { label: filterPanelOpen ? "Hide filters" : "Show filters", children: /* @__PURE__ */ jsxs5(
+        ActionIcon3,
+        {
+          variant: activeFilterCount > 0 ? "filled" : "subtle",
+          color: activeFilterCount > 0 ? "blue" : void 0,
+          onClick: onToggleFilterPanel,
+          title: "Toggle filter panel",
+          "data-testid": "collection-list-filter-toggle",
+          pos: "relative",
+          children: [
+            /* @__PURE__ */ jsx5(IconFilter, { size: 16 }),
+            activeFilterCount > 0 && /* @__PURE__ */ jsx5(
+              Badge2,
+              {
+                size: "xs",
+                circle: true,
+                color: "red",
+                className: "collection-list-filter-badge",
+                "data-testid": "collection-list-filter-count",
+                children: activeFilterCount
+              }
+            )
+          ]
+        }
+      ) }),
+      archiveField && /* @__PURE__ */ jsx5(
+        Select2,
+        {
+          value: archiveFilterMode,
+          onChange: (val) => {
+            if (val) onArchiveFilterChange(val);
+          },
+          data: [
+            { value: "all", label: "All Items" },
+            { value: "unarchived", label: "Active Items" },
+            { value: "archived", label: "Archived Items" }
+          ],
+          size: "sm",
+          leftSection: /* @__PURE__ */ jsx5(IconArchive, { size: 14 }),
+          "data-testid": "collection-list-archive-filter",
+          style: { width: 160 }
+        }
+      ),
+      /* @__PURE__ */ jsx5(
+        ActionIcon3,
+        {
+          variant: "subtle",
+          onClick: onRefresh,
+          title: "Refresh",
+          "data-testid": "collection-list-refresh",
+          children: /* @__PURE__ */ jsx5(IconRefresh, { size: 16 })
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs5(Group5, { gap: "xs", children: [
+      showBulkActions && /* @__PURE__ */ jsx5(
+        BulkActionsBar,
+        {
+          selectedIds,
+          enableDelete,
+          deleteAllowed,
+          createAllowed,
+          updateAllowed,
+          bulkActions,
+          onDeleteRequest,
+          onClearSelection
+        }
+      ),
+      enableCreate && onCreate && /* @__PURE__ */ jsx5(Tooltip2, { label: createAllowed ? "Create item" : "Not allowed", children: /* @__PURE__ */ jsx5(
+        Button3,
+        {
+          variant: "filled",
+          color: "blue",
+          size: "compact-sm",
+          leftSection: /* @__PURE__ */ jsx5(IconPlus3, { size: 18 }),
+          onClick: createAllowed ? onCreate : void 0,
+          disabled: !createAllowed,
+          "data-testid": "collection-list-create",
+          "aria-label": createAllowed ? "Create item" : "Create item (not allowed)",
+          children: "Create item"
+        }
+      ) })
+    ] })
+  ] });
+};
+
+// src/DeleteConfirmModal.tsx
+import {
+  Button as Button4,
+  Group as Group6,
+  Modal as Modal2,
+  Stack as Stack2,
+  Text as Text4
+} from "@mantine/core";
+import { jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
+var DeleteConfirmModal = ({
+  opened,
+  count,
+  loading,
+  onConfirm,
+  onCancel
+}) => {
+  return /* @__PURE__ */ jsx6(
+    Modal2,
+    {
+      opened,
+      onClose: onCancel,
+      title: "Confirm Delete",
+      centered: true,
+      size: "sm",
+      "data-testid": "delete-confirm-modal",
+      children: /* @__PURE__ */ jsxs6(Stack2, { gap: "md", children: [
+        /* @__PURE__ */ jsxs6(Text4, { size: "sm", children: [
+          "Are you sure you want to delete ",
+          count,
+          " ",
+          count === 1 ? "item" : "items",
+          "? This action cannot be undone."
+        ] }),
+        /* @__PURE__ */ jsxs6(Group6, { justify: "flex-end", children: [
+          /* @__PURE__ */ jsx6(
+            Button4,
+            {
+              variant: "default",
+              onClick: onCancel,
+              disabled: loading,
+              children: "Cancel"
+            }
+          ),
+          /* @__PURE__ */ jsx6(
+            Button4,
+            {
+              color: "red",
+              onClick: onConfirm,
+              loading,
+              "data-testid": "delete-confirm-btn",
+              children: "Delete"
+            }
+          )
+        ] })
+      ] })
+    }
+  );
+};
 
 // src/FilterPanel.tsx
 import { useState as useState2, useCallback as useCallback2, useMemo as useMemo2 } from "react";
 import {
-  Group as Group3,
-  Stack as Stack2,
-  Button as Button2,
-  Text as Text3,
-  Select,
-  TextInput,
+  Group as Group7,
+  Stack as Stack3,
+  Button as Button5,
+  Text as Text5,
+  Select as Select3,
+  TextInput as TextInput2,
   NumberInput,
-  ActionIcon as ActionIcon2,
+  ActionIcon as ActionIcon4,
   Paper as Paper2,
   Menu as Menu2,
-  Badge
+  Badge as Badge3
 } from "@mantine/core";
 import {
-  IconFilter,
-  IconPlus as IconPlus2,
-  IconTrash,
+  IconFilter as IconFilter2,
+  IconPlus as IconPlus4,
+  IconTrash as IconTrash3,
   IconChevronDown as IconChevronDown2,
   IconChevronUp,
-  IconX as IconX2
+  IconX as IconX4
 } from "@tabler/icons-react";
-import { jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
+import { jsx as jsx7, jsxs as jsxs7 } from "react/jsx-runtime";
 var STRING_OPERATORS = [
   { label: "Equals", value: "_eq", needsValue: true },
   { label: "Not equals", value: "_neq", needsValue: true },
@@ -706,9 +1108,9 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
   const operators = getOperatorsForType(selectedField?.type || "string");
   const operatorData = operators.map((o) => ({ value: o.value, label: o.label }));
   const currentOp = operators.find((o) => o.value === rule.operator);
-  return /* @__PURE__ */ jsxs3(Group3, { gap: "xs", wrap: "nowrap", "data-testid": "filter-rule", children: [
-    /* @__PURE__ */ jsx3(
-      Select,
+  return /* @__PURE__ */ jsxs7(Group7, { gap: "xs", wrap: "nowrap", "data-testid": "filter-rule", children: [
+    /* @__PURE__ */ jsx7(
+      Select3,
       {
         value: rule.field,
         onChange: (val) => {
@@ -725,8 +1127,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         searchable: true
       }
     ),
-    /* @__PURE__ */ jsx3(
-      Select,
+    /* @__PURE__ */ jsx7(
+      Select3,
       {
         value: rule.operator,
         onChange: (val) => {
@@ -743,7 +1145,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
     currentOp?.needsValue && (() => {
       const type = selectedField?.type || "string";
       if (["integer", "bigInteger", "float", "decimal"].includes(type)) {
-        return /* @__PURE__ */ jsx3(
+        return /* @__PURE__ */ jsx7(
           NumberInput,
           {
             value: typeof rule.value === "number" ? rule.value : void 0,
@@ -756,8 +1158,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         );
       }
       if (type === "boolean") {
-        return /* @__PURE__ */ jsx3(
-          Select,
+        return /* @__PURE__ */ jsx7(
+          Select3,
           {
             value: rule.value === true ? "true" : rule.value === false ? "false" : "",
             onChange: (val) => onChange({ ...rule, value: val === "true" }),
@@ -768,8 +1170,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
           }
         );
       }
-      return /* @__PURE__ */ jsx3(
-        TextInput,
+      return /* @__PURE__ */ jsx7(
+        TextInput2,
         {
           value: typeof rule.value === "string" ? rule.value : "",
           onChange: (e) => onChange({ ...rule, value: e.currentTarget.value }),
@@ -780,8 +1182,8 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         }
       );
     })(),
-    /* @__PURE__ */ jsx3(
-      ActionIcon2,
+    /* @__PURE__ */ jsx7(
+      ActionIcon4,
       {
         variant: "subtle",
         color: "red",
@@ -789,7 +1191,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         onClick: onRemove,
         disabled,
         title: "Remove filter",
-        children: /* @__PURE__ */ jsx3(IconTrash, { size: 14 })
+        children: /* @__PURE__ */ jsx7(IconTrash3, { size: 14 })
       }
     )
   ] });
@@ -862,40 +1264,40 @@ var FilterPanel = ({
   }, [rootGroup, emitChange]);
   const filterCount = rootGroup.rules.length;
   if (collapsible && collapsed) {
-    return /* @__PURE__ */ jsxs3(Group3, { gap: "xs", "data-testid": "filter-panel-collapsed", children: [
-      /* @__PURE__ */ jsx3(
-        Button2,
+    return /* @__PURE__ */ jsxs7(Group7, { gap: "xs", "data-testid": "filter-panel-collapsed", children: [
+      /* @__PURE__ */ jsx7(
+        Button5,
         {
           variant: "subtle",
           size: "xs",
-          leftSection: /* @__PURE__ */ jsx3(IconFilter, { size: 14 }),
-          rightSection: filterCount > 0 ? /* @__PURE__ */ jsx3(Badge, { size: "xs", circle: true, children: filterCount }) : /* @__PURE__ */ jsx3(IconChevronDown2, { size: 14 }),
+          leftSection: /* @__PURE__ */ jsx7(IconFilter2, { size: 14 }),
+          rightSection: filterCount > 0 ? /* @__PURE__ */ jsx7(Badge3, { size: "xs", circle: true, children: filterCount }) : /* @__PURE__ */ jsx7(IconChevronDown2, { size: 14 }),
           onClick: () => setCollapsed(false),
           children: "Filters"
         }
       ),
-      filterCount > 0 && /* @__PURE__ */ jsx3(ActionIcon2, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, title: "Clear all filters", children: /* @__PURE__ */ jsx3(IconX2, { size: 12 }) })
+      filterCount > 0 && /* @__PURE__ */ jsx7(ActionIcon4, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, title: "Clear all filters", children: /* @__PURE__ */ jsx7(IconX4, { size: 12 }) })
     ] });
   }
-  const content = /* @__PURE__ */ jsxs3(Stack2, { gap: "xs", "data-testid": "filter-panel", children: [
-    /* @__PURE__ */ jsxs3(Group3, { justify: "space-between", children: [
-      /* @__PURE__ */ jsxs3(Group3, { gap: "xs", children: [
-        /* @__PURE__ */ jsx3(IconFilter, { size: 16, style: { color: "var(--mantine-color-dimmed)" } }),
-        /* @__PURE__ */ jsx3(Text3, { size: "sm", fw: 600, children: "Filters" }),
-        filterCount > 0 && /* @__PURE__ */ jsxs3(Badge, { size: "xs", variant: "light", children: [
+  const content = /* @__PURE__ */ jsxs7(Stack3, { gap: "xs", "data-testid": "filter-panel", children: [
+    /* @__PURE__ */ jsxs7(Group7, { justify: "space-between", children: [
+      /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
+        /* @__PURE__ */ jsx7(IconFilter2, { size: 16, style: { color: "var(--mantine-color-dimmed)" } }),
+        /* @__PURE__ */ jsx7(Text5, { size: "sm", fw: 600, children: "Filters" }),
+        filterCount > 0 && /* @__PURE__ */ jsxs7(Badge3, { size: "xs", variant: "light", children: [
           filterCount,
           " active"
         ] })
       ] }),
-      /* @__PURE__ */ jsxs3(Group3, { gap: "xs", children: [
-        filterCount > 0 && /* @__PURE__ */ jsx3(Button2, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, children: "Clear all" }),
-        collapsible && /* @__PURE__ */ jsx3(ActionIcon2, { variant: "subtle", size: "xs", onClick: () => setCollapsed(true), children: /* @__PURE__ */ jsx3(IconChevronUp, { size: 14 }) })
+      /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
+        filterCount > 0 && /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, children: "Clear all" }),
+        collapsible && /* @__PURE__ */ jsx7(ActionIcon4, { variant: "subtle", size: "xs", onClick: () => setCollapsed(true), children: /* @__PURE__ */ jsx7(IconChevronUp, { size: 14 }) })
       ] })
     ] }),
-    rootGroup.rules.length > 1 && /* @__PURE__ */ jsxs3(Group3, { gap: "xs", children: [
-      /* @__PURE__ */ jsx3(Text3, { size: "xs", c: "dimmed", children: "Match" }),
-      /* @__PURE__ */ jsx3(
-        Button2,
+    rootGroup.rules.length > 1 && /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
+      /* @__PURE__ */ jsx7(Text5, { size: "xs", c: "dimmed", children: "Match" }),
+      /* @__PURE__ */ jsx7(
+        Button5,
         {
           variant: rootGroup.logical === "_and" ? "filled" : "outline",
           size: "compact-xs",
@@ -903,8 +1305,8 @@ var FilterPanel = ({
           children: "ALL"
         }
       ),
-      /* @__PURE__ */ jsx3(
-        Button2,
+      /* @__PURE__ */ jsx7(
+        Button5,
         {
           variant: rootGroup.logical === "_or" ? "filled" : "outline",
           size: "compact-xs",
@@ -913,29 +1315,29 @@ var FilterPanel = ({
         }
       )
     ] }),
-    rootGroup.rules.length === 0 ? /* @__PURE__ */ jsx3(Text3, { size: "sm", c: "dimmed", children: 'No filter rules. Click "Add filter" to get started.' }) : /* @__PURE__ */ jsx3(Stack2, { gap: 6, children: rootGroup.rules.map((rule, index) => {
+    rootGroup.rules.length === 0 ? /* @__PURE__ */ jsx7(Text5, { size: "sm", c: "dimmed", children: 'No filter rules. Click "Add filter" to get started.' }) : /* @__PURE__ */ jsx7(Stack3, { gap: 6, children: rootGroup.rules.map((rule, index) => {
       if ("logical" in rule) {
-        return /* @__PURE__ */ jsxs3(Group3, { gap: "xs", children: [
-          /* @__PURE__ */ jsxs3(Badge, { variant: "outline", size: "sm", children: [
+        return /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
+          /* @__PURE__ */ jsxs7(Badge3, { variant: "outline", size: "sm", children: [
             rule.logical === "_and" ? "AND" : "OR",
             " group (",
             rule.rules.length,
             " rules)"
           ] }),
-          /* @__PURE__ */ jsx3(
-            ActionIcon2,
+          /* @__PURE__ */ jsx7(
+            ActionIcon4,
             {
               variant: "subtle",
               color: "red",
               size: "xs",
               onClick: () => removeRule(index),
               disabled,
-              children: /* @__PURE__ */ jsx3(IconTrash, { size: 12 })
+              children: /* @__PURE__ */ jsx7(IconTrash3, { size: 12 })
             }
           )
         ] }, rule.id);
       }
-      return /* @__PURE__ */ jsx3(
+      return /* @__PURE__ */ jsx7(
         RuleRow,
         {
           rule,
@@ -947,10 +1349,10 @@ var FilterPanel = ({
         rule.id
       );
     }) }),
-    /* @__PURE__ */ jsxs3(Group3, { gap: "xs", children: [
-      /* @__PURE__ */ jsxs3(Menu2, { position: "bottom-start", withArrow: true, shadow: "sm", children: [
-        /* @__PURE__ */ jsx3(Menu2.Target, { children: /* @__PURE__ */ jsx3(Button2, { variant: "subtle", size: "xs", leftSection: /* @__PURE__ */ jsx3(IconPlus2, { size: 14 }), children: "Add filter" }) }),
-        /* @__PURE__ */ jsx3(Menu2.Dropdown, { children: fields.map((f) => /* @__PURE__ */ jsx3(
+    /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
+      /* @__PURE__ */ jsxs7(Menu2, { position: "bottom-start", withArrow: true, shadow: "sm", children: [
+        /* @__PURE__ */ jsx7(Menu2.Target, { children: /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", leftSection: /* @__PURE__ */ jsx7(IconPlus4, { size: 14 }), children: "Add filter" }) }),
+        /* @__PURE__ */ jsx7(Menu2.Dropdown, { children: fields.map((f) => /* @__PURE__ */ jsx7(
           Menu2.Item,
           {
             onClick: () => {
@@ -968,15 +1370,15 @@ var FilterPanel = ({
           f.field
         )) })
       ] }),
-      maxDepth > 1 && /* @__PURE__ */ jsx3(Button2, { variant: "subtle", size: "xs", color: "dimmed", onClick: addGroup, children: "Add group" })
+      maxDepth > 1 && /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", color: "dimmed", onClick: addGroup, children: "Add group" })
     ] })
   ] });
   if (mode === "inline") return content;
-  return /* @__PURE__ */ jsx3(Paper2, { withBorder: true, p: "sm", "data-testid": "filter-panel-container", children: content });
+  return /* @__PURE__ */ jsx7(Paper2, { withBorder: true, p: "sm", "data-testid": "filter-panel-container", children: content });
 };
 
 // src/CollectionList.tsx
-import { jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
+import { jsx as jsx8, jsxs as jsxs8 } from "react/jsx-runtime";
 var SYSTEM_FIELDS2 = [
   "user_created",
   "user_updated",
@@ -995,7 +1397,7 @@ var CollectionList = ({
   enableFilter = false,
   bulkActions = [],
   fields: displayFields,
-  limit: initialLimit = 25,
+  limit: initialLimit = 10,
   enableSearch = true,
   enableSort = true,
   enableResize = true,
@@ -1011,15 +1413,19 @@ var CollectionList = ({
   unarchiveValue = "draft",
   onItemClick,
   onCreate,
+  onEdit,
+  enableDelete = false,
+  onDeleteSuccess,
   onFieldsChange,
   onSortChange: onSortChangeProp,
-  onFilterChange
+  onFilterChange,
+  onPermissionsLoaded
 }) => {
   const [allFields, setAllFields] = useState3([]);
   const [visibleFieldKeys, setVisibleFieldKeys] = useState3([]);
   const [items, setItems] = useState3([]);
   const [totalCount, setTotalCount] = useState3(0);
-  const [filterCount, setFilterCount] = useState3(null);
+  const [filterCount, setFilterCount] = useState3(0);
   const [selectedItems, setSelectedItems] = useState3([]);
   const [loading, setLoading] = useState3(true);
   const [error, setError] = useState3(null);
@@ -1030,18 +1436,61 @@ var CollectionList = ({
   const [archiveFilterMode, setArchiveFilterMode] = useState3("all");
   const [filterPanelOpen, setFilterPanelOpen] = useState3(false);
   const [internalFilter, setInternalFilter] = useState3(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState3(false);
+  const [deletingIds, setDeletingIds] = useState3([]);
+  const [deleteLoading, setDeleteLoading] = useState3(false);
   const [headerOverrides, setHeaderOverrides] = useState3({});
   const rowHeight = rowHeightProp ?? SPACING_HEIGHT[tableSpacing] ?? 48;
   const [readableFields, setReadableFields] = useState3(null);
+  const [createAllowed, setCreateAllowed] = useState3(true);
+  const [updateAllowed, setUpdateAllowed] = useState3(true);
+  const [deleteAllowed, setDeleteAllowed] = useState3(true);
   useEffect2(() => {
     let cancelled = false;
     const loadFieldsAndPermissions = async () => {
       try {
-        const [fieldsResult, permFields] = await Promise.all([
+        const [fieldsResult, collectionAccess] = await Promise.all([
           new FieldsService2().readAll(collection),
-          PermissionsService2.getReadableFields(collection).catch(() => null)
+          PermissionsService2.getMyCollectionAccess().catch(() => ({}))
         ]);
         if (cancelled) return;
+        const accessMap = collectionAccess ?? {};
+        const access = accessMap[collection] || {};
+        const isAdmin = PermissionsService2.isAdmin;
+        const isEmptyAccess = Object.keys(accessMap).length === 0;
+        const readAccess = access.read;
+        const createAccess = access.create;
+        const updateAccess = access.update;
+        const deleteAccess = access.delete;
+        const canCreate = isAdmin || isEmptyAccess || !!createAccess;
+        const canUpdate = isAdmin || isEmptyAccess || !!updateAccess;
+        const canDelete = isAdmin || isEmptyAccess || !!deleteAccess;
+        setCreateAllowed(canCreate);
+        setUpdateAllowed(canUpdate);
+        setDeleteAllowed(canDelete);
+        let canArchive = false;
+        if (archiveField && canUpdate) {
+          if (isAdmin || isEmptyAccess) {
+            canArchive = true;
+          } else if (updateAccess?.fields) {
+            canArchive = updateAccess.fields.includes("*") || updateAccess.fields.includes(archiveField);
+          }
+        }
+        if (!cancelled) {
+          onPermissionsLoaded?.({
+            createAllowed: canCreate,
+            readAllowed: isAdmin || isEmptyAccess || !!readAccess,
+            updateAllowed: canUpdate,
+            deleteAllowed: canDelete,
+            archiveAllowed: canArchive
+          });
+        }
+        let permFields = null;
+        if (!isAdmin && !isEmptyAccess && readAccess) {
+          permFields = readAccess.fields ?? null;
+          if (permFields && permFields.includes("*")) permFields = null;
+        }
+        setReadableFields(permFields);
         let visible = fieldsResult.filter((f) => {
           if (SYSTEM_FIELDS2.includes(f.field)) return false;
           if (f.type === "alias") return false;
@@ -1049,8 +1498,7 @@ var CollectionList = ({
           if (isHidden) return false;
           return true;
         });
-        setReadableFields(permFields);
-        const hasRestriction = permFields && permFields.length > 0 && !permFields.includes("*");
+        const hasRestriction = permFields !== null && permFields.length > 0;
         if (hasRestriction) {
           const accessibleSet = new Set(permFields);
           visible = visible.filter((f) => accessibleSet.has(f.field));
@@ -1118,8 +1566,7 @@ var CollectionList = ({
       setError(null);
       const query = {
         limit,
-        page,
-        meta: "total_count,filter_count"
+        page
       };
       const fieldsToFetch = [...visibleFieldKeys];
       if (!fieldsToFetch.includes(primaryKeyField)) {
@@ -1157,14 +1604,14 @@ var CollectionList = ({
       const rawResponse = await apiRequest2(`/api/items/${collection}${queryString ? `?${queryString}` : ""}`);
       if (Array.isArray(rawResponse)) {
         setItems(rawResponse);
-        setTotalCount(rawResponse.length);
-        setFilterCount(null);
+        setFilterCount(rawResponse.length);
       } else {
         setItems(rawResponse.data || []);
-        const total = rawResponse.meta?.total_count || rawResponse.data?.length || 0;
-        const filtered = rawResponse.meta?.filter_count ?? null;
-        setTotalCount(total);
-        setFilterCount(filtered !== null && filtered !== total ? filtered : null);
+        if (rawResponse.meta?.total != null) {
+          setFilterCount(rawResponse.meta.total);
+        } else {
+          setFilterCount(rawResponse.data?.length ?? 0);
+        }
       }
     } catch (err) {
       console.error("Error loading items:", err);
@@ -1186,11 +1633,25 @@ var CollectionList = ({
     archiveFilterMode,
     archiveValue
   ]);
+  const getTotalCount = useCallback3(async () => {
+    try {
+      const params = new URLSearchParams({
+        "aggregate[count]": primaryKeyField
+      });
+      const response = await apiRequest2(`/api/items/${collection}?${params.toString()}`);
+      const count = Number(response.data?.[0]?.count?.[primaryKeyField] ?? 0);
+      setTotalCount(count);
+    } catch {
+    }
+  }, [collection, primaryKeyField]);
   useEffect2(() => {
     if (visibleFieldKeys.length > 0) {
       loadItems();
     }
   }, [loadItems, visibleFieldKeys.length]);
+  useEffect2(() => {
+    getTotalCount();
+  }, [getTotalCount]);
   useEffect2(() => {
     setPage(1);
   }, [search, filter, internalFilter]);
@@ -1213,7 +1674,7 @@ var CollectionList = ({
       };
     });
   }, [visibleFieldKeys, permittedFields, headerOverrides, enableSort]);
-  const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+  const totalPages = Math.max(1, Math.ceil(filterCount / limit));
   const selectedIds = useMemo3(() => {
     return selectedItems.map(
       (item) => typeof item === "object" && item !== null ? item[primaryKeyField] : item
@@ -1270,51 +1731,51 @@ var CollectionList = ({
   const renderHeaderContextMenu = useCallback3(
     (header) => {
       if (!enableHeaderMenu) return null;
-      return /* @__PURE__ */ jsxs4("div", { className: "collection-list-context-menu", role: "menu", children: [
-        /* @__PURE__ */ jsx4(Menu3.Label, { children: "Sort" }),
-        /* @__PURE__ */ jsxs4(
+      return /* @__PURE__ */ jsxs8("div", { className: "collection-list-context-menu", role: "menu", children: [
+        /* @__PURE__ */ jsx8(Menu3.Label, { children: "Sort" }),
+        /* @__PURE__ */ jsxs8(
           "div",
           {
             role: "menuitem",
             className: "mantine-Menu-item collection-list-context-menu-item",
             onClick: () => handleSortChange({ by: header.value, desc: false }),
             children: [
-              /* @__PURE__ */ jsx4(IconSortAscending, { size: 14 }),
-              /* @__PURE__ */ jsx4(Text4, { size: "sm", children: "Sort ascending" })
+              /* @__PURE__ */ jsx8(IconSortAscending, { size: 14 }),
+              /* @__PURE__ */ jsx8(Text6, { size: "sm", children: "Sort ascending" })
             ]
           }
         ),
-        /* @__PURE__ */ jsxs4(
+        /* @__PURE__ */ jsxs8(
           "div",
           {
             role: "menuitem",
             className: "mantine-Menu-item collection-list-context-menu-item",
             onClick: () => handleSortChange({ by: header.value, desc: true }),
             children: [
-              /* @__PURE__ */ jsx4(IconSortDescending, { size: 14 }),
-              /* @__PURE__ */ jsx4(Text4, { size: "sm", children: "Sort descending" })
+              /* @__PURE__ */ jsx8(IconSortDescending, { size: 14 }),
+              /* @__PURE__ */ jsx8(Text6, { size: "sm", children: "Sort descending" })
             ]
           }
         ),
-        /* @__PURE__ */ jsx4("div", { className: "collection-list-context-menu-divider" }),
-        /* @__PURE__ */ jsx4(Menu3.Label, { children: "Alignment" }),
+        /* @__PURE__ */ jsx8("div", { className: "collection-list-context-menu-divider" }),
+        /* @__PURE__ */ jsx8(Menu3.Label, { children: "Alignment" }),
         [
           {
             align: "left",
-            icon: /* @__PURE__ */ jsx4(IconAlignLeft, { size: 14 }),
+            icon: /* @__PURE__ */ jsx8(IconAlignLeft, { size: 14 }),
             label: "Align left"
           },
           {
             align: "center",
-            icon: /* @__PURE__ */ jsx4(IconAlignCenter, { size: 14 }),
+            icon: /* @__PURE__ */ jsx8(IconAlignCenter, { size: 14 }),
             label: "Align center"
           },
           {
             align: "right",
-            icon: /* @__PURE__ */ jsx4(IconAlignRight, { size: 14 }),
+            icon: /* @__PURE__ */ jsx8(IconAlignRight, { size: 14 }),
             label: "Align right"
           }
-        ].map(({ align, icon, label }) => /* @__PURE__ */ jsxs4(
+        ].map(({ align, icon, label }) => /* @__PURE__ */ jsxs8(
           "div",
           {
             role: "menuitem",
@@ -1322,21 +1783,21 @@ var CollectionList = ({
             onClick: () => handleAlignChange(header.value, align),
             children: [
               icon,
-              /* @__PURE__ */ jsx4(Text4, { size: "sm", children: label })
+              /* @__PURE__ */ jsx8(Text6, { size: "sm", children: label })
             ]
           },
           align
         )),
-        /* @__PURE__ */ jsx4("div", { className: "collection-list-context-menu-divider" }),
-        /* @__PURE__ */ jsxs4(
+        /* @__PURE__ */ jsx8("div", { className: "collection-list-context-menu-divider" }),
+        /* @__PURE__ */ jsxs8(
           "div",
           {
             role: "menuitem",
             className: "mantine-Menu-item collection-list-context-menu-item danger",
             onClick: () => removeField(header.value),
             children: [
-              /* @__PURE__ */ jsx4(IconEyeOff, { size: 14 }),
-              /* @__PURE__ */ jsx4(Text4, { size: "sm", children: "Hide field" })
+              /* @__PURE__ */ jsx8(IconEyeOff, { size: 14 }),
+              /* @__PURE__ */ jsx8(Text6, { size: "sm", children: "Hide field" })
             ]
           }
         )
@@ -1347,9 +1808,6 @@ var CollectionList = ({
   const hiddenFields = useMemo3(() => {
     return permittedFields.filter((f) => !visibleFieldKeys.includes(f.field));
   }, [permittedFields, visibleFieldKeys]);
-  const hasAppliedFilter = useMemo3(() => {
-    return search.trim().length > 0 || filter && Object.keys(filter).length > 0 || internalFilter && Object.keys(internalFilter).length > 0 || archiveField && archiveFilterMode !== "all";
-  }, [search, filter, internalFilter, archiveField, archiveFilterMode]);
   const fieldTypeRenderCell = useCallback3(
     (item, header) => {
       const fieldMeta = permittedFields.find((f) => f.field === header.value);
@@ -1358,16 +1816,16 @@ var CollectionList = ({
       if (value === null || value === void 0) return null;
       const fieldType = fieldMeta.type;
       if (fieldType === "boolean") {
-        return value ? /* @__PURE__ */ jsx4(IconCheck3, { size: 16, color: "var(--mantine-color-green-6)", "aria-label": "Yes" }) : /* @__PURE__ */ jsx4(IconX3, { size: 16, color: "var(--mantine-color-gray-4)", "aria-label": "No" });
+        return value ? /* @__PURE__ */ jsx8(IconCheck3, { size: 16, color: "var(--mantine-color-green-6)", "aria-label": "Yes" }) : /* @__PURE__ */ jsx8(IconX5, { size: 16, color: "var(--mantine-color-gray-4)", "aria-label": "No" });
       }
       if (fieldType === "timestamp" || fieldType === "dateTime" || fieldType === "date") {
         try {
           const dateObj = new Date(value);
           if (isNaN(dateObj.getTime())) return null;
           if (fieldType === "date") {
-            return /* @__PURE__ */ jsx4(Text4, { size: "sm", truncate: "end", children: dateObj.toLocaleDateString() });
+            return /* @__PURE__ */ jsx8(Text6, { size: "sm", truncate: "end", children: dateObj.toLocaleDateString() });
           }
-          return /* @__PURE__ */ jsx4(Text4, { size: "sm", truncate: "end", children: dateObj.toLocaleString() });
+          return /* @__PURE__ */ jsx8(Text6, { size: "sm", truncate: "end", children: dateObj.toLocaleString() });
         } catch {
           return null;
         }
@@ -1375,16 +1833,16 @@ var CollectionList = ({
       if (fieldType === "integer" || fieldType === "float" || fieldType === "decimal" || fieldType === "bigInteger") {
         const num = Number(value);
         if (!isNaN(num)) {
-          return /* @__PURE__ */ jsx4(Text4, { size: "sm", truncate: "end", children: num.toLocaleString() });
+          return /* @__PURE__ */ jsx8(Text6, { size: "sm", truncate: "end", children: num.toLocaleString() });
         }
         return null;
       }
       if (fieldType === "json") {
-        return /* @__PURE__ */ jsx4(Badge2, { variant: "light", size: "sm", color: "gray", children: "JSON" });
+        return /* @__PURE__ */ jsx8(Badge4, { variant: "light", size: "sm", color: "gray", children: "JSON" });
       }
       if (fieldType === "uuid") {
         const str = String(value);
-        return /* @__PURE__ */ jsx4(Tooltip, { label: str, openDelay: 300, children: /* @__PURE__ */ jsxs4(Text4, { size: "sm", truncate: "end", style: { maxWidth: 120 }, children: [
+        return /* @__PURE__ */ jsx8(Tooltip3, { label: str, openDelay: 300, children: /* @__PURE__ */ jsxs8(Text6, { size: "sm", truncate: "end", style: { maxWidth: 120 }, children: [
           str.substring(0, 8),
           "\u2026"
         ] }) });
@@ -1395,11 +1853,11 @@ var CollectionList = ({
   );
   const renderHeaderAppend = useCallback3(() => {
     if (!enableAddField || hiddenFields.length === 0) return null;
-    return /* @__PURE__ */ jsxs4(Menu3, { position: "bottom-end", withArrow: true, shadow: "md", closeOnItemClick: true, children: [
-      /* @__PURE__ */ jsx4(Menu3.Target, { children: /* @__PURE__ */ jsx4(ActionIcon3, { variant: "subtle", size: "sm", title: "Add field", children: /* @__PURE__ */ jsx4(IconPlus3, { size: 16 }) }) }),
-      /* @__PURE__ */ jsxs4(Menu3.Dropdown, { children: [
-        /* @__PURE__ */ jsx4(Menu3.Label, { children: "Add field" }),
-        hiddenFields.map((f) => /* @__PURE__ */ jsx4(Menu3.Item, { onClick: () => addField(f.field), children: f.meta?.note || f.field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) }, f.field))
+    return /* @__PURE__ */ jsxs8(Menu3, { position: "bottom-end", withArrow: true, shadow: "md", closeOnItemClick: true, children: [
+      /* @__PURE__ */ jsx8(Menu3.Target, { children: /* @__PURE__ */ jsx8(ActionIcon5, { variant: "subtle", size: "sm", title: "Add field", children: /* @__PURE__ */ jsx8(IconPlus5, { size: 16 }) }) }),
+      /* @__PURE__ */ jsxs8(Menu3.Dropdown, { children: [
+        /* @__PURE__ */ jsx8(Menu3.Label, { children: "Add field" }),
+        hiddenFields.map((f) => /* @__PURE__ */ jsx8(Menu3.Item, { onClick: () => addField(f.field), children: f.meta?.note || f.field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) }, f.field))
       ] })
     ] });
   }, [enableAddField, hiddenFields, addField]);
@@ -1415,153 +1873,101 @@ var CollectionList = ({
     onFilterChange?.(null);
     setFilterPanelOpen(false);
   }, [onFilterChange]);
+  const handleDeleteRequest = useCallback3(
+    (ids) => {
+      if (ids.length === 0) return;
+      setDeletingIds(ids);
+      setDeleteConfirmOpen(true);
+    },
+    []
+  );
+  const handleDeleteConfirm = useCallback3(async () => {
+    if (deletingIds.length === 0) return;
+    setDeleteLoading(true);
+    try {
+      const itemsService = new ItemsService2(collection);
+      await itemsService.deleteMany(deletingIds, primaryKeyField);
+      setDeleteConfirmOpen(false);
+      setDeletingIds([]);
+      setSelectedItems([]);
+      onDeleteSuccess?.(deletingIds);
+      loadItems();
+      getTotalCount();
+    } catch (err) {
+      console.error("Error deleting items:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete items");
+      setDeleteConfirmOpen(false);
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess]);
+  const handleDeleteCancel = useCallback3(() => {
+    setDeleteConfirmOpen(false);
+    setDeletingIds([]);
+  }, []);
+  const isFiltered = useMemo3(() => {
+    return search.trim().length > 0 || filter && Object.keys(filter).length > 0 || internalFilter && Object.keys(internalFilter).length > 0 || archiveField && archiveFilterMode !== "all";
+  }, [search, filter, internalFilter, archiveField, archiveFilterMode]);
   const itemCountDisplay = useMemo3(() => {
     if (loading) return "Loading...";
-    const displayTotal = filterCount !== null ? filterCount : totalCount;
-    if (displayTotal === 0) return "No items";
-    const from = Math.min((page - 1) * limit + 1, displayTotal);
-    const to = Math.min(page * limit, displayTotal);
-    let text = `${from}\u2013${to} of ${displayTotal} items`;
-    if (filterCount !== null) {
-      text += ` (filtered from ${totalCount})`;
+    if (filterCount === 0) return "No items";
+    const from = Math.min((page - 1) * limit + 1, filterCount);
+    const to = Math.min(page * limit, filterCount);
+    if (isFiltered && filterCount < totalCount) {
+      if (filterCount <= limit) {
+        return `${filterCount} item${filterCount !== 1 ? "s" : ""} (filtered from ${totalCount})`;
+      }
+      return `${from}\u2013${to} of ${filterCount} items (filtered from ${totalCount})`;
     }
-    return text;
-  }, [loading, totalCount, filterCount, page, limit]);
-  return /* @__PURE__ */ jsxs4(Stack3, { gap: 0, "data-testid": "collection-list", children: [
-    /* @__PURE__ */ jsxs4("div", { className: "collection-list-toolbar", "data-testid": "collection-list-toolbar", children: [
-      /* @__PURE__ */ jsxs4(Group4, { gap: "xs", children: [
-        enableSearch && /* @__PURE__ */ jsx4(
-          TextInput2,
-          {
-            placeholder: "Search...",
-            leftSection: /* @__PURE__ */ jsx4(IconSearch, { size: 16 }),
-            value: search,
-            onChange: (e) => setSearch(e.currentTarget.value),
-            rightSection: search ? /* @__PURE__ */ jsx4(
-              ActionIcon3,
-              {
-                variant: "subtle",
-                size: "xs",
-                onClick: () => setSearch(""),
-                "aria-label": "Clear search",
-                children: /* @__PURE__ */ jsx4(IconX3, { size: 12 })
-              }
-            ) : void 0,
-            size: "sm",
-            className: "collection-list-search",
-            "data-testid": "collection-list-search"
-          }
-        ),
-        enableFilter && /* @__PURE__ */ jsx4(Tooltip, { label: filterPanelOpen ? "Hide filters" : "Show filters", children: /* @__PURE__ */ jsxs4(
-          ActionIcon3,
-          {
-            variant: activeFilterCount > 0 ? "filled" : "subtle",
-            color: activeFilterCount > 0 ? "blue" : void 0,
-            onClick: () => setFilterPanelOpen((v) => !v),
-            title: "Toggle filter panel",
-            "data-testid": "collection-list-filter-toggle",
-            pos: "relative",
-            children: [
-              /* @__PURE__ */ jsx4(IconFilter2, { size: 16 }),
-              activeFilterCount > 0 && /* @__PURE__ */ jsx4(
-                Badge2,
-                {
-                  size: "xs",
-                  circle: true,
-                  color: "red",
-                  className: "collection-list-filter-badge",
-                  "data-testid": "collection-list-filter-count",
-                  children: activeFilterCount
-                }
-              )
-            ]
-          }
-        ) }),
-        archiveField && /* @__PURE__ */ jsx4(
-          Select2,
-          {
-            value: archiveFilterMode,
-            onChange: (val) => {
-              if (val) setArchiveFilterMode(val);
-            },
-            data: [
-              { value: "all", label: "All Items" },
-              { value: "unarchived", label: "Active Items" },
-              { value: "archived", label: "Archived Items" }
-            ],
-            size: "sm",
-            leftSection: /* @__PURE__ */ jsx4(IconArchive, { size: 14 }),
-            "data-testid": "collection-list-archive-filter",
-            style: { width: 160 }
-          }
-        ),
-        /* @__PURE__ */ jsx4(
-          ActionIcon3,
-          {
-            variant: "subtle",
-            onClick: loadItems,
-            title: "Refresh",
-            "data-testid": "collection-list-refresh",
-            children: /* @__PURE__ */ jsx4(IconRefresh, { size: 16 })
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxs4(Group4, { gap: "xs", children: [
-        enableSelection && selectedIds.length > 0 ? /* @__PURE__ */ jsxs4(Group4, { gap: "xs", "data-testid": "collection-list-bulk-actions", children: [
-          /* @__PURE__ */ jsxs4(Badge2, { variant: "light", size: "lg", children: [
-            selectedIds.length,
-            " selected"
-          ] }),
-          bulkActions.map((action, index) => /* @__PURE__ */ jsx4(Tooltip, { label: action.label, children: /* @__PURE__ */ jsx4(
-            ActionIcon3,
-            {
-              variant: "light",
-              color: action.color,
-              onClick: () => action.action(selectedIds),
-              "data-testid": `bulk-action-${index}`,
-              children: action.icon || /* @__PURE__ */ jsx4(IconEdit, { size: 16 })
-            }
-          ) }, index)),
-          /* @__PURE__ */ jsx4(
-            ActionIcon3,
-            {
-              variant: "subtle",
-              onClick: () => setSelectedItems([]),
-              title: "Clear selection",
-              "data-testid": "collection-list-clear-selection",
-              children: /* @__PURE__ */ jsx4(IconX3, { size: 16 })
-            }
-          )
-        ] }) : /* @__PURE__ */ jsx4(Text4, { size: "sm", c: "dimmed", "data-testid": "collection-list-item-count", children: itemCountDisplay }),
-        enableCreate && onCreate && /* @__PURE__ */ jsx4(Tooltip, { label: "Create item", children: /* @__PURE__ */ jsx4(
-          ActionIcon3,
-          {
-            variant: "filled",
-            color: "blue",
-            size: "md",
-            onClick: onCreate,
-            "data-testid": "collection-list-create",
-            children: /* @__PURE__ */ jsx4(IconPlus3, { size: 18 })
-          }
-        ) })
-      ] })
-    ] }),
-    enableFilter && /* @__PURE__ */ jsx4(Collapse2, { in: filterPanelOpen, children: /* @__PURE__ */ jsxs4("div", { className: "collection-list-filter-panel", "data-testid": "collection-list-filter-panel", children: [
-      /* @__PURE__ */ jsxs4(Group4, { justify: "space-between", mb: "xs", children: [
-        /* @__PURE__ */ jsx4(Text4, { size: "sm", fw: 600, children: "Filters" }),
-        activeFilterCount > 0 && /* @__PURE__ */ jsx4(
-          Button3,
+    if (filterCount <= limit) {
+      return `${filterCount} item${filterCount !== 1 ? "s" : ""}`;
+    }
+    return `${from}\u2013${to} of ${filterCount} items`;
+  }, [loading, totalCount, filterCount, page, limit, isFiltered]);
+  return /* @__PURE__ */ jsxs8(Stack4, { gap: 0, "data-testid": "collection-list", children: [
+    /* @__PURE__ */ jsx8(
+      CollectionListToolbar,
+      {
+        enableSearch,
+        search,
+        onSearchChange: setSearch,
+        enableFilter,
+        filterPanelOpen,
+        activeFilterCount,
+        onToggleFilterPanel: () => setFilterPanelOpen((v) => !v),
+        archiveField,
+        archiveFilterMode,
+        onArchiveFilterChange: setArchiveFilterMode,
+        onRefresh: loadItems,
+        enableSelection,
+        selectedIds,
+        enableDelete,
+        deleteAllowed,
+        createAllowed,
+        updateAllowed,
+        bulkActions,
+        onDeleteRequest: handleDeleteRequest,
+        onClearSelection: () => setSelectedItems([]),
+        enableCreate,
+        onCreate
+      }
+    ),
+    enableFilter && /* @__PURE__ */ jsx8(Collapse2, { in: filterPanelOpen, children: /* @__PURE__ */ jsxs8("div", { className: "collection-list-filter-panel", "data-testid": "collection-list-filter-panel", children: [
+      /* @__PURE__ */ jsxs8(Group8, { justify: "space-between", mb: "xs", children: [
+        /* @__PURE__ */ jsx8(Text6, { size: "sm", fw: 600, children: "Filters" }),
+        activeFilterCount > 0 && /* @__PURE__ */ jsx8(
+          Button6,
           {
             variant: "subtle",
             size: "compact-xs",
-            leftSection: /* @__PURE__ */ jsx4(IconFilterOff, { size: 14 }),
+            leftSection: /* @__PURE__ */ jsx8(IconFilterOff, { size: 14 }),
             onClick: handleClearFilter,
             "data-testid": "collection-list-clear-filters",
             children: "Clear all"
           }
         )
       ] }),
-      /* @__PURE__ */ jsx4(
+      /* @__PURE__ */ jsx8(
         FilterPanel,
         {
           fields: permittedFields,
@@ -1571,17 +1977,17 @@ var CollectionList = ({
         }
       )
     ] }) }),
-    error && /* @__PURE__ */ jsx4(
+    error && /* @__PURE__ */ jsx8(
       Alert2,
       {
-        icon: /* @__PURE__ */ jsx4(IconAlertCircle2, { size: 16 }),
+        icon: /* @__PURE__ */ jsx8(IconAlertCircle2, { size: 16 }),
         color: "red",
         "data-testid": "collection-list-error",
         mt: "xs",
         children: error
       }
     ),
-    /* @__PURE__ */ jsx4(
+    /* @__PURE__ */ jsx8(
       VTable,
       {
         headers,
@@ -1596,52 +2002,42 @@ var CollectionList = ({
         fixedHeader: true,
         loading,
         loadingText: "Loading items...",
-        noItemsText: hasAppliedFilter ? "No results \u2014 try adjusting your search or filters" : "No items in this collection",
+        noItemsText: isFiltered ? "No results \u2014 try adjusting your search or filters" : "No items in this collection",
         rowHeight,
         selectionUseKeys: true,
         clickable: !!onItemClick,
         renderCell: fieldTypeRenderCell,
         renderHeaderContextMenu: enableHeaderMenu ? renderHeaderContextMenu : void 0,
         renderHeaderAppend: enableAddField ? renderHeaderAppend : void 0,
-        renderFooter: () => /* @__PURE__ */ jsxs4("div", { className: "collection-list-footer", "data-testid": "collection-list-footer", children: [
-          /* @__PURE__ */ jsx4(Text4, { size: "sm", c: "dimmed", "data-testid": "collection-list-footer-count", children: itemCountDisplay }),
-          /* @__PURE__ */ jsxs4(Group4, { gap: "sm", children: [
-            /* @__PURE__ */ jsxs4(Group4, { gap: 4, children: [
-              /* @__PURE__ */ jsx4(Text4, { size: "xs", c: "dimmed", children: "Per page:" }),
-              /* @__PURE__ */ jsx4(
-                Select2,
-                {
-                  value: String(limit),
-                  onChange: (value) => {
-                    if (value) {
-                      setLimit(Number(value));
-                      setPage(1);
-                    }
-                  },
-                  data: ["25", "50", "100", "250"],
-                  size: "xs",
-                  className: "collection-list-per-page-select",
-                  "data-testid": "collection-list-per-page"
-                }
-              )
-            ] }),
-            totalPages > 1 && /* @__PURE__ */ jsx4(
-              Pagination,
-              {
-                value: page,
-                onChange: setPage,
-                total: totalPages,
-                size: "sm",
-                "data-testid": "collection-list-pagination-control"
-              }
-            )
-          ] })
-        ] }),
+        renderFooter: () => /* @__PURE__ */ jsx8(
+          CollectionListFooter,
+          {
+            itemCountDisplay,
+            limit,
+            onLimitChange: (val) => {
+              setLimit(val);
+              setPage(1);
+            },
+            page,
+            onPageChange: setPage,
+            totalPages
+          }
+        ),
         onUpdate: setSelectedItems,
         onSortChange: handleSortChange,
         onHeadersChange: handleHeadersChange,
         onRowClick: onItemClick ? ({ item }) => onItemClick(item) : void 0,
         "data-testid": "collection-list-table"
+      }
+    ),
+    /* @__PURE__ */ jsx8(
+      DeleteConfirmModal,
+      {
+        opened: deleteConfirmOpen,
+        count: deletingIds.length,
+        loading: deleteLoading,
+        onConfirm: handleDeleteConfirm,
+        onCancel: handleDeleteCancel
       }
     )
   ] });
@@ -1652,12 +2048,12 @@ import { useState as useState4, useMemo as useMemo4, useCallback as useCallback4
 import {
   NavLink,
   TextInput as TextInput3,
-  Stack as Stack4,
+  Stack as Stack5,
   ScrollArea,
-  Text as Text5,
+  Text as Text7,
   Menu as Menu4,
-  ActionIcon as ActionIcon4,
-  Group as Group5,
+  ActionIcon as ActionIcon6,
+  Group as Group9,
   Box,
   UnstyledButton
 } from "@mantine/core";
@@ -1673,20 +2069,20 @@ import {
   IconDatabase,
   IconBox
 } from "@tabler/icons-react";
-import { Fragment as Fragment2, jsx as jsx5, jsxs as jsxs5 } from "react/jsx-runtime";
+import { Fragment as Fragment2, jsx as jsx9, jsxs as jsxs9 } from "react/jsx-runtime";
 function CollectionIcon({ icon, color }) {
   const iconColor = color || void 0;
   const size = 18;
   switch (icon) {
     case "box":
-      return /* @__PURE__ */ jsx5(IconBox, { size, color: iconColor });
+      return /* @__PURE__ */ jsx9(IconBox, { size, color: iconColor });
     case "folder":
     case "folder_open":
-      return /* @__PURE__ */ jsx5(IconFolder, { size, color: iconColor });
+      return /* @__PURE__ */ jsx9(IconFolder, { size, color: iconColor });
     case "database":
-      return /* @__PURE__ */ jsx5(IconDatabase, { size, color: iconColor });
+      return /* @__PURE__ */ jsx9(IconDatabase, { size, color: iconColor });
     default:
-      return /* @__PURE__ */ jsx5(IconTable, { size, color: iconColor });
+      return /* @__PURE__ */ jsx9(IconTable, { size, color: iconColor });
   }
 }
 function NavigationItem({
@@ -1740,8 +2136,8 @@ function NavigationItem({
       onToggleGroup(node.collection);
     }
   };
-  const label = /* @__PURE__ */ jsx5(Group5, { gap: 4, wrap: "nowrap", children: /* @__PURE__ */ jsx5(
-    Text5,
+  const label = /* @__PURE__ */ jsx9(Group9, { gap: 4, wrap: "nowrap", children: /* @__PURE__ */ jsx9(
+    Text7,
     {
       size: dense ? "sm" : void 0,
       fw: isActive ? 600 : 400,
@@ -1750,9 +2146,9 @@ function NavigationItem({
       children: node.name || node.collection
     }
   ) });
-  const contextMenu = isAdmin && hasSchema ? /* @__PURE__ */ jsxs5(Menu4, { shadow: "md", width: 200, position: "bottom-start", withArrow: true, children: [
-    /* @__PURE__ */ jsx5(Menu4.Target, { children: /* @__PURE__ */ jsx5(
-      ActionIcon4,
+  const contextMenu = isAdmin && hasSchema ? /* @__PURE__ */ jsxs9(Menu4, { shadow: "md", width: 200, position: "bottom-start", withArrow: true, children: [
+    /* @__PURE__ */ jsx9(Menu4.Target, { children: /* @__PURE__ */ jsx9(
+      ActionIcon6,
       {
         variant: "subtle",
         size: "xs",
@@ -1761,27 +2157,27 @@ function NavigationItem({
         },
         style: { opacity: 0, transition: "opacity 150ms" },
         className: "nav-item-action",
-        children: /* @__PURE__ */ jsx5(IconSettings, { size: 14 })
+        children: /* @__PURE__ */ jsx9(IconSettings, { size: 14 })
       }
     ) }),
-    /* @__PURE__ */ jsx5(Menu4.Dropdown, { children: /* @__PURE__ */ jsx5(
+    /* @__PURE__ */ jsx9(Menu4.Dropdown, { children: /* @__PURE__ */ jsx9(
       Menu4.Item,
       {
-        leftSection: /* @__PURE__ */ jsx5(IconDatabase, { size: 14 }),
+        leftSection: /* @__PURE__ */ jsx9(IconDatabase, { size: 14 }),
         onClick: () => onEditCollection?.(node.collection),
         children: "Edit Collection"
       }
     ) })
   ] }) : null;
   if (isGroupWithContent) {
-    return /* @__PURE__ */ jsx5(Fragment2, { children: /* @__PURE__ */ jsxs5(
+    return /* @__PURE__ */ jsx9(Fragment2, { children: /* @__PURE__ */ jsxs9(
       NavLink,
       {
         label,
-        leftSection: /* @__PURE__ */ jsx5(CollectionIcon, { icon: node.icon, color: node.color }),
-        rightSection: /* @__PURE__ */ jsxs5(Group5, { gap: 4, children: [
+        leftSection: /* @__PURE__ */ jsx9(CollectionIcon, { icon: node.icon, color: node.color }),
+        rightSection: /* @__PURE__ */ jsxs9(Group9, { gap: 4, children: [
           contextMenu,
-          !isLocked && /* @__PURE__ */ jsx5(
+          !isLocked && /* @__PURE__ */ jsx9(
             IconChevronRight,
             {
               size: 14,
@@ -1807,7 +2203,7 @@ function NavigationItem({
           }
         },
         children: [
-          node.children.map((child) => /* @__PURE__ */ jsx5(
+          node.children.map((child) => /* @__PURE__ */ jsx9(
             NavigationItem,
             {
               node: child,
@@ -1824,11 +2220,11 @@ function NavigationItem({
             },
             child.collection
           )),
-          collectionBookmarks.map((bookmark) => /* @__PURE__ */ jsx5(
+          collectionBookmarks.map((bookmark) => /* @__PURE__ */ jsx9(
             NavLink,
             {
-              label: /* @__PURE__ */ jsx5(Text5, { size: "sm", truncate: true, children: bookmark.bookmark || "Untitled Bookmark" }),
-              leftSection: /* @__PURE__ */ jsx5(
+              label: /* @__PURE__ */ jsx9(Text7, { size: "sm", truncate: true, children: bookmark.bookmark || "Untitled Bookmark" }),
+              leftSection: /* @__PURE__ */ jsx9(
                 IconBookmark,
                 {
                   size: 16,
@@ -1845,11 +2241,11 @@ function NavigationItem({
       }
     ) });
   }
-  return /* @__PURE__ */ jsx5(
+  return /* @__PURE__ */ jsx9(
     NavLink,
     {
       label,
-      leftSection: /* @__PURE__ */ jsx5(CollectionIcon, { icon: node.icon, color: node.color }),
+      leftSection: /* @__PURE__ */ jsx9(CollectionIcon, { icon: node.icon, color: node.color }),
       rightSection: contextMenu,
       active: isActive,
       onClick: handleClick,
@@ -1891,7 +2287,7 @@ var ContentNavigation = ({
     [onSearchChange]
   );
   if (loading) {
-    return /* @__PURE__ */ jsx5(Stack4, { gap: "xs", p: "md", children: Array.from({ length: 6 }).map((_, i) => /* @__PURE__ */ jsx5(
+    return /* @__PURE__ */ jsx9(Stack5, { gap: "xs", p: "md", children: Array.from({ length: 6 }).map((_, i) => /* @__PURE__ */ jsx9(
       Box,
       {
         h: dense ? 28 : 36,
@@ -1902,25 +2298,25 @@ var ContentNavigation = ({
     )) });
   }
   if (rootCollections.length === 0) {
-    return /* @__PURE__ */ jsxs5(Stack4, { gap: "md", p: "md", align: "center", justify: "center", style: { minHeight: 200 }, children: [
-      /* @__PURE__ */ jsx5(IconBox, { size: 48, color: "var(--mantine-color-gray-5)" }),
-      /* @__PURE__ */ jsx5(Text5, { c: "dimmed", ta: "center", size: "sm", children: "No collections available" }),
-      isAdmin && /* @__PURE__ */ jsx5(Text5, { c: "dimmed", ta: "center", size: "xs", children: "Create your first collection in the data model settings" })
+    return /* @__PURE__ */ jsxs9(Stack5, { gap: "md", p: "md", align: "center", justify: "center", style: { minHeight: 200 }, children: [
+      /* @__PURE__ */ jsx9(IconBox, { size: 48, color: "var(--mantine-color-gray-5)" }),
+      /* @__PURE__ */ jsx9(Text7, { c: "dimmed", ta: "center", size: "sm", children: "No collections available" }),
+      isAdmin && /* @__PURE__ */ jsx9(Text7, { c: "dimmed", ta: "center", size: "xs", children: "Create your first collection in the data model settings" })
     ] });
   }
-  return /* @__PURE__ */ jsxs5(Stack4, { gap: 0, style: { minHeight: "100%" }, children: [
-    showSearch && /* @__PURE__ */ jsx5(Box, { p: "sm", pb: 0, style: { position: "sticky", top: 0, zIndex: 1 }, children: /* @__PURE__ */ jsx5(
+  return /* @__PURE__ */ jsxs9(Stack5, { gap: 0, style: { minHeight: "100%" }, children: [
+    showSearch && /* @__PURE__ */ jsx9(Box, { p: "sm", pb: 0, style: { position: "sticky", top: 0, zIndex: 1 }, children: /* @__PURE__ */ jsx9(
       TextInput3,
       {
         value: search,
         onChange: (e) => handleSearchChange(e.currentTarget.value),
         placeholder: "Search collections...",
-        leftSection: /* @__PURE__ */ jsx5(IconSearch2, { size: 16 }),
+        leftSection: /* @__PURE__ */ jsx9(IconSearch2, { size: 16 }),
         size: dense ? "xs" : "sm",
         type: "search"
       }
     ) }),
-    /* @__PURE__ */ jsx5(ScrollArea, { style: { flex: 1 }, p: "xs", children: /* @__PURE__ */ jsx5("nav", { children: rootCollections.map((node) => /* @__PURE__ */ jsx5(
+    /* @__PURE__ */ jsx9(ScrollArea, { style: { flex: 1 }, p: "xs", children: /* @__PURE__ */ jsx9("nav", { children: rootCollections.map((node) => /* @__PURE__ */ jsx9(
       NavigationItem,
       {
         node,
@@ -1937,7 +2333,7 @@ var ContentNavigation = ({
       },
       node.collection
     )) }) }),
-    hasHiddenCollections && onToggleHidden && /* @__PURE__ */ jsx5(
+    hasHiddenCollections && onToggleHidden && /* @__PURE__ */ jsx9(
       Box,
       {
         p: "xs",
@@ -1946,14 +2342,14 @@ var ContentNavigation = ({
           position: "sticky",
           bottom: 0
         },
-        children: /* @__PURE__ */ jsxs5(
+        children: /* @__PURE__ */ jsxs9(
           UnstyledButton,
           {
             onClick: onToggleHidden,
             style: { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "4px 8px" },
             children: [
-              showHidden ? /* @__PURE__ */ jsx5(IconEyeOff2, { size: 16 }) : /* @__PURE__ */ jsx5(IconEye, { size: 16 }),
-              /* @__PURE__ */ jsx5(Text5, { size: "xs", c: "dimmed", children: showHidden ? "Hide hidden collections" : "Show hidden collections" })
+              showHidden ? /* @__PURE__ */ jsx9(IconEyeOff2, { size: 16 }) : /* @__PURE__ */ jsx9(IconEye, { size: 16 }),
+              /* @__PURE__ */ jsx9(Text7, { size: "xs", c: "dimmed", children: showHidden ? "Hide hidden collections" : "Show hidden collections" })
             ]
           }
         )
@@ -1966,8 +2362,8 @@ var ContentNavigation = ({
 import { useCallback as useCallback5 } from "react";
 import {
   AppShell,
-  Group as Group6,
-  ActionIcon as ActionIcon5,
+  Group as Group10,
+  ActionIcon as ActionIcon7,
   Title,
   Breadcrumbs,
   Anchor,
@@ -1981,7 +2377,7 @@ import {
   IconMenu2,
   IconChevronRight as IconChevronRight2
 } from "@tabler/icons-react";
-import { jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
+import { jsx as jsx10, jsxs as jsxs10 } from "react/jsx-runtime";
 var ContentLayout = ({
   title,
   icon,
@@ -2008,7 +2404,7 @@ var ContentLayout = ({
     },
     []
   );
-  return /* @__PURE__ */ jsxs6(
+  return /* @__PURE__ */ jsxs10(
     AppShell,
     {
       navbar: {
@@ -2023,9 +2419,9 @@ var ContentLayout = ({
       } : void 0,
       padding: 0,
       children: [
-        /* @__PURE__ */ jsx6(AppShell.Navbar, { p: 0, children: /* @__PURE__ */ jsx6(AppShell.Section, { grow: true, component: ScrollArea2, children: sidebar }) }),
-        /* @__PURE__ */ jsxs6(AppShell.Main, { children: [
-          /* @__PURE__ */ jsxs6(
+        /* @__PURE__ */ jsx10(AppShell.Navbar, { p: 0, children: /* @__PURE__ */ jsx10(AppShell.Section, { grow: true, component: ScrollArea2, children: sidebar }) }),
+        /* @__PURE__ */ jsxs10(AppShell.Main, { children: [
+          /* @__PURE__ */ jsxs10(
             Box2,
             {
               py: "sm",
@@ -2040,8 +2436,8 @@ var ContentLayout = ({
                 backgroundColor: "var(--mantine-color-body)"
               },
               children: [
-                (breadcrumbs || headline) && /* @__PURE__ */ jsxs6(Group6, { gap: 4, mb: 4, children: [
-                  isMobile && /* @__PURE__ */ jsx6(
+                (breadcrumbs || headline) && /* @__PURE__ */ jsxs10(Group10, { gap: 4, mb: 4, children: [
+                  isMobile && /* @__PURE__ */ jsx10(
                     Burger,
                     {
                       opened: sidebarOpened,
@@ -2050,13 +2446,13 @@ var ContentLayout = ({
                       hiddenFrom: "sm"
                     }
                   ),
-                  !isMobile && !sidebarOpened && /* @__PURE__ */ jsx6(ActionIcon5, { variant: "subtle", onClick: toggleSidebar, size: "sm", mr: 4, children: /* @__PURE__ */ jsx6(IconMenu2, { size: 16 }) }),
-                  breadcrumbs && breadcrumbs.length > 0 && /* @__PURE__ */ jsx6(
+                  !isMobile && !sidebarOpened && /* @__PURE__ */ jsx10(ActionIcon7, { variant: "subtle", onClick: toggleSidebar, size: "sm", mr: 4, children: /* @__PURE__ */ jsx10(IconMenu2, { size: 16 }) }),
+                  breadcrumbs && breadcrumbs.length > 0 && /* @__PURE__ */ jsx10(
                     Breadcrumbs,
                     {
-                      separator: /* @__PURE__ */ jsx6(IconChevronRight2, { size: 12 }),
+                      separator: /* @__PURE__ */ jsx10(IconChevronRight2, { size: 12 }),
                       style: { fontSize: "var(--mantine-font-size-xs)" },
-                      children: breadcrumbs.map((item, idx) => /* @__PURE__ */ jsx6(
+                      children: breadcrumbs.map((item, idx) => /* @__PURE__ */ jsx10(
                         Anchor,
                         {
                           href: item.href || "#",
@@ -2071,27 +2467,27 @@ var ContentLayout = ({
                   ),
                   headline
                 ] }),
-                /* @__PURE__ */ jsxs6(Group6, { justify: "space-between", wrap: "nowrap", children: [
-                  /* @__PURE__ */ jsxs6(Group6, { gap: "sm", wrap: "nowrap", style: { minWidth: 0 }, children: [
-                    showBack && onBack && /* @__PURE__ */ jsx6(ActionIcon5, { variant: "subtle", onClick: onBack, size: "md", children: /* @__PURE__ */ jsx6(
+                /* @__PURE__ */ jsxs10(Group10, { justify: "space-between", wrap: "nowrap", children: [
+                  /* @__PURE__ */ jsxs10(Group10, { gap: "sm", wrap: "nowrap", style: { minWidth: 0 }, children: [
+                    showBack && onBack && /* @__PURE__ */ jsx10(ActionIcon7, { variant: "subtle", onClick: onBack, size: "md", children: /* @__PURE__ */ jsx10(
                       IconChevronRight2,
                       {
                         size: 18,
                         style: { transform: "rotate(180deg)" }
                       }
                     ) }),
-                    icon && /* @__PURE__ */ jsx6(Box2, { c: iconColor, style: { display: "flex", alignItems: "center" }, children: icon }),
-                    loading ? /* @__PURE__ */ jsx6(Skeleton, { width: 200, height: 28 }) : title && /* @__PURE__ */ jsx6(Title, { order: 3, lineClamp: 1, style: { minWidth: 0 }, children: title }),
+                    icon && /* @__PURE__ */ jsx10(Box2, { c: iconColor, style: { display: "flex", alignItems: "center" }, children: icon }),
+                    loading ? /* @__PURE__ */ jsx10(Skeleton, { width: 200, height: 28 }) : title && /* @__PURE__ */ jsx10(Title, { order: 3, lineClamp: 1, style: { minWidth: 0 }, children: title }),
                     titleAppend
                   ] }),
-                  actions && /* @__PURE__ */ jsx6(Group6, { gap: "xs", wrap: "nowrap", children: actions })
+                  actions && /* @__PURE__ */ jsx10(Group10, { gap: "xs", wrap: "nowrap", children: actions })
                 ] })
               ]
             }
           ),
-          /* @__PURE__ */ jsx6(Box2, { style: { flex: 1 }, children })
+          /* @__PURE__ */ jsx10(Box2, { style: { flex: 1 }, children })
         ] }),
-        sidebarDetail && /* @__PURE__ */ jsx6(AppShell.Aside, { p: "md", children: /* @__PURE__ */ jsx6(AppShell.Section, { grow: true, component: ScrollArea2, children: sidebarDetail }) })
+        sidebarDetail && /* @__PURE__ */ jsx10(AppShell.Aside, { p: "md", children: /* @__PURE__ */ jsx10(AppShell.Section, { grow: true, component: ScrollArea2, children: sidebarDetail }) })
       ]
     }
   );

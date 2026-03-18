@@ -24,6 +24,18 @@ export interface DaaSConfig {
    * If both `token` and `getToken` are provided, `token` takes precedence.
    */
   getToken?: () => Promise<string | null>;
+  /**
+   * Async function to provide extra request headers for every DaaS call.
+   * Use for scope-based RBAC: inject `X-Resource-Uri` from the active tenant cookie.
+   * @example
+   * ```ts
+   * getHeaders: async () => {
+   *   const raw = document.cookie.split('; ').find(r => r.startsWith('daas_resource_uri='))?.split('=')[1];
+   *   return raw ? { 'X-Resource-Uri': decodeURIComponent(raw) } : {};
+   * }
+   * ```
+   */
+  getHeaders?: () => Promise<Record<string, string>>;
 }
 
 /**
@@ -64,6 +76,12 @@ export interface DaaSContextValue {
   authError: string | null;
   /** Refresh current user */
   refreshUser: () => Promise<void>;
+  /**
+   * True when the browser is calling DaaS directly (always true inside DaaSProvider).
+   * Equivalent to `config !== null`. Kept for backwards-compatibility with hooks
+   * that branch on direct-mode vs proxy-mode.
+   */
+  isDirectMode: boolean;
 }
 
 const DaaSContext = createContext<DaaSContextValue | null>(null);
@@ -212,6 +230,7 @@ export function DaaSProvider({
     authLoading,
     authError,
     refreshUser,
+    isDirectMode: true,
   }), [config, buildUrl, getHeaders, refreshToken, user, authLoading, authError, refreshUser]);
 
   // Sync config to global eagerly so non-React services (FieldsService, etc.)
@@ -317,6 +336,11 @@ export async function getApiHeadersAsync(config?: DaaSConfig | null): Promise<Re
   } else if (effectiveConfig?.getToken) {
     const tok = await effectiveConfig.getToken();
     if (tok) headers['Authorization'] = `Bearer ${tok}`;
+  }
+
+  if (effectiveConfig?.getHeaders) {
+    const extra = await effectiveConfig.getHeaders();
+    Object.assign(headers, extra);
   }
 
   return headers;

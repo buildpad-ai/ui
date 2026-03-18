@@ -9,6 +9,10 @@ export { apiRequest, type ApiRequestOptions } from "./api-request";
 export { CollectionsService, createCollectionsService } from "./collections";
 export { FieldsService, createFieldsService } from "./fields";
 export {
+  ItemsService,
+  createItemsService,
+} from "./items";
+export {
   PermissionsService,
   createPermissionsService,
   type CollectionAccess,
@@ -31,4 +35,5 @@ export {
   type DaaSConfig,
   type DaaSContextValue,
   type DaaSProviderProps,
+  type DaaSUser,
 } from "./daas-context";

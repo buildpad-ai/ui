@@ -319,7 +319,7 @@
     },
     "api-routes": {
       "name": "api-routes",
-      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files)",
+      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout",
       "files": [
         {
           "source": "cli/templates/api/auth-login-route.ts",
@@ -364,6 +364,14 @@
         {
           "source": "cli/templates/api/daas-files-route.ts",
           "target": "app/api/files/route.ts"
+        },
+        {
+          "source": "cli/templates/components/DaaSProviderWrapper.tsx",
+          "target": "components/DaaSProviderWrapper.tsx"
+        },
+        {
+          "source": "cli/templates/app/authenticated-layout.tsx",
+          "target": "app/(authenticated)/layout.tsx"
         }
       ],
       "internalDependencies": [
@@ -612,6 +620,10 @@
         {
           "source": "ui-interfaces/src/input-hash/InputHash.tsx",
           "target": "components/ui/input-hash.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/input-hash/InputHash.css",
+          "target": "components/ui/InputHash.css"
         }
       ],
       "dependencies": [
@@ -644,6 +656,10 @@
         {
           "source": "ui-interfaces/src/system-token/SystemToken.tsx",
           "target": "components/ui/system-token.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-token/SystemToken.css",
+          "target": "components/ui/SystemToken.css"
         }
       ],
       "dependencies": [
