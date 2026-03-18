@@ -141,6 +141,7 @@ export type PermissionAction = 'create' | 'read' | 'update' | 'delete' | 'share'
 export interface Permission {
   id: string;
   role: string | null;
+  policy?: string | null;
   collection: string;
   action: PermissionAction;
   permissions?: Filter | null;
