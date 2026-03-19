@@ -129,7 +129,7 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
         )}
         <Alert 
           icon={<IconAlertCircle size={16} />} 
-          color="blue" 
+          color="info" 
           variant="light"
         >
           <Text size="sm">

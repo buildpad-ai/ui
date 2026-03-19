@@ -260,7 +260,7 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
             {/* Section 1: Related Item Fields */}
             <Box>
                 <Group gap="xs" mb="sm">
-                    <Badge color="blue" variant="light" size="lg">
+                    <Badge color="accent" variant="light" size="lg">
                         {targetCollection}
                     </Badge>
                     <Text size="sm" c="dimmed">

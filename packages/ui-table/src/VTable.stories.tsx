@@ -753,7 +753,7 @@ export const WithCustomHeaders: Story = {
         itemKey="id"
         renderHeader={(header: Header) => (
           <Group gap={4} wrap="nowrap">
-            <Badge size="xs" variant="light" color="blue">
+            <Badge size="xs" variant="light" color="accent">
               {header.value}
             </Badge>
             <Text size="xs" fw={600} truncate>

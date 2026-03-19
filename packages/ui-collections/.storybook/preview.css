@@ -1,7 +1,6 @@
-.storybook-wrapper {
-  padding: 1rem;
-  max-width: 1000px;
-  margin: 0 auto;
+/* ui-collections — medium-width collection layout */
+.sb-collections-wrapper {
+  max-width: 1040px;
 }
 
 .storybook-fullscreen {
@@ -10,6 +9,6 @@
 
 .storybook-nav-wrapper {
   width: 260px;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
+  border: 1px solid #d9cfbe;
+  border-radius: 0.5rem;
 }

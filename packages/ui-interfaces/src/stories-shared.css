@@ -59,18 +59,15 @@
 .story-form-container {
   max-width: 400px;
   padding: 2rem;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--mantine-color-gray-3, #d9cfbe);
   border-radius: 8px;
-  background-color: #f8f9fa;
+  background-color: var(--mantine-color-gray-0, #f7f5ef);
 }
 
 .story-form-container-lg {
   max-width: 500px;
   padding: 2rem;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-}
-
+  border: 1px solid var(--mantine-color-gray-3, #d9cfbe);
 /* Form heading */
 .story-form-heading {
   margin-top: 0;
@@ -92,7 +89,7 @@
 
 /* Dashed border container */
 .story-dashed-container {
-  border: 1px dashed #ccc;
+  border: 1px dashed var(--mantine-color-gray-4, #ccc);
   padding: 10px;
 }
 
@@ -106,6 +103,6 @@
 /* Comparison description text */
 .story-description {
   font-size: 14px;
-  color: #666;
+  color: var(--mantine-color-gray-6, #6f6558);
   margin-bottom: 1.5rem;
 }

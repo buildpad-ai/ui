@@ -1,5 +1,4 @@
-.storybook-wrapper {
-  padding: 1rem;
-  max-width: 800px;
-  margin: 0 auto;
+/* ui-form — constrained form layout */
+.sb-form-wrapper {
+  max-width: 760px;
 }

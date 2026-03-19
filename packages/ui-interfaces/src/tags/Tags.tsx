@@ -295,7 +295,6 @@ export function Tags({
                         disabled={disabled}
                         size="sm"
                         variant="filled"
-                        color="blue"
                         styles={(theme) => ({
                           root: {
                             cursor: disabled ? 'default' : 'pointer',

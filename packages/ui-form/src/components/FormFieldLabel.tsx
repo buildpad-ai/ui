@@ -29,7 +29,7 @@ export const FormFieldLabel: React.FC<FormFieldLabelProps> = ({
       component="label"
       size="sm"
       fw={500}
-      style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 'var(--mantine-spacing-xs, 4px)' }}
     >
       {label}
       {required && (

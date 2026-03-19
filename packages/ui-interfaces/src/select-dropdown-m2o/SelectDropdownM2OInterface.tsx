@@ -103,7 +103,7 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
         )}
         <Alert 
           icon={<IconAlertCircle size={16} />} 
-          color="blue" 
+          color="info" 
           variant="light"
         >
           <Text size="sm">

@@ -221,7 +221,7 @@ const DaaSListPlayground: React.FC = () => {
   // ── Loading state ──
   if (isLoading && !connectionStatus) {
     return (
-      <Alert color="blue">
+      <Alert color="info">
         <Text size="sm">Checking connection to Storybook Host...</Text>
       </Alert>
     );
@@ -402,7 +402,7 @@ pnpm dev:host
           </Paper>
           </>
         ) : (
-          <Alert color="blue" title="Select a Collection" icon={<IconDatabase size={16} />}>
+          <Alert color="info" title="Select a Collection" icon={<IconDatabase size={16} />}>
             <Text size="sm">
               Select a collection from the dropdown and click &quot;Load Collection&quot; to see the list.
             </Text>

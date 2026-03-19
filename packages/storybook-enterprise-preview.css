@@ -1,0 +1,90 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap");
+
+/* ═══════════════════════════════════════════════════════════
+   Buildpad Storybook Preview — shared across all packages
+   Warm, earthy palette from storybook-host.
+   Import in each .storybook/preview.css.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Canvas Background ────────────────────────────────────── */
+.docs-story {
+  background: #ffffff;
+}
+
+/* ── Wrapper ──────────────────────────────────────────────── */
+.sb-enterprise-wrapper {
+  padding: 1.5rem 2rem;
+  margin: 0 auto;
+  font-family: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  color: #191612;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Focus Ring ───────────────────────────────────────────── */
+.sb-enterprise-wrapper :focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(227, 91, 42, 0.18);
+  border-radius: 4px;
+}
+
+/* ── Input Focus ──────────────────────────────────────────── */
+.sb-enterprise-wrapper .mantine-Input-input:focus,
+.sb-enterprise-wrapper .mantine-Input-input:focus-within {
+  border-color: #e35b2a;
+  box-shadow: 0 0 0 3px rgba(227, 91, 42, 0.18);
+}
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.sb-enterprise-wrapper .mantine-Tabs-tab {
+  transition: background 0.15s, color 0.15s;
+}
+
+.sb-enterprise-wrapper .mantine-Tabs-tab:hover {
+  background-color: #f7f1e6;
+  color: #191612;
+}
+
+.sb-enterprise-wrapper .mantine-Tabs-tab[data-active],
+.sb-enterprise-wrapper .mantine-Tabs-tab[data-active]:hover {
+  color: #e35b2a;
+  border-bottom-color: #e35b2a;
+  font-weight: 600;
+}
+
+/* ── Action Icon ──────────────────────────────────────────── */
+.sb-enterprise-wrapper .mantine-ActionIcon-root {
+  transition: all 0.15s;
+}
+
+.sb-enterprise-wrapper .mantine-ActionIcon-root:hover {
+  background-color: #f7f1e6;
+}
+
+/* ── Button Hover Lift ────────────────────────────────────── */
+.sb-enterprise-wrapper .mantine-Button-root:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Cards ────────────────────────────────────────────────── */
+.sb-enterprise-wrapper .mantine-Card-root {
+  border: 1px solid #d9cfbe;
+  box-shadow: 0 12px 28px rgba(25, 22, 18, 0.05);
+}
+
+/* ── Notification Accents ─────────────────────────────────── */
+.sb-enterprise-wrapper .mantine-Notification-root[data-variant="success"] {
+  border-left-color: #059669;
+}
+
+.sb-enterprise-wrapper .mantine-Notification-root[data-variant="error"] {
+  border-left-color: #dc2626;
+}
+
+.sb-enterprise-wrapper .mantine-Notification-root[data-variant="warning"] {
+  border-left-color: #d97706;
+}
+
+.sb-enterprise-wrapper .mantine-Notification-root[data-variant="info"] {
+  border-left-color: #0284c7;
+}

@@ -132,7 +132,7 @@ export function GroupDetailFormDemo() {
                 )}
                 start="closed"
                 headerIcon="location_on"
-                headerColor="#059669"
+                headerColor="var(--ds-success, #059669)"
                 badge="Optional"
                 onChange={(groupValues) => {
                   // Update form values for address fields
@@ -184,7 +184,7 @@ export function GroupDetailFormDemo() {
                 )}
                 start="open"
                 headerIcon="business"
-                headerColor="#7c3aed"
+                headerColor="var(--ds-secondary, #7c3aed)"
                 onChange={(groupValues) => {
                   // Update form values for company fields
                   Object.keys(groupValues).forEach(fieldName => {
@@ -215,7 +215,7 @@ export function GroupDetailFormDemo() {
 
               {/* Form Actions */}
               <Group mt="xl">
-                <Button type="submit" color="blue">
+                <Button type="submit">
                   Submit Form
                 </Button>
                 <Button onClick={validateForm} color="red" variant="outline">
@@ -235,9 +235,9 @@ export function GroupDetailFormDemo() {
               {/* Current Form State */}
               <Title order={4} mt="xl">Current Form Data:</Title>
               <pre style={{ 
-                background: '#f8f9fa', 
+                background: 'var(--mantine-color-gray-0)', 
                 padding: '1rem', 
-                borderRadius: '0.5rem',
+                borderRadius: 'var(--mantine-radius-sm)',
                 fontSize: '0.875rem',
                 overflow: 'auto'
               }}>

@@ -113,7 +113,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
         description={description}
         error={error}
         data-testid={testId}
-        style={{ fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace' }}
+        style={{ fontFamily: 'var(--mantine-font-family-monospace, monospace)' }}
         classNames={value && !localValue ? { input: 'system-token-saved' } : undefined}
         onFocus={handleFocus}
         onBlur={handleBlur}
@@ -166,7 +166,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
             ) : (
               <IconKey
                 size={16}
-                style={{ color: hasToken ? 'var(--mantine-color-blue-6)' : 'var(--mantine-color-gray-5)' }}
+                style={{ color: hasToken ? 'var(--mantine-primary-color-6)' : 'var(--mantine-color-gray-5)' }}
                 data-testid={testId ? `${testId}-key-icon` : undefined}
               />
             )}
@@ -177,7 +177,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
 
       {isNewTokenGenerated && value && (
         <Alert
-          color="blue"
+          color="info"
           mt="sm"
           data-testid={testId ? `${testId}-notice` : undefined}
         >

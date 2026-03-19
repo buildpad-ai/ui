@@ -847,7 +847,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
             Reset system permissions to:{' '}
             <span
               onClick={() => { setResetMode('minimum'); setResetDialogOpen(true); }}
-              style={{ cursor: 'pointer', color: 'var(--mantine-color-blue-6)', textDecoration: 'underline' }}
+              style={{ cursor: 'pointer', color: 'var(--mantine-primary-color-6)', textDecoration: 'underline' }}
               role="button"
               tabIndex={0}
               data-testid={testId ? `${testId}-reset-minimum` : undefined}
@@ -857,7 +857,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
             {' / '}
             <span
               onClick={() => { setResetMode('recommended'); setResetDialogOpen(true); }}
-              style={{ cursor: 'pointer', color: 'var(--mantine-color-blue-6)', textDecoration: 'underline' }}
+              style={{ cursor: 'pointer', color: 'var(--mantine-primary-color-6)', textDecoration: 'underline' }}
               role="button"
               tabIndex={0}
               data-testid={testId ? `${testId}-reset-recommended` : undefined}
@@ -944,7 +944,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
                         <Highlight highlight={collectionSearch} size="sm" fw={500} ff="monospace">
                           {col.collection}
                         </Highlight>
-                        <Badge size="xs" variant="light" color="blue">System</Badge>
+                        <Badge size="xs" variant="light" color="accent">System</Badge>
                       </Group>
                     </Paper>
                   ))}

@@ -266,7 +266,7 @@ const DaaSPlayground: React.FC = () => {
   // ── Loading state ──
   if (isLoading && !connectionStatus) {
     return (
-      <Alert color="blue">
+      <Alert color="info">
         <Text size="sm">Checking connection to Storybook Host...</Text>
       </Alert>
     );
@@ -437,7 +437,7 @@ pnpm dev:host
                     />
 
                     {enforcePermissions && accessibleFields.length > 0 && (
-                      <Alert color="blue" icon={<IconShield size={16} />}>
+                      <Alert color="info" icon={<IconShield size={16} />}>
                         <Text size="sm" fw={600}>
                           {accessibleFields.includes('*')
                             ? 'Full field access (admin or wildcard permission)'
@@ -477,7 +477,7 @@ pnpm dev:host
             </Paper>
           </>
         ) : (
-          <Alert color="blue" title="Select a Collection">
+          <Alert color="info" title="Select a Collection">
             <Text size="sm">
               Select a collection from the dropdown and click Load Fields to see the form.
             </Text>

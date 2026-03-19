@@ -870,11 +870,11 @@ export function SelectIcon({
                               borderRadius: 'var(--mantine-radius-sm)',
                               backgroundColor:
                                 value === iconName
-                                  ? 'var(--mantine-color-blue-light)'
+                                  ? 'var(--mantine-primary-color-light)'
                                   : 'transparent',
                               color:
                                 value === iconName
-                                  ? 'var(--mantine-color-blue-6)'
+                                  ? 'var(--mantine-primary-color-6)'
                                   : 'var(--mantine-color-gray-7)',
                               transition: 'all 150ms ease',
                             }}

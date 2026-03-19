@@ -329,7 +329,6 @@ const SortableM2MTableRow: React.FC<SortableM2MTableRowProps> = ({
                         <Tooltip label={t.navigate_to_item}>
                             <ActionIcon
                                 variant="subtle"
-                                color="blue"
                                 size="sm"
                                 component="a"
                                 href={getItemLink(item) ?? "#"}
@@ -516,7 +515,6 @@ const SortableM2MListItem: React.FC<SortableM2MListItemProps> = ({
                         <Tooltip label={t.navigate_to_item}>
                             <ActionIcon
                                 variant="subtle"
-                                color="blue"
                                 size="sm"
                                 component="a"
                                 href={getItemLink(item) ?? "#"}
@@ -1056,7 +1054,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
             <Alert
                 icon={<IconAlertCircle size={16} />}
                 title={t.relationship_not_setup}
-                color="orange"
+                color="warning"
             >
                 {t.relationship_not_setup_detail}
             </Alert>
@@ -1450,7 +1448,6 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                                 {
                                     label: t.add_selected,
                                     icon: <IconPlus size={14} />,
-                                    color: "blue",
                                     action: handleSelectExisting,
                                 },
                             ]}

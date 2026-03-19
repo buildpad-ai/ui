@@ -1,5 +1,4 @@
-.storybook-wrapper {
-  padding: 1rem;
+/* ui-table — wide data-table layout */
+.sb-table-wrapper {
   max-width: 1200px;
-  margin: 0 auto;
 }

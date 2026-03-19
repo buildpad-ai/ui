@@ -65,8 +65,8 @@ const fileStyles = {
     overflow: 'hidden',
   },
   previewHasFile: {
-    backgroundColor: 'var(--mantine-color-blue-1)',
-    borderColor: 'var(--mantine-color-blue-3)',
+    backgroundColor: 'var(--mantine-primary-color-1)',
+    borderColor: 'var(--mantine-primary-color-3)',
   },
   previewSvg: {
     backgroundColor: 'transparent',

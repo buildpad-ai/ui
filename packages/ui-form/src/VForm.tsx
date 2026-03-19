@@ -486,7 +486,7 @@ export const VForm: React.FC<VFormProps> = ({
     if (!showNoVisibleFields) return null;
 
     return (
-      <Alert icon={<IconInfoCircle size={16} />} color="blue" className={className}>
+      <Alert icon={<IconInfoCircle size={16} />} color="info" className={className}>
         <Text size="sm" fw={600}>No visible fields</Text>
         <Text size="sm" c="dimmed" mt="xs">
           {collection ? `Collection "${collection}" has no visible fields` : 'No fields to display'}

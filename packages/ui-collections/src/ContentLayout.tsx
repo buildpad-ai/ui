@@ -177,7 +177,7 @@ export const ContentLayout: React.FC<ContentLayoutProps> = ({
           style={{
             borderBottom: '1px solid var(--mantine-color-gray-3)',
             boxShadow: showHeaderShadow
-              ? '0 4px 6px -1px rgba(0, 0, 0, 0.07)'
+              ? 'var(--ds-shadow-md, 0 4px 6px -1px rgba(25, 22, 18, 0.07))'
               : undefined,
             transition: 'box-shadow 150ms ease',
             position: 'sticky',
