@@ -1,4 +1,5 @@
-.sb-decorator-pad {
-  padding: 1rem;
-  min-width: 400px;
+/* ui-interfaces — centered single-field layout */
+.sb-interfaces-pad {
+  min-width: 420px;
+  max-width: 560px;
 }

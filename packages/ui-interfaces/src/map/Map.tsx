@@ -356,7 +356,7 @@ export const Map: React.FC<MapProps> = ({
                     {geometryType}
                   </Badge>
                 )}
-                <Badge variant="light" color="blue">
+                <Badge variant="light" color="accent">
                   {geometryFormat.toUpperCase()}
                 </Badge>
               </Group>

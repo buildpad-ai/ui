@@ -633,7 +633,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
             <Alert 
                 icon={<IconAlertCircle size={16} />} 
                 title="No available collections" 
-                color="orange" 
+                color="warning" 
                 data-testid="m2a-no-collections"
             >
                 No non-singleton collections are configured for this M2A relationship.
@@ -647,7 +647,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
             <Alert 
                 icon={<IconAlertCircle size={16} />} 
                 title="Relationship not configured" 
-                color="orange" 
+                color="warning" 
                 data-testid="m2a-not-configured"
             >
                 The many-to-any relationship is not properly configured for this field.
@@ -761,7 +761,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
 
                 {/* Unsaved changes notice */}
                 {!isDemoMode && hasChanges && (
-                    <Alert icon={<IconAlertCircle size={16} />} color="blue" mb="md" data-testid="m2a-unsaved-notice">
+                    <Alert icon={<IconAlertCircle size={16} />} color="info" mb="md" data-testid="m2a-unsaved-notice">
                         You have unsaved changes. Save the parent item to persist them.
                     </Alert>
                 )}
@@ -842,7 +842,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 </Group>
                                             ) : (
                                                 <Group gap="xs">
-                                                    <IconAlertCircle size={14} color="orange" />
+                                                <IconAlertCircle size={14} color="var(--mantine-color-yellow-6)" />
                                                     <Text size="sm" c="dimmed">Invalid item</Text>
                                                 </Group>
                                             )}
@@ -853,7 +853,6 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                     <Tooltip label="View item">
                                                         <ActionIcon
                                                             variant="subtle"
-                                                            color="blue"
                                                             size="sm"
                                                             data-testid={`m2a-link-${item.id}`}
                                                         >
@@ -880,7 +879,6 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                     <Tooltip label="Undo remove">
                                                         <ActionIcon
                                                             variant="subtle"
-                                                            color="blue"
                                                             size="sm"
                                                             onClick={() => handleRemoveItem(item)}
                                                             data-testid={`m2a-undo-${item.id}`}
@@ -946,7 +944,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                         <Group>
                                             {isAllowed ? (
                                                 <Group gap="xs">
-                                                    <Text c="blue" fw={500}>{getItemPrefix(item)}:</Text>
+                                                    <Text c="var(--mantine-primary-color-6)" fw={500}>{getItemPrefix(item)}:</Text>
                                                     <Text td={isDeleted ? 'line-through' : undefined}>
                                                         {getItemDisplayValue(item)}
                                                     </Text>
@@ -956,7 +954,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 </Group>
                                             ) : (
                                                 <Group gap="xs">
-                                                    <IconAlertCircle size={14} color="orange" />
+                                                    <IconAlertCircle size={14} color="var(--mantine-color-yellow-6)" />
                                                     <Text c="dimmed">Invalid item</Text>
                                                 </Group>
                                             )}
@@ -966,7 +964,6 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                             {enableLink && isAllowed && !isDeleted && (
                                                 <ActionIcon
                                                     variant="subtle"
-                                                    color="blue"
                                                     size="sm"
                                                     onClick={(e) => e.stopPropagation()}
                                                     data-testid={`m2a-list-link-${item.id}`}
@@ -978,7 +975,6 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 <Tooltip label="Undo remove">
                                                     <ActionIcon
                                                         variant="subtle"
-                                                        color="blue"
                                                         size="sm"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -1129,7 +1125,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     <Alert 
                         icon={<IconAlertCircle size={16} />} 
                         title="Items will be linked when you save" 
-                        color="blue" 
+                        color="info" 
                         mb="md"
                     >
                         Selected items will be staged locally and saved when you save the parent item.
@@ -1155,7 +1151,6 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                 {
                                     label: "Add Selected",
                                     icon: <IconPlus size={14} />,
-                                    color: "blue",
                                     action: handleSelectItems,
                                 }
                             ]}

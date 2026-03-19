@@ -490,7 +490,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                         input: {
                             fontFamily: 'var(--mantine-font-family-monospace, monospace)',
                             color: availableCollections.some(c => c.collection === selectedCollection)
-                                ? 'var(--mantine-color-blue-6)'
+                                ? 'var(--mantine-primary-color-6)'
                                 : undefined,
                         },
                     }}
@@ -526,12 +526,12 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                                         style={{
                                                             fontFamily: 'var(--mantine-font-family-monospace, monospace)',
                                                             backgroundColor: selectedCollection === col.collection
-                                                                ? 'var(--mantine-color-blue-light)'
+                                                                ? 'var(--mantine-primary-color-light)'
                                                                 : undefined,
                                                         }}
                                                         data-testid={`collection-option-${col.collection}`}
                                                     >
-                                                        <Text size="sm" truncate style={{ fontFamily: 'monospace' }}>
+                                                        <Text size="sm" truncate style={{ fontFamily: 'var(--mantine-font-family-monospace, monospace)' }}>
                                                             {col.collection}
                                                         </Text>
                                                     </Menu.Item>
@@ -553,12 +553,12 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                                         style={{
                                                             fontFamily: 'var(--mantine-font-family-monospace, monospace)',
                                                             backgroundColor: selectedCollection === col.collection
-                                                                ? 'var(--mantine-color-blue-light)'
+                                                                ? 'var(--mantine-primary-color-light)'
                                                                 : undefined,
                                                         }}
                                                         data-testid={`collection-option-${col.collection}`}
                                                     >
-                                                        <Text size="sm" truncate style={{ fontFamily: 'monospace' }}>
+                                                        <Text size="sm" truncate style={{ fontFamily: 'var(--mantine-font-family-monospace, monospace)' }}>
                                                             {col.collection}
                                                         </Text>
                                                     </Menu.Item>
@@ -700,7 +700,6 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                         <Tooltip label="View item">
                             <ActionIcon
                                 variant="subtle"
-                                color="blue"
                                 size="sm"
                                 data-testid="collection-item-dropdown-view-link"
                             >
@@ -780,7 +779,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                                     key={String(itemKey)}
                                                     style={{
                                                         cursor: 'pointer',
-                                                        backgroundColor: isSelected ? 'var(--mantine-color-blue-light)' : undefined,
+                                                        backgroundColor: isSelected ? 'var(--mantine-primary-color-light)' : undefined,
                                                     }}
                                                     onClick={() => {
                                                         handleSelect(itemKey as string | number);
@@ -797,7 +796,6 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                                             <Tooltip label="Select">
                                                                 <ActionIcon
                                                                     variant={isSelected ? 'filled' : 'light'}
-                                                                    color="blue"
                                                                     size="sm"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();

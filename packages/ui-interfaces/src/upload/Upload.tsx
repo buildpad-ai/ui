@@ -341,10 +341,10 @@ export const Upload: React.FC<UploadProps> = ({
         style={{
           borderStyle: 'dashed',
           backgroundColor: isDragOver
-            ? 'var(--mantine-color-blue-0)'
+            ? 'var(--mantine-primary-color-0)'
             : 'var(--mantine-color-gray-0)',
           borderColor: isDragOver
-            ? 'var(--mantine-color-blue-5)'
+            ? 'var(--mantine-primary-color-5)'
             : 'var(--mantine-color-gray-4)',
           transition: 'all 0.2s ease',
         }}
@@ -361,7 +361,7 @@ export const Upload: React.FC<UploadProps> = ({
               <Box
                 style={{
                   color: isDragOver
-                    ? 'var(--mantine-color-blue-6)'
+                    ? 'var(--mantine-primary-color-6)'
                     : 'var(--mantine-color-gray-5)',
                 }}
               >
@@ -516,7 +516,7 @@ export const Upload: React.FC<UploadProps> = ({
                         }}
                       >
                         {file.type?.startsWith('image/') ? (
-                          <IconPhoto size={20} color="var(--mantine-color-blue-6)" />
+                          <IconPhoto size={20} color="var(--mantine-primary-color-6)" />
                         ) : (
                           <IconFolderOpen size={20} color="var(--mantine-color-gray-6)" />
                         )}

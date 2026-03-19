@@ -1,10 +1,18 @@
-/* Global styles using design tokens */
+/* ═══════════════════════════════════════════════════════════
+   Buildpad Global Styles
+   Uses design tokens — do not hard-code colors or spacing.
+   ═══════════════════════════════════════════════════════════ */
+
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap");
+
 body {
   background: var(--ds-body-bg);
   color: var(--ds-body-color);
   font-family: var(--ds-font-family);
   font-size: var(--ds-body-font-size);
   line-height: var(--ds-line-height-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .emoji-icon {
@@ -12,9 +20,14 @@ body {
   line-height: 1;
 }
 
+/* ── Tabs ─────────────────────────────────────────────────── */
+.mantine-Tabs-tab {
+  transition: background var(--ds-transition-fast, 150ms ease), color var(--ds-transition-fast, 150ms ease);
+}
+
 .mantine-Tabs-tab:hover {
-  background-color: var(--ds-gray-100);
-  color: var(--ds-gray-700);
+  background-color: var(--ds-gray-200);
+  color: var(--ds-gray-900);
 }
 
 .mantine-Tabs-tab[data-active],
@@ -24,6 +37,7 @@ body {
   font-weight: 600;
 }
 
+/* ── Notifications ────────────────────────────────────────── */
 .mantine-Notification-root[data-variant="success"] {
   border-left-color: var(--ds-success);
 }
@@ -40,19 +54,37 @@ body {
   border-left-color: var(--ds-info);
 }
 
+/* ── Form Focus ───────────────────────────────────────────── */
 .mantine-Input-input:focus {
-  border-color: var(--mantine-color-primary-6);
+  border-color: var(--ds-primary);
+  box-shadow: var(--ds-focus-ring);
 }
 
+/* ── Button Hover Lift ────────────────────────────────────── */
+.mantine-Button-root:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Interactive Elements ─────────────────────────────────── */
 .mantine-Modal-close:hover {
-  background-color: var(--ds-gray-100);
+  background-color: var(--ds-gray-200);
 }
 
 .mantine-Anchor-root:hover {
   text-decoration: underline;
-  color: var(--mantine-color-primary-6);
+  color: var(--ds-primary);
+}
+
+.mantine-ActionIcon-root {
+  transition: all var(--ds-transition-fast, 150ms ease);
 }
 
 .mantine-ActionIcon-root:hover {
-  background-color: var(--ds-gray-100);
+  background-color: var(--ds-gray-200);
+}
+
+/* ── Cards ────────────────────────────────────────────────── */
+.mantine-Card-root {
+  border: 1px solid var(--ds-border-color);
+  box-shadow: var(--ds-shadow-lg);
 }

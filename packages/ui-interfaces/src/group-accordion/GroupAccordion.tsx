@@ -400,7 +400,7 @@ function AccordionSection({
         {field.meta?.required && (
           <IconStarFilled
             size={8}
-            style={{ color: 'var(--mantine-color-blue-6)', marginTop: -8 }}
+            style={{ color: 'var(--mantine-primary-color-6)', marginTop: -8 }}
           />
         )}
 

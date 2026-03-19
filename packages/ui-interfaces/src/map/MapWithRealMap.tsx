@@ -553,9 +553,9 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
                 position: 'absolute',
                 bottom: 10,
                 right: 10,
-                borderRadius: '4px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                border: '1px solid rgba(0,0,0,0.1)',
+              borderRadius: 'var(--mantine-radius-sm)',
+              boxShadow: 'var(--ds-shadow, 0 2px 4px rgba(25, 22, 18, 0.05))',
+              border: '1px solid var(--mantine-color-gray-3)',
               }}
             >
               <IconMap size={16} />
@@ -579,7 +579,7 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                backgroundColor: 'var(--mantine-color-white, rgba(255, 255, 255, 0.8))',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -600,7 +600,7 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
                   {geometryType}
                 </Badge>
               )}
-              <Badge variant="light" color="blue">
+              <Badge variant="light" color="accent">
                 {geometryFormat.toUpperCase()}
               </Badge>
               {selection.length > 0 && (

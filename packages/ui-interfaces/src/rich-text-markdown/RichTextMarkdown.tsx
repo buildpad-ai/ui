@@ -376,7 +376,7 @@ export function RichTextMarkdown({
               size="xs"
               onClick={() => setViewMode('editor')}
               leftSection={<IconEdit size={14} />}
-              style={{ borderRadius: '4px 0 0 4px' }}
+              style={{ borderRadius: 'var(--mantine-radius-sm) 0 0 var(--mantine-radius-sm)' }}
             >
               Edit
             </Button>
@@ -385,7 +385,7 @@ export function RichTextMarkdown({
               size="xs"
               onClick={() => setViewMode('preview')}
               leftSection={<IconEye size={14} />}
-              style={{ borderRadius: '0 4px 4px 0' }}
+              style={{ borderRadius: '0 var(--mantine-radius-sm) var(--mantine-radius-sm) 0' }}
             >
               Preview
             </Button>

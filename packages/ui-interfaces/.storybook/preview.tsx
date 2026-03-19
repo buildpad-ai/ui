@@ -1,22 +1,19 @@
 import React from 'react';
 import type { Preview } from '@storybook/nextjs-vite';
-import { MantineProvider, createTheme } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
 import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
+import { enterpriseTheme } from '../../storybook-enterprise-theme';
 
-// Import Mantine CSS
+// Mantine CSS
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
 import '@mantine/tiptap/styles.css';
-import './preview.css';
 
-// Create a default theme (can be customized)
-const theme = createTheme({
-  primaryColor: 'blue',
-  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
-  defaultRadius: 'sm',
-});
+// Enterprise preview styles
+import '../../storybook-enterprise-preview.css';
+import './preview.css';
 
 const preview: Preview = {
   parameters: {
@@ -33,10 +30,10 @@ const preview: Preview = {
   },
   decorators: [
     (Story) => (
-      <MantineProvider theme={theme} defaultColorScheme="light">
+      <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
         <DatesProvider settings={{ locale: 'en' }}>
           <Notifications position="top-right" />
-          <div className="sb-decorator-pad">
+          <div className="sb-enterprise-wrapper sb-interfaces-pad">
             <Story />
           </div>
         </DatesProvider>

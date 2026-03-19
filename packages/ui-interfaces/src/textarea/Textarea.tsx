@@ -82,11 +82,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
   const getFontFamily = () => {
     switch (font) {
       case 'monospace':
-        return 'Monaco, Menlo, "Ubuntu Mono", monospace';
+        return 'var(--mantine-font-family-monospace, monospace)';
       case 'serif':
-        return 'Georgia, "Times New Roman", Times, serif';
+        return 'var(--mantine-font-family-headings, Georgia, serif)';
       default:
-        return '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        return 'var(--mantine-font-family, sans-serif)';
     }
   };
 

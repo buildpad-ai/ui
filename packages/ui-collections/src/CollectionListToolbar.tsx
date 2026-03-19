@@ -115,7 +115,7 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
           <Tooltip label={filterPanelOpen ? "Hide filters" : "Show filters"}>
             <ActionIcon
               variant={activeFilterCount > 0 ? "filled" : "subtle"}
-              color={activeFilterCount > 0 ? "blue" : undefined}
+              color={activeFilterCount > 0 ? "primary" : undefined}
               onClick={onToggleFilterPanel}
               title="Toggle filter panel"
               data-testid="collection-list-filter-toggle"
@@ -184,7 +184,6 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
           <Tooltip label={createAllowed ? "Create item" : "Not allowed"}>
             <Button
               variant="filled"
-              color="blue"
               size="compact-sm"
               leftSection={<IconPlus size={18} />}
               onClick={createAllowed ? onCreate : undefined}

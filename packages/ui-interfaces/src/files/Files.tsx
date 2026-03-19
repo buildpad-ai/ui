@@ -673,7 +673,7 @@ export const Files: React.FC<FilesProps> = ({
                         }}
                       >
                         {file.type?.startsWith('image/') ? (
-                          <IconPhoto size={20} color="var(--mantine-color-blue-6)" />
+                          <IconPhoto size={20} color="var(--mantine-primary-color-6)" />
                         ) : (
                           <IconFolderOpen size={20} color="var(--mantine-color-gray-6)" />
                         )}

@@ -1,31 +1,16 @@
 import React from 'react';
 import type { Preview } from '@storybook/react';
-import { MantineProvider, createTheme } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
+import { enterpriseTheme } from '../../storybook-enterprise-theme';
 
-// Import Mantine CSS
+// Mantine CSS
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/tiptap/styles.css';
 
-// Import preview styles
+// Enterprise preview styles
+import '../../storybook-enterprise-preview.css';
 import './preview.css';
-
-// Create a default theme
-const theme = createTheme({
-  primaryColor: 'blue',
-  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
-  defaultRadius: 'sm',
-});
-
-/**
- * API requests in Storybook
- *
- * All /api/* calls are proxied to the Storybook Host app (apps/storybook-host)
- * which handles authentication and forwards requests to DaaS.
- *
- * No mocking is needed — if the host isn't running, the stories
- * will show an appropriate connection error.
- */
 
 const preview: Preview = {
   parameters: {
@@ -57,8 +42,8 @@ const preview: Preview = {
   },
   decorators: [
     (Story: React.ComponentType) => (
-      <MantineProvider theme={theme} defaultColorScheme="light">
-        <div className="storybook-wrapper">
+      <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
+        <div className="sb-enterprise-wrapper sb-collections-wrapper">
           <Story />
         </div>
       </MantineProvider>

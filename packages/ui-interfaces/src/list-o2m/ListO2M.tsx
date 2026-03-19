@@ -787,7 +787,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
       <Alert
         icon={<IconAlertCircle size={16} />}
         title="Relationship not configured"
-        color="orange"
+        color="warning"
         data-testid="o2m-not-configured"
       >
         The one-to-many relationship is not properly configured for this field.
@@ -859,7 +859,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
       {hasExistingItem && (
         <Alert
           icon={<IconAlertCircle size={16} />}
-          color="blue"
+          color="info"
           data-testid="o2m-unique-fk-notice"
         >
           This relationship has a unique constraint. Only one related item is
@@ -1073,7 +1073,6 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                         <Tooltip label="View item">
                           <ActionIcon
                             variant="subtle"
-                            color="blue"
                             size="sm"
                             data-testid={`o2m-link-${item.id}`}
                           >
@@ -1180,7 +1179,6 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                     {enableLink && (
                       <ActionIcon
                         variant="subtle"
-                        color="blue"
                         size="sm"
                         onClick={(e) => e.stopPropagation()}
                         data-testid={`o2m-list-link-${item.id}`}
@@ -1319,7 +1317,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           <Alert
             icon={<IconAlertCircle size={16} />}
             title="Items will be linked when you save"
-            color="blue"
+            color="info"
             mb="md"
           >
             Selected items will be linked after you save the current item.
@@ -1361,7 +1359,6 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                   {
                     label: "Add Selected",
                     icon: <IconPlus size={14} />,
-                    color: "blue",
                     action: handleSelectItems,
                   },
                 ]}

@@ -200,7 +200,7 @@ const AuthStatus: React.FC = () => {
               Admin
             </Badge>
           )}
-          <Badge color={user.status === 'active' ? 'blue' : 'gray'}>
+          <Badge color={user.status === 'active' ? 'accent' : 'gray'}>
             {user.status}
           </Badge>
         </Group>
@@ -338,7 +338,7 @@ const DaaSTablePlayground: React.FC = () => {
   // ── Loading state ──
   if (isLoading && !connectionStatus) {
     return (
-      <Alert color="blue">
+      <Alert color="info">
         <Text size="sm">Checking connection to Storybook Host...</Text>
       </Alert>
     );
@@ -554,7 +554,7 @@ pnpm dev:host
                   <IconTable size={20} />
                   <Text fw={600}>Table: {activeCollection}</Text>
                 </Group>
-                <Badge color="blue">{totalItems} total items</Badge>
+                <Badge color="accent">{totalItems} total items</Badge>
               </Group>
 
               <VTable
@@ -591,7 +591,7 @@ pnpm dev:host
             </Paper>
           </>
         ) : (
-          <Alert color="blue" title="Select a Collection" icon={<IconDatabase size={16} />}>
+          <Alert color="info" title="Select a Collection" icon={<IconDatabase size={16} />}>
             <Text size="sm">
               Select a collection from the dropdown and click &quot;Load Data&quot; to see the table.
             </Text>

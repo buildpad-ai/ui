@@ -302,7 +302,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
       <Alert
         icon={<IconAlertCircle size={16} />}
         title="Relationship not configured"
-        color="orange"
+        color="warning"
       >
         The many-to-one relationship is not properly configured for this field.
       </Alert>
@@ -457,7 +457,6 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
             <Tooltip label="View related item">
               <ActionIcon
                 variant="subtle"
-                color="blue"
                 size="sm"
                 disabled={disabled}
               >
@@ -482,7 +481,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
           }`}
           size="lg"
         >
-          <Alert icon={<IconAlertCircle size={16} />} color="blue">
+          <Alert icon={<IconAlertCircle size={16} />} color="info">
             Create functionality will be available when CollectionForm component
             is implemented.
           </Alert>
@@ -528,7 +527,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
             <Group gap="xs">
               {enableLink && (
                 <Tooltip label="View item">
-                  <ActionIcon variant="subtle" color="blue" size="sm">
+                  <ActionIcon variant="subtle" size="sm">
                     <IconExternalLink size={14} />
                   </ActionIcon>
                 </Tooltip>
@@ -652,7 +651,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                             cursor: "pointer",
                             backgroundColor:
                               value === item.id
-                                ? "var(--mantine-color-blue-light)"
+                                ? "var(--mantine-primary-color-light)"
                                 : undefined,
                           }}
                           onClick={() => {
@@ -733,7 +732,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         }`}
         size="lg"
       >
-        <Alert icon={<IconAlertCircle size={16} />} color="blue">
+        <Alert icon={<IconAlertCircle size={16} />} color="info">
           Create functionality will be available when CollectionForm component
           is implemented.
         </Alert>

@@ -72,7 +72,7 @@ export const InputHash = forwardRef<HTMLInputElement, InputHashProps>(({
       style={{ display: 'flex', alignItems: 'center' }}
     >
       {isHashed && !localValue ? (
-        <IconLock size={16} style={{ color: 'var(--mantine-color-blue-6)' }} />
+        <IconLock size={16} style={{ color: 'var(--mantine-primary-color-6)' }} />
       ) : (
         <IconLockOpen size={16} style={{ color: 'var(--mantine-color-yellow-6)' }} />
       )}
@@ -91,7 +91,7 @@ export const InputHash = forwardRef<HTMLInputElement, InputHashProps>(({
     description,
     autoComplete: resolvedAutocomplete,
     'data-testid': testId,
-    style: { fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace' },
+    style: { fontFamily: 'var(--mantine-font-family-monospace, monospace)' },
     classNames: isShowingHashedState ? { input: 'input-hash-hashed' } : undefined,
   };
 
