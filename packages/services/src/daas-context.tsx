@@ -220,10 +220,11 @@ export function DaaSProvider({
   if (resolvedConfig) {
     setGlobalDaaSConfig(resolvedConfig);
   }
-  // Clear global config only on unmount
-  useEffect(() => {
-    return () => { setGlobalDaaSConfig(null); };
-  }, []);
+  // Note: We intentionally do NOT clear globalDaaSConfig on unmount.
+  // React 18+ StrictMode double-invokes effects (mount → cleanup → mount),
+  // and clearing during cleanup creates a window where child effects
+  // (e.g. CollectionList.loadFieldsAndPermissions) read null config → 401.
+  // The next DaaSProvider mount will overwrite the config anyway.
 
   return (
     <DaaSContext.Provider value={value}>
