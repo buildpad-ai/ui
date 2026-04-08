@@ -127,10 +127,19 @@ export function useRelationM2O(
         }>(`/api/relations`);
 
         const relation = relationsResp.data?.find(
-          (r) => r.many_collection === collection && r.many_field === field,
+          (r) =>
+            (r.many_collection === collection && r.many_field === field) ||
+            ((r.meta?.many_collection as string) === collection &&
+              (r.meta?.many_field as string) === field),
         );
 
-        if (!relation?.one_collection) {
+        // Resolve one_collection from top-level or meta (DaaS may nest it)
+        const resolvedOneCollection =
+          relation?.one_collection ??
+          (relation?.meta?.one_collection as string | undefined) ??
+          null;
+
+        if (!resolvedOneCollection) {
           if (!cancelled) {
             setError(
               `No M2O relation found for ${collection}.${field}. ` +
@@ -141,9 +150,13 @@ export function useRelationM2O(
           return;
         }
 
-        const relatedCollectionName = relation.one_collection;
-        const fkType = relation.schema?.data_type || "uuid";
-        const relatedPK = relation.one_primary || relation.schema?.foreign_key_column || "id";
+        const relatedCollectionName = resolvedOneCollection;
+        const fkType = relation!.schema?.data_type || "uuid";
+        const relatedPK =
+          relation!.one_primary ||
+          (relation!.meta?.one_primary as string | undefined) ||
+          relation!.schema?.foreign_key_column ||
+          "id";
 
         // ── 2. Fetch related collection meta for display template ─────
         let collectionMeta: Record<string, unknown> | undefined;
@@ -195,7 +208,7 @@ export function useRelationM2O(
             field,
             collection,
             related_collection: relatedCollectionName,
-            meta: relation.meta ?? null,
+            meta: relation!.meta ?? null,
           },
           isSingleton,
         };
