@@ -242,11 +242,13 @@ Utility functions for field interface mapping and validation. The field interfac
 - `getFieldValidation` - Extract validation rules from field schema
 - `formatFieldValue` - Format values for display
 - `isPresentationField` - Check for presentation-only fields (divider, notice)
+- `getFieldDisplayName` - Resolve translated display name for a field (locale matching with fallback)
+- `formatFieldTitle` - Convert snake_case field names to Title Case
 
 **Usage:**
 
 ```tsx
-import { getFieldInterface, isFieldReadOnly } from "@buildpad/utils";
+import { getFieldInterface, isFieldReadOnly, getFieldDisplayName } from "@buildpad/utils";
 
 const interfaceConfig = getFieldInterface(field);
 // Returns: { type: 'input', props: { type: 'string' } }
@@ -255,6 +257,9 @@ const interfaceConfig = getFieldInterface(field);
 
 const readOnly = isFieldReadOnly(field, "edit");
 // Returns: true for auto-increment PKs, UUID PKs, etc.
+
+const displayName = getFieldDisplayName(field, 'zh-CN');
+// Returns: translated name if meta.translations has a match, else Title Case
 ```
 
 **CLI Installation:**

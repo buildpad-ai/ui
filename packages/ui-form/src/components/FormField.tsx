@@ -12,7 +12,7 @@ import { IconAlertCircle } from '@tabler/icons-react';
 import type { FormField as TFormField, ValidationError } from '../types';
 import { FormFieldInterface } from './FormFieldInterface';
 import { FormFieldLabel } from './FormFieldLabel';
-import { isFieldReadOnly, isNewItem } from '@buildpad/utils';
+import { isFieldReadOnly, isNewItem, getFieldDisplayName } from '@buildpad/utils';
 
 export interface FormFieldProps {
   /** Field definition */
@@ -43,6 +43,8 @@ export interface FormFieldProps {
   hideLabel?: boolean;
   /** CSS class name */
   className?: string;
+  /** Locale for field name translations (e.g. 'en-US'). If omitted, uses first available translation. */
+  locale?: string;
 }
 
 /**
@@ -63,6 +65,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   autofocus = false,
   hideLabel = false,
   className,
+  locale,
 }) => {
   // Determine form context (create vs edit)
   const context = useMemo(() => {
@@ -161,7 +164,7 @@ export const FormField: React.FC<FormFieldProps> = ({
         {/* Field Label */}
         {!hideLabel && !field.hideLabel && (
           <FormFieldLabel
-            label={field.name || field.field}
+            label={field.name || getFieldDisplayName(field, locale)}
             required={isRequired}
             description={field.meta?.note ?? undefined}
           />

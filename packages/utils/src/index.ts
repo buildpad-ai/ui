@@ -64,3 +64,6 @@ export {
 
 // New Item Detection
 export { isNewItem, isExistingItem } from './is-new-item';
+
+// Field Translation / Display Name
+export { getFieldDisplayName, formatFieldTitle } from './translate-field';

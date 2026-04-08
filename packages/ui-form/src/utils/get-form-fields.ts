@@ -4,6 +4,7 @@
  */
 
 import type { Field } from '@buildpad/types';
+import { getFieldDisplayName } from '@buildpad/utils';
 import type { FormField } from '../types';
 
 /**
@@ -63,7 +64,7 @@ export function getFormFields(fields: Field[]): FormField[] {
     const meta = field.meta as (ExtendedFieldMeta & typeof field.meta);
     const formField: FormField = {
       ...field,
-      name: meta?.name ?? field.field,
+      name: meta?.name ?? getFieldDisplayName(field),
     };
 
     // Categorize as system or user field

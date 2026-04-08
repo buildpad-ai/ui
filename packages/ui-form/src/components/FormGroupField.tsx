@@ -11,7 +11,7 @@ import React, { useMemo } from 'react';
 import { Box, Stack } from '@mantine/core';
 import type { Field } from '@buildpad/types';
 import { GroupDetail, GroupAccordion, GroupRaw } from '@buildpad/ui-interfaces';
-import { getFieldInterface } from '@buildpad/utils';
+import { getFieldInterface, getFieldDisplayName } from '@buildpad/utils';
 import type { FormField as TFormField, ValidationError } from '../types';
 import { FormField } from './FormField';
 import { isFieldVisible } from '../utils/get-form-fields';
@@ -45,6 +45,8 @@ export interface FormGroupFieldProps {
   nonEditableFields?: Set<string>;
   /** CSS class */
   className?: string;
+  /** Locale for field name translations */
+  locale?: string;
 }
 
 /**
@@ -56,7 +58,7 @@ function getChildFields(allFields: Field[], groupName: string): TFormField[] {
     .sort((a, b) => (a.meta?.sort ?? 0) - (b.meta?.sort ?? 0))
     .map((f) => ({
       ...f,
-      name: (f as Record<string, any>).name ?? f.field,
+      name: (f as Record<string, any>).name ?? getFieldDisplayName(f),
     })) as TFormField[];
 }
 
@@ -77,6 +79,7 @@ function ChildFieldsRenderer({
   allFields,
   validationErrors,
   nonEditableFields,
+  locale,
 }: {
   childFields: TFormField[];
   values: Record<string, any>;
@@ -91,6 +94,7 @@ function ChildFieldsRenderer({
   allFields: Field[];
   validationErrors: ValidationError[];
   nonEditableFields?: Set<string>;
+  locale?: string;
 }) {
   return (
     <Stack gap="md">
@@ -114,6 +118,7 @@ function ChildFieldsRenderer({
               onFieldUnset={onFieldUnset}
               getFieldError={getFieldError}
               nonEditableFields={nonEditableFields}
+              locale={locale}
             />
           );
         }
@@ -133,6 +138,7 @@ function ChildFieldsRenderer({
             loading={loading}
             validationError={getFieldError(child.field)}
             primaryKey={primaryKey}
+            locale={locale}
           />
         );
       })}
@@ -158,6 +164,7 @@ export const FormGroupField: React.FC<FormGroupFieldProps> = ({
   getFieldError,
   nonEditableFields,
   className,
+  locale,
 }) => {
   const interfaceConfig = useMemo(() => getFieldInterface(field), [field]);
   const interfaceType = interfaceConfig.type;
@@ -189,6 +196,7 @@ export const FormGroupField: React.FC<FormGroupFieldProps> = ({
     allFields,
     validationErrors,
     nonEditableFields,
+    locale,
   };
 
   // Render based on group interface type
@@ -259,7 +267,7 @@ export const FormGroupField: React.FC<FormGroupFieldProps> = ({
             const fullField = allFields.find((f) => f.field === section.field) || section;
             const sectionFormField = {
               ...fullField,
-              name: (fullField as any).name ?? fullField.field,
+              name: (fullField as any).name ?? getFieldDisplayName(fullField as Field),
               hideLabel: true,
             } as TFormField;
 
@@ -277,6 +285,7 @@ export const FormGroupField: React.FC<FormGroupFieldProps> = ({
                 loading={loading}
                 validationError={getFieldError(section.field)}
                 primaryKey={primaryKey}
+                locale={locale}
               />
             );
           }}
