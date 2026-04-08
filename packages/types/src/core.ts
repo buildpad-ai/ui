@@ -42,7 +42,12 @@ export interface CollectionMeta {
   display_template?: string;
   hidden?: boolean;
   singleton?: boolean;
-  translations?: unknown;
+  translations?: Array<{
+    language: string;
+    translation: string;
+    singular: string;
+    plural: string;
+  }> | null;
   archive_field?: string;
   archive_app_filter?: boolean;
   archive_value?: string;
@@ -97,7 +102,10 @@ export interface FieldMeta {
   hidden: boolean;
   sort?: number | null;
   width?: FieldWidth | null;
-  translations?: unknown;
+  translations?: Array<{
+    language: string;
+    translation: string;
+  }> | null;
   note?: string | null;
   conditions?: unknown;
   required?: boolean;

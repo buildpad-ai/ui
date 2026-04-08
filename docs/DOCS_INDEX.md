@@ -324,6 +324,13 @@ Buildpad Architecture
 
 ## 📝 Changelog
 
+### Version 1.7.0 (April 2026)
+- ✨ Field name translations — `FieldMeta.translations` typed as `Array<{language, translation}>` for multi-language display labels
+- ✨ Collection translations — `CollectionMeta.translations` typed as `Array<{language, translation, singular, plural}>`
+- ✨ New `getFieldDisplayName(field, locale?)` utility — resolves translated field labels with locale matching and fallback
+- ✨ New `formatFieldTitle(fieldName)` utility — converts snake_case to Title Case
+- ✨ VForm `FormField` now uses `getFieldDisplayName()` for label resolution (supports translated labels)
+
 ### Version 1.6.0 (March 2026)
 - ✨ New `useRelationMultipleM2M` hook — fetches display items for M2M junctions with sorting/pagination
 - ✨ New `useRelationPermissionsM2M` hook — checks create/update permissions on junction + related collection

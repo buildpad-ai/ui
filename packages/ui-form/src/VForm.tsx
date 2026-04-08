@@ -105,6 +105,8 @@ export interface VFormProps {
    * Callback when field is scrolled to (from ValidationErrors click)
    */
   onScrollToField?: (fieldKey: string) => void;
+  /** Locale for field name translations (e.g. 'en-US'). If omitted, uses first available translation. */
+  locale?: string;
 }
 
 // Stable empty references to prevent re-renders
@@ -165,6 +167,7 @@ export const VForm: React.FC<VFormProps> = ({
   enforcePermissions = false,
   onPermissionsLoaded,
   onScrollToField,
+  locale,
 }) => {
   // Use stable references for optional props
   const stableModelValue = useMemo(
@@ -532,6 +535,7 @@ export const VForm: React.FC<VFormProps> = ({
                 getFieldError={getFieldError}
                 nonEditableFields={readOnlyPermFields}
                 className={field.meta?.width || 'full'}
+                locale={locale}
               />
             );
           }
@@ -551,6 +555,7 @@ export const VForm: React.FC<VFormProps> = ({
               primaryKey={primaryKey}
               autofocus={isFirstEditable}
               className={field.meta?.width || 'full'}
+              locale={locale}
             />
           );
         })}
