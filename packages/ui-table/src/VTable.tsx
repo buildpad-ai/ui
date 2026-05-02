@@ -267,30 +267,21 @@ export const VTable: React.FC<VTableProps> = ({
     return sortProp ?? { by: null, desc: false };
   }, [sortProp]);
 
-  // Calculate grid columns
-  // Matches DaaS logic: header columns with an explicit width use 'auto'
-  // so they can flex during resize, while columns without a width use '160px'
-  // in both header and body rows so they stay aligned.
+  // Calculate grid columns. Header and rows share an identical template so
+  // header cells visually align with their data column, and column-resize
+  // updates from the resize handle (which writes header.width) drive both
+  // the header and the row grids together.
   const columnStyle = useMemo(() => {
-    const generate = (useAuto?: "auto") => {
-      let cols = internalHeaders
-        .map((header) => {
-          return header.width ? useAuto ?? `${header.width}px` : "160px";
-        })
-        .join(" ");
+    let cols = internalHeaders
+      .map((header) => (header.width ? `${header.width}px` : "160px"))
+      .join(" ");
 
-      if (showSelect !== "none") cols = "36px " + cols;
-      if (showManualSort) cols = "36px " + cols;
-      cols = cols + " 1fr"; // Spacer
-      if (renderRowAppend || renderHeaderAppend) cols += " min-content";
+    if (showSelect !== "none") cols = "36px " + cols;
+    if (showManualSort) cols = "36px " + cols;
+    cols = cols + " 1fr"; // Spacer
+    if (renderRowAppend || renderHeaderAppend) cols += " min-content";
 
-      return cols;
-    };
-
-    return {
-      header: generate("auto"),
-      rows: generate(),
-    };
+    return { header: cols, rows: cols };
   }, [
     internalHeaders,
     showSelect,
