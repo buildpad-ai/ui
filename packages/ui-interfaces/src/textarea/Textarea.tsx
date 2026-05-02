@@ -116,7 +116,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
     if (!percentageRemaining) return 'dimmed';
     if (percentageRemaining < 5) return 'red';
     if (percentageRemaining < 10) return 'orange';
-    if (percentageRemaining <= 20) return 'yellow';
+    if (percentageRemaining <= 20) return 'warning';
     return 'dimmed';
   };
 

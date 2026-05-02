@@ -16,6 +16,8 @@ export { isNewItem, isExistingItem } from '../is-new-item';
 export { 
   getFieldInterface,
   getFieldDefault,
+  getFieldDisplayName,
+  formatFieldTitle,
   type InterfaceType,
   type InterfaceConfig,
 } from '../field-interface-mapper';

@@ -39,7 +39,12 @@ export const FormFieldLabel: React.FC<FormFieldLabelProps> = ({
       )}
       {description && (
         <Tooltip label={description} multiline maw={300}>
-          <IconInfoCircle size={14} style={{ cursor: 'help', opacity: 0.6 }} />
+          <IconInfoCircle
+            size={14}
+            style={{ cursor: 'help', opacity: 0.6 }}
+            role="img"
+            aria-label={description}
+          />
         </Tooltip>
       )}
     </Text>

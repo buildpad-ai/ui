@@ -1055,3 +1055,40 @@ export function isPresentationField(field: Field): boolean {
     interfaceType === "presentation-links"
   );
 }
+
+/**
+ * Converts a snake_case field name to Title Case.
+ * Example: "first_name" → "First Name"
+ */
+export function formatFieldTitle(fieldName: string): string {
+  return fieldName
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/**
+ * Resolves the display name for a field based on its translations.
+ * Falls back to a title-cased version of the raw field name.
+ *
+ * @param field  - The field definition from DaaS
+ * @param locale - Optional BCP 47 locale string (e.g. "zh-CN")
+ */
+export function getFieldDisplayName(field: Field, locale?: string): string {
+  const translations = field.meta?.translations;
+
+  if (translations && translations.length > 0) {
+    if (locale) {
+      const lang = locale.toLowerCase();
+      const match =
+        translations.find((t) => t.language.toLowerCase() === lang) ??
+        translations.find((t) => lang.startsWith(t.language.toLowerCase()));
+      if (match?.translation) return match.translation;
+    } else {
+      const first = translations.find((t) => t.translation);
+      if (first) return first.translation;
+    }
+  }
+
+  return formatFieldTitle(field.field);
+}

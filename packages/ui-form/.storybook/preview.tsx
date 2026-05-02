@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Preview } from '@storybook/react';
 import { MantineProvider } from '@mantine/core';
+import { DaaSProvider } from '@buildpad/services';
 import { enterpriseTheme } from '../../storybook-enterprise-theme';
 
 // Mantine CSS
@@ -30,9 +31,11 @@ const preview: Preview = {
   decorators: [
     (Story: React.ComponentType) => (
       <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
-        <div className="sb-enterprise-wrapper sb-form-wrapper">
-          <Story />
-        </div>
+        <DaaSProvider autoFetchUser={false}>
+          <div className="sb-enterprise-wrapper sb-form-wrapper">
+            <Story />
+          </div>
+        </DaaSProvider>
       </MantineProvider>
     ),
   ],

@@ -219,6 +219,7 @@ function NavigationItem({
           }}
           style={{ opacity: 0, transition: 'opacity 150ms' }}
           className="nav-item-action"
+          aria-label="Collection options"
         >
           <IconSettings size={14} />
         </ActionIcon>

@@ -19,6 +19,24 @@
   color: #191612;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Raise muted text to WCAG AA on white (7.4:1) and on the lightest
+     striped row (#f7f5ef = gray[0]) at 6.7:1. Reuses the gray[6] stop
+     already defined in storybook-enterprise-theme.ts. */
+  --mantine-color-dimmed: var(--mantine-color-gray-6);
+
+  /* Mantine resolves `variant="light"` text to `--mantine-color-{name}-light-color`,
+     which by default points at stop [5] of each custom palette. For our warm/earthy
+     stops (e.g. warning[5]=#a46b00, primary[5]=#e35b2a) that fails WCAG AA on the
+     matching [0]/[1] tint backgrounds. Promote these to stop [7] so Alert titles,
+     Button labels, and Badge text on tinted bg pass contrast. Filled variants and
+     brand backgrounds are unaffected. */
+  --mantine-color-primary-light-color: #9a3412; /* primary[7] */
+  --mantine-color-warning-light-color: #78350f; /* warning[7] */
+  --mantine-color-success-light-color: #166534; /* success[7] */
+  --mantine-color-info-light-color: #075985;    /* info[7] */
+  --mantine-color-danger-light-color: #7f1d1d;  /* danger[7] */
+  --mantine-color-accent-light-color: #1d4ed8;  /* accent[7] */
 }
 
 /* ── Focus Ring ───────────────────────────────────────────── */

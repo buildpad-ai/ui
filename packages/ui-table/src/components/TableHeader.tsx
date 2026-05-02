@@ -261,6 +261,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
       className={`table-header ${resizing ? "resizing" : ""} ${
         reordering ? "reordering" : ""
       }`}
+      role="rowgroup"
     >
       <tr className={fixed ? "fixed" : ""}>
         {/* Manual Sort Column */}
@@ -270,8 +271,10 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
               sort.by === manualSortKey ? "sorted-manually" : ""
             }`}
             onClick={handleManualSortToggle}
+            scope="col"
           >
-            <IconGripVertical size={18} />
+            <span className="sr-only">Toggle manual sort</span>
+            <IconGripVertical size={18} aria-hidden="true" />
           </th>
         )}
 
@@ -296,10 +299,23 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             className={getHeaderClasses(header)}
             onClick={() => handleSort(header)}
             onContextMenu={(e) => handleContextMenu(header, e)}
+            aria-sort={
+              header.sortable
+                ? ((sort.by === header.value
+                    ? sort.desc
+                      ? "descending"
+                      : "ascending"
+                    : "none") as "ascending" | "descending" | "none")
+                : undefined
+            }
           >
             <div className="header-content">
               {allowHeaderReorder && (
-                <div className="reorder-handle">
+                <div
+                  className="reorder-handle"
+                  role="button"
+                  aria-label="Reorder column"
+                >
                   <IconGripVertical size={14} />
                 </div>
               )}
@@ -333,7 +349,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
         ))}
 
         {/* Spacer */}
-        <th className="cell spacer" />
+        <th className="cell spacer" aria-hidden="true" />
 
         {/* Append Column */}
         {renderHeaderAppend ? (
@@ -341,7 +357,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             {renderHeaderAppend()}
           </th>
         ) : hasItemAppendSlot ? (
-          <th className="cell spacer" />
+          <th className="cell spacer" aria-hidden="true" />
         ) : null}
       </tr>
 

@@ -184,7 +184,6 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
     <TableRow
       ref={setNodeRef}
       style={style}
-      {...attributes}
       headers={headers}
       item={item}
       showSelect={showSelect}
@@ -195,7 +194,13 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
       hasClickListener={hasClickListener}
       height={rowHeight}
       isDragging={isDragging}
-      dragHandleProps={listeners}
+      // dnd-kit's `attributes` apply role="button" + tabIndex + aria-roledescription
+      // to whatever element they're spread onto. Spreading them on the <tr> made
+      // it focusable in conflict with its checkbox/links AND violated the
+      // tbody[role=rowgroup] children contract. Attach them to the drag handle
+      // alongside the keyboard listeners — that is the element users actually
+      // grab to reorder.
+      dragHandleProps={{ ...attributes, ...listeners }}
       renderCell={renderCell}
       renderAppend={renderAppend}
       onClick={onClick}
@@ -262,30 +267,21 @@ export const VTable: React.FC<VTableProps> = ({
     return sortProp ?? { by: null, desc: false };
   }, [sortProp]);
 
-  // Calculate grid columns
-  // Matches DaaS logic: header columns with an explicit width use 'auto'
-  // so they can flex during resize, while columns without a width use '160px'
-  // in both header and body rows so they stay aligned.
+  // Calculate grid columns. Header and rows share an identical template so
+  // header cells visually align with their data column, and column-resize
+  // updates from the resize handle (which writes header.width) drive both
+  // the header and the row grids together.
   const columnStyle = useMemo(() => {
-    const generate = (useAuto?: "auto") => {
-      let cols = internalHeaders
-        .map((header) => {
-          return header.width ? useAuto ?? `${header.width}px` : "160px";
-        })
-        .join(" ");
+    let cols = internalHeaders
+      .map((header) => (header.width ? `${header.width}px` : "160px"))
+      .join(" ");
 
-      if (showSelect !== "none") cols = "36px " + cols;
-      if (showManualSort) cols = "36px " + cols;
-      cols = cols + " 1fr"; // Spacer
-      if (renderRowAppend || renderHeaderAppend) cols += " min-content";
+    if (showSelect !== "none") cols = "36px " + cols;
+    if (showManualSort) cols = "36px " + cols;
+    cols = cols + " 1fr"; // Spacer
+    if (renderRowAppend || renderHeaderAppend) cols += " min-content";
 
-      return cols;
-    };
-
-    return {
-      header: generate("auto"),
-      rows: generate(),
-    };
+    return { header: cols, rows: cols };
   }, [
     internalHeaders,
     showSelect,
@@ -551,7 +547,7 @@ export const VTable: React.FC<VTableProps> = ({
 
         {/* Loading Indicator */}
         {loading && (
-          <thead className={fixedHeader ? "sticky" : ""}>
+          <thead className={fixedHeader ? "sticky" : ""} aria-hidden="true">
             <tr className="loading-indicator">
               <th className="full-colspan">
                 <div className="progress-bar" />
@@ -562,7 +558,7 @@ export const VTable: React.FC<VTableProps> = ({
 
         {/* Loading State */}
         {loading && items.length === 0 && (
-          <tbody>
+          <tbody role="rowgroup" aria-busy="true">
             <tr className="loading-text">
               <td className="full-colspan">
                 <Stack gap="xs" py="md">
@@ -580,7 +576,7 @@ export const VTable: React.FC<VTableProps> = ({
 
         {/* Empty State */}
         {!loading && items.length === 0 && (
-          <tbody>
+          <tbody role="rowgroup">
             <tr className="no-items-text">
               <td className="full-colspan">
                 <Text c="dimmed" ta="center" py="xl">
@@ -597,7 +593,7 @@ export const VTable: React.FC<VTableProps> = ({
             items={itemIds}
             strategy={verticalListSortingStrategy}
           >
-            <tbody>
+            <tbody role="rowgroup">
               {items.map((item) => {
                 const id = getItemKey(item);
                 return (
