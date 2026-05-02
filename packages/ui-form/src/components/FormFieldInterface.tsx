@@ -75,6 +75,13 @@ export interface FormFieldInterfaceProps {
   autofocus?: boolean;
   /** Primary key (for edit mode) */
   primaryKey?: string | number;
+  /**
+   * Accessible name for the input (becomes aria-label on the underlying
+   * Mantine control). FormField passes the resolved display name so the
+   * input has a programmatic name even though the visible label is
+   * rendered separately by FormFieldLabel.
+   */
+  accessibleName?: string;
 }
 
 /**
@@ -92,6 +99,7 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   error,
   autofocus = false,
   primaryKey,
+  accessibleName,
 }) => {
   // Get interface configuration from @buildpad/utils
   // Returns InterfaceConfig with type and props
@@ -215,7 +223,7 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   // Show error if component not found
   if (!InterfaceComponent) {
     return (
-      <Alert icon={<IconAlertCircle size={16} />} color="yellow">
+      <Alert icon={<IconAlertCircle size={16} />} color="warning">
         <Text size="sm">
           Interface component not found: <Text component="span" fw={600}>{interfaceConfig.type}</Text>
         </Text>
@@ -251,8 +259,12 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
     required: nonEditable ? false : required,
     error,
     autofocus,
-    // Note: label is NOT passed here because FormField already renders FormFieldLabel
-    
+    // Note: label is NOT passed here because FormField already renders FormFieldLabel.
+    // We forward an aria-label so the underlying input still has a programmatic
+    // accessible name (axe "label" rule). Each interface spreads this onto its
+    // Mantine control via ...rest.
+    'aria-label': accessibleName || field.name || field.field,
+
     // Field metadata
     collection: field.collection,
     field: field.field,

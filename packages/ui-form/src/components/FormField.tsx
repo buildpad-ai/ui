@@ -141,6 +141,13 @@ export const FormField: React.FC<FormFieldProps> = ({
     }
   }, [validationError, field]);
 
+  // Resolve the human-readable label once. Used both for the visible
+  // FormFieldLabel and as the input's accessible name (aria-label).
+  const displayName = useMemo(
+    () => field.name || getFieldDisplayName(field, locale),
+    [field, locale]
+  );
+
   // Get field width class
   const widthClass = useMemo(() => {
     const width = field.meta?.width || 'full';
@@ -164,7 +171,7 @@ export const FormField: React.FC<FormFieldProps> = ({
         {/* Field Label */}
         {!hideLabel && !field.hideLabel && (
           <FormFieldLabel
-            label={field.name || getFieldDisplayName(field, locale)}
+            label={displayName}
             required={isRequired}
             description={field.meta?.note ?? undefined}
           />
@@ -183,11 +190,17 @@ export const FormField: React.FC<FormFieldProps> = ({
           error={errorMessage}
           autofocus={autofocus}
           primaryKey={primaryKey}
+          accessibleName={displayName}
         />
 
         {/* Validation Error */}
         {validationError && errorMessage && (
-          <Text size="sm" c="red" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Text
+            size="sm"
+            c="red"
+            role="alert"
+            style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+          >
             <IconAlertCircle size={14} />
             {errorMessage}
           </Text>

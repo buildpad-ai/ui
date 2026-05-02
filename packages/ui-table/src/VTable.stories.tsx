@@ -249,7 +249,7 @@ export const WithMultipleSelection: Story = {
 
     return (
       <div>
-        <p className="story-selection-info">
+        <p className="story-selection-info" role="status" aria-live="polite">
           Selected: {selected.length} items
           {selected.length > 0 && (
             <Button
@@ -286,7 +286,7 @@ export const WithSingleSelection: Story = {
 
     return (
       <div>
-        <p className="story-selection-info">
+        <p className="story-selection-info" role="status" aria-live="polite">
           Selected: {selected.length > 0 ? `ID ${selected[0]}` : "None"}
         </p>
         <VTable
@@ -605,7 +605,7 @@ export const FullFeatured: Story = {
     return (
       <div>
         <div className="story-toolbar">
-          <span>Selected: {selected.length} items</span>
+          <span role="status" aria-live="polite">Selected: {selected.length} items</span>
           {selected.length > 0 && (
             <Button
               size="xs"

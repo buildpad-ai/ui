@@ -184,7 +184,6 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
     <TableRow
       ref={setNodeRef}
       style={style}
-      {...attributes}
       headers={headers}
       item={item}
       showSelect={showSelect}
@@ -195,7 +194,13 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
       hasClickListener={hasClickListener}
       height={rowHeight}
       isDragging={isDragging}
-      dragHandleProps={listeners}
+      // dnd-kit's `attributes` apply role="button" + tabIndex + aria-roledescription
+      // to whatever element they're spread onto. Spreading them on the <tr> made
+      // it focusable in conflict with its checkbox/links AND violated the
+      // tbody[role=rowgroup] children contract. Attach them to the drag handle
+      // alongside the keyboard listeners — that is the element users actually
+      // grab to reorder.
+      dragHandleProps={{ ...attributes, ...listeners }}
       renderCell={renderCell}
       renderAppend={renderAppend}
       onClick={onClick}
@@ -551,7 +556,7 @@ export const VTable: React.FC<VTableProps> = ({
 
         {/* Loading Indicator */}
         {loading && (
-          <thead className={fixedHeader ? "sticky" : ""}>
+          <thead className={fixedHeader ? "sticky" : ""} aria-hidden="true">
             <tr className="loading-indicator">
               <th className="full-colspan">
                 <div className="progress-bar" />
@@ -562,7 +567,7 @@ export const VTable: React.FC<VTableProps> = ({
 
         {/* Loading State */}
         {loading && items.length === 0 && (
-          <tbody>
+          <tbody role="rowgroup" aria-busy="true">
             <tr className="loading-text">
               <td className="full-colspan">
                 <Stack gap="xs" py="md">
@@ -580,7 +585,7 @@ export const VTable: React.FC<VTableProps> = ({
 
         {/* Empty State */}
         {!loading && items.length === 0 && (
-          <tbody>
+          <tbody role="rowgroup">
             <tr className="no-items-text">
               <td className="full-colspan">
                 <Text c="dimmed" ta="center" py="xl">
@@ -597,7 +602,7 @@ export const VTable: React.FC<VTableProps> = ({
             items={itemIds}
             strategy={verticalListSortingStrategy}
           >
-            <tbody>
+            <tbody role="rowgroup">
               {items.map((item) => {
                 const id = getItemKey(item);
                 return (

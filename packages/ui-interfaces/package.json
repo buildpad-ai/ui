@@ -70,6 +70,7 @@
     "@buildpad/types": "workspace:*",
     "@buildpad/ui-collections": "workspace:*",
     "@buildpad/ui-form": "workspace:*",
+    "@storybook/addon-a11y": "^10.2.8",
     "@storybook/addon-docs": "^10.2.8",
     "@storybook/addon-links": "^10.2.8",
     "@storybook/nextjs-vite": "^10.2.8",

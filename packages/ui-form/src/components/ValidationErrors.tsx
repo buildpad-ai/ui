@@ -146,6 +146,7 @@ export const ValidationErrors: React.FC<ValidationErrorsProps> = ({
       variant="light"
       className="validation-errors-summary"
       style={{ gridColumn: '1 / -1' }}
+      role="alert"
     >
       <Stack gap={4}>
         <Text size="sm" fw={600}>

@@ -505,7 +505,7 @@ const SortableM2MListItem: React.FC<SortableM2MListItemProps> = ({
                         </Badge>
                     )}
                     {item.$type === "updated" && (
-                        <Badge size="xs" color="yellow" variant="light">
+                        <Badge size="xs" color="warning" variant="light">
                             {t.badge_edited}
                         </Badge>
                     )}
@@ -1040,7 +1040,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                         {label}
                     </Text>
                 )}
-                <Alert icon={<IconInfoCircle size={16} />} title={t.no_singleton_relations} color="yellow">
+                <Alert icon={<IconInfoCircle size={16} />} title={t.no_singleton_relations} color="warning">
                     <Text size="sm">
                         {t.no_singleton_relations}
                     </Text>
@@ -1156,7 +1156,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                             selectedIds.size > 0 && (
                                 <Button
                                     variant="light"
-                                    color="yellow"
+                                    color="warning"
                                     leftSection={<IconCheckbox size={16} />}
                                     onClick={openEditDrawer}
                                     size="sm"

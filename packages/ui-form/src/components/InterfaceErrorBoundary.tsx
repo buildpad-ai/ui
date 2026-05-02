@@ -55,7 +55,7 @@ export class InterfaceErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <Alert icon={<IconAlertTriangle size={16} />} color="yellow">
+        <Alert icon={<IconAlertTriangle size={16} />} color="warning">
           <Text size="sm">
             Unexpected error in interface{' '}
             <Text component="span" fw={600}>

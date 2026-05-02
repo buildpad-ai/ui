@@ -453,7 +453,7 @@ export const VForm: React.FC<VFormProps> = ({
   // Show loading skeleton
   if (loadingFields || loadingProp || permissionsLoading) {
     return (
-      <Box className={className}>
+      <Box className={className} aria-busy="true" aria-label="Loading form">
         <Stack gap="md">
           <Skeleton height={60} />
           <Skeleton height={60} />
@@ -466,7 +466,7 @@ export const VForm: React.FC<VFormProps> = ({
   // Show error
   if (error) {
     return (
-      <Alert icon={<IconInfoCircle size={16} />} color="red" className={className}>
+      <Alert icon={<IconInfoCircle size={16} />} color="red" className={className} role="alert">
         {error}
       </Alert>
     );
@@ -475,7 +475,7 @@ export const VForm: React.FC<VFormProps> = ({
   // Show no permissions message
   if (enforcePermissions && accessibleFields !== null && accessibleFields.length === 0) {
     return (
-      <Alert icon={<IconLock size={16} />} color="yellow" className={className}>
+      <Alert icon={<IconLock size={16} />} color="warning" className={className} role="alert">
         <Text size="sm" fw={600}>No field access</Text>
         <Text size="sm" c="dimmed" mt="xs">
           You don&apos;t have permission to {effectiveAction} fields in this collection.
@@ -489,7 +489,7 @@ export const VForm: React.FC<VFormProps> = ({
     if (!showNoVisibleFields) return null;
 
     return (
-      <Alert icon={<IconInfoCircle size={16} />} color="info" className={className}>
+      <Alert icon={<IconInfoCircle size={16} />} color="info" className={className} role="status">
         <Text size="sm" fw={600}>No visible fields</Text>
         <Text size="sm" c="dimmed" mt="xs">
           {collection ? `Collection "${collection}" has no visible fields` : 'No fields to display'}
