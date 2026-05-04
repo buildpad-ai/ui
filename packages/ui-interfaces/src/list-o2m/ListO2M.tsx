@@ -42,6 +42,8 @@ import {
 } from "@tabler/icons-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+const DEFAULT_FIELDS: string[] = ["id"];
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────────────────────────────────────
@@ -234,7 +236,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
   primaryKey,
   layout = "list",
   tableSpacing = "cozy",
-  fields = ["id"],
+  fields = DEFAULT_FIELDS,
   template,
   disabled = false,
   enableCreate = true,

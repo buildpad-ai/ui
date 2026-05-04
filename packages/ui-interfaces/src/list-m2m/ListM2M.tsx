@@ -85,6 +85,8 @@ import { useRelationMultipleM2M, type M2MDisplayItem, type M2MChangesItem } from
 import { useRelationPermissionsM2M } from "@buildpad/hooks";
 import { mergeTranslations, interpolate, formatItemCount, type M2MTranslations } from "./translations";
 
+const DEFAULT_FIELDS: string[] = ["id"];
+
 // ── Props ──────────────────────────────────────────────────────────
 
 export interface ListM2MProps {
@@ -565,7 +567,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     primaryKey,
     layout = "list",
     tableSpacing: _tableSpacing = "cozy",
-    fields = ["id"],
+    fields = DEFAULT_FIELDS,
     template,
     disabled = false,
     nonEditable = false,
