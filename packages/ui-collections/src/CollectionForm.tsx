@@ -105,6 +105,32 @@ const READ_ONLY_FIELDS = [
 const EMPTY_OBJECT: Record<string, unknown> = {};
 const EMPTY_ARRAY: string[] = [];
 
+/** Junction metadata resolved from /api/relations for a single M2M alias field */
+interface M2MJunctionInfo {
+  /** The junction/through collection (e.g. "tasks_tags") */
+  junctionCollection: string;
+  /** FK in junction pointing back to the parent (e.g. "tasks_id") */
+  reverseJunctionField: string;
+  /** FK in junction pointing to the related collection (e.g. "tags_id") */
+  junctionField: string;
+}
+
+/** Narrow-check: is value a staged M2M changes object? */
+function isM2MChangesItem(value: unknown): value is {
+  create: Record<string, unknown>[];
+  update: Record<string, unknown>[];
+  delete: (string | number)[];
+} {
+  return !!(
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "create" in (value as object) &&
+    "update" in (value as object) &&
+    "delete" in (value as object)
+  );
+}
+
 /**
  * CollectionForm - Dynamic form for creating/editing collection items
  */
@@ -150,6 +176,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const [deleteAllowed, setDeleteAllowed] = useState(false);
   const [readableFieldNames, setReadableFieldNames] = useState<string[] | null>(null);
   const [writableFieldNames, setWritableFieldNames] = useState<string[] | null>(null);
+
+  // ----- M2M junction map (fieldName → junction metadata) -----
+  const [m2mJunctionMap, setM2mJunctionMap] = useState<Record<string, M2MJunctionInfo>>({});
 
   // ----- Delete state -----
   const [deleting, setDeleting] = useState(false);
@@ -270,6 +299,50 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         }
 
         setFields(editableFields);
+
+        // Resolve junction metadata for M2M alias fields so handleSave can
+        // flush creates/updates/deletes via the junction collection directly.
+        const m2mAliasFields = editableFields.filter(
+          (f) => f.type === "alias" && f.meta?.special?.includes?.("m2m"),
+        );
+        if (m2mAliasFields.length > 0) {
+          try {
+            const relationsResp = await apiRequest<{
+              data: Array<{
+                collection: string;
+                field: string;
+                related_collection: string | null;
+                meta: {
+                  one_field?: string | null;
+                  one_collection?: string | null;
+                  junction_field?: string | null;
+                } | null;
+              }>;
+            }>("/api/relations");
+            const relations = relationsResp.data ?? [];
+            const junctionMap: Record<string, M2MJunctionInfo> = {};
+            for (const m2mField of m2mAliasFields) {
+              const rel = relations.find(
+                (r) =>
+                  r.meta?.junction_field &&
+                  ((r.related_collection === collection &&
+                    r.meta.one_field === m2mField.field) ||
+                    (r.meta.one_collection === collection &&
+                      r.meta.one_field === m2mField.field)),
+              );
+              if (rel?.meta?.junction_field) {
+                junctionMap[m2mField.field] = {
+                  junctionCollection: rel.collection,
+                  reverseJunctionField: rel.field,
+                  junctionField: rel.meta.junction_field,
+                };
+              }
+            }
+            setM2mJunctionMap(junctionMap);
+          } catch {
+            // Non-fatal: M2M save falls back to including in PATCH body
+          }
+        }
 
         // Build initial form data
         let initialData: Record<string, unknown> = { ...stableDefaultValues };
@@ -393,6 +466,64 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   };
 
   // =========================================================================
+  // M2M flush helper — creates/updates/deletes junction records directly
+  // instead of relying on DaaS to process nested M2M payloads in the parent
+  // PATCH, which is not reliably supported.
+  // =========================================================================
+  const flushM2MChanges = async (
+    parentId: string | number,
+    m2mEntries: Array<{
+      junctionInfo: M2MJunctionInfo;
+      changes: {
+        create: Record<string, unknown>[];
+        update: Record<string, unknown>[];
+        delete: (string | number)[];
+      };
+    }>,
+  ) => {
+    for (const { junctionInfo, changes } of m2mEntries) {
+      const { junctionCollection, reverseJunctionField, junctionField } = junctionInfo;
+      const junctionService = new ItemsService(junctionCollection);
+
+      for (const entry of changes.create) {
+        // selectItems stages entries as {[junctionField]: {id: "uuid"}} — a
+        // nested object wrapping the related PK. Flatten it to the bare PK
+        // before sending to the junction API; PostgreSQL can't parse the JSON
+        // object as a uuid column value.
+        // createItem entries have richer related data (e.g., {name: "..."}) and
+        // are intentionally left as-is so DaaS deep-creates the related record.
+        const relatedValue = entry[junctionField];
+        const isSelectEntry =
+          relatedValue &&
+          typeof relatedValue === "object" &&
+          !Array.isArray(relatedValue) &&
+          Object.keys(relatedValue as object).length === 1 &&
+          "id" in (relatedValue as object);
+
+        const flatEntry = isSelectEntry
+          ? { ...entry, [junctionField]: (relatedValue as Record<string, unknown>).id }
+          : entry;
+
+        await junctionService.createOne({
+          [reverseJunctionField]: parentId,
+          ...flatEntry,
+        });
+      }
+
+      for (const entry of changes.update) {
+        const junctionId = entry.id as string | number | undefined;
+        if (junctionId != null) {
+          await junctionService.updateOne(junctionId, entry);
+        }
+      }
+
+      for (const junctionId of changes.delete) {
+        await junctionService.deleteOne(junctionId);
+      }
+    }
+  };
+
+  // =========================================================================
   // Save handler
   // =========================================================================
   const handleSave = async (afterSave?: "stay" | "add-new" | "copy") => {
@@ -410,24 +541,70 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         }
       });
 
-      // Only send changed fields in edit mode (PATCH semantics)
       const itemsService = new ItemsService(collection);
 
+      // Helper: split dataToSave into scalar fields and M2M changes.
+      // M2M changes ({create, update, delete}) are flushed via the junction
+      // collection API rather than embedded in the parent PATCH body, because
+      // DaaS does not reliably process nested M2M payloads.
+      const splitData = (source: Record<string, unknown>) => {
+        const scalar: Record<string, unknown> = {};
+        const m2m: Array<{
+          junctionInfo: M2MJunctionInfo;
+          changes: {
+            create: Record<string, unknown>[];
+            update: Record<string, unknown>[];
+            delete: (string | number)[];
+          };
+        }> = [];
+        for (const [key, value] of Object.entries(source)) {
+          const ji = m2mJunctionMap[key];
+          if (ji && isM2MChangesItem(value)) {
+            m2m.push({ junctionInfo: ji, changes: value });
+          } else {
+            scalar[key] = value;
+          }
+        }
+        return { scalar, m2m };
+      };
+
       if (mode === "edit" && id) {
-        const changedData: Record<string, unknown> = {};
+        // Collect only changed fields
+        const allChanged: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           if (initialFormData[key] !== value) {
-            changedData[key] = value;
+            allChanged[key] = value;
           }
         }
 
-        await itemsService.updateOne(id, changedData);
+        const { scalar: changedData, m2m: m2mEntries } = splitData(allChanged);
+
+        // Skip the PATCH when nothing scalar changed — avoids an unnecessary
+        // round-trip (the backend skips the DB write and returns 200, but
+        // the network call still costs latency).
+        if (Object.keys(changedData).length > 0) {
+          await itemsService.updateOne(id, changedData);
+        }
+
+        // Flush M2M changes via junction collection APIs
+        await flushM2MChanges(id, m2mEntries);
+
+        // Clear M2M keys from form state so child interfaces (e.g. ListM2M)
+        // receive value=undefined and reset their staged changes — prevents
+        // stale "NEW" rows appearing alongside the just-fetched server records.
+        const clearedFormData: Record<string, unknown> = { ...formData };
+        for (const { junctionInfo: ji } of m2mEntries) {
+          // find field name for this junction
+          for (const [k, v] of Object.entries(m2mJunctionMap)) {
+            if (v === ji) delete clearedFormData[k];
+          }
+        }
 
         setSuccess(true);
-        setInitialFormData({ ...formData }); // Reset "hasEdits" baseline
+        setFormData(clearedFormData);
+        setInitialFormData(clearedFormData); // Reset "hasEdits" baseline
 
         if (afterSave === "copy") {
-          // Save as copy: create a new item with current data (without id)
           const copyData = { ...dataToSave };
           delete copyData.id;
           const copyResult = await itemsService.createOne(copyData);
@@ -442,22 +619,29 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
         onSuccess?.({ ...dataToSave, id });
       } else {
-        // Create mode
-        const result = await itemsService.createOne(dataToSave);
-        const newId = result?.id;
+        // Create mode: split out M2M before creating the parent record
+        const { scalar: scalarData, m2m: m2mEntries } = splitData(dataToSave);
+
+        const result = await itemsService.createOne(scalarData);
+        const newId = result?.id as string | number | undefined;
+
+        // Flush M2M changes now that we have the parent PK
+        if (newId != null && m2mEntries.length > 0) {
+          await flushM2MChanges(newId, m2mEntries);
+        }
+
         setSuccess(true);
 
         if (afterSave === "add-new") {
-          onSuccess?.({ ...dataToSave, id: newId });
+          onSuccess?.({ ...scalarData, id: newId });
           onNavigateToCreate?.();
           return;
         }
 
-        onSuccess?.({ ...dataToSave, id: newId });
+        onSuccess?.({ ...scalarData, id: newId });
       }
     } catch (err) {
       console.error("Error saving item:", err);
-      // Try to parse per-field validation errors
       const perFieldErrors = parseValidationErrors(err);
       if (Object.keys(perFieldErrors).length > 0) {
         setFieldErrors(perFieldErrors);
