@@ -40,6 +40,8 @@ import {
 } from "@tabler/icons-react";
 import React, { useCallback, useEffect, useState } from "react";
 
+const DEFAULT_FIELDS: string[] = ["id"];
+
 /**
  * Props for the SelectDropdownM2O component
  *
@@ -103,7 +105,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   // primaryKey is reserved for future use when edit mode needs to know current item
   primaryKey: _primaryKey,
   layout = "dropdown",
-  fields = ["id"],
+  fields = DEFAULT_FIELDS,
   template,
   disabled = false,
   enableCreate = true,
