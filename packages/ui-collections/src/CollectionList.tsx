@@ -141,6 +141,12 @@ export interface CollectionListProps {
   onFilterChange?: (filter: Record<string, unknown> | null) => void;
   /** Callback fired once permissions are resolved for the collection */
   onPermissionsLoaded?: (permissions: ListPermissionState) => void;
+  /**
+   * Custom cell renderer — called before the built-in field-type renderer.
+   * Return a React node to override the cell, or null/undefined to fall through
+   * to the default field-type-aware renderer.
+   */
+  renderCell?: (item: AnyItem, header: Header) => React.ReactNode | null | undefined;
 }
 
 // System fields to exclude from default display
@@ -192,6 +198,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onSortChange: onSortChangeProp,
   onFilterChange,
   onPermissionsLoaded,
+  renderCell: consumerRenderCell,
 }) => {
   // ----- Data state -----
   const [allFields, setAllFields] = useState<Field[]>([]);
@@ -727,9 +734,14 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   // Field-type-aware cell renderer
   // Mirrors DaaS adjustFieldsForDisplays — booleans show icons,
   // dates/timestamps are formatted, numbers use locale, relations show FK.
+  // Consumer renderCell is called first; if it returns non-null the result is used.
   // =========================================================================
   const fieldTypeRenderCell = useCallback(
     (item: Record<string, unknown>, header: Header): React.ReactNode | null => {
+      if (consumerRenderCell) {
+        const consumerResult = consumerRenderCell(item as AnyItem, header);
+        if (consumerResult !== null && consumerResult !== undefined) return consumerResult;
+      }
       const fieldMeta = permittedFields.find((f) => f.field === header.value);
       if (!fieldMeta) return null; // fall back to VTable default
 
