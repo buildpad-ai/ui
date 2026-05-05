@@ -490,26 +490,40 @@ function getExplicitInterface(
         props: {
           folder: options?.folder as string,
           crop: options?.crop !== false,
-          width:
-            (options?.width as "auto" | "full" | "fill" | "half") || "auto",
+          width: (options?.width as "auto" | "full" | "fill" | "half") || "auto",
           fromUser: options?.fromUser !== false,
-          fromUrl: options?.fromUrl !== false,
+          fromUrl: options?.fromUrl !== false && options?.enableLink !== false,
           fromLibrary: options?.fromLibrary !== false,
-          ...options,
+          enableCreate: options?.enableCreate !== false,
+          enableSelect: options?.enableSelect !== false,
+          letterbox: options?.letterbox === true,
+          preset: options?.preset as string,
         },
       };
 
     // Files upload (multiple files)
-    case "files":
+    case "files": {
+      const junctionCollection = options?.junction_collection as string | undefined;
+      const junctionFieldCurrent = options?.junction_field_current as string | undefined;
+      const junctionFieldRelated = (options?.junction_field_related as string | undefined) ?? 'daas_files_id';
       return {
         type: "files",
         props: {
           folder: options?.folder as string,
           accept: options?.accept as string,
           limit: options?.limit as number,
-          ...options,
+          enableCreate: options?.enableCreate !== false,
+          enableSelect: options?.enableSelect !== false,
+          ...(junctionCollection && junctionFieldCurrent ? {
+            junctionConfig: {
+              junctionCollection,
+              junctionFieldCurrent,
+              junctionFieldRelated,
+            },
+          } : {}),
         },
       };
+    }
 
     // Collection Item Dropdown (select single item from any collection)
     case "collection-item-dropdown": {

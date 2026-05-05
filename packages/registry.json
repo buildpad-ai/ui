@@ -366,6 +366,18 @@
           "target": "app/api/files/route.ts"
         },
         {
+          "source": "cli/templates/api/daas-files-id-route.ts",
+          "target": "app/api/files/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-assets-id-route.ts",
+          "target": "app/api/assets/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-permissions-me-route.ts",
+          "target": "app/api/permissions/me/route.ts"
+        },
+        {
           "source": "cli/templates/components/DaaSProviderWrapper.tsx",
           "target": "components/DaaSProviderWrapper.tsx"
         },
@@ -1297,6 +1309,10 @@
         {
           "source": "ui-interfaces/src/upload/Upload.tsx",
           "target": "components/ui/upload.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/upload/Upload.css",
+          "target": "components/ui/upload.css"
         }
       ],
       "dependencies": [

@@ -140,14 +140,17 @@ export function usePermissions(options: UsePermissionsOptions = {}): UsePermissi
   const [globalPermissions, setGlobalPermissions] = useState<UserPermissions | null>(null);
   
   // Build API URL helper
+  // In direct mode, prepend the DaaS base URL but PRESERVE the `/api` prefix.
+  // Stripping `/api` previously routed `/permissions/me` to a DaaS UI path that
+  // 307-redirects to /auth/login, returning HTML and breaking JSON parsing
+  // (causing isAdmin to silently fall back to false).
   const buildUrl = useCallback((path: string): string => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
     if (daasContext?.isDirectMode && daasContext.config) {
       const baseUrl = daasContext.config.url.replace(/\/$/, '');
-      const cleanPath = path.startsWith('/') ? path : `/${path}`;
-      const daasPath = cleanPath.replace(/^\/api/, '');
-      return `${baseUrl}${daasPath}`;
+      return `${baseUrl}${cleanPath}`;
     }
-    return path;
+    return cleanPath;
   }, [daasContext]);
   
   // Get headers helper
@@ -327,12 +330,18 @@ export function usePermissions(options: UsePermissionsOptions = {}): UsePermissi
     return fields.filter((f) => accessibleSet.has(f));
   }, [getAccessibleFields]);
   
-  // Auto-fetch on mount
+  // Auto-fetch on mount and whenever the collections list changes.
+  // Including `refresh` (which depends on `collections`) ensures permissions
+  // are re-fetched when relation info resolves asynchronously — e.g. ListM2M
+  // mounts with collections:[] while relationInfo is loading, then the list
+  // becomes ['junction', 'related'] once it resolves. Without this dep,
+  // non-admin users with valid permissions would never have their collection
+  // permissions fetched, leaving allowSelect/allowCreate permanently false.
   useEffect(() => {
     if (autoFetch) {
       refresh();
     }
-  }, [autoFetch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoFetch, refresh]);
   
   return {
     // State

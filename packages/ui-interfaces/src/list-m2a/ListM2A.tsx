@@ -213,6 +213,8 @@ const SortableListItem: React.FC<SortableListItemProps> = ({
                         padding: '0 4px',
                     }}
                     data-testid={`m2a-drag-handle-${id}`}
+                    role="button"
+                    aria-label="Reorder item"
                     {...listeners}
                 >
                     <IconGripVertical size={14} color="var(--mantine-color-gray-5)" />
@@ -781,7 +783,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
 
                 {/* Drag disabled notice (paginated) */}
                 {hasSortField && !disabled && visibleItems.length > limit && (
-                    <Alert icon={<IconAlertCircle size={16} />} color="yellow" mb="md" data-testid="m2a-drag-disabled-notice">
+                    <Alert icon={<IconAlertCircle size={16} />} color="warning" mb="md" data-testid="m2a-drag-disabled-notice">
                         Drag &amp; drop sorting is disabled when items are paginated. Reduce items or increase page size to enable.
                     </Alert>
                 )}
@@ -837,7 +839,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 <Group gap="xs">
                                                     <Text size="sm" td={isDeleted ? 'line-through' : undefined}>{getItemDisplayValue(item)}</Text>
                                                     {isCreated && <Badge size="xs" color="green" variant="light">new</Badge>}
-                                                    {isUpdated && <Badge size="xs" color="yellow" variant="light">edited</Badge>}
+                                                    {isUpdated && <Badge size="xs" color="warning" variant="light">edited</Badge>}
                                                     {isDeleted && <Badge size="xs" color="red" variant="light">removed</Badge>}
                                                 </Group>
                                             ) : (
@@ -949,7 +951,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                         {getItemDisplayValue(item)}
                                                     </Text>
                                                     {isCreated && <Badge size="xs" color="green" variant="light">new</Badge>}
-                                                    {isUpdated && <Badge size="xs" color="yellow" variant="light">edited</Badge>}
+                                                    {isUpdated && <Badge size="xs" color="warning" variant="light">edited</Badge>}
                                                     {isDeleted && <Badge size="xs" color="red" variant="light">removed</Badge>}
                                                 </Group>
                                             ) : (

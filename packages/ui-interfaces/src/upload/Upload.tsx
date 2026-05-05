@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef, useState } from 'react';
+import './Upload.css';
 import {
   Box,
   Button,
@@ -493,44 +494,44 @@ export const Upload: React.FC<UploadProps> = ({
                 <Text c="dimmed">No files found</Text>
               </Stack>
             ) : (
-              <Stack gap="xs">
+              <div className="library-grid">
                 {libraryFiles.map((file) => (
                   <Paper
                     key={file.id}
-                    p="sm"
                     withBorder
-                    style={{ cursor: 'pointer' }}
+                    className="library-card"
                     onClick={() => handleSelectLibraryFile(file)}
                     data-testid={`library-file-${file.id}`}
                   >
-                    <Group>
-                      <Box
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 'var(--mantine-radius-sm)',
-                          backgroundColor: 'var(--mantine-color-gray-1)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
+                    <div className="library-card-thumb">
+                      {file.type?.startsWith('image/') ? (
+                        <img
+                          src={`/api/assets/${file.id}?key=system-small-cover`}
+                          alt={file.title || file.filename_download}
+                          className="library-card-thumb-img"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className={`library-card-fallback${file.type?.startsWith('image/') ? ' library-card-fallback--hidden' : ''}`}
                       >
-                        {file.type?.startsWith('image/') ? (
-                          <IconPhoto size={20} color="var(--mantine-primary-color-6)" />
-                        ) : (
-                          <IconFolderOpen size={20} color="var(--mantine-color-gray-6)" />
-                        )}
-                      </Box>
-                      <Box style={{ flex: 1 }}>
-                        <Text size="sm" fw={500}>{file.title || file.filename_download}</Text>
-                        <Text size="xs" c="dimmed">
-                          {file.type} • {Math.round((file.filesize || 0) / 1024)} KB
-                        </Text>
-                      </Box>
-                    </Group>
+                        <IconFolderOpen size={32} color="var(--mantine-color-gray-5)" />
+                      </div>
+                    </div>
+                    <Box p="xs">
+                      <Text size="xs" fw={500} lineClamp={1} title={file.title || file.filename_download}>
+                        {file.title || file.filename_download}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {Math.round((file.filesize || 0) / 1024)} KB
+                      </Text>
+                    </Box>
                   </Paper>
                 ))}
-              </Stack>
+              </div>
             )}
           </Box>
         </Stack>

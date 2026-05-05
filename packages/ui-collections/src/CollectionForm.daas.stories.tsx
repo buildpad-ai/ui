@@ -263,7 +263,7 @@ const DaaSFormPlayground: React.FC = () => {
     return (
       <Stack gap="md">
         <Alert
-          color="yellow"
+          color="warning"
           title="Not Connected to DaaS"
           icon={<IconPlugConnectedX size={16} />}
         >
@@ -351,7 +351,7 @@ pnpm dev:host
                 leftSection={<IconDatabase size={16} />}
               />
             ) : (
-              <Alert color="yellow">
+              <Alert color="warning">
                 No collections found. Check your DaaS connection.
               </Alert>
             )}

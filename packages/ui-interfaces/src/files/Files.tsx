@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, Group, Stack, Text, Paper, Badge, Tooltip, Pagination, Menu, ActionIcon, Modal, TextInput, Loader } from '@mantine/core';
-import { IconTrash, IconDownload, IconExternalLink, IconFolder, IconDotsVertical, IconPhoto, IconUpload, IconFolderOpen } from '@tabler/icons-react';
+import { IconTrash, IconDownload, IconExternalLink, IconFolder, IconDotsVertical, IconUpload, IconFolderOpen, IconX } from '@tabler/icons-react';
 import { type FileUpload } from '../upload';
+import '../upload/Upload.css';
 import { daasAPI, type DaaSFile } from '@buildpad/hooks';
 import { useFiles } from '@buildpad/hooks';
 import { isNewItem } from '@buildpad/utils';
@@ -140,7 +141,6 @@ export const Files: React.FC<FilesProps> = ({
         // Fetch junction table records for this item
         const junctionData = await daasAPI.getItems<Record<string, unknown>>(jc.junctionCollection, {
           filter: { [jc.junctionFieldCurrent]: { _eq: primaryKey } },
-          sort: ['sort'],
           limit: 100,
         });
         
@@ -597,7 +597,6 @@ export const Files: React.FC<FilesProps> = ({
         <Group mt="xs">
           {enableCreate && createAllowed && !disabled && (
             <Button
-              color="violet"
               leftSection={<IconUpload size={16} />}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -637,12 +636,21 @@ export const Files: React.FC<FilesProps> = ({
             placeholder="Search files..."
             value={librarySearch}
             onChange={(e) => handleLibrarySearch(e.target.value)}
+            rightSection={
+              libraryLoading ? (
+                <Loader size="xs" />
+              ) : librarySearch ? (
+                <ActionIcon variant="subtle" onClick={() => handleLibrarySearch('')}>
+                  <IconX size={14} />
+                </ActionIcon>
+              ) : null
+            }
           />
 
           <Box style={{ minHeight: 200 }}>
             {libraryLoading ? (
               <Stack align="center" justify="center" style={{ height: 200 }}>
-                <Loader size="sm" />
+                <Loader />
                 <Text size="sm" c="dimmed">Loading files...</Text>
               </Stack>
             ) : libraryFiles.length === 0 ? (
@@ -651,43 +659,41 @@ export const Files: React.FC<FilesProps> = ({
                 <Text c="dimmed">No files found</Text>
               </Stack>
             ) : (
-              <Stack gap="xs">
+              <div className="library-grid">
                 {libraryFiles.map((file) => (
                   <Paper
                     key={file.id}
-                    p="sm"
                     withBorder
-                    style={{ cursor: 'pointer' }}
+                    className="library-card"
                     onClick={() => handleSelectFromLibrary(file)}
                   >
-                    <Group>
-                      <Box
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 'var(--mantine-radius-sm)',
-                          backgroundColor: 'var(--mantine-color-gray-1)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {file.type?.startsWith('image/') ? (
-                          <IconPhoto size={20} color="var(--mantine-primary-color-6)" />
-                        ) : (
-                          <IconFolderOpen size={20} color="var(--mantine-color-gray-6)" />
-                        )}
-                      </Box>
-                      <Box style={{ flex: 1 }}>
-                        <Text size="sm" fw={500}>{file.title || file.filename_download}</Text>
-                        <Text size="xs" c="dimmed">
-                          {file.type} • {Math.round((file.filesize || 0) / 1024)} KB
-                        </Text>
-                      </Box>
-                    </Group>
+                    <div className="library-card-thumb">
+                      {file.type?.startsWith('image/') ? (
+                        <img
+                          src={`/api/assets/${file.id}?key=system-small-cover`}
+                          alt={file.title || file.filename_download}
+                          className="library-card-thumb-img"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`library-card-fallback${file.type?.startsWith('image/') ? ' library-card-fallback--hidden' : ''}`}>
+                        <IconFolderOpen size={32} color="var(--mantine-color-gray-5)" />
+                      </div>
+                    </div>
+                    <Box p="xs">
+                      <Text size="xs" fw={500} lineClamp={1} title={file.title || file.filename_download}>
+                        {file.title || file.filename_download}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {Math.round((file.filesize || 0) / 1024)} KB
+                      </Text>
+                    </Box>
                   </Paper>
                 ))}
-              </Stack>
+              </div>
             )}
           </Box>
         </Stack>

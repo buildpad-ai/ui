@@ -85,6 +85,8 @@ import { useRelationMultipleM2M, type M2MDisplayItem, type M2MChangesItem } from
 import { useRelationPermissionsM2M } from "@buildpad/hooks";
 import { mergeTranslations, interpolate, formatItemCount, type M2MTranslations } from "./translations";
 
+const DEFAULT_FIELDS: string[] = ["id"];
+
 // ── Props ──────────────────────────────────────────────────────────
 
 export interface ListM2MProps {
@@ -505,7 +507,7 @@ const SortableM2MListItem: React.FC<SortableM2MListItemProps> = ({
                         </Badge>
                     )}
                     {item.$type === "updated" && (
-                        <Badge size="xs" color="yellow" variant="light">
+                        <Badge size="xs" color="warning" variant="light">
                             {t.badge_edited}
                         </Badge>
                     )}
@@ -565,7 +567,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     primaryKey,
     layout = "list",
     tableSpacing: _tableSpacing = "cozy",
-    fields = ["id"],
+    fields = DEFAULT_FIELDS,
     template,
     disabled = false,
     nonEditable = false,
@@ -632,6 +634,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         getChanges,
         hasChanges,
         setLocalChanges,
+        resetChanges,
         changes,
     } = useRelationMultipleM2M(relationInfo, primaryKey ?? null);
 
@@ -655,6 +658,9 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     const [currentPage, setCurrentPage] = useState(1);
     const [currentLimit, setCurrentLimit] = useState(initialLimit);
     const [search, setSearch] = useState("");
+    // Incrementing this triggers a server re-fetch (mirrors Directus's
+    // updateFetchedItems() call after the parent save clears staged changes)
+    const [refreshKey, setRefreshKey] = useState(0);
 
     // Batch edit selection (table layout only)
     const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
@@ -722,6 +728,13 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     const lastSentChangesJSON = useRef<string>("");
 
     // ── Sync external value → local changes ─────────────────────────
+    // Three branches:
+    //  1. ChangesItem object  → adopt as local changes (parent restored state)
+    //  2. undefined/null/[]   → parent cleared the field (e.g. after a save
+    //     where DaaS already processed the M2M payload). Reset local changes
+    //     so we don't re-render stale "NEW" rows alongside the just-fetched
+    //     server records.
+    //  3. anything else       → ignore.
     useEffect(() => {
         if (valueProp && typeof valueProp === "object" && !Array.isArray(valueProp)) {
             const vp = valueProp as M2MChangesItem;
@@ -731,8 +744,16 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                 if (vpJSON === lastSentChangesJSON.current) return;
                 setLocalChanges(vp);
             }
+        } else if (
+            valueProp === undefined ||
+            valueProp === null ||
+            (Array.isArray(valueProp) && valueProp.length === 0)
+        ) {
+            lastSentChangesJSON.current = "";
+            resetChanges();
+            setRefreshKey((k) => k + 1);
         }
-    }, [valueProp, setLocalChanges]);
+    }, [valueProp, setLocalChanges, resetChanges]);
 
     // ── Notify parent of changes ────────────────────────────────────
     useEffect(() => {
@@ -780,6 +801,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         filter,
         loadItems,
         mockItems,
+        refreshKey,
     ]);
 
     // ── Handlers ────────────────────────────────────────────────────
@@ -1040,7 +1062,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                         {label}
                     </Text>
                 )}
-                <Alert icon={<IconInfoCircle size={16} />} title={t.no_singleton_relations} color="yellow">
+                <Alert icon={<IconInfoCircle size={16} />} title={t.no_singleton_relations} color="warning">
                     <Text size="sm">
                         {t.no_singleton_relations}
                     </Text>
@@ -1156,7 +1178,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                             selectedIds.size > 0 && (
                                 <Button
                                     variant="light"
-                                    color="yellow"
+                                    color="warning"
                                     leftSection={<IconCheckbox size={16} />}
                                     onClick={openEditDrawer}
                                     size="sm"

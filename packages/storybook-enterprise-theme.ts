@@ -241,7 +241,7 @@ export const enterpriseTheme = createTheme({
         th: {
           fontWeight: "600",
           fontSize: "0.82rem",
-          color: "#6f6558",
+          color: "#3a342c",
         },
       },
     },

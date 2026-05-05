@@ -104,14 +104,22 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({
     e.stopPropagation();
   };
 
+  // Rows that contain their own focusable controls (selection checkbox / radio,
+  // drag handle for manual sort) must NOT also act as a keyboard-interactive
+  // button — that produces the axe "nested-interactive" violation. Mouse users
+  // still get row click; keyboard users navigate to the inner control.
+  const hasFocusableChild = showSelect !== 'none' || showManualSort;
+  const rowIsKeyboardInteractive = hasClickListener && !hasFocusableChild;
+
   return (
     <tr
       ref={ref}
       className={`table-row ${subdued ? 'subdued' : ''} ${hasClickListener ? 'clickable' : ''} ${isDragging ? 'dragging' : ''} ${className || ''}`}
       style={{ height: `${height + 2}px`, ...style }}
-      tabIndex={hasClickListener ? 0 : undefined}
+      tabIndex={rowIsKeyboardInteractive ? 0 : undefined}
       onClick={onClick}
-      onKeyDown={handleKeyDown}
+      onKeyDown={rowIsKeyboardInteractive ? handleKeyDown : undefined}
+      aria-selected={showSelect !== 'none' ? (isSelected ? 'true' : 'false') : undefined}
       {...restProps}
     >
       {/* Manual Sort Handle */}
@@ -119,6 +127,8 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({
         <td className="cell manual" onClick={handleSelectClick}>
           <div
             className={`drag-handle ${sortedManually ? 'sorted-manually' : ''}`}
+            role="button"
+            aria-label="Reorder row"
             {...dragHandleProps}
           >
             <IconGripVertical size={18} />
@@ -162,14 +172,14 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({
                 {formatValue(value)}
               </Text>
             ) : (
-              <Text size="sm" c="dimmed">—</Text>
+              <Text size="sm" c="gray.6">—</Text>
             )}
           </td>
         );
       })}
 
       {/* Spacer */}
-      <td className="cell spacer" />
+      <td className="cell spacer" aria-hidden="true" />
 
       {/* Append Slot */}
       {renderAppend && (

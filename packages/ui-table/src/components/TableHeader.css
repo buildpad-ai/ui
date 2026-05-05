@@ -1,6 +1,19 @@
 /* Note: display: contents is set in VTable.css for thead/tbody */
 /* The tr grid styles are also set in VTable.css for consistency */
 
+/* Visually hidden text for screen readers (used for icon-only header cells). */
+.table-header .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .table-header tr.fixed {
   position: sticky;
   top: var(--v-table-sticky-offset-top, 0);

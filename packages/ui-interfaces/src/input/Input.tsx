@@ -152,6 +152,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
       size="sm"
       onClick={() => handleChange(null)}
       disabled={disabled || readonly}
+      aria-label="Clear input"
     >
       <IconX size={16} />
     </ActionIcon>
@@ -192,6 +193,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
           size="sm"
           onClick={toggle}
           disabled={disabled || readonly}
+          aria-label={showPassword ? 'Hide password' : 'Show password'}
         >
           {showPassword ? (
             <IconEyeOff size={16} />

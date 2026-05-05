@@ -42,6 +42,8 @@ import {
 } from "@tabler/icons-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+const DEFAULT_FIELDS: string[] = ["id"];
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────────────────────────────────────
@@ -234,7 +236,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
   primaryKey,
   layout = "list",
   tableSpacing = "cozy",
-  fields = ["id"],
+  fields = DEFAULT_FIELDS,
   template,
   disabled = false,
   enableCreate = true,
@@ -848,7 +850,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
       {isSingleton && (
         <Alert
           icon={<IconAlertCircle size={16} />}
-          color="yellow"
+          color="warning"
           data-testid="o2m-singleton-warning"
         >
           The related collection is a singleton. Only one item can exist.
@@ -1075,6 +1077,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                             variant="subtle"
                             size="sm"
                             data-testid={`o2m-link-${item.id}`}
+                            aria-label="View item"
                           >
                             <IconExternalLink size={14} />
                           </ActionIcon>
@@ -1089,6 +1092,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                             size="sm"
                             onClick={() => handleEditItem(item)}
                             data-testid={`o2m-edit-${item.id}`}
+                            aria-label="Edit item"
                           >
                             <IconEdit size={14} />
                           </ActionIcon>
@@ -1112,6 +1116,11 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                               size="sm"
                               onClick={() => handleRemoveItem(item)}
                               data-testid={`o2m-remove-${item.id}`}
+                              aria-label={
+                                effectiveRemoveAction === "delete"
+                                  ? "Delete item"
+                                  : "Unlink item"
+                              }
                             >
                               {effectiveRemoveAction === "delete" ? (
                                 <IconTrash size={14} />
