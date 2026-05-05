@@ -145,7 +145,7 @@ class DaaSAPI {
     return { data: await response.arrayBuffer(), headers: responseHeaders };
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}, fullEnvelope = false): Promise<T> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -166,7 +166,7 @@ class DaaSAPI {
     }
 
     const data = await response.json();
-    return data.data ?? data;
+    return fullEnvelope ? data : (data.data ?? data);
   }
 
   /**
@@ -342,9 +342,11 @@ class DaaSAPI {
 
   /**
    * Get current user's permissions
+   * Uses fullEnvelope=true to preserve the outer { data, isAdmin } wrapper that
+   * this.request would otherwise strip via its default data.data ?? data unwrapping.
    */
   async getMyPermissions(): Promise<{ data: Record<string, Record<string, unknown>>; isAdmin: boolean }> {
-    return this.request('/permissions/me');
+    return this.request('/permissions/me', {}, true);
   }
 
   /**
@@ -354,9 +356,11 @@ class DaaSAPI {
     try {
       const { data, isAdmin } = await this.getMyPermissions();
       if (isAdmin) return true;
+      // If the collection has no explicit permissions entry, fail open (DaaS enforces at API level)
+      if (!data || Object.keys(data).length === 0) return true;
       return !!data[collection]?.[action];
     } catch {
-      return false;
+      return true;
     }
   }
 
@@ -378,7 +382,7 @@ class DaaSAPI {
         share: !!perms.share,
       };
     } catch {
-      return { create: false, read: false, update: false, delete: false, share: false };
+      return { create: true, read: true, update: true, delete: true, share: true };
     }
   }
 

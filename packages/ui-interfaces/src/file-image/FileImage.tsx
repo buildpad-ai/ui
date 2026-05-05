@@ -183,8 +183,8 @@ export const FileImage: React.FC<FileImageProps> = ({
 
   // Check if component is effectively disabled
   const internalDisabled = useMemo(() => {
-    return disabled || (!enableCreate && !enableSelect);
-  }, [disabled, enableCreate, enableSelect]);
+    return disabled || (!enableCreate && !enableSelect && !fromUrl);
+  }, [disabled, enableCreate, enableSelect, fromUrl]);
 
   useEffect(() => {
     let mounted = true;
@@ -687,7 +687,7 @@ export const FileImage: React.FC<FileImageProps> = ({
               multiple={false}
               fromUser={fromUser && createAllowed && enableCreate && !readonly}
               fromLibrary={fromLibrary && enableSelect && !readonly}
-              fromUrl={fromUrl && createAllowed && enableCreate && !readonly}
+              fromUrl={fromUrl && !readonly}
               folder={folder}
               accept="image/*"
               onInput={handleUploadInput}

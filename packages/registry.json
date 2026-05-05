@@ -374,6 +374,10 @@
           "target": "app/api/assets/[id]/route.ts"
         },
         {
+          "source": "cli/templates/api/daas-permissions-me-route.ts",
+          "target": "app/api/permissions/me/route.ts"
+        },
+        {
           "source": "cli/templates/components/DaaSProviderWrapper.tsx",
           "target": "components/DaaSProviderWrapper.tsx"
         },
