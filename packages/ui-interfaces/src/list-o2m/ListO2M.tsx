@@ -41,8 +41,7 @@ import {
   IconUnlink,
 } from "@tabler/icons-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
-const DEFAULT_FIELDS: string[] = ["id"];
+import { renderTemplate, getByPath, DEFAULT_RELATIONAL_FIELDS, resolveDisplayTemplate, resolveRelationFields } from "../list-m2a/render-template";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -145,38 +144,6 @@ export interface ListO2MProps {
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Resolve a nested field path like "author.name" from an object.
- */
-function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-  return path.split(".").reduce<unknown>((acc, key) => {
-    if (acc && typeof acc === "object" && key in (acc as Record<string, unknown>)) {
-      return (acc as Record<string, unknown>)[key];
-    }
-    return undefined;
-  }, obj);
-}
-
-/**
- * Render a template string with {{field}} or {{nested.field}} placeholders.
- * Falls back to displaying the first non-id field if no template is given.
- */
-function renderTemplate(
-  template: string | undefined,
-  item: O2MItem,
-  fields: string[],
-): string {
-  if (template) {
-    return template.replace(/\{\{([^}]+)\}\}/g, (_match, path: string) => {
-      const val = getNestedValue(item as Record<string, unknown>, path.trim());
-      return val != null ? String(val) : "";
-    });
-  }
-  // Default: first non-id field
-  const displayField = fields.find((f) => f !== "id" && item[f]) || "id";
-  return String(item[displayField] ?? item.id ?? "");
-}
-
-/**
  * Deep-interpolate {{field}} placeholders in a filter object using parent form values.
  * Matches DaaS's adjustFilterForField behavior.
  */
@@ -188,7 +155,7 @@ function interpolateFilter(
   const interpolated = json.replace(
     /\{\{\s*([^}\s]+)\s*\}\}/g,
     (_match, field: string) => {
-      const val = getNestedValue(parentValues, field);
+      const val = getByPath(parentValues, field);
       if (val === undefined || val === null) return "null";
       return typeof val === "string" ? val.replace(/"/g, '\\"') : String(val);
     },
@@ -236,7 +203,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
   primaryKey,
   layout = "list",
   tableSpacing = "cozy",
-  fields = DEFAULT_FIELDS,
+  fields = DEFAULT_RELATIONAL_FIELDS,
   template,
   disabled = false,
   enableCreate = true,
@@ -315,6 +282,16 @@ export const ListO2M: React.FC<ListO2MProps> = ({
     if (info?.oneDeselectAction === "delete") return "delete";
     return "unlink";
   }, [removeActionProp, isDemoMode, mockRelationInfo, hookRelationInfo]);
+
+  // ── Display template resolution ─────────────────────────────────────────
+  const displayTemplate = useMemo(
+    () => resolveDisplayTemplate(template, relationInfo as Parameters<typeof resolveDisplayTemplate>[1]),
+    [template, relationInfo],
+  );
+  const resolvedFields = useMemo(
+    () => resolveRelationFields(displayTemplate, fields, relationInfo?.relatedPrimaryKeyField?.field),
+    [displayTemplate, fields, relationInfo],
+  );
 
   // ── Pagination & search state ────────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
@@ -507,7 +484,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
         search: enableSearchFilter ? search : undefined,
         sortField: sortField || relationInfo?.sortField || undefined,
         sortDirection,
-        fields,
+        fields: resolvedFields,
       });
     }
   }, [
@@ -519,7 +496,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
     search,
     sortField,
     sortDirection,
-    fields,
+    resolvedFields,
     enableSearchFilter,
     loadItems,
   ]);
@@ -557,7 +534,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
             search: enableSearchFilter ? search : undefined,
             sortField,
             sortDirection,
-            fields,
+            fields: resolvedFields,
           });
         }
         return;
@@ -594,7 +571,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
       search,
       sortField,
       sortDirection,
-      fields,
+      resolvedFields,
     ],
   );
 
@@ -615,7 +592,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
             search: enableSearchFilter ? search : undefined,
             sortField,
             sortDirection,
-            fields,
+            fields: resolvedFields,
           });
         }
       } catch (err) {
@@ -630,7 +607,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           const col = relationInfo.relatedCollection.collection;
           const qp = new URLSearchParams();
           qp.set("filter", JSON.stringify({ id: { _in: ids } }));
-          if (fields.length > 0) qp.set("fields", fields.join(","));
+          if (resolvedFields.length > 0) qp.set("fields", resolvedFields.join(","));
           const resp = await apiRequest<{ data: O2MItem[] }>(
             `/api/items/${col}?${qp.toString()}`,
           );
@@ -1059,7 +1036,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                     </Table.Td>
                   )}
                   {fields.map((fieldName) => {
-                    const cellValue = getNestedValue(
+                    const cellValue = getByPath(
                       item as Record<string, unknown>,
                       fieldName,
                     );
@@ -1182,7 +1159,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                         </ActionIcon>
                       </Group>
                     )}
-                    <Text>{renderTemplate(template, item, fields)}</Text>
+                    <Text>{renderTemplate(displayTemplate, item)}</Text>
                   </Group>
                   <Group gap="xs">
                     {enableLink && (

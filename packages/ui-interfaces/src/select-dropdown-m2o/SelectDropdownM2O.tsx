@@ -29,6 +29,12 @@ import {
 } from "@buildpad/hooks";
 import { apiRequest } from "@buildpad/services";
 import {
+  renderTemplate,
+  DEFAULT_RELATIONAL_FIELDS,
+  resolveDisplayTemplate,
+  resolveRelationFields,
+} from "../list-m2a/render-template";
+import {
   IconAlertCircle,
   IconEdit,
   IconExternalLink,
@@ -38,9 +44,7 @@ import {
   IconSelector,
   IconTrash,
 } from "@tabler/icons-react";
-import React, { useCallback, useEffect, useState } from "react";
-
-const DEFAULT_FIELDS: string[] = ["id"];
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 /**
  * Props for the SelectDropdownM2O component
@@ -105,7 +109,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   // primaryKey is reserved for future use when edit mode needs to know current item
   primaryKey: _primaryKey,
   layout = "dropdown",
-  fields = DEFAULT_FIELDS,
+  fields = DEFAULT_RELATIONAL_FIELDS,
   template,
   disabled = false,
   enableCreate = true,
@@ -130,6 +134,26 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     loading: relationLoading,
     error: relationError,
   } = useRelationM2O(collection, field);
+
+  // ---------------------------------------------------------------------------
+  // Display template resolution (Directus-style fallback chain):
+  //   1. Explicit template prop (from field options)
+  //   2. Collection's display_template meta (from relationInfo)
+  //   3. `{{ primaryKeyField }}` fallback
+  // ---------------------------------------------------------------------------
+  const displayTemplate = useMemo(
+    () => resolveDisplayTemplate(template, relationInfo),
+    [template, relationInfo],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Resolve API request fields: merge template-extracted fields with explicit
+  // fields prop, always include the primary key field.
+  // ---------------------------------------------------------------------------
+  const resolvedFields = useMemo(
+    () => resolveRelationFields(displayTemplate, fields, relationInfo?.relatedPrimaryKeyField.field ?? "id"),
+    [displayTemplate, fields, relationInfo],
+  );
 
   // Use the hook for loading the selected item
   const {
@@ -167,9 +191,9 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   // Load selected item when value changes
   useEffect(() => {
     if (relationInfo && value) {
-      loadItem({ fields });
+      loadItem({ fields: resolvedFields });
     }
-  }, [relationInfo, value, fields, loadItem]);
+  }, [relationInfo, value, resolvedFields, loadItem]);
 
   // Load available items for dropdown
   const loadAvailableItems = useCallback(
@@ -182,13 +206,13 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
 
         const query: Record<string, unknown> = {
           limit: 100,
-          fields: fields.join(","),
+          fields: resolvedFields.join(","),
         };
 
         // Add search filter if provided
         if (searchTerm) {
-          // Search across display fields
-          const searchFields = fields.filter((f) => f !== "id");
+          // Search across display fields (all non-id fields from template + explicit)
+          const searchFields = resolvedFields.filter((f) => f !== "id");
           if (searchFields.length > 0) {
             query.filter = {
               _or: searchFields.map((f) => ({
@@ -218,7 +242,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         setItemsLoading(false);
       }
     },
-    [relationInfo, fields],
+    [relationInfo, resolvedFields],
   );
 
   // Load items when dropdown opens or search changes
@@ -233,25 +257,14 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     loadAvailableItems,
   ]);
 
-  // Format display value for an item
+  // Format display value for an item using the resolved display template.
+  // Uses the shared renderTemplate() from list-m2a/render-template.
   const formatDisplayValue = useCallback(
     (item: M2OItem | null): string => {
       if (!item) return "";
-
-      if (template) {
-        // Simple template rendering
-        let rendered = template;
-        Object.keys(item).forEach((key) => {
-          rendered = rendered.replace(`{{${key}}}`, String(item[key] || ""));
-        });
-        return rendered;
-      }
-
-      // Default: show the first available field that's not 'id'
-      const displayField = fields.find((f) => f !== "id" && item[f]) || "id";
-      return String(item[displayField] ?? item.id ?? "");
+      return renderTemplate(displayTemplate, item);
     },
-    [template, fields],
+    [displayTemplate],
   );
 
   // Handle item selection
@@ -613,12 +626,12 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                 <Table striped highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
-                      {fields.map((f) => (
+                      {resolvedFields.map((f) => (
                         <Table.Th key={f}>
                           <Text size="sm" fw={500}>
                             {f
                               .replace(/_/g, " ")
-                              .replace(/\b\w/g, (l) => l.toUpperCase())}
+                              .replace(/\b\w/g, (l: string) => l.toUpperCase())}
                           </Text>
                         </Table.Th>
                       ))}
@@ -628,7 +641,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                   <Table.Tbody>
                     {itemsLoading ? (
                       <Table.Tr>
-                        <Table.Td colSpan={fields.length + 1}>
+                        <Table.Td colSpan={resolvedFields.length + 1}>
                           <Group justify="center" py="md">
                             <Loader size="sm" />
                             <Text size="sm" c="dimmed">
@@ -639,7 +652,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                       </Table.Tr>
                     ) : availableItems.length === 0 ? (
                       <Table.Tr>
-                        <Table.Td colSpan={fields.length + 1}>
+                        <Table.Td colSpan={resolvedFields.length + 1}>
                           <Text ta="center" c="dimmed" py="md">
                             No items found
                           </Text>
@@ -661,7 +674,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                             closeSelectModal();
                           }}
                         >
-                          {fields.map((f) => (
+                          {resolvedFields.map((f) => (
                             <Table.Td key={f}>
                               <Text size="sm">{String(item[f] || "-")}</Text>
                             </Table.Td>
