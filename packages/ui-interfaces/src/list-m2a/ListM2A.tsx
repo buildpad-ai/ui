@@ -58,7 +58,7 @@ import {
     type ChangesItem,
 } from "@buildpad/hooks";
 import { CollectionList } from "@buildpad/ui-collections";
-import { renderTemplate } from "./render-template";
+import { renderTemplate, resolveDisplayTemplate } from "./render-template";
 import { JunctionItemForm } from "./JunctionItemForm";
 
 /**
@@ -377,10 +377,10 @@ export const ListM2A: React.FC<ListM2AProps> = ({
         return permDeleteAllowed[coll] ?? false;
     }, [isDemoMode, relationInfo, permDeleteAllowed]);
 
-    // Get display template for each collection
+    // Get display template for each collection using shared fallback chain
     const getDisplayTemplate = useCallback((collectionName: string) => {
         const collInfo = allowedCollections.find(c => c.collection === collectionName);
-        return collInfo?.meta?.display_template || `{{id}}`;
+        return resolveDisplayTemplate(undefined, { displayTemplate: collInfo?.meta?.display_template });
     }, [allowedCollections]);
 
     // Use ref for onChange to avoid triggering effect on every render

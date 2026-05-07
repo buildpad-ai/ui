@@ -80,12 +80,10 @@ import {
     type M2MRelationInfo,
 } from "@buildpad/hooks";
 import { CollectionList, CollectionForm } from "@buildpad/ui-collections";
-import { renderTemplate } from "../list-m2a/render-template";
+import { renderTemplate, resolveDisplayTemplate, DEFAULT_RELATIONAL_FIELDS } from "../list-m2a/render-template";
 import { useRelationMultipleM2M, type M2MDisplayItem, type M2MChangesItem } from "@buildpad/hooks";
 import { useRelationPermissionsM2M } from "@buildpad/hooks";
 import { mergeTranslations, interpolate, formatItemCount, type M2MTranslations } from "./translations";
-
-const DEFAULT_FIELDS: string[] = ["id"];
 
 // ── Props ──────────────────────────────────────────────────────────
 
@@ -567,7 +565,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     primaryKey,
     layout = "list",
     tableSpacing: _tableSpacing = "cozy",
-    fields = DEFAULT_FIELDS,
+    fields = DEFAULT_RELATIONAL_FIELDS,
     template,
     disabled = false,
     nonEditable = false,
@@ -710,12 +708,12 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     }, [relationInfo]);
 
     // ── Resolve display template ────────────────────────────────────
-    // If no template is provided, try the related collection's display_template
+    // Uses the shared fallback chain: explicit template → collection meta → PK
     const resolvedTemplate = useMemo(() => {
-        if (template) return template;
-        const collMeta = relationInfo?.relatedCollection?.meta;
-        if (collMeta?.display_template) return collMeta.display_template;
-        return null;
+        return resolveDisplayTemplate(template, {
+            displayTemplate: relationInfo?.relatedCollection?.meta?.display_template,
+            relatedPrimaryKeyField: relationInfo?.relatedPrimaryKeyField,
+        });
     }, [template, relationInfo]);
 
     // ── Refs to break bidirectional sync loops ─────────────────────

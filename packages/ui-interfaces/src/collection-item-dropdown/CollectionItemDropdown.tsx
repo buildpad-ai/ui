@@ -34,6 +34,7 @@ import {
     IconList,
 } from "@tabler/icons-react";
 import { useDisclosure, useDebouncedValue } from "@mantine/hooks";
+import { renderTemplate, resolveDisplayTemplate } from "../list-m2a/render-template";
 
 /**
  * Value type for CollectionItemDropdown
@@ -294,28 +295,16 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
         };
     }, [availableCollections]);
 
-    // Build display template
+    // Build display template using shared fallback chain
     const displayTemplate = React.useMemo(() => {
-        if (template) return template;
-        return `{{ ${primaryKey || 'id'} }}`;
+        return resolveDisplayTemplate(template, null, primaryKey || 'id');
     }, [template, primaryKey]);
 
-    // Format display value using template
+    // Format display value using shared renderTemplate
     const formatDisplayValue = useCallback((item: DisplayItem | null): string => {
         if (!item) return '';
-
-        let rendered = displayTemplate;
-        // Replace template placeholders like {{field}} or {{ field }}
-        const templateRegex = /\{\{\s*(\w+)\s*\}\}/g;
-        rendered = rendered.replace(templateRegex, (_, fieldName) => {
-            return String(item[fieldName] ?? '');
-        });
-
-        // Clean up any remaining empty placeholders
-        rendered = rendered.replace(/\{\{\s*\w*\s*\}\}/g, '').trim();
-        
-        return rendered || String(item[primaryKey] ?? item.id ?? '');
-    }, [displayTemplate, primaryKey]);
+        return renderTemplate(displayTemplate, item as Record<string, unknown>);
+    }, [displayTemplate]);
 
     // Load display item when value changes
     useEffect(() => {
