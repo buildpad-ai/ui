@@ -1,0 +1,57 @@
+---
+title: Architecture
+description: Buildpad UI is organized into three layers — Distribution, Source, and Consumer.
+---
+
+# Architecture
+
+## Distribution Layer
+
+The distribution layer provides two channels for consuming components:
+
+- **MCP Server** — For AI agents (VS Code Copilot, Cursor, Claude Code). Lists components, reads source code, generates examples.
+- **CLI Tool** — For developers. `buildpad init`, `buildpad add`, `buildpad bootstrap`.
+
+Both tools read from the same embedded component registry (`registry.json`) containing metadata, dependencies, and file mappings.
+
+## Source Layer
+
+The source layer contains all the packages in the monorepo:
+
+| Package | Description |
+|---|---|
+| `@buildpad/types` | Shared TypeScript type definitions (Field, Collection, Query, etc.) |
+| `@buildpad/services` | Services (FieldsService, CollectionsService) + DaaS API config |
+| `@buildpad/hooks` | React hooks for auth, permissions, relations, selection, presets |
+| `@buildpad/utils` | Field interface mapper, validation, formatting utilities |
+| `@buildpad/ui-interfaces` | 40+ field interface components built with Mantine v8 |
+| `@buildpad/ui-form` | VForm dynamic form component with permission enforcement |
+| `@buildpad/ui-table` | VTable dynamic data table with sorting, selection, drag-drop |
+| `@buildpad/ui-collections` | CollectionForm (CRUD wrapper) + CollectionList (paginated table) |
+
+## Dependency Flow
+
+```
+types (base)
+  ↓
+services (CRUD + DaaS)    hooks (auth + relations)
+  ↓                         ↓
+  └─────────┬───────────────┘
+            ↓
+    ui-interfaces (40+ components)
+            ↓
+       ui-form (VForm)
+            ↓
+   ui-collections (CollectionForm, CollectionList)
+```
+
+## Consumer Layer
+
+Projects consume Buildpad components via the CLI (Copy & Own model) or through AI agents via MCP. Components are copied as source code with imports transformed to local paths.
+
+## Testing Layer
+
+Playwright E2E tests use a two-tier strategy:
+
+- **Storybook tests** — Isolated component tests with mocked data (no auth required)
+- **DaaS E2E tests** — Full integration tests against real DaaS backend with authentication

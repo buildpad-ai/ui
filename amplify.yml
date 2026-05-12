@@ -1,5 +1,25 @@
 version: 1
 applications:
+  - appRoot: apps/docs
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - corepack enable
+            - corepack prepare pnpm@10.17.0 --activate
+            - REPO_ROOT="$(git rev-parse --show-toplevel)" && cd "${REPO_ROOT}" && pnpm install --frozen-lockfile
+        build:
+          commands:
+            - REPO_ROOT="$(git rev-parse --show-toplevel)" && cd "${REPO_ROOT}/apps/docs" && pnpm build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
+
   - appRoot: apps/storybook-host
     frontend:
       phases:

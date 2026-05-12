@@ -14,6 +14,7 @@
     "clean": "pnpm -r exec rimraf node_modules .next dist",
     "cli": "pnpm --filter @buildpad/cli build && node packages/cli/dist/index.js",
     "dev": "pnpm -r --parallel dev",
+    "dev:docs": "pnpm --filter docs dev",
     "dev:host": "pnpm --filter storybook-host dev",
     "install:all": "pnpm install",
     "lint": "pnpm -r lint",
@@ -46,6 +47,11 @@
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@10.17.0",
+  "pnpm": {
+    "patchedDependencies": {
+      "nextra-theme-docs@4.6.1": "patches/nextra-theme-docs@4.6.1.patch"
+    }
+  },
   "dependencies": {
     "@mantine/form": "^8.3.14",
     "@mantine/tiptap": "^8.3.10",

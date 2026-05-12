@@ -1,0 +1,86 @@
+---
+title: CLI
+description: The Buildpad CLI copies component source code directly into your project with imports transformed to local paths.
+---
+
+# CLI
+
+## Installation
+
+```bash
+# Use via npx (recommended)
+npx @buildpad/cli@latest --help
+
+# Or install globally
+npm install -g @buildpad/cli
+```
+
+## Commands
+
+| Command | Description |
+|---|---|
+| `buildpad init` | Initialize Buildpad in your project |
+| `buildpad bootstrap` | Full setup: init + add all + deps + validate |
+| `buildpad add <component>` | Add component(s) to your project |
+| `buildpad list` | List all available components |
+| `buildpad info <component>` | Get detailed info about a component |
+| `buildpad tree <component>` | Show dependency tree |
+| `buildpad diff <component>` | Preview changes before adding |
+| `buildpad status` | Show installed components |
+| `buildpad validate` | Validate installation for common issues |
+| `buildpad fix` | Auto-fix common issues |
+| `buildpad outdated` | Check for component updates |
+
+## Adding Components
+
+```bash
+# Add single component
+buildpad add input
+
+# Add multiple components
+buildpad add input select-dropdown datetime
+
+# Add collection-form (includes VForm + all 32 interface components)
+buildpad add collection-form
+
+# Add all components from a category
+buildpad add --category selection
+
+# Add all components (non-interactive)
+buildpad add --all
+
+# Interactive selection
+buildpad add
+```
+
+## Import Transformation
+
+When components are copied to your project, all internal imports are automatically transformed:
+
+```ts filename="Before (source)"
+import { useRelationM2M } from '@buildpad/hooks';
+import type { M2MItem } from '@buildpad/types';
+```
+
+```ts filename="After (in your project)"
+import { useRelationM2M } from '@/lib/buildpad/hooks';
+import type { M2MItem } from '@/lib/buildpad/types';
+```
+
+## Validation
+
+The `validate` command checks for common issues:
+
+- **Untransformed imports** — `@buildpad/*` imports that weren't converted
+- **Missing lib files** — Required utility modules not installed
+- **Missing CSS files** — CSS required by rich text/block editors
+- **SSR issues** — Components exported without SSR-safe wrappers
+- **Missing API routes** — DaaS integration routes not created
+
+```bash
+# Validate your installation
+buildpad validate
+
+# Auto-fix found issues
+buildpad fix
+```

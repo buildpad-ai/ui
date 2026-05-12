@@ -606,6 +606,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           }
         }
 
+
         setSuccess(true);
         setFormData(clearedFormData);
         setInitialFormData(clearedFormData); // Reset "hasEdits" baseline
