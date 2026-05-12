@@ -1,19 +1,19 @@
 ---
-title: MCP Server
-description: Use the Buildpad MCP server to browse, search, and install components from the registry using natural language.
+title: MCP
+description: Use the Buildpad MCP to browse, search, and install components from the registry using natural language.
 ---
 
 import { Callout, Tabs } from 'nextra/components'
 
-# MCP Server
+# MCP
 
-The Buildpad MCP Server allows AI assistants to interact with the component registry. You can browse available components, search for specific ones, and install them directly into your project using natural language.
+The Buildpad MCP allows AI assistants to interact with the component registry. You can browse available components, search for specific ones, and install them directly into your project using natural language.
 
 For example, you can ask an AI assistant to _"Generate a CollectionForm for a products collection"_ or _"Add the input, select-dropdown, and datetime components to my project"_.
 
 ## Quick Start
 
-```bash
+```bash copy
 # Using npx (recommended — no install required)
 npx @buildpad/mcp@latest
 ```
@@ -26,7 +26,7 @@ Restart your MCP client and try the following prompts:
 
 ## What is MCP?
 
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open protocol that enables AI assistants to securely connect to external data sources and tools. With the Buildpad MCP server, your AI assistant gains direct access to:
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open protocol that enables AI assistants to securely connect to external data sources and tools. With the Buildpad MCP, your AI assistant gains direct access to:
 
 - **Browse Components** — List all available components, their categories, and dependencies from the registry
 - **Read Source Code** — Access full component source code and documentation
@@ -36,7 +36,7 @@ Restart your MCP client and try the following prompts:
 
 ## How It Works
 
-The MCP server acts as a bridge between your AI assistant, the component registry, and the Buildpad CLI.
+The MCP acts as a bridge between your AI assistant, the component registry, and the Buildpad CLI.
 
 1. **Registry Connection** — MCP connects to the Buildpad component registry (`registry.json`)
 2. **Natural Language** — You describe what you need in plain English
@@ -57,10 +57,11 @@ The MCP server acts as a bridge between your AI assistant, the component registr
 | `get_usage_example` | Get real-world usage examples with local imports |
 | `get_copy_own_info` | Get detailed information about the Copy & Own distribution model |
 | `get_rbac_pattern` | Get RBAC setup patterns (own_items, role_hierarchy, public_read, multi_tenant, etc.) |
+| `list_lib_modules` | List available CLI lib modules (e.g. external-oauth, supabase-auth, api-routes) |
 
 ## Configuration
 
-<Tabs items={['VS Code', 'Cursor', 'Claude Code', 'Local Build']}>
+<Tabs items={['VS Code', 'Kiro', 'Claude Code', 'Local Build']}>
   <Tabs.Tab>
     Add to your project's `.vscode/mcp.json`:
 
@@ -95,9 +96,9 @@ The MCP server acts as a bridge between your AI assistant, the component registr
     Reload VS Code window (`Cmd+Shift+P` → "Developer: Reload Window").
   </Tabs.Tab>
   <Tabs.Tab>
-    Add to your project's `.cursor/mcp.json`:
+    Add to your project's `.Kiro/mcp.json`:
 
-    ```json filename=".cursor/mcp.json"
+    ```json filename=".Kiro/mcp.json"
     {
       "mcpServers": {
         "buildpad": {
@@ -108,7 +109,7 @@ The MCP server acts as a bridge between your AI assistant, the component registr
     }
     ```
 
-    After adding the configuration, enable the Buildpad MCP server in Cursor Settings. Once enabled, you should see a green dot next to the Buildpad server in the MCP server list.
+    After adding the configuration, enable the Buildpad MCP in Kiro Settings. Once enabled, you should see a green dot next to the Buildpad server in the MCP list.
   </Tabs.Tab>
   <Tabs.Tab>
     Add to your project's `.mcp.json`:
@@ -127,7 +128,7 @@ The MCP server acts as a bridge between your AI assistant, the component registr
     Restart Claude Code and run `/mcp` to verify the Buildpad server is connected.
   </Tabs.Tab>
   <Tabs.Tab>
-    For development within the monorepo, build the MCP server locally:
+    For development within the monorepo, build the MCP locally:
 
     ```bash
     cd /path/to/buildpad-ui
@@ -203,9 +204,9 @@ When installed via CLI, imports like `@buildpad/hooks` are automatically transfo
 
 ### MCP Not Responding
 
-If the MCP server isn't responding to prompts:
+If the MCP isn't responding to prompts:
 
-1. **Check Configuration** — Verify the MCP server is properly configured and enabled in your MCP client
+1. **Check Configuration** — Verify the MCP is properly configured and enabled in your MCP client
 2. **Restart MCP Client** — Restart your MCP client after configuration changes
 3. **Verify Installation** — Ensure `npx @buildpad/mcp@latest` is accessible
 4. **Check Network** — Confirm you can access npm for the npx command
@@ -215,5 +216,5 @@ If the MCP server isn't responding to prompts:
 If you see the "No tools or prompts" message:
 
 1. Clear the npx cache: `npx clear-npx-cache`
-2. Re-enable the MCP server in your MCP client
+2. Re-enable the MCP in your MCP client
 3. Check logs — In VS Code, open the Output panel (`Cmd+Shift+U`) and select "MCP" from the dropdown

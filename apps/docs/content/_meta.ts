@@ -8,7 +8,7 @@ const meta: MetaRecord = {
   },
   installation: 'Installation',
   cli: 'CLI',
-  mcp: 'MCP Server',
+  mcp: 'MCP',
   '--- architecture': {
     type: 'separator',
     title: 'Architecture',

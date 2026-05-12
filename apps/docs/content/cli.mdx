@@ -7,7 +7,7 @@ description: The Buildpad CLI copies component source code directly into your pr
 
 ## Installation
 
-```bash
+```bash copy
 # Use via npx (recommended)
 npx @buildpad/cli@latest --help
 
@@ -33,14 +33,14 @@ npm install -g @buildpad/cli
 
 ## Adding Components
 
-```bash
+```bash copy
 # Add single component
 buildpad add input
 
 # Add multiple components
 buildpad add input select-dropdown datetime
 
-# Add collection-form (includes VForm + all 32 interface components)
+# Add collection-form (includes VForm + all dependent interface components)
 buildpad add collection-form
 
 # Add all components from a category
@@ -57,12 +57,12 @@ buildpad add
 
 When components are copied to your project, all internal imports are automatically transformed:
 
-```ts filename="Before (source)"
+```ts filename="Before (source)" copy
 import { useRelationM2M } from '@buildpad/hooks';
 import type { M2MItem } from '@buildpad/types';
 ```
 
-```ts filename="After (in your project)"
+```ts filename="After (in your project)" copy
 import { useRelationM2M } from '@/lib/buildpad/hooks';
 import type { M2MItem } from '@/lib/buildpad/types';
 ```
@@ -77,7 +77,7 @@ The `validate` command checks for common issues:
 - **SSR issues** — Components exported without SSR-safe wrappers
 - **Missing API routes** — DaaS integration routes not created
 
-```bash
+```bash copy
 # Validate your installation
 buildpad validate
 

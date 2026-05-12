@@ -9,9 +9,9 @@ description: Buildpad UI uses the Copy & Own distribution model — components a
 
 Unlike traditional npm packages, Buildpad components are distributed as source code. When you add a component, the CLI:
 
-1. Fetches the source from the registry
-2. Transforms `@buildpad/*` imports to local paths
-3. Resolves and copies dependencies (lib modules, other components)
+1. Resolves and copies dependencies (lib modules, other components)
+2. Fetches the source from the registry
+3. Transforms `@buildpad/*` imports to local paths
 4. Copies files to your project directory
 
 ## Advantages
@@ -35,7 +35,7 @@ The `registry.json` file defines each component with:
 
 ## npm Packages
 
-The CLI and MCP server are published on npm for easy access:
+The CLI and MCP are published on npm for easy access:
 
 | Package | Usage |
 |---|---|

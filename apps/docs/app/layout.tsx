@@ -11,7 +11,7 @@ export const metadata = {
   description:
     "Schema-aware components and code distribution platform for Next.js.",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/docs/favicon.svg",
   },
 };
 
@@ -40,7 +40,7 @@ export default async function RootLayout({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/buildpad-icon.png"
+                    src="/docs/buildpad-icon.png"
                     alt="Buildpad"
                     width={24}
                     height={24}
