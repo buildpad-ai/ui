@@ -21,7 +21,7 @@ import { Stack, Box, Alert, Text, Skeleton } from '@mantine/core';
 import { isNewItem } from '@buildpad/utils';
 import { IconInfoCircle, IconLock } from '@tabler/icons-react';
 import type { Field } from '@buildpad/types';
-import { FieldsService, useDaaSContext } from '@buildpad/services';
+import { FieldsService, useDaaSContextOptional } from '@buildpad/services';
 // isPresentationField is available from @buildpad/utils if needed for filtering
 import type { ValidationError, FieldValues } from './types';
 import { FormField } from './components/FormField';
@@ -195,8 +195,8 @@ export const VForm: React.FC<VFormProps> = ({
   const [readOnlyPermFields, setReadOnlyPermFields] = useState<Set<string>>(EMPTY_SET);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
   
-  // Get DaaS context for authenticated requests
-  const daasContext = useDaaSContext();
+  // Get DaaS context for authenticated requests (optional — works without DaaSProvider)
+  const daasContext = useDaaSContextOptional();
   
   // Determine the action based on primaryKey if not explicitly provided
   const effectiveAction: FormAction = useMemo(() => {
@@ -252,13 +252,13 @@ export const VForm: React.FC<VFormProps> = ({
         setPermissionsLoading(true);
         
         const buildUrl = (permAction: string) =>
-          daasContext.isDirectMode
+          daasContext?.isDirectMode
             ? daasContext.buildUrl(`/api/permissions/${collection}?action=${permAction}`)
             : `/api/permissions/${collection}?action=${permAction}`;
         
         const fetchFields = async (permAction: string): Promise<string[]> => {
           const response = await fetch(buildUrl(permAction), {
-            headers: daasContext.getHeaders(),
+            headers: daasContext?.getHeaders() ?? {},
             credentials: 'include',
           });
           if (!response.ok) {

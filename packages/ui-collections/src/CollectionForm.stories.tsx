@@ -1037,3 +1037,205 @@ export const FullCrud: Story = {
     );
   },
 };
+
+// ============================================================================
+// Files Interface Mock Data
+// ============================================================================
+
+const MOCK_FILES_INTERFACE_FIELDS = [
+  {
+    field: "id",
+    type: "integer",
+    collection: "posts",
+    meta: {
+      hidden: true,
+      readonly: true,
+      interface: null,
+      width: "full",
+      group: null,
+      special: null,
+      sort: 0,
+    },
+    schema: { is_primary_key: true, has_auto_increment: true },
+  },
+  {
+    field: "title",
+    type: "string",
+    collection: "posts",
+    meta: {
+      hidden: false,
+      readonly: false,
+      interface: "input",
+      width: "full",
+      required: true,
+      note: "Post title",
+      group: null,
+      special: null,
+      sort: 1,
+    },
+    schema: { max_length: 255, is_nullable: false },
+  },
+  {
+    field: "status",
+    type: "string",
+    collection: "posts",
+    meta: {
+      hidden: false,
+      readonly: false,
+      interface: "select-dropdown",
+      width: "half",
+      group: null,
+      special: null,
+      sort: 2,
+      options: {
+        choices: [
+          { text: "Draft", value: "draft" },
+          { text: "Published", value: "published" },
+          { text: "Archived", value: "archived" },
+        ],
+      },
+    },
+    schema: { default_value: "draft" },
+  },
+  {
+    field: "attachments",
+    type: "alias",
+    collection: "posts",
+    meta: {
+      hidden: false,
+      readonly: false,
+      interface: "files",
+      width: "full",
+      group: null,
+      special: ["files"],
+      sort: 3,
+    },
+    schema: undefined,
+  },
+];
+
+const MOCK_FILES_INTERFACE_ITEM = {
+  id: 1,
+  title: "Getting Started with Buildpad",
+  status: "published",
+  attachments: ["file-1", "file-2"],
+};
+
+/**
+ * Decorator that intercepts fetch calls and returns files-interface mock data.
+ * Captures the PATCH body in window.__patchBody for test assertions.
+ */
+const withMockFilesApi: Decorator = (Story) => {
+  const originalFetch = window.fetch;
+
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
+
+    if (url.includes("/api/permissions/me")) {
+      return new Response(JSON.stringify({ data: {} }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (url.includes("/api/fields/")) {
+      return new Response(
+        JSON.stringify({ data: MOCK_FILES_INTERFACE_FIELDS }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (url.match(/\/api\/items\/\w+\/\d+/) && init?.method === "PATCH") {
+      if (init.body) {
+        ;(window as any).__patchBody = JSON.parse(
+          typeof init.body === "string" ? init.body : "",
+        );
+      }
+      return new Response(JSON.stringify({ data: { id: 1 } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (url.match(/\/api\/items\/\w+\/\d+/)) {
+      return new Response(
+        JSON.stringify({ data: MOCK_FILES_INTERFACE_ITEM }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (init?.method === "POST" && url.includes("/api/items/")) {
+      return new Response(JSON.stringify({ data: { id: 99 } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Mock file hydration (Files component fetches individual files)
+    if (url.match(/\/api\/files\/[^/?]+$/)) {
+      return new Response(
+        JSON.stringify({
+          data: {
+            id: url.split("/").pop(),
+            filename_download: "mock.pdf",
+            filename_disk: "mock.pdf",
+            type: "application/pdf",
+            filesize: 1024,
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    if (url.includes("/api/files")) {
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Junction table queries (Files component fetching M2M junctions)
+    if (url.includes("_daas_files")) {
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (url.includes("/api/items/")) {
+      return new Response(
+        JSON.stringify({ data: [MOCK_FILES_INTERFACE_ITEM] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    return originalFetch(input, init);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      window.fetch = originalFetch;
+    };
+  });
+
+  return <Story />;
+};
+
+/**
+ * Edit form with a files-interface field (attachments).
+ * Verifies that the files field value is excluded from the PATCH body
+ * since the Files component manages its own junction table persistence.
+ */
+export const WithFilesInterface: Story = {
+  decorators: [withMockFilesApi],
+  args: {
+    collection: "posts",
+    mode: "edit",
+    id: "1",
+  },
+};

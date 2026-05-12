@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Files } from './Files';
 
@@ -254,6 +255,135 @@ export const DocumentManager: Story = {
     docs: {
       description: {
         story: 'Document management with folder organization.',
+      },
+    },
+  },
+};
+
+// ============================================================================
+// WithEditModePrimaryKey — Exercises syncJunctionTable for regression testing
+// ============================================================================
+
+export const WithEditModePrimaryKey: Story = {
+  args: {
+    label: 'Attachments',
+    collection: 'tasks',
+    field: 'attachments',
+    primaryKey: '123',
+    enableCreate: true,
+    enableSelect: false,
+  },
+  decorators: [
+    (Story) => {
+      const originalFetch = window.fetch;
+
+      const MOCK_FILE = {
+        id: 'uploaded-file-1',
+        filename_download: 'test-document.pdf',
+        filename_disk: 'test-document.pdf',
+        type: 'application/pdf',
+        filesize: 2048,
+        title: 'Test Document',
+        uploaded_on: '2024-01-01T00:00:00Z',
+        uploaded_by: 'user-1',
+      };
+
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.href
+              : input.url;
+
+        // Permissions — allow all
+        if (url.includes('/api/permissions/me')) {
+          return new Response(JSON.stringify({ data: {} }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        // GET junction table records — return empty (no existing files)
+        if (
+          url.includes('/api/items/tasks_daas_files') &&
+          init?.method !== 'POST'
+        ) {
+          return new Response(JSON.stringify({ data: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        // POST junction creation — capture body for test assertion
+        if (
+          url.includes('/api/items/tasks_daas_files') &&
+          init?.method === 'POST'
+        ) {
+          if (init.body) {
+            ;(window as any).__junctionCreateBody = JSON.parse(
+              typeof init.body === 'string' ? init.body : '',
+            );
+          }
+          return new Response(JSON.stringify({ data: { id: 1 } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        // POST /api/files — file upload (FormData, not JSON)
+        if (
+          url.includes('/api/files') &&
+          init?.method === 'POST' &&
+          typeof init?.body !== 'string'
+        ) {
+          return new Response(JSON.stringify({ data: MOCK_FILE }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        // GET /api/files/<id> — file hydration
+        if (url.match(/\/api\/files\/[^/?]+$/)) {
+          return new Response(JSON.stringify({ data: MOCK_FILE }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        // GET /api/files — library file listing
+        if (url.includes('/api/files')) {
+          return new Response(JSON.stringify({ data: [MOCK_FILE] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Fallback: other items endpoints
+        if (url.includes('/api/items/')) {
+          return new Response(JSON.stringify({ data: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        return originalFetch(input, init);
+      };
+
+      React.useEffect(() => {
+        return () => {
+          window.fetch = originalFetch;
+        };
+      });
+
+      return <Story />;
+    },
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Exercises syncJunctionTable with primaryKey. Used for regression testing that junction creation does NOT include a `sort` field.',
       },
     },
   },

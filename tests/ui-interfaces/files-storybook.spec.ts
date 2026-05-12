@@ -89,3 +89,69 @@ test.describe('Files - With Data', () => {
     await expect(page.getByText('Legal Documents')).toBeVisible();
   });
 });
+
+// ============================================================================
+// Test Suite: Junction Creation Regression
+// ============================================================================
+
+test.describe('Files - Junction Creation Regression', () => {
+  test('should not include sort field in junction creation POST body', async ({ page }) => {
+    await goToStory(page, 'interfaces-files--with-edit-mode-primary-key');
+
+    // Wait for the component to finish loading / permission checks
+    await page.waitForTimeout(500);
+
+    // Upload a file via the hidden file input
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'test-document.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 test content'),
+    });
+
+    // Wait for the upload + junction creation to complete
+    // The mock returns instantly, but React needs a tick to process
+    await page.waitForTimeout(500);
+
+    // Read the captured junction creation body
+    const junctionBody = await page.evaluate(() => {
+      return (window as any).__junctionCreateBody;
+    });
+
+    expect(junctionBody).toBeDefined();
+
+    // Assert: sort field must NOT be present (the original bug)
+    expect(junctionBody).not.toHaveProperty('sort');
+
+    // Assert: required junction keys are present
+    expect(junctionBody).toHaveProperty('tasks_id');
+    expect(junctionBody).toHaveProperty('daas_files_id');
+  });
+
+  test('should include correct junction field values in POST body', async ({ page }) => {
+    await goToStory(page, 'interfaces-files--with-edit-mode-primary-key');
+
+    await page.waitForTimeout(500);
+
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: 'test-document.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4 test content'),
+    });
+
+    await page.waitForTimeout(500);
+
+    const junctionBody = await page.evaluate(() => {
+      return (window as any).__junctionCreateBody;
+    });
+
+    expect(junctionBody).toBeDefined();
+
+    // Assert: tasks_id matches the primaryKey prop value
+    expect(junctionBody).toHaveProperty('tasks_id', '123');
+
+    // Assert: daas_files_id matches the uploaded file ID
+    expect(junctionBody).toHaveProperty('daas_files_id', 'uploaded-file-1');
+  });
+});
