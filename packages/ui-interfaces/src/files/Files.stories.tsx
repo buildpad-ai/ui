@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
+import { setGlobalDaaSConfig } from '@buildpad/services';
 import { Files } from './Files';
 
 const meta: Meta<typeof Files> = {
@@ -275,6 +276,10 @@ export const WithEditModePrimaryKey: Story = {
   },
   decorators: [
     (Story) => {
+      // Set a minimal DaaS config so buildApiUrl() in useFiles.ts doesn't throw.
+      // Empty string base URL produces relative paths like '/api/files' that the mock below intercepts.
+      setGlobalDaaSConfig({ url: '' });
+
       const originalFetch = window.fetch;
 
       const MOCK_FILE = {
@@ -373,6 +378,7 @@ export const WithEditModePrimaryKey: Story = {
       React.useEffect(() => {
         return () => {
           window.fetch = originalFetch;
+          setGlobalDaaSConfig(null);
         };
       });
 

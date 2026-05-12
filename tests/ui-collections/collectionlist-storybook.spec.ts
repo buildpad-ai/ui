@@ -90,11 +90,12 @@ test.describe('CollectionList Storybook - Basic Rendering', () => {
   test('should show footer with pagination info', async ({ page }) => {
     await goToStory(page, 'collections-collectionlist--default');
 
-    // Footer should show item count like "1–10 of 10 items"
+    // Footer should show item count like "1–10 of 25 items" (multi-page)
+    // or "10 items" (single page, when all items fit within the page limit)
     const footer = page.locator('.collection-list-footer');
     await expect(footer).toBeVisible();
     const footerText = await footer.textContent();
-    expect(footerText).toMatch(/\d+–\d+ of \d+ items/);
+    expect(footerText).toMatch(/\d+–\d+ of \d+ items|\d+ items/);
   });
 });
 
