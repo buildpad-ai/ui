@@ -17,12 +17,12 @@ The design system has three layers:
 
 Tokens use the `--ds-` prefix and CSS custom properties so themes can be swapped without rebuilding.
 
-```css filename="design-tokens.css"
+```css filename="design-tokens.css" copy
 :root {
-  --ds-primary: #5925dc;
-  --ds-gray-600: #344054;
+  --ds-primary: #e35b2a;
+  --ds-gray-600: #524a3f;
   --ds-spacing-4: 1rem;
-  --ds-radius: 0.375rem;
+  --ds-radius: 8px;
 }
 ```
 
@@ -30,7 +30,7 @@ Tokens use the `--ds-` prefix and CSS custom properties so themes can be swapped
 
 `lib/theme.ts` maps token values into Mantine, so all components inherit system defaults automatically.
 
-```ts filename="lib/theme.ts"
+```ts filename="lib/theme.ts" copy
 import { createTheme } from "@mantine/core";
 
 export const theme = createTheme({

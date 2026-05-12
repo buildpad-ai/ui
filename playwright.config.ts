@@ -16,7 +16,7 @@ dotenv.config({ path: '.env.local' });
 
 // URLs from environment
 const DAAS_URL = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL || 'http://localhost:3000';
-const STORYBOOK_URL = process.env.STORYBOOK_URL || 'http://localhost:6006';
+const STORYBOOK_FORM_URL = process.env.STORYBOOK_FORM_URL || 'http://localhost:6006';
 const STORYBOOK_TABLE_URL = process.env.STORYBOOK_TABLE_URL || 'http://localhost:6007';
 const STORYBOOK_INTERFACES_URL = process.env.STORYBOOK_INTERFACES_URL || 'http://localhost:6005';
 const STORYBOOK_COLLECTIONS_URL = process.env.STORYBOOK_COLLECTIONS_URL || 'http://localhost:6008';
@@ -62,10 +62,10 @@ export default defineConfig({
 
     // Storybook Component Tests - no auth needed
     {
-      name: 'storybook',
+      name: 'storybook-form',
       use: { 
         ...devices['Desktop Chrome'],
-        baseURL: STORYBOOK_URL,
+        baseURL: STORYBOOK_FORM_URL,
       },
       testMatch: /ui-form\/.*storybook.*\.spec\.ts/,
       // No setup dependency - Storybook tests don't need auth
@@ -113,7 +113,7 @@ export default defineConfig({
   webServer: process.env.SKIP_WEBSERVER ? undefined : [
     {
       command: 'cd packages/ui-form && npx storybook dev -p 6006 --ci',
-      url: STORYBOOK_URL,
+      url: STORYBOOK_FORM_URL,
       reuseExistingServer: !process.env.CI,
       timeout: 120000, // 2 minutes to start Storybook
     },

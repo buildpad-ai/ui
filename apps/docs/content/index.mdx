@@ -21,7 +21,7 @@ This is what Buildpad UI aims to solve. It is built around the following princip
 - **Schema-Driven**: Components render dynamically from DaaS collection metadata — 40+ field interfaces auto-mapped.
 - **Distribution**: A flat-file schema and command-line tool make it easy to distribute components.
 - **Permission-Aware**: Field-level permissions enforced out of the box via DaaS RBAC.
-- **AI-Ready**: Open code for LLMs to read, understand, and improve via MCP Server.
+- **AI-Ready**: Open code for LLMs to read, understand, and improve via MCP.
 
 ## Open Code
 
@@ -37,7 +37,7 @@ In a typical library, if you need to change a form field's behavior, you have to
 
 Every component in Buildpad UI is designed to work with DaaS (Data-as-a-Service) collection schemas. VForm reads field metadata and automatically renders the correct interface — text inputs, selects, date pickers, relational selectors, file uploaders, and more.
 
-The field-interface-mapper utility maps 40+ field types to the appropriate UI component. When you add `collection-form` via CLI, VForm and all 32 dependent interface components are automatically included.
+The field-interface-mapper utility maps 40+ field types to the appropriate UI component. When you add `collection-form` via CLI, VForm and all dependent interface components are automatically included.
 
 ## Distribution
 
@@ -48,7 +48,7 @@ Buildpad UI is also a code distribution system. It defines a schema for componen
 
 You can use the schema to distribute your components to other projects or have AI generate completely new components based on existing schema.
 
-```bash
+```bash copy
 npx @buildpad/cli@latest init
 npx @buildpad/cli@latest add collection-form
 npx @buildpad/cli@latest bootstrap
@@ -58,16 +58,16 @@ npx @buildpad/cli@latest bootstrap
 
 Buildpad UI integrates deeply with DaaS RBAC. VForm automatically filters fields based on user permissions for create, update, and read actions. The `usePermissions` hook provides field-level and action-level permission checking.
 
-```tsx
+```tsx copy
 import { VForm } from '@/components/ui/vform/VForm';
 
 <VForm
   collection="articles"
   fields={fields}
-  values={values}
-  onChange={handleChange}
+  modelValue={values}
+  onUpdate={handleChange}
   enforcePermissions={true}
-  permissionAction="update"
+  action="update"
 />
 ```
 
@@ -75,7 +75,7 @@ import { VForm } from '@/components/ui/vform/VForm';
 
 The design of Buildpad UI makes it easy for AI tools to work with your code. Its open code and consistent API allow AI models to read, understand, and even generate new components.
 
-The [MCP Server](/mcp) enables AI assistants like VS Code Copilot, Cursor, and Claude Code to discover components, read source code, generate forms, and install components — all through natural language.
+The [MCP](/mcp) enables AI assistants like VS Code Copilot, Kiro, and Claude Code to discover components, read source code, generate forms, and install components — all through natural language.
 
 An AI model can learn how your components work and suggest improvements or even create new components that integrate with your existing design.
 

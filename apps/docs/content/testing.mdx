@@ -17,8 +17,10 @@ pnpm storybook:table        # VTable on port 6007
 pnpm storybook:collections  # Collections on port 6008
 
 # Terminal 2: Run tests
-pnpm test:storybook         # Run VForm Storybook tests
-pnpm test:storybook:table   # Run VTable Storybook tests
+pnpm test:storybook:form         # Run VForm Storybook tests
+pnpm test:storybook:table        # Run VTable Storybook tests
+pnpm test:storybook:interfaces   # Run Interfaces Storybook tests
+pnpm test:storybook:collections  # Run Collections Storybook tests
 ```
 
 ## DaaS E2E Tests
@@ -59,12 +61,14 @@ tests/
 ├── auth.setup.ts               # Auth setup (runs once)
 ├── helpers/
 │   └── seed-test-data.ts       # Test data seeding
+├── ui-interfaces/              # Per-component Storybook tests (40+ files)
 ├── ui-form/
 │   ├── vform-storybook.spec.ts # Storybook component tests
 │   ├── vform-daas.spec.ts      # DaaS integration tests
 │   └── vform.spec.ts           # Full E2E workflow tests
-└── ui-table/
-    └── vtable-storybook.spec.ts # VTable tests (22 tests)
+├── ui-table/
+│   └── vtable-storybook.spec.ts # VTable tests (22 tests)
+└── ui-collections/             # CollectionForm / CollectionList tests
 
-playwright.config.ts            # 4 projects: setup, chromium, storybook, storybook-table
+playwright.config.ts            # 6 projects: setup, chromium, storybook-form, storybook-table, storybook-interfaces, storybook-collections
 ```
