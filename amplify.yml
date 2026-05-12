@@ -12,7 +12,7 @@ applications:
           commands:
             # Build docs as static export and copy into storybook-host public dir
             - REPO_ROOT="$(git rev-parse --show-toplevel)" && cd "${REPO_ROOT}/apps/docs" && pnpm build
-            - REPO_ROOT="$(git rev-parse --show-toplevel)" && rm -rf "${REPO_ROOT}/apps/storybook-host/public/docs" && cp -r "${REPO_ROOT}/apps/docs/out" "${REPO_ROOT}/apps/storybook-host/public/docs"
+            - REPO_ROOT="$(git rev-parse --show-toplevel)" && mkdir -p "${REPO_ROOT}/apps/storybook-host/public" && rm -rf "${REPO_ROOT}/apps/storybook-host/public/docs" && cp -r "${REPO_ROOT}/apps/docs/out" "${REPO_ROOT}/apps/storybook-host/public/docs"
             # Build Storybooks into the host app's public directory
             - REPO_ROOT="$(git rev-parse --show-toplevel)" && bash "${REPO_ROOT}/scripts/build-storybooks.sh"
             # Build the Next.js host app (serves Storybooks + DaaS auth proxy + docs)
