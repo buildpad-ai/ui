@@ -63,4 +63,8 @@ storybook-static/
 # projects
 /*/*/node_modules/
 /*/*/.next/
+/*/*/out/
+
+# docs build artifacts copied into storybook-host at build time
+/apps/storybook-host/public/docs/
 .vscode
