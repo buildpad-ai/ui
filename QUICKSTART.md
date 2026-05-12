@@ -381,10 +381,10 @@ Buildpad uses Playwright for E2E testing with a two-tier strategy.
 
 ```bash
 # Terminal 1: Start VForm or VTable Storybook
+pnpm storybook:interfaces    # Interfaces on port 6005
 pnpm storybook:form          # VForm on port 6006
 pnpm storybook:table         # VTable on port 6007
 pnpm storybook:collections   # Collections on port 6008
-pnpm storybook               # Interfaces on port 6005
 
 # Terminal 2: Run Playwright tests
 pnpm test:storybook          # Run VForm Storybook tests

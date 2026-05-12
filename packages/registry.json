@@ -1071,6 +1071,9 @@
         "types",
         "services"
       ],
+      "registryDependencies": [
+        "list-m2a"
+      ],
       "interface": {
         "id": "collection-item-dropdown",
         "name": "Collection Item",
@@ -1445,7 +1448,8 @@
       ],
       "registryDependencies": [
         "collection-form",
-        "collection-list"
+        "collection-list",
+        "list-m2a"
       ],
       "interface": {
         "id": "select-dropdown-m2o",
@@ -1491,7 +1495,8 @@
       ],
       "registryDependencies": [
         "collection-form",
-        "collection-list"
+        "collection-list",
+        "list-m2a"
       ],
       "interface": {
         "id": "list-o2m",

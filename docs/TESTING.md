@@ -21,7 +21,7 @@ pnpm exec playwright install chromium
 # Option 1: Storybook Tests (Recommended for component development)
 pnpm storybook:form          # Start VForm Storybook on port 6006
 pnpm storybook:table         # Start VTable Storybook on port 6007
-pnpm storybook:interfaces    # Start Interfaces Storybook on port 6008
+pnpm storybook:interfaces    # Start Interfaces Storybook on port 6005
 pnpm test:storybook          # Run Playwright against VForm Storybook
 pnpm test:storybook:table    # Run Playwright against VTable Storybook
 pnpm test:storybook:interfaces # Run Playwright against Interfaces Storybook
@@ -156,13 +156,13 @@ The `@buildpad/ui-interfaces` package contains individual field interface compon
 
 ```bash
 # Terminal 1: Start Interfaces Storybook
-pnpm storybook:interfaces    # Runs on port 6008
+pnpm storybook:interfaces    # Runs on port 6005
 
 # Terminal 2: Run Playwright tests
 pnpm test:storybook:interfaces
 
 # Or run manually
-SKIP_WEBSERVER=true STORYBOOK_INTERFACES_URL=http://localhost:6008 \
+SKIP_WEBSERVER=true STORYBOOK_INTERFACES_URL=http://localhost:6005 \
   npx playwright test tests/ui-interfaces --project=storybook-interfaces
 ```
 

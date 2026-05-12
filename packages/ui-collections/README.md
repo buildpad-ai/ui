@@ -427,7 +427,7 @@ The components use:
 
 ## Storybook
 
-This package includes comprehensive Storybook documentation on port 6008:
+This package includes comprehensive Storybook documentation on port 6005:
 
 ```bash
 # Run Storybook

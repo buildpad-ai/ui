@@ -6,12 +6,12 @@
  * 
  * Note: These tests verify rendering only, not actual API calls (which require network).
  * 
- * Run: SKIP_WEBSERVER=true STORYBOOK_INTERFACES_URL=http://localhost:6008 npx playwright test --project=storybook-interfaces --reporter=line
+ * Run: SKIP_WEBSERVER=true STORYBOOK_INTERFACES_URL=http://localhost:6005 npx playwright test --project=storybook-interfaces --reporter=line
  */
 
 import { test, expect } from '@playwright/test';
 
-const STORYBOOK_URL = process.env.STORYBOOK_INTERFACES_URL || 'http://localhost:6008';
+const STORYBOOK_URL = process.env.STORYBOOK_INTERFACES_URL || 'http://localhost:6005';
 
 async function goToStory(page: import('@playwright/test').Page, storyId: string) {
   await page.goto(`${STORYBOOK_URL}/iframe.html?id=${storyId}&viewMode=story`);

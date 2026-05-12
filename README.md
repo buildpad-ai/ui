@@ -47,7 +47,7 @@ buildpad-ui/
     ├── ui-interfaces/      # Field interface components (Storybook port 6005)
     ├── ui-form/            # VForm dynamic form component (Storybook port 6006)
     ├── ui-table/           # VTable dynamic table component (Storybook port 6007)
-    ├── ui-collections/     # Collection Form & List (Storybook port 6008)
+    ├── ui-collections/     # Collection Form & List (Storybook port 6005)
     ├── types/              # Shared TypeScript types
     ├── services/           # Shared service classes
     ├── hooks/              # Shared React hooks
@@ -466,7 +466,7 @@ When you install `collection-form` via CLI, VForm and all 32 dependent interface
 **Storybook:**
 
 ```bash
-pnpm storybook:collections  # Port 6008
+pnpm storybook:collections  # Port 6005
 ```
 
 **Usage:**
@@ -652,10 +652,10 @@ See [QUICKSTART.md](./QUICKSTART.md) for detailed setup guide.
 | `pnpm mcp:dev`               | Run MCP server in watch mode                     |
 | `pnpm cli`                   | Run CLI tool locally                             |
 | `pnpm cli validate`          | Validate Buildpad installation in a project    |
-| `pnpm storybook`             | Run Storybook for ui-interfaces (port 6005)      |
+| `pnpm storybook:interfaces`             | Run Storybook for ui-interfaces (port 6005)      |
 | `pnpm storybook:form`        | Run VForm Storybook (port 6006)                  |
 | `pnpm storybook:table`       | Run VTable Storybook (port 6007)                 |
-| `pnpm storybook:collections` | Run Collections Storybook (port 6008)            |
+| `pnpm storybook:collections` | Run Collections Storybook (port 6005)            |
 | `pnpm build:storybook`       | Build all 4 Storybooks to host app's public dir  |
 | `pnpm dev:host`              | Start Storybook host app in dev mode (port 3000) |
 | `pnpm build:host`            | Build the Storybook host app for production      |
@@ -672,10 +672,10 @@ All Storybooks use **Storybook 10** with `@storybook/nextjs-vite`.
 
 ```bash
 # Run individual Storybooks
-pnpm storybook               # ui-interfaces (port 6005)
+pnpm storybook:interfaces     # ui-interfaces (port 6005)
 pnpm storybook:form           # VForm (port 6006)
 pnpm storybook:table          # VTable (port 6007)
-pnpm storybook:collections    # Collections (port 6008)
+pnpm storybook:collections    # Collections (port 6005)
 
 # Build all Storybooks for hosting
 pnpm build:storybook

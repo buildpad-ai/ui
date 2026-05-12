@@ -238,10 +238,10 @@ npx @buildpad/cli@latest bootstrap`}</pre>
               Start the host app first, then run Storybooks. They proxy{" "}
               <code>/api/*</code> to this app automatically.
             </p>
-            <pre>{`pnpm dev:host          # Start this proxy (port 3000)
-pnpm storybook:form    # Port 6006
-pnpm storybook:table   # Port 6007
-pnpm storybook         # Port 6005 (interfaces)
+            <pre>{`pnpm dev:host               # Start this proxy (port 3000)
+pnpm storybook:interfaces   # Port 6005
+pnpm storybook:form         # Port 6006
+pnpm storybook:table        # Port 6007
 pnpm storybook:collections  # Port 6008`}</pre>
           </div>
         )}

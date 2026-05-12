@@ -444,7 +444,7 @@ This playground uses the **Storybook Host** app as an authentication proxy:
 \`\`\`bash
 pnpm dev:host               # Start the host app (port 3000)
 # Visit http://localhost:3000 to configure DaaS connection
-pnpm storybook:collections  # Start this Storybook (port 6008)
+pnpm storybook:collections  # Start this Storybook (port 6005)
 \`\`\`
 
 ### Production (AWS Amplify)

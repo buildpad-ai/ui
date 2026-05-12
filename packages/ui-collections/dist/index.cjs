@@ -139,6 +139,9 @@ var READ_ONLY_FIELDS = [
 ];
 var EMPTY_OBJECT = {};
 var EMPTY_ARRAY = [];
+function isM2MChangesItem(value) {
+  return !!(value && typeof value === "object" && !Array.isArray(value) && "create" in value && "update" in value && "delete" in value);
+}
 var CollectionForm = ({
   collection,
   id,
@@ -175,6 +178,7 @@ var CollectionForm = ({
   const [deleteAllowed, setDeleteAllowed] = (0, import_react.useState)(false);
   const [readableFieldNames, setReadableFieldNames] = (0, import_react.useState)(null);
   const [writableFieldNames, setWritableFieldNames] = (0, import_react.useState)(null);
+  const [m2mJunctionMap, setM2mJunctionMap] = (0, import_react.useState)({});
   const [deleting, setDeleting] = (0, import_react.useState)(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = (0, import_react.useState)(false);
   const dataLoadedRef = (0, import_react.useRef)(false);
@@ -224,7 +228,8 @@ var CollectionForm = ({
           if (f.type === "alias") {
             const isGroup = f.meta?.special?.includes?.("group");
             const isPresentation = f.meta?.interface === "presentation-divider" || f.meta?.interface === "presentation-notice";
-            if (!isGroup && !isPresentation) {
+            const isRelationalAlias = f.meta?.special?.includes?.("o2m") || f.meta?.special?.includes?.("m2m") || f.meta?.special?.includes?.("m2a") || f.meta?.special?.includes?.("files");
+            if (!isGroup && !isPresentation && !isRelationalAlias) {
               return false;
             }
           }
@@ -256,6 +261,30 @@ var CollectionForm = ({
           });
         }
         setFields(editableFields);
+        const m2mAliasFields = editableFields.filter(
+          (f) => f.type === "alias" && f.meta?.special?.includes?.("m2m")
+        );
+        if (m2mAliasFields.length > 0) {
+          try {
+            const relationsResp = await (0, import_services.apiRequest)("/api/relations");
+            const relations = relationsResp.data ?? [];
+            const junctionMap = {};
+            for (const m2mField of m2mAliasFields) {
+              const rel = relations.find(
+                (r) => r.meta?.junction_field && (r.related_collection === collection && r.meta.one_field === m2mField.field || r.meta.one_collection === collection && r.meta.one_field === m2mField.field)
+              );
+              if (rel?.meta?.junction_field) {
+                junctionMap[m2mField.field] = {
+                  junctionCollection: rel.collection,
+                  reverseJunctionField: rel.field,
+                  junctionField: rel.meta.junction_field
+                };
+              }
+            }
+            setM2mJunctionMap(junctionMap);
+          } catch {
+          }
+        }
         let initialData = { ...stableDefaultValues };
         if (mode === "create") {
           const presets = actionAccess?.presets;
@@ -346,6 +375,30 @@ var CollectionForm = ({
     }
     return {};
   };
+  const flushM2MChanges = async (parentId, m2mEntries) => {
+    for (const { junctionInfo, changes } of m2mEntries) {
+      const { junctionCollection, reverseJunctionField, junctionField } = junctionInfo;
+      const junctionService = new import_services.ItemsService(junctionCollection);
+      for (const entry of changes.create) {
+        const relatedValue = entry[junctionField];
+        const isSelectEntry = relatedValue && typeof relatedValue === "object" && !Array.isArray(relatedValue) && Object.keys(relatedValue).length === 1 && "id" in relatedValue;
+        const flatEntry = isSelectEntry ? { ...entry, [junctionField]: relatedValue.id } : entry;
+        await junctionService.createOne({
+          [reverseJunctionField]: parentId,
+          ...flatEntry
+        });
+      }
+      for (const entry of changes.update) {
+        const junctionId = entry.id;
+        if (junctionId != null) {
+          await junctionService.updateOne(junctionId, entry);
+        }
+      }
+      for (const junctionId of changes.delete) {
+        await junctionService.deleteOne(junctionId);
+      }
+    }
+  };
   const handleSave = async (afterSave) => {
     setSaving(true);
     setError(null);
@@ -359,16 +412,44 @@ var CollectionForm = ({
         }
       });
       const itemsService = new import_services.ItemsService(collection);
-      if (mode === "edit" && id) {
-        const changedData = {};
-        for (const [key, value] of Object.entries(dataToSave)) {
-          if (initialFormData[key] !== value) {
-            changedData[key] = value;
+      const splitData = (source) => {
+        const scalar = {};
+        const m2m = [];
+        for (const [key, value] of Object.entries(source)) {
+          const ji = m2mJunctionMap[key];
+          if (ji && isM2MChangesItem(value)) {
+            m2m.push({ junctionInfo: ji, changes: value });
+          } else {
+            scalar[key] = value;
           }
         }
-        await itemsService.updateOne(id, changedData);
+        return { scalar, m2m };
+      };
+      if (mode === "edit" && id) {
+        const selfPersistingInterfaces = /* @__PURE__ */ new Set(["files"]);
+        const allChanged = {};
+        for (const [key, value] of Object.entries(dataToSave)) {
+          if (initialFormData[key] === value) continue;
+          const fieldDef = fields.find((f) => f.field === key);
+          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+            continue;
+          }
+          allChanged[key] = value;
+        }
+        const { scalar: changedData, m2m: m2mEntries } = splitData(allChanged);
+        if (Object.keys(changedData).length > 0) {
+          await itemsService.updateOne(id, changedData);
+        }
+        await flushM2MChanges(id, m2mEntries);
+        const clearedFormData = { ...formData };
+        for (const { junctionInfo: ji } of m2mEntries) {
+          for (const [k, v] of Object.entries(m2mJunctionMap)) {
+            if (v === ji) delete clearedFormData[k];
+          }
+        }
         setSuccess(true);
-        setInitialFormData({ ...formData });
+        setFormData(clearedFormData);
+        setInitialFormData(clearedFormData);
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
           delete copyData.id;
@@ -382,15 +463,28 @@ var CollectionForm = ({
         }
         onSuccess?.({ ...dataToSave, id });
       } else {
-        const result = await itemsService.createOne(dataToSave);
+        const selfPersistingInterfaces = /* @__PURE__ */ new Set(["files"]);
+        const cleanedDataToSave = {};
+        for (const [key, value] of Object.entries(dataToSave)) {
+          const fieldDef = fields.find((f) => f.field === key);
+          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+            continue;
+          }
+          cleanedDataToSave[key] = value;
+        }
+        const { scalar: scalarData, m2m: m2mEntries } = splitData(cleanedDataToSave);
+        const result = await itemsService.createOne(scalarData);
         const newId = result?.id;
+        if (newId != null && m2mEntries.length > 0) {
+          await flushM2MChanges(newId, m2mEntries);
+        }
         setSuccess(true);
         if (afterSave === "add-new") {
-          onSuccess?.({ ...dataToSave, id: newId });
+          onSuccess?.({ ...scalarData, id: newId });
           onNavigateToCreate?.();
           return;
         }
-        onSuccess?.({ ...dataToSave, id: newId });
+        onSuccess?.({ ...scalarData, id: newId });
       }
     } catch (err) {
       console.error("Error saving item:", err);
@@ -760,7 +854,7 @@ var CollectionListToolbar = ({
         import_core5.ActionIcon,
         {
           variant: activeFilterCount > 0 ? "filled" : "subtle",
-          color: activeFilterCount > 0 ? "blue" : void 0,
+          color: activeFilterCount > 0 ? "primary" : void 0,
           onClick: onToggleFilterPanel,
           title: "Toggle filter panel",
           "data-testid": "collection-list-filter-toggle",
@@ -828,7 +922,6 @@ var CollectionListToolbar = ({
         import_core5.Button,
         {
           variant: "filled",
-          color: "blue",
           size: "compact-sm",
           leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconPlus, { size: 18 }),
           onClick: createAllowed ? onCreate : void 0,
@@ -1340,7 +1433,8 @@ var CollectionList = ({
   onFieldsChange,
   onSortChange: onSortChangeProp,
   onFilterChange,
-  onPermissionsLoaded
+  onPermissionsLoaded,
+  renderCell: consumerRenderCell
 }) => {
   const [allFields, setAllFields] = (0, import_react3.useState)([]);
   const [visibleFieldKeys, setVisibleFieldKeys] = (0, import_react3.useState)([]);
@@ -1731,6 +1825,10 @@ var CollectionList = ({
   }, [permittedFields, visibleFieldKeys]);
   const fieldTypeRenderCell = (0, import_react3.useCallback)(
     (item, header) => {
+      if (consumerRenderCell) {
+        const consumerResult = consumerRenderCell(item, header);
+        if (consumerResult !== null && consumerResult !== void 0) return consumerResult;
+      }
       const fieldMeta = permittedFields.find((f) => f.field === header.value);
       if (!fieldMeta) return null;
       const value = item[header.value];
@@ -2056,6 +2154,7 @@ function NavigationItem({
         },
         style: { opacity: 0, transition: "opacity 150ms" },
         className: "nav-item-action",
+        "aria-label": "Collection options",
         children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconSettings, { size: 14 })
       }
     ) }),
@@ -2313,7 +2412,7 @@ var ContentLayout = ({
               px: "md",
               style: {
                 borderBottom: "1px solid var(--mantine-color-gray-3)",
-                boxShadow: showHeaderShadow ? "0 4px 6px -1px rgba(0, 0, 0, 0.07)" : void 0,
+                boxShadow: showHeaderShadow ? "var(--ds-shadow-md, 0 4px 6px -1px rgba(25, 22, 18, 0.07))" : void 0,
                 transition: "box-shadow 150ms ease",
                 position: "sticky",
                 top: 0,

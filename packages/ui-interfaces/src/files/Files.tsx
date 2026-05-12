@@ -360,7 +360,6 @@ export const Files: React.FC<FilesProps> = ({
         await daasAPI.createItem(jc.junctionCollection, {
           [jc.junctionFieldCurrent]: primaryKey,
           [jc.junctionFieldRelated]: file.id,
-          sort: files.length + i + 1,
         });
       }
 
@@ -382,7 +381,6 @@ export const Files: React.FC<FilesProps> = ({
         }
       }
 
-      console.log('[Files] Junction table synced:', { added: toAdd.length, removed: toRemove.length });
     } catch (err) {
       console.error('[Files] Failed to sync junction table:', err);
     }

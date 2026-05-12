@@ -265,6 +265,15 @@ export function useDaaSContext(): DaaSContextValue {
 }
 
 /**
+ * Hook to optionally access DaaS context.
+ * Returns null when used outside a DaaSProvider instead of throwing.
+ * Use this in components that can work both with and without a DaaSProvider.
+ */
+export function useDaaSContextOptional(): DaaSContextValue | null {
+  return useContext(DaaSContext);
+}
+
+/**
  * Hook to check if DaaS is configured and ready.
  */
 export function useIsDaaSReady(): boolean {

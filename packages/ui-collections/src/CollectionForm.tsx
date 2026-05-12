@@ -259,7 +259,8 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             const isRelationalAlias =
               f.meta?.special?.includes?.("o2m") ||
               f.meta?.special?.includes?.("m2m") ||
-              f.meta?.special?.includes?.("m2a");
+              f.meta?.special?.includes?.("m2a") ||
+              f.meta?.special?.includes?.("files");
             if (!isGroup && !isPresentation && !isRelationalAlias) {
               return false;
             }
@@ -569,12 +570,17 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       };
 
       if (mode === "edit" && id) {
-        // Collect only changed fields
+        // Collect only changed fields, excluding self-persisting interfaces
+        // (e.g. "files" manages its own junction table independently)
+        const selfPersistingInterfaces = new Set(['files']);
         const allChanged: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(dataToSave)) {
-          if (initialFormData[key] !== value) {
-            allChanged[key] = value;
+          if (initialFormData[key] === value) continue;
+          const fieldDef = fields.find(f => f.field === key);
+          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+            continue;
           }
+          allChanged[key] = value;
         }
 
         const { scalar: changedData, m2m: m2mEntries } = splitData(allChanged);
@@ -619,8 +625,19 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
         onSuccess?.({ ...dataToSave, id });
       } else {
-        // Create mode: split out M2M before creating the parent record
-        const { scalar: scalarData, m2m: m2mEntries } = splitData(dataToSave);
+        // Create mode: split out M2M before creating the parent record.
+        // Also strip self-persisting interfaces (e.g. "files") that manage
+        // their own junction table persistence.
+        const selfPersistingInterfaces = new Set(['files']);
+        const cleanedDataToSave: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(dataToSave)) {
+          const fieldDef = fields.find(f => f.field === key);
+          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+            continue;
+          }
+          cleanedDataToSave[key] = value;
+        }
+        const { scalar: scalarData, m2m: m2mEntries } = splitData(cleanedDataToSave);
 
         const result = await itemsService.createOne(scalarData);
         const newId = result?.id as string | number | undefined;

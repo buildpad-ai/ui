@@ -14,7 +14,7 @@ import { test, expect } from '@playwright/test';
 const STORYBOOK_URL =
   process.env.STORYBOOK_COLLECTIONS_URL ||
   process.env.STORYBOOK_URL ||
-  'http://localhost:6009';
+  'http://localhost:6008';
 
 // Helper: Navigate to a specific story
 async function goToStory(
@@ -330,5 +330,81 @@ test.describe('CollectionForm Storybook - Accessibility', () => {
 
     const submitBtn = page.locator('[data-testid="form-submit-btn"]');
     await expect(submitBtn).toHaveAttribute('type', 'submit');
+  });
+});
+
+// ============================================================================
+// Test Suite: Files Interface Regression
+// ============================================================================
+
+test.describe('CollectionForm Storybook - Files Interface Regression', () => {
+  test('should exclude files-interface field from PATCH body', async ({ page }) => {
+    await goToStory(page, 'collections-collectionform--with-files-interface');
+
+    // Wait for the form to load in edit mode
+    await page.waitForTimeout(500);
+
+    // Change the title field to enable the Save button
+    const titleInput = page.locator('input').first();
+    await titleInput.fill('Updated Title');
+
+    // Click Save
+    const submitBtn = page.locator('[data-testid="form-submit-btn"]');
+    await expect(submitBtn).toBeEnabled();
+    await submitBtn.click();
+
+    // Wait for the PATCH request to complete (success alert)
+    const success = page.locator('[data-testid="form-success"]');
+    await expect(success).toBeVisible({ timeout: 10000 });
+
+    // Read the captured PATCH body
+    const patchBody = await page.evaluate(() => {
+      return (window as any).__patchBody;
+    });
+
+    expect(patchBody).toBeDefined();
+
+    // Assert: files-interface field (attachments) is NOT in the PATCH body
+    expect(patchBody).not.toHaveProperty('attachments');
+
+    // Assert: other changed scalar fields ARE in the PATCH body
+    expect(patchBody).toHaveProperty('title', 'Updated Title');
+  });
+
+  test('should include changed scalar fields in PATCH body', async ({ page }) => {
+    await goToStory(page, 'collections-collectionform--with-files-interface');
+
+    await page.waitForTimeout(500);
+
+    // Change the status field
+    const statusSelect = page.locator('input').nth(1);
+    await statusSelect.click();
+    await page.waitForTimeout(300);
+
+    // Select "Archived" from dropdown (mantine select)
+    const archivedOption = page.getByRole('option', { name: 'Archived' });
+    if (await archivedOption.isVisible()) {
+      await archivedOption.click();
+    }
+
+    // Also change title
+    const titleInput = page.locator('input').first();
+    await titleInput.fill('Changed');
+
+    const submitBtn = page.locator('[data-testid="form-submit-btn"]');
+    await submitBtn.click();
+
+    const success = page.locator('[data-testid="form-success"]');
+    await expect(success).toBeVisible({ timeout: 10000 });
+
+    const patchBody = await page.evaluate(() => {
+      return (window as any).__patchBody;
+    });
+
+    expect(patchBody).toBeDefined();
+
+    // Assert: title and status are present, attachments is not
+    expect(patchBody).toHaveProperty('title');
+    expect(patchBody).not.toHaveProperty('attachments');
   });
 });

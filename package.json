@@ -31,6 +31,7 @@
     "test:storybook": "playwright test --project=storybook",
     "test:storybook:table": "playwright test --project=storybook-table",
     "test:storybook:interfaces": "playwright test --project=storybook-interfaces",
+    "test:storybook:collections": "playwright test --project=storybook-collections",
     "version-packages": "changeset version"
   },
   "devDependencies": {
