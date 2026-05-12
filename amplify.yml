@@ -1,25 +1,5 @@
 version: 1
 applications:
-  - appRoot: apps/docs
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - corepack enable
-            - corepack prepare pnpm@10.17.0 --activate
-            - REPO_ROOT="$(git rev-parse --show-toplevel)" && cd "${REPO_ROOT}" && pnpm install --frozen-lockfile
-        build:
-          commands:
-            - REPO_ROOT="$(git rev-parse --show-toplevel)" && cd "${REPO_ROOT}/apps/docs" && pnpm build
-      artifacts:
-        baseDirectory: .next
-        files:
-          - '**/*'
-      cache:
-        paths:
-          - node_modules/**/*
-          - .next/cache/**/*
-
   - appRoot: apps/storybook-host
     frontend:
       phases:
@@ -30,9 +10,12 @@ applications:
             - REPO_ROOT="$(git rev-parse --show-toplevel)" && echo "REPO_ROOT=${REPO_ROOT}" && cd "${REPO_ROOT}" && pnpm install --frozen-lockfile
         build:
           commands:
+            # Build docs as static export and copy into storybook-host public dir
+            - REPO_ROOT="$(git rev-parse --show-toplevel)" && cd "${REPO_ROOT}/apps/docs" && pnpm build
+            - REPO_ROOT="$(git rev-parse --show-toplevel)" && rm -rf "${REPO_ROOT}/apps/storybook-host/public/docs" && cp -r "${REPO_ROOT}/apps/docs/out" "${REPO_ROOT}/apps/storybook-host/public/docs"
             # Build Storybooks into the host app's public directory
             - REPO_ROOT="$(git rev-parse --show-toplevel)" && bash "${REPO_ROOT}/scripts/build-storybooks.sh"
-            # Build the Next.js host app (serves Storybooks + DaaS auth proxy)
+            # Build the Next.js host app (serves Storybooks + DaaS auth proxy + docs)
             - REPO_ROOT="$(git rev-parse --show-toplevel)" && cd "${REPO_ROOT}/apps/storybook-host" && pnpm next build
       artifacts:
         baseDirectory: .next
