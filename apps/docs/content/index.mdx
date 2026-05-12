@@ -1,0 +1,98 @@
+---
+title: Introduction
+description: Buildpad UI is a set of beautifully-designed, schema-aware components and a code distribution platform.
+---
+
+import { Callout } from 'nextra/components'
+
+# Introduction
+
+<Callout type="info">
+  **This is not a component library.** It is how you build your component library — with real data, real schemas, and real permissions.
+</Callout>
+
+You know how most traditional component libraries work: you install a package from npm, import the components, and use them in your app.
+
+This approach works well until you need to customize a component to fit your internal systems or require one that isn't included in the library. Often, you end up wrapping library components, writing workarounds to override styles, or mixing components from different libraries with incompatible APIs.
+
+This is what Buildpad UI aims to solve. It is built around the following principles:
+
+- **Open Code**: The top layer of your component code is open for modification.
+- **Schema-Driven**: Components render dynamically from DaaS collection metadata — 40+ field interfaces auto-mapped.
+- **Distribution**: A flat-file schema and command-line tool make it easy to distribute components.
+- **Permission-Aware**: Field-level permissions enforced out of the box via DaaS RBAC.
+- **AI-Ready**: Open code for LLMs to read, understand, and improve via MCP Server.
+
+## Open Code
+
+Buildpad UI hands you the actual component code. You have full control to customize and extend the components to your needs. This means:
+
+- **Full Transparency**: You see exactly how each component is built.
+- **Easy Customization**: Modify any part of a component to fit your design and functionality requirements.
+- **AI Integration**: Access to the code makes it straightforward for LLMs to read, understand, and even improve your components.
+
+In a typical library, if you need to change a form field's behavior, you have to override styles or wrap the component. With Buildpad UI, you simply edit the component code directly.
+
+## Schema-Driven
+
+Every component in Buildpad UI is designed to work with DaaS (Data-as-a-Service) collection schemas. VForm reads field metadata and automatically renders the correct interface — text inputs, selects, date pickers, relational selectors, file uploaders, and more.
+
+The field-interface-mapper utility maps 40+ field types to the appropriate UI component. When you add `collection-form` via CLI, VForm and all 32 dependent interface components are automatically included.
+
+## Distribution
+
+Buildpad UI is also a code distribution system. It defines a schema for components and a CLI to distribute them.
+
+- **Schema**: A flat-file structure (`registry.json`) that defines the components, their dependencies, and properties.
+- **CLI**: A command-line tool to distribute and install components across projects with cross-framework support.
+
+You can use the schema to distribute your components to other projects or have AI generate completely new components based on existing schema.
+
+```bash
+npx @buildpad/cli@latest init
+npx @buildpad/cli@latest add collection-form
+npx @buildpad/cli@latest bootstrap
+```
+
+## Permission-Aware
+
+Buildpad UI integrates deeply with DaaS RBAC. VForm automatically filters fields based on user permissions for create, update, and read actions. The `usePermissions` hook provides field-level and action-level permission checking.
+
+```tsx
+import { VForm } from '@/components/ui/vform/VForm';
+
+<VForm
+  collection="articles"
+  fields={fields}
+  values={values}
+  onChange={handleChange}
+  enforcePermissions={true}
+  permissionAction="update"
+/>
+```
+
+## AI-Ready
+
+The design of Buildpad UI makes it easy for AI tools to work with your code. Its open code and consistent API allow AI models to read, understand, and even generate new components.
+
+The [MCP Server](/mcp) enables AI assistants like VS Code Copilot, Cursor, and Claude Code to discover components, read source code, generate forms, and install components — all through natural language.
+
+An AI model can learn how your components work and suggest improvements or even create new components that integrate with your existing design.
+
+## Component Library
+
+Buildpad UI provides a comprehensive set of components organized by category:
+
+| Category | Components | Description |
+|---|---|---|
+| Input | Input, Textarea, InputCode, Tags, Slider | Text entry and numeric inputs |
+| Selection | SelectDropdown, SelectRadio, SelectMultipleCheckbox, SelectIcon, Color | Single and multi-select interfaces |
+| Boolean | Boolean, Toggle | Switch toggles with state labels |
+| Date/Time | DateTime | Date and time picker |
+| Media | File, FileImage, Files, Upload | File upload with DaaS Files API |
+| Relational | ListM2M, SelectDropdownM2O, ListO2M, ListM2A | Many-to-Many, Many-to-One, One-to-Many, Many-to-Any |
+| Rich Text | RichTextHtml, RichTextMarkdown, InputBlockEditor | WYSIWYG, Markdown, and block editors |
+| Layout | Divider, Notice, GroupDetail | Form sections and visual separators |
+| Map | Map, MapWithRealMap | Interactive maps with drawing tools |
+| Workflow | WorkflowButton | State transitions with policy commands |
+| Collection | VForm, VTable, CollectionForm, CollectionList | High-level CRUD components |

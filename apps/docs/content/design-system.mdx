@@ -1,0 +1,53 @@
+---
+title: Design System
+description: A token-based design system that mirrors the DaaS backend UI, while staying framework-agnostic and brand-neutral.
+---
+
+# Design System
+
+## Overview
+
+The design system has three layers:
+
+1. **Design tokens** in `app/design-tokens.css` (single source of truth)
+2. **Mantine theme mapping** in `lib/theme.ts` (tokens → component defaults)
+3. **Global overrides** in `app/globals.css` (Mantine class-level tweaks)
+
+## Token Strategy
+
+Tokens use the `--ds-` prefix and CSS custom properties so themes can be swapped without rebuilding.
+
+```css filename="design-tokens.css"
+:root {
+  --ds-primary: #5925dc;
+  --ds-gray-600: #344054;
+  --ds-spacing-4: 1rem;
+  --ds-radius: 0.375rem;
+}
+```
+
+## Mantine Theme Mapping
+
+`lib/theme.ts` maps token values into Mantine, so all components inherit system defaults automatically.
+
+```ts filename="lib/theme.ts"
+import { createTheme } from "@mantine/core";
+
+export const theme = createTheme({
+  primaryColor: "primary",
+  fontFamily: "var(--ds-font-family)",
+  spacing: {
+    sm: "var(--ds-spacing-4)"
+  }
+});
+```
+
+## Dark Mode
+
+Dark mode is handled with the `[data-mantine-color-scheme="dark"]` selector in `design-tokens.css`. Mantine uses `ColorSchemeScript` and `defaultColorScheme="auto"` in the root layout.
+
+## How to Customize
+
+1. Update token values in `app/design-tokens.css`
+2. Extend `lib/theme.ts` for component-level defaults
+3. Add any global overrides in `app/globals.css`

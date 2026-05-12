@@ -1,0 +1,106 @@
+---
+title: Installation
+description: How to install and set up Buildpad UI components in your Next.js project.
+---
+
+import { Steps } from 'nextra/components'
+
+# Installation
+
+## Prerequisites
+
+- Node.js >= 18.0.0
+- pnpm >= 9.0.0
+- A Next.js project (13+ with App Router recommended)
+
+## Bootstrap (Recommended)
+
+The fastest way to set up Buildpad UI is with the `bootstrap` command. It combines init + add all components + install deps + validate into a single non-interactive command.
+
+```bash
+npx @buildpad/cli@latest bootstrap --cwd /path/to/project
+```
+
+This installs:
+
+- `buildpad.json` configuration + Next.js skeleton
+- 40+ UI components in `components/ui/`
+- Types, services, hooks in `lib/buildpad/`
+- API proxy routes (fields, items, relations, files)
+- Auth proxy routes (login, logout, user, OAuth callback) + login page
+- Supabase auth utilities and middleware
+- npm dependencies via `pnpm install`
+
+## Manual Setup
+
+<Steps>
+
+### Initialize
+
+```bash
+cd your-nextjs-app
+npx @buildpad/cli@latest init
+```
+
+### Add Components
+
+```bash
+# Add individual components
+npx @buildpad/cli@latest add input select-dropdown datetime
+
+# Add collection-form (includes VForm + all 32 interface components)
+npx @buildpad/cli@latest add collection-form
+
+# Add by category
+npx @buildpad/cli@latest add --category selection
+```
+
+### Use in Your Code
+
+```tsx filename="page.tsx"
+import { Input } from '@/components/ui/input';
+import { SelectDropdown } from '@/components/ui/select-dropdown';
+
+export default function MyPage() {
+  return (
+    <form>
+      <Input label="Name" value={name} onChange={setName} />
+      <SelectDropdown
+        label="Category"
+        choices={[
+          { text: 'Blog', value: 'blog' },
+          { text: 'News', value: 'news' },
+        ]}
+        value={category}
+        onChange={setCategory}
+      />
+    </form>
+  );
+}
+```
+
+</Steps>
+
+## Project Structure
+
+After adding components, your project will look like this:
+
+```
+your-project/
+├── app/
+│   ├── api/
+│   │   ├── auth/          # Auth proxy routes
+│   │   ├── fields/        # Fields proxy
+│   │   └── items/         # Items proxy
+│   └── login/page.tsx     # Login page
+├── src/
+│   ├── components/
+│   │   └── ui/            # UI components (copied source)
+│   └── lib/
+│       └── buildpad/      # Lib modules (auto-resolved)
+│           ├── types/
+│           ├── services/
+│           ├── hooks/
+│           └── utils/
+└── buildpad.json          # Configuration
+```

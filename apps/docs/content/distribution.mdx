@@ -1,0 +1,43 @@
+---
+title: Distribution
+description: Buildpad UI uses the Copy & Own distribution model — components are copied as source code to your project.
+---
+
+# Distribution
+
+## Copy & Own
+
+Unlike traditional npm packages, Buildpad components are distributed as source code. When you add a component, the CLI:
+
+1. Fetches the source from the registry
+2. Transforms `@buildpad/*` imports to local paths
+3. Resolves and copies dependencies (lib modules, other components)
+4. Copies files to your project directory
+
+## Advantages
+
+- **Full customization** — Components become your application code
+- **No breaking changes** — No upstream updates can break your code
+- **No external dependencies** — No runtime dependency on `@buildpad/*` packages
+- **Works offline** — After installation, no network access needed
+- **AI-friendly** — Source code is readable by LLMs for understanding and improvement
+
+## Registry Schema
+
+The `registry.json` file defines each component with:
+
+- Name, description, and category
+- Source file paths
+- Three types of dependencies:
+  - **dependencies** — External npm packages (e.g., `@mantine/core`, `dayjs`)
+  - **internalDependencies** — Lib modules (types, services, hooks, utils)
+  - **registryDependencies** — Other Buildpad components
+
+## npm Packages
+
+The CLI and MCP server are published on npm for easy access:
+
+| Package | Usage |
+|---|---|
+| `@buildpad/cli` | `npx @buildpad/cli@latest add input` |
+| `@buildpad/mcp` | `npx @buildpad/mcp@latest` (for AI agents) |

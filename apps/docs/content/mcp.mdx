@@ -1,0 +1,219 @@
+---
+title: MCP Server
+description: Use the Buildpad MCP server to browse, search, and install components from the registry using natural language.
+---
+
+import { Callout, Tabs } from 'nextra/components'
+
+# MCP Server
+
+The Buildpad MCP Server allows AI assistants to interact with the component registry. You can browse available components, search for specific ones, and install them directly into your project using natural language.
+
+For example, you can ask an AI assistant to _"Generate a CollectionForm for a products collection"_ or _"Add the input, select-dropdown, and datetime components to my project"_.
+
+## Quick Start
+
+```bash
+# Using npx (recommended — no install required)
+npx @buildpad/mcp@latest
+```
+
+Restart your MCP client and try the following prompts:
+
+- _"List all available Buildpad components"_
+- _"Add the input, select-dropdown, and datetime components to my project"_
+- _"Generate a CollectionForm for a products collection"_
+
+## What is MCP?
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open protocol that enables AI assistants to securely connect to external data sources and tools. With the Buildpad MCP server, your AI assistant gains direct access to:
+
+- **Browse Components** — List all available components, their categories, and dependencies from the registry
+- **Read Source Code** — Access full component source code and documentation
+- **Install with Natural Language** — Add components using simple conversational prompts like "add a collection form"
+- **Generate Code** — Generate forms, interfaces, and usage examples
+- **RBAC Patterns** — Get role-based access control setup patterns for DaaS applications
+
+## How It Works
+
+The MCP server acts as a bridge between your AI assistant, the component registry, and the Buildpad CLI.
+
+1. **Registry Connection** — MCP connects to the Buildpad component registry (`registry.json`)
+2. **Natural Language** — You describe what you need in plain English
+3. **AI Processing** — The assistant translates your request into registry commands
+4. **Component Delivery** — Source code is fetched and installed in your project via the CLI
+
+## Available Tools
+
+| Tool | Description |
+|---|---|
+| `list_components` | List all available components with descriptions and categories |
+| `get_component` | Get detailed information and source code for a specific component |
+| `list_packages` | List all Buildpad packages with their exports |
+| `get_install_command` | Get CLI commands to install components by name or category |
+| `copy_component` | Get complete source code and file structure to manually copy a component |
+| `generate_form` | Generate a CollectionForm with specified collection and fields |
+| `generate_interface` | Generate a field interface component with custom props |
+| `get_usage_example` | Get real-world usage examples with local imports |
+| `get_copy_own_info` | Get detailed information about the Copy & Own distribution model |
+| `get_rbac_pattern` | Get RBAC setup patterns (own_items, role_hierarchy, public_read, multi_tenant, etc.) |
+
+## Configuration
+
+<Tabs items={['VS Code', 'Cursor', 'Claude Code', 'Local Build']}>
+  <Tabs.Tab>
+    Add to your project's `.vscode/mcp.json`:
+
+    ```json filename=".vscode/mcp.json"
+    {
+      "servers": {
+        "buildpad": {
+          "command": "npx",
+          "args": ["@buildpad/mcp@latest"]
+        }
+      }
+    }
+    ```
+
+    After adding the configuration, open `.vscode/mcp.json` and click **Start** next to the Buildpad server.
+
+    Or add to your VS Code `settings.json`:
+
+    ```json filename="settings.json"
+    {
+      "mcp": {
+        "servers": {
+          "buildpad": {
+            "command": "npx",
+            "args": ["@buildpad/mcp@latest"]
+          }
+        }
+      }
+    }
+    ```
+
+    Reload VS Code window (`Cmd+Shift+P` → "Developer: Reload Window").
+  </Tabs.Tab>
+  <Tabs.Tab>
+    Add to your project's `.cursor/mcp.json`:
+
+    ```json filename=".cursor/mcp.json"
+    {
+      "mcpServers": {
+        "buildpad": {
+          "command": "npx",
+          "args": ["@buildpad/mcp@latest"]
+        }
+      }
+    }
+    ```
+
+    After adding the configuration, enable the Buildpad MCP server in Cursor Settings. Once enabled, you should see a green dot next to the Buildpad server in the MCP server list.
+  </Tabs.Tab>
+  <Tabs.Tab>
+    Add to your project's `.mcp.json`:
+
+    ```json filename=".mcp.json"
+    {
+      "mcpServers": {
+        "buildpad": {
+          "command": "npx",
+          "args": ["@buildpad/mcp@latest"]
+        }
+      }
+    }
+    ```
+
+    Restart Claude Code and run `/mcp` to verify the Buildpad server is connected.
+  </Tabs.Tab>
+  <Tabs.Tab>
+    For development within the monorepo, build the MCP server locally:
+
+    ```bash
+    cd /path/to/buildpad-ui
+    pnpm build:mcp
+    ```
+
+    Then configure your MCP client to use the local build:
+
+    ```json filename="settings.json"
+    {
+      "mcp": {
+        "servers": {
+          "buildpad": {
+            "command": "node",
+            "args": [
+              "/absolute/path/to/buildpad-ui/packages/mcp-server/dist/index.js"
+            ]
+          }
+        }
+      }
+    }
+    ```
+  </Tabs.Tab>
+</Tabs>
+
+## RBAC Patterns
+
+The `get_rbac_pattern` tool provides step-by-step setup patterns for role-based access control in DaaS applications:
+
+| Pattern | Description |
+|---|---|
+| `own_items` | Users manage their own records, read others' published items |
+| `role_hierarchy` | Admin → Editor → Viewer cascading permissions |
+| `public_read` | Public read + authenticated write |
+| `multi_tenant` | Organization-level data isolation |
+| `full_crud` | Unrestricted CRUD access |
+| `read_only` | Read-only access |
+
+## Example Prompts
+
+### Browse & Search
+
+- _"Show me all available components in Buildpad"_
+- _"List all selection components"_
+- _"Show me the source code for VForm"_
+
+### Install Components
+
+- _"Add the input, select-dropdown, and datetime components to my project"_
+- _"Install all relational components"_
+- _"Bootstrap my project with all Buildpad components"_
+
+### Generate Code
+
+- _"Generate a CollectionForm for a products collection"_
+- _"Show me how to use the SelectDropdown component"_
+- _"Set up RBAC with own_items pattern for articles"_
+- _"Generate role hierarchy for Admin, Editor, Viewer"_
+
+## Copy & Own Model
+
+Buildpad uses the **Copy & Own** distribution model (similar to shadcn/ui):
+
+- Components are copied as source code to your project
+- Full customization — components become your application code
+- No external package dependencies for component code
+- No breaking changes from upstream updates
+- Works offline after installation
+
+When installed via CLI, imports like `@buildpad/hooks` are automatically transformed to local paths like `@/lib/buildpad/hooks`.
+
+## Troubleshooting
+
+### MCP Not Responding
+
+If the MCP server isn't responding to prompts:
+
+1. **Check Configuration** — Verify the MCP server is properly configured and enabled in your MCP client
+2. **Restart MCP Client** — Restart your MCP client after configuration changes
+3. **Verify Installation** — Ensure `npx @buildpad/mcp@latest` is accessible
+4. **Check Network** — Confirm you can access npm for the npx command
+
+### No Tools or Prompts
+
+If you see the "No tools or prompts" message:
+
+1. Clear the npx cache: `npx clear-npx-cache`
+2. Re-enable the MCP server in your MCP client
+3. Check logs — In VS Code, open the Output panel (`Cmd+Shift+U`) and select "MCP" from the dropdown
