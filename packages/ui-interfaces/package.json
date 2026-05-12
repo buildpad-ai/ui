@@ -132,7 +132,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p 6005",
     "build-storybook": "storybook build"
   },
   "keywords": [

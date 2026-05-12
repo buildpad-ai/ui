@@ -14,7 +14,7 @@ import { test, expect } from '@playwright/test';
 const STORYBOOK_URL =
   process.env.STORYBOOK_COLLECTIONS_URL ||
   process.env.STORYBOOK_URL ||
-  'http://localhost:6009';
+  'http://localhost:6008';
 
 // Helper: Navigate to a specific story
 async function goToStory(

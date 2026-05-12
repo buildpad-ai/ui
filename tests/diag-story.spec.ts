@@ -5,7 +5,7 @@ test('diagnostic', async ({ page }) => {
     if (msg.type() === 'error') errors.push(msg.text());
   });
   page.on('pageerror', err => errors.push(err.message));
-  await page.goto('http://localhost:6009/iframe.html?id=collections-collectionform--create-mode&viewMode=story');
+  await page.goto('http://localhost:6008/iframe.html?id=collections-collectionform--create-mode&viewMode=story');
   await page.waitForTimeout(3000);
   const errorMsg = await page.locator('#error-message').textContent().catch(() => 'no error element');
   const errorStack = await page.locator('#error-stack').textContent().catch(() => 'no stack');

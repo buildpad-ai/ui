@@ -4,7 +4,7 @@
 [15:15:54.042] [WARN] No story files found for the specified pattern: [34msrc/**/*.mdx[39m
 [15:15:54.198] [DEBUG] Starting preview..
 [15:15:54.244] [DEBUG] Using tsconfig paths for react-docgen
-[15:15:55.196] [ERROR] [38;2;241;97;97mError: listen EADDRINUSE: address already in use :::6008[39m
+[15:15:55.196] [ERROR] [38;2;241;97;97mError: listen EADDRINUSE: address already in use :::6005[39m
     at Server.setupListenHandle [as _listen2] (node:net:1940:16)
     at listenInCluster (node:net:1997:12)
     at Server.listen (node:net:2102:7)

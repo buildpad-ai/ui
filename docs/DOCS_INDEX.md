@@ -355,7 +355,7 @@ Buildpad Architecture
 - ✨ New `apps/storybook-host` Next.js app — DaaS auth proxy & Storybook host for AWS Amplify
 - ✨ Runtime DaaS credential input (no more env vars) with AES-256-GCM encrypted cookies
 - ✨ Storybook 10 migration with `@storybook/nextjs-vite` across all 4 packages
-- ✨ New `ui-collections` Storybook (port 6008)
+- ✨ New `ui-collections` Storybook (port 6005)
 - ✨ Workspace now includes `apps/*` alongside `packages/*`
 - 🔧 Storybook configs simplified — removed DaaS env var proxy, replaced with host app proxy
 - 🔧 DaaSProvider updated for proxy-mode autoFetchUser

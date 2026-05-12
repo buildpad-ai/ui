@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnyItem, Field, Collection, Bookmark } from '@buildpad/types';
-import { Sort } from '@buildpad/ui-table';
+import { Sort, Header } from '@buildpad/ui-table';
 
 /**
  * CollectionForm Component
@@ -9,8 +9,16 @@ import { Sort } from '@buildpad/ui-table';
  * Uses VForm for the actual form rendering with all @buildpad/ui-interfaces components.
  *
  * Architecture:
- * - CollectionForm = Data layer (fetch fields, load/save items, CRUD operations)
+ * - CollectionForm = Data layer (fetch fields, load/save items, CRUD operations, permissions)
  * - VForm = Presentation layer (renders fields with proper interfaces from @buildpad/ui-interfaces)
+ *
+ * Permission enforcement (mirrors DaaS item.vue + get-fields.ts):
+ * - Fetches field-level read/write permissions from PermissionsService
+ * - Filters fields: only shows fields the user can read
+ * - Marks non-writable fields as readonly
+ * - Applies permission presets as default values on create
+ * - Computes isSavable (hasEdits + saveAllowed)
+ * - Surfaces validation errors per-field from the DaaS backend
  *
  * @package @buildpad/ui-collections
  */
@@ -28,10 +36,27 @@ interface CollectionFormProps {
     onSuccess?: (data?: Record<string, unknown>) => void;
     /** Callback on cancel */
     onCancel?: () => void;
+    /** Callback to navigate to a new create form (for save-and-add-new) */
+    onNavigateToCreate?: () => void;
+    /** Callback when item is deleted successfully */
+    onDelete?: () => void;
     /** Fields to exclude from form */
     excludeFields?: string[];
     /** Fields to show (if set, only these fields are shown) */
     includeFields?: string[];
+    /** Whether to show the SaveOptions dropdown alongside the save button */
+    showSaveOptions?: boolean;
+    /** Whether to show the delete button in edit mode (default: true when id is set) */
+    showDelete?: boolean;
+}
+/** Permission state exposed to parent components */
+interface FormPermissionState {
+    createAllowed: boolean;
+    updateAllowed: boolean;
+    deleteAllowed: boolean;
+    saveAllowed: boolean;
+    hasEdits: boolean;
+    isSavable: boolean;
 }
 /**
  * CollectionForm - Dynamic form for creating/editing collection items
@@ -45,8 +70,12 @@ declare const CollectionForm: React.FC<CollectionFormProps>;
  * Composes VTable for presentation (sorting, resize, reorder, selection)
  * with data fetching from FieldsService/apiRequest.
  *
- * Used by ListO2M and ListM2M for selecting existing items,
- * and by content module pages for collection list views.
+ * Inspired by the DaaS content module's tabular layout:
+ * - Integrated FilterPanel with active filter count badge
+ * - Action toolbar: search, filter toggle, bulk actions, create button
+ * - Pagination with configurable page sizes (10, 25, 50, 100)
+ * - Permission-gated create/delete actions
+ * - Field-type-aware cell rendering (booleans, dates, numbers, etc.)
  *
  * @package @buildpad/ui-collections
  */
@@ -55,8 +84,22 @@ interface BulkAction {
     label: string;
     icon?: React.ReactNode;
     color?: string;
+    /** Whether to show a confirmation dialog before executing */
+    confirm?: boolean;
+    /** Required permission action; bulk action is disabled when the user lacks this permission */
+    requiredPermission?: "create" | "update" | "delete";
     action: (selectedIds: (string | number)[]) => void | Promise<void>;
 }
+/** Permission state exposed to consumers via onPermissionsLoaded */
+interface ListPermissionState {
+    createAllowed: boolean;
+    readAllowed: boolean;
+    updateAllowed: boolean;
+    deleteAllowed: boolean;
+    archiveAllowed: boolean;
+}
+/** Archive filter mode for collections with an archive field */
+type ArchiveFilter = "all" | "archived" | "unarchived";
 interface CollectionListProps {
     /** Collection name to display */
     collection: string;
@@ -64,6 +107,8 @@ interface CollectionListProps {
     enableSelection?: boolean;
     /** Filter to apply (DaaS-style filter object) */
     filter?: Record<string, unknown>;
+    /** Enable the integrated filter panel toggle */
+    enableFilter?: boolean;
     /** Bulk actions for selected items */
     bulkActions?: BulkAction[];
     /** Fields to display (defaults to first 5 visible fields) */
@@ -82,18 +127,44 @@ interface CollectionListProps {
     enableHeaderMenu?: boolean;
     /** Enable inline "add field" button in header */
     enableAddField?: boolean;
+    /** Enable the create (+) action button */
+    enableCreate?: boolean;
     /** Primary key field name */
     primaryKeyField?: string;
     /** Row height in pixels */
     rowHeight?: number;
     /** Table spacing preset */
     tableSpacing?: "compact" | "cozy" | "comfortable";
+    /** Archive field name (e.g. "status" or "archived"). When set, archive filter UI is shown. */
+    archiveField?: string;
+    /** Value that indicates an item is archived (default: "archived") */
+    archiveValue?: string;
+    /** Value that indicates an item is not archived (default: "draft") */
+    unarchiveValue?: string;
     /** Callback when item row is clicked */
     onItemClick?: (item: AnyItem) => void;
+    /** Callback when "Create" button is clicked */
+    onCreate?: () => void;
+    /** Callback when "Edit" (row click or edit action) is triggered */
+    onEdit?: (item: AnyItem) => void;
+    /** Enable built-in delete functionality with confirmation */
+    enableDelete?: boolean;
+    /** Callback after successful delete (receives deleted IDs) */
+    onDeleteSuccess?: (ids: (string | number)[]) => void;
     /** Callback when visible fields change */
     onFieldsChange?: (fields: string[]) => void;
     /** Callback when sort changes */
     onSortChange?: (sort: Sort | null) => void;
+    /** Callback when filter changes from the integrated FilterPanel */
+    onFilterChange?: (filter: Record<string, unknown> | null) => void;
+    /** Callback fired once permissions are resolved for the collection */
+    onPermissionsLoaded?: (permissions: ListPermissionState) => void;
+    /**
+     * Custom cell renderer — called before the built-in field-type renderer.
+     * Return a React node to override the cell, or null/undefined to fall through
+     * to the default field-type-aware renderer.
+     */
+    renderCell?: (item: AnyItem, header: Header) => React.ReactNode | null | undefined;
 }
 /**
  * CollectionList - Dynamic list for displaying collection items.
@@ -385,4 +456,4 @@ interface SaveOptionsProps {
  */
 declare const SaveOptions: React.FC<SaveOptionsProps>;
 
-export { type BreadcrumbItem, type BulkAction, CollectionForm, type CollectionFormProps, CollectionList, type CollectionListProps, type CollectionTreeNode, ContentLayout, type ContentLayoutProps, ContentNavigation, type ContentNavigationProps, type FilterGroup, FilterPanel, type FilterPanelProps, type FilterRule, type SaveAction, SaveOptions, type SaveOptionsProps };
+export { type ArchiveFilter, type BreadcrumbItem, type BulkAction, CollectionForm, type CollectionFormProps, CollectionList, type CollectionListProps, type CollectionTreeNode, ContentLayout, type ContentLayoutProps, ContentNavigation, type ContentNavigationProps, type FilterGroup, FilterPanel, type FilterPanelProps, type FilterRule, type FormPermissionState, type ListPermissionState, type SaveAction, SaveOptions, type SaveOptionsProps };

@@ -20,10 +20,10 @@ export default function TestingPage() {
       <div className="docs-code-block">
         <div className="docs-code-title">Terminal</div>
         <pre className="docs-pre">{`# Terminal 1: Start Storybook
+pnpm storybook:interfaces.   # Interfaces on port 6005
 pnpm storybook:form          # VForm on port 6006
 pnpm storybook:table         # VTable on port 6007
 pnpm storybook:collections   # Collections on port 6008
-pnpm storybook               # Interfaces on port 6005
 
 # Terminal 2: Run tests
 pnpm test:storybook          # Run VForm Storybook tests

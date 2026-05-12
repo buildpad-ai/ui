@@ -5,12 +5,12 @@
  * Permission management table with CRUD+share toggles, Add Collection modal,
  * All/None shortcuts, admin notice, and app access reset controls.
  *
- * Run: SKIP_WEBSERVER=true STORYBOOK_INTERFACES_URL=http://localhost:6008 npx playwright test --project=storybook-interfaces tests/ui-interfaces/system-permissions-storybook.spec.ts --reporter=line
+ * Run: SKIP_WEBSERVER=true STORYBOOK_INTERFACES_URL=http://localhost:6005 npx playwright test --project=storybook-interfaces tests/ui-interfaces/system-permissions-storybook.spec.ts --reporter=line
  */
 
 import { test, expect } from '@playwright/test';
 
-const STORYBOOK_URL = process.env.STORYBOOK_INTERFACES_URL || 'http://localhost:6008';
+const STORYBOOK_URL = process.env.STORYBOOK_INTERFACES_URL || 'http://localhost:6005';
 
 async function goToStory(page: import('@playwright/test').Page, storyId: string) {
   await page.goto(`${STORYBOOK_URL}/iframe.html?id=${storyId}&viewMode=story`);
