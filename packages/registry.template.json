@@ -1,0 +1,2351 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
+  "version": "1.0.0",
+  "name": "buildpad",
+  "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
+  "license": "MIT",
+  "repository": "https://github.com/microbuild-ui/ui",
+  "meta": {
+    "model": "copy-own",
+    "framework": "react",
+    "uiLibrary": "mantine-v8",
+    "typescript": true
+  },
+  "aliases": {
+    "@/lib/buildpad": "./lib/buildpad",
+    "@/components/ui": "./components/ui"
+  },
+  "dependencies": {
+    "core": [
+      "@mantine/core",
+      "@mantine/hooks",
+      "react",
+      "react-dom"
+    ],
+    "icons": [
+      "@tabler/icons-react"
+    ],
+    "utilities": [
+      "clsx",
+      "tailwind-merge",
+      "axios"
+    ],
+    "dates": [
+      "@mantine/dates",
+      "dayjs"
+    ],
+    "dropzone": [
+      "@mantine/dropzone"
+    ],
+    "notifications": [
+      "@mantine/notifications"
+    ],
+    "richText": [
+      "@tiptap/react@^3",
+      "@tiptap/starter-kit@^3",
+      "@tiptap/extension-link@^3",
+      "@tiptap/extension-color@^3",
+      "@tiptap/extension-text-style@^3",
+      "@tiptap/extension-highlight@^3",
+      "@tiptap/extension-placeholder@^3",
+      "@tiptap/extension-subscript@^3",
+      "@tiptap/extension-superscript@^3",
+      "@tiptap/extension-text-align@^3",
+      "@tiptap/extension-underline@^3",
+      "@tiptap/extension-code-block-lowlight@^3",
+      "@mantine/tiptap@^8",
+      "lowlight"
+    ],
+    "blockEditor": [
+      "@editorjs/editorjs",
+      "@editorjs/header",
+      "@editorjs/nested-list",
+      "@editorjs/paragraph",
+      "@editorjs/code",
+      "@editorjs/quote",
+      "@editorjs/checklist",
+      "@editorjs/delimiter",
+      "@editorjs/table",
+      "@editorjs/underline",
+      "@editorjs/inline-code",
+      "highlight.js"
+    ],
+    "maps": [
+      "maplibre-gl",
+      "@mapbox/mapbox-gl-draw"
+    ],
+    "supabase": [
+      "@supabase/ssr@^0.5",
+      "@supabase/supabase-js@^2"
+    ],
+    "oauth": [
+      "jose"
+    ]
+  },
+  "lib": {
+    "utils": {
+      "name": "utils",
+      "description": "Utility functions (cn, formatFileSize, field interface mapper, etc.)",
+      "files": [
+        {
+          "source": "cli/templates/lib/common-utils.ts",
+          "target": "lib/buildpad/common-utils.ts"
+        },
+        {
+          "source": "utils/src/field-interface-mapper.ts",
+          "target": "lib/buildpad/field-interface-mapper.ts"
+        },
+        {
+          "source": "utils/src/interface-types.ts",
+          "target": "lib/buildpad/interface-types.ts"
+        },
+        {
+          "source": "utils/src/define-interface.ts",
+          "target": "lib/buildpad/define-interface.ts"
+        },
+        {
+          "source": "utils/src/interface-registry.ts",
+          "target": "lib/buildpad/interface-registry.ts"
+        },
+        {
+          "source": "utils/src/is-new-item.ts",
+          "target": "lib/buildpad/is-new-item.ts"
+        },
+        {
+          "source": "cli/templates/lib/utils-index.ts",
+          "target": "lib/buildpad/utils/index.ts"
+        },
+        {
+          "source": "cli/templates/lib/utils.ts",
+          "target": "lib/buildpad/utils.ts"
+        },
+        {
+          "source": "cli/templates/types/modules.d.ts",
+          "target": "types/modules.d.ts"
+        }
+      ],
+      "internalDependencies": [
+        "types"
+      ]
+    },
+    "types": {
+      "name": "types",
+      "description": "Core TypeScript types for collections, fields, files, and relations",
+      "files": [
+        {
+          "source": "types/src/core.ts",
+          "target": "lib/buildpad/types/core.ts"
+        },
+        {
+          "source": "types/src/file.ts",
+          "target": "lib/buildpad/types/file.ts"
+        },
+        {
+          "source": "types/src/relations.ts",
+          "target": "lib/buildpad/types/relations.ts"
+        },
+        {
+          "source": "cli/templates/lib/types/index.ts",
+          "target": "lib/buildpad/types/index.ts"
+        }
+      ]
+    },
+    "services": {
+      "name": "services",
+      "description": "Service classes for fields, collections, items, permissions, and DaaS API config",
+      "files": [
+        {
+          "source": "services/src/api-request.ts",
+          "target": "lib/buildpad/services/api-request.ts"
+        },
+        {
+          "source": "services/src/fields.ts",
+          "target": "lib/buildpad/services/fields.ts"
+        },
+        {
+          "source": "services/src/collections.ts",
+          "target": "lib/buildpad/services/collections.ts"
+        },
+        {
+          "source": "services/src/items.ts",
+          "target": "lib/buildpad/services/items.ts"
+        },
+        {
+          "source": "services/src/permissions.ts",
+          "target": "lib/buildpad/services/permissions.ts"
+        },
+        {
+          "source": "services/src/daas-context.tsx",
+          "target": "lib/buildpad/services/daas-context.tsx"
+        },
+        {
+          "source": "services/src/auth/index.ts",
+          "target": "lib/buildpad/services/auth/index.ts"
+        },
+        {
+          "source": "services/src/auth/session.ts",
+          "target": "lib/buildpad/services/auth/session.ts"
+        },
+        {
+          "source": "services/src/auth/enforcer.ts",
+          "target": "lib/buildpad/services/auth/enforcer.ts"
+        },
+        {
+          "source": "services/src/auth/filter-to-query.ts",
+          "target": "lib/buildpad/services/auth/filter-to-query.ts"
+        },
+        {
+          "source": "cli/templates/lib/services/index.ts",
+          "target": "lib/buildpad/services/index.ts"
+        }
+      ],
+      "internalDependencies": [
+        "types"
+      ]
+    },
+    "hooks": {
+      "name": "hooks",
+      "description": "React hooks for managing relational data, selection, presets, and workflows",
+      "files": [
+        {
+          "source": "hooks/src/api.ts",
+          "target": "lib/buildpad/hooks/api.ts"
+        },
+        {
+          "source": "hooks/src/utils.ts",
+          "target": "lib/buildpad/hooks/utils.ts"
+        },
+        {
+          "source": "hooks/src/useFiles.ts",
+          "target": "lib/buildpad/hooks/useFiles.ts"
+        },
+        {
+          "source": "hooks/src/useRelationM2M.ts",
+          "target": "lib/buildpad/hooks/useRelationM2M.ts"
+        },
+        {
+          "source": "hooks/src/useRelationM2MItems.ts",
+          "target": "lib/buildpad/hooks/useRelationM2MItems.ts"
+        },
+        {
+          "source": "hooks/src/useRelationM2O.ts",
+          "target": "lib/buildpad/hooks/useRelationM2O.ts"
+        },
+        {
+          "source": "hooks/src/useRelationO2M.ts",
+          "target": "lib/buildpad/hooks/useRelationO2M.ts"
+        },
+        {
+          "source": "hooks/src/useRelationM2A.ts",
+          "target": "lib/buildpad/hooks/useRelationM2A.ts"
+        },
+        {
+          "source": "hooks/src/useRelationPermissionsM2A.ts",
+          "target": "lib/buildpad/hooks/useRelationPermissionsM2A.ts"
+        },
+        {
+          "source": "hooks/src/useSelection.ts",
+          "target": "lib/buildpad/hooks/useSelection.ts"
+        },
+        {
+          "source": "hooks/src/usePreset.ts",
+          "target": "lib/buildpad/hooks/usePreset.ts"
+        },
+        {
+          "source": "hooks/src/useEditsGuard.ts",
+          "target": "lib/buildpad/hooks/useEditsGuard.ts"
+        },
+        {
+          "source": "hooks/src/useClipboard.ts",
+          "target": "lib/buildpad/hooks/useClipboard.ts"
+        },
+        {
+          "source": "hooks/src/useLocalStorage.ts",
+          "target": "lib/buildpad/hooks/useLocalStorage.ts"
+        },
+        {
+          "source": "hooks/src/useVersions.ts",
+          "target": "lib/buildpad/hooks/useVersions.ts"
+        },
+        {
+          "source": "hooks/src/useWorkflowAssignment.ts",
+          "target": "lib/buildpad/hooks/useWorkflowAssignment.ts"
+        },
+        {
+          "source": "hooks/src/useWorkflowVersioning.ts",
+          "target": "lib/buildpad/hooks/useWorkflowVersioning.ts"
+        },
+        {
+          "source": "hooks/src/useCollections.ts",
+          "target": "lib/buildpad/hooks/useCollections.ts"
+        },
+        {
+          "source": "hooks/src/useRelationMultipleM2M.ts",
+          "target": "lib/buildpad/hooks/useRelationMultipleM2M.ts"
+        },
+        {
+          "source": "hooks/src/useRelationPermissionsM2M.ts",
+          "target": "lib/buildpad/hooks/useRelationPermissionsM2M.ts"
+        },
+        {
+          "source": "hooks/src/useRelationPermissionsM2O.ts",
+          "target": "lib/buildpad/hooks/useRelationPermissionsM2O.ts"
+        },
+        {
+          "source": "hooks/src/useFieldMetadata.ts",
+          "target": "lib/buildpad/hooks/useFieldMetadata.ts"
+        },
+        {
+          "source": "hooks/src/useAuth.ts",
+          "target": "lib/buildpad/hooks/useAuth.ts"
+        },
+        {
+          "source": "hooks/src/usePermissions.ts",
+          "target": "lib/buildpad/hooks/usePermissions.ts"
+        },
+        {
+          "source": "hooks/src/useDaaSContext.tsx",
+          "target": "lib/buildpad/hooks/useDaaSContext.tsx"
+        },
+        {
+          "source": "cli/templates/lib/hooks/index.ts",
+          "target": "lib/buildpad/hooks/index.ts"
+        }
+      ],
+      "internalDependencies": [
+        "types",
+        "services"
+      ]
+    },
+    "api-routes": {
+      "name": "api-routes",
+      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout",
+      "files": [
+        {
+          "source": "cli/templates/api/auth-login-route.ts",
+          "target": "app/api/auth/login/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-logout-route.ts",
+          "target": "app/api/auth/logout/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-user-route.ts",
+          "target": "app/api/auth/user/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-callback-route.ts",
+          "target": "app/api/auth/callback/route.ts"
+        },
+        {
+          "source": "cli/templates/api/login-page.tsx",
+          "target": "app/login/page.tsx"
+        },
+        {
+          "source": "cli/templates/lib/api-auth-headers.ts",
+          "target": "lib/api/auth-headers.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-fields-route.ts",
+          "target": "app/api/fields/[collection]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-items-collection-route.ts",
+          "target": "app/api/items/[collection]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-items-id-route.ts",
+          "target": "app/api/items/[collection]/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-relations-route.ts",
+          "target": "app/api/relations/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-route.ts",
+          "target": "app/api/files/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-id-route.ts",
+          "target": "app/api/files/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-assets-id-route.ts",
+          "target": "app/api/assets/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-permissions-me-route.ts",
+          "target": "app/api/permissions/me/route.ts"
+        },
+        {
+          "source": "cli/templates/components/DaaSProviderWrapper.tsx",
+          "target": "components/DaaSProviderWrapper.tsx"
+        },
+        {
+          "source": "cli/templates/app/authenticated-layout.tsx",
+          "target": "app/(authenticated)/layout.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "supabase-auth"
+      ]
+    },
+    "content-routes": {
+      "name": "content-routes",
+      "description": "Content module pages with navigation sidebar, collection list, and item edit views",
+      "files": [
+        {
+          "source": "cli/templates/app/content/layout.tsx",
+          "target": "app/content/layout.tsx"
+        },
+        {
+          "source": "cli/templates/app/content/page.tsx",
+          "target": "app/content/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/content/[collection]/page.tsx",
+          "target": "app/content/[collection]/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/content/[collection]/[id]/page.tsx",
+          "target": "app/content/[collection]/[id]/page.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ]
+    },
+    "supabase-auth": {
+      "name": "supabase-auth",
+      "description": "Supabase authentication clients and middleware for Next.js",
+      "dependencies": [
+        "@supabase/ssr",
+        "@supabase/supabase-js"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/supabase/client.ts",
+          "target": "lib/supabase/client.ts"
+        },
+        {
+          "source": "cli/templates/supabase/server.ts",
+          "target": "lib/supabase/server.ts"
+        },
+        {
+          "source": "cli/templates/supabase/middleware.ts",
+          "target": "lib/supabase/middleware.ts"
+        },
+        {
+          "source": "cli/templates/supabase/admin.ts",
+          "target": "lib/supabase/admin.ts"
+        },
+        {
+          "source": "cli/templates/middleware/middleware.ts",
+          "target": "middleware.ts"
+        }
+      ]
+    },
+    "external-oauth": {
+      "name": "external-oauth",
+      "description": "External OAuth2/OIDC integration where Next.js acts as the OAuth client. Supports Azure AD, Google, Okta, Auth0, and generic OIDC providers. Includes PKCE, AES-256-GCM state encryption, JIT user provisioning, and multi-source claim extraction.",
+      "dependencies": [
+        "jose"
+      ],
+      "internalDependencies": [
+        "supabase-auth",
+        "api-routes"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/lib/oauth/config.ts",
+          "target": "lib/oauth/config.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/pkce.ts",
+          "target": "lib/oauth/pkce.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/validate.ts",
+          "target": "lib/oauth/validate.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/index.ts",
+          "target": "lib/oauth/index.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-callback-oauth-route.ts",
+          "target": "app/api/auth/callback/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-oauth-provider-route.ts",
+          "target": "app/api/auth/oauth/[provider]/route.ts"
+        },
+        {
+          "source": "cli/templates/components/auth/OAuthLoginButtons.tsx",
+          "target": "components/auth/OAuthLoginButtons.tsx"
+        }
+      ]
+    },
+    "scope-routes": {
+      "name": "scope-routes",
+      "description": "DaaS multi-tenant scope system — ScopeProvider context, ScopeSwitcher, error handling, and onboarding page. Calls DaaS directly; no proxy routes needed.",
+      "internalDependencies": [
+        "supabase-auth"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/lib/scope/context.tsx",
+          "target": "lib/scope/context.tsx"
+        },
+        {
+          "source": "cli/templates/lib/scope/use-scope-error.ts",
+          "target": "lib/scope/use-scope-error.ts"
+        },
+        {
+          "source": "cli/templates/lib/scope/index.ts",
+          "target": "lib/scope/index.ts"
+        },
+        {
+          "source": "cli/templates/components/scope-switcher.tsx",
+          "target": "components/ScopeSwitcher.tsx"
+        },
+        {
+          "source": "cli/templates/app/select-scope/page.tsx",
+          "target": "app/select-scope/page.tsx"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "input",
+      "title": "Input",
+      "description": "Text input with validation, numeric support, and slug conversion",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/input/Input.tsx",
+          "target": "components/ui/input.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input",
+        "name": "Input",
+        "icon": "IconForms",
+        "types": [
+          "string",
+          "text",
+          "integer",
+          "bigInteger",
+          "float",
+          "decimal"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 1,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "textarea",
+      "title": "Textarea",
+      "description": "Multi-line text input with character count",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/textarea/Textarea.tsx",
+          "target": "components/ui/textarea.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-multiline",
+        "name": "Textarea",
+        "icon": "IconAlignLeft",
+        "types": [
+          "string",
+          "text"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 2,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "input-code",
+      "title": "InputCode",
+      "description": "Code editor with syntax highlighting and line numbers",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/input-code/InputCode.tsx",
+          "target": "components/ui/input-code.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-code",
+        "name": "Code",
+        "icon": "IconCode",
+        "types": [
+          "string",
+          "text",
+          "json"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 3,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "input-hash",
+      "title": "InputHash",
+      "description": "Hashed input interface for securely storing values like passwords. Shows lock icon indicator for existing hashed values.",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/input-hash/InputHash.tsx",
+          "target": "components/ui/input-hash.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/input-hash/InputHash.css",
+          "target": "components/ui/InputHash.css"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-hash",
+        "name": "Hash",
+        "icon": "IconFingerprint",
+        "types": [
+          "hash"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "other",
+        "order": 4,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "system-token",
+      "title": "SystemToken",
+      "description": "Token generator interface with generate, copy, and remove actions. Used for API tokens and system authentication keys.",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/system-token/SystemToken.tsx",
+          "target": "components/ui/system-token.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-token/SystemToken.css",
+          "target": "components/ui/SystemToken.css"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "services",
+        "hooks"
+      ],
+      "interface": {
+        "id": "system-token",
+        "name": "Token",
+        "icon": "IconKey",
+        "types": [
+          "hash"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "other",
+        "order": 5,
+        "supported": true,
+        "hasOptions": false
+      }
+    },
+    {
+      "name": "system-permissions",
+      "title": "SystemPermissions",
+      "description": "Permissions management interface with collection-based CRUD permission toggles. Used for policy permission editing with full/custom/none access levels.",
+      "category": "relational",
+      "files": [
+        {
+          "source": "ui-interfaces/src/system-permissions/SystemPermissions.tsx",
+          "target": "components/ui/system-permissions.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/SystemPermissions.css",
+          "target": "components/ui/system-permissions.css"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "services"
+      ],
+      "interface": {
+        "id": "system-permissions",
+        "name": "Permissions",
+        "icon": "IconSettings",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "o2m"
+        ],
+        "group": "system",
+        "order": 6,
+        "supported": true,
+        "hasOptions": false
+      }
+    },
+    {
+      "name": "input-block-editor",
+      "title": "InputBlockEditor",
+      "description": "Block-based content editor using EditorJS (SSR-safe wrapper)",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/input-block-editor/index.tsx",
+          "target": "components/ui/input-block-editor-wrapper.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/input-block-editor/InputBlockEditor.tsx",
+          "target": "components/ui/input-block-editor.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/input-block-editor/InputBlockEditor.css",
+          "target": "components/ui/InputBlockEditor.css"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@editorjs/editorjs",
+        "@editorjs/header",
+        "@editorjs/nested-list",
+        "@editorjs/paragraph",
+        "@editorjs/code",
+        "@editorjs/quote",
+        "@editorjs/checklist",
+        "@editorjs/delimiter",
+        "@editorjs/table",
+        "@editorjs/underline",
+        "@editorjs/inline-code"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-block-editor",
+        "name": "Block Editor",
+        "icon": "IconLayoutGrid",
+        "types": [
+          "json",
+          "text"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 13,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "tags",
+      "title": "Tags",
+      "description": "Tag input with presets and custom tags",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/tags/Tags.tsx",
+          "target": "components/ui/tags.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-tags",
+        "name": "Tags",
+        "icon": "IconTags",
+        "types": [
+          "json",
+          "csv"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 4,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "select-dropdown",
+      "title": "SelectDropdown",
+      "description": "Dropdown select with search and custom option support",
+      "category": "selection",
+      "files": [
+        {
+          "source": "ui-interfaces/src/select-dropdown/SelectDropdown.tsx",
+          "target": "components/ui/select-dropdown.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "select-dropdown",
+        "name": "Dropdown",
+        "icon": "IconSelector",
+        "types": [
+          "string",
+          "integer",
+          "bigInteger",
+          "float",
+          "decimal"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "selection",
+        "order": 1,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "select-radio",
+      "title": "SelectRadio",
+      "description": "Radio button group with customizable layout",
+      "category": "selection",
+      "files": [
+        {
+          "source": "ui-interfaces/src/select-radio/SelectRadio.tsx",
+          "target": "components/ui/select-radio.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "select-radio",
+        "name": "Radio Buttons",
+        "icon": "IconCircleDot",
+        "types": [
+          "string",
+          "integer"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "selection",
+        "order": 2,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "select-multiple-checkbox",
+      "title": "SelectMultipleCheckbox",
+      "description": "Checkbox group with 'other' option support",
+      "category": "selection",
+      "files": [
+        {
+          "source": "ui-interfaces/src/select-multiple-checkbox/SelectMultipleCheckbox.tsx",
+          "target": "components/ui/select-multiple-checkbox.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "select-multiple-checkbox",
+        "name": "Checkboxes",
+        "icon": "IconSquareCheck",
+        "types": [
+          "json",
+          "csv"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "selection",
+        "order": 3,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "select-multiple-checkbox-tree",
+      "title": "SelectMultipleCheckboxTree",
+      "description": "Tree-based multi-select checkbox with hierarchical choices",
+      "category": "selection",
+      "files": [
+        {
+          "source": "ui-interfaces/src/select-multiple-checkbox/SelectMultipleCheckboxTree.tsx",
+          "target": "components/ui/select-multiple-checkbox-tree.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "select-multiple-checkbox-tree",
+        "name": "Checkboxes Tree",
+        "icon": "IconListTree",
+        "types": [
+          "json",
+          "csv"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "selection",
+        "order": 4,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "select-multiple-dropdown",
+      "title": "SelectMultipleDropdown",
+      "description": "Dropdown-based multi-select with search support",
+      "category": "selection",
+      "files": [
+        {
+          "source": "ui-interfaces/src/select-multiple-checkbox/SelectMultipleDropdown.tsx",
+          "target": "components/ui/select-multiple-dropdown.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "select-multiple-dropdown",
+        "name": "Multiple Dropdown",
+        "icon": "IconSquaresFilled",
+        "types": [
+          "json",
+          "csv"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "selection",
+        "order": 5,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "select-icon",
+      "title": "SelectIcon",
+      "description": "Icon picker with categorized Tabler icons",
+      "category": "selection",
+      "files": [
+        {
+          "source": "ui-interfaces/src/select-icon/SelectIcon.tsx",
+          "target": "components/ui/select-icon.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "select-icon",
+        "name": "Icon",
+        "icon": "IconIcons",
+        "types": [
+          "string"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "selection",
+        "order": 6,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "autocomplete-api",
+      "title": "AutocompleteAPI",
+      "description": "External API-backed autocomplete input",
+      "category": "selection",
+      "files": [
+        {
+          "source": "ui-interfaces/src/autocomplete-api/AutocompleteApi.tsx",
+          "target": "components/ui/autocomplete-api.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "axios"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-autocomplete-api",
+        "name": "Autocomplete API",
+        "icon": "IconPlugConnected",
+        "types": [
+          "string"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "selection",
+        "order": 7,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "collection-item-dropdown",
+      "title": "CollectionItemDropdown",
+      "description": "Collection item selector dropdown",
+      "category": "selection",
+      "files": [
+        {
+          "source": "ui-interfaces/src/collection-item-dropdown/CollectionItemDropdown.tsx",
+          "target": "components/ui/collection-item-dropdown.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks"
+      ],
+      "internalDependencies": [
+        "types",
+        "services"
+      ],
+      "registryDependencies": [
+        "list-m2a"
+      ],
+      "interface": {
+        "id": "collection-item-dropdown",
+        "name": "Collection Item",
+        "icon": "IconDatabase",
+        "types": [
+          "string",
+          "integer",
+          "uuid"
+        ],
+        "localTypes": [
+          "m2o"
+        ],
+        "group": "relational",
+        "order": 1,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "datetime",
+      "title": "DateTime",
+      "description": "Date, time, and datetime picker",
+      "category": "datetime",
+      "files": [
+        {
+          "source": "ui-interfaces/src/datetime/DateTime.tsx",
+          "target": "components/ui/datetime.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/dates",
+        "dayjs"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "datetime",
+        "name": "DateTime",
+        "icon": "IconCalendar",
+        "types": [
+          "dateTime",
+          "date",
+          "time",
+          "timestamp"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 5,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "boolean",
+      "title": "Boolean",
+      "description": "Checkbox toggle for boolean fields",
+      "category": "boolean",
+      "files": [
+        {
+          "source": "ui-interfaces/src/boolean/Boolean.tsx",
+          "target": "components/ui/boolean.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "boolean",
+        "name": "Checkbox",
+        "icon": "IconCheckbox",
+        "types": [
+          "boolean"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 6,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "toggle",
+      "title": "Toggle",
+      "description": "Enhanced switch toggle with icons and state labels",
+      "category": "boolean",
+      "files": [
+        {
+          "source": "ui-interfaces/src/toggle/Toggle.tsx",
+          "target": "components/ui/toggle.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "toggle",
+        "name": "Toggle",
+        "icon": "IconToggleRight",
+        "types": [
+          "boolean"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 7,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "file",
+      "title": "FileInterface",
+      "description": "Single file upload with preview",
+      "category": "media",
+      "files": [
+        {
+          "source": "ui-interfaces/src/file/File.tsx",
+          "target": "components/ui/file.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types"
+      ],
+      "registryDependencies": [
+        "upload"
+      ],
+      "interface": {
+        "id": "file",
+        "name": "File",
+        "icon": "IconFile",
+        "types": [
+          "uuid"
+        ],
+        "localTypes": [
+          "file"
+        ],
+        "group": "relational",
+        "order": 5,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "file-image",
+      "title": "FileImage",
+      "description": "Image file picker with preview and focal point",
+      "category": "media",
+      "files": [
+        {
+          "source": "ui-interfaces/src/file-image/FileImage.tsx",
+          "target": "components/ui/file-image.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types"
+      ],
+      "registryDependencies": [
+        "upload"
+      ],
+      "interface": {
+        "id": "file-image",
+        "name": "Image",
+        "icon": "IconPhoto",
+        "types": [
+          "uuid"
+        ],
+        "localTypes": [
+          "file"
+        ],
+        "group": "relational",
+        "order": 6,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "files",
+      "title": "Files",
+      "description": "Multiple file upload interface with drag & drop",
+      "category": "media",
+      "files": [
+        {
+          "source": "ui-interfaces/src/files/Files.tsx",
+          "target": "components/ui/files.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks"
+      ],
+      "interface": {
+        "id": "files",
+        "name": "Files",
+        "icon": "IconFiles",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "files"
+        ],
+        "group": "relational",
+        "order": 7,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "upload",
+      "title": "Upload",
+      "description": "Drag-and-drop file upload zone",
+      "category": "media",
+      "files": [
+        {
+          "source": "ui-interfaces/src/upload/Upload.tsx",
+          "target": "components/ui/upload.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/upload/Upload.css",
+          "target": "components/ui/upload.css"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/dropzone"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "upload",
+        "name": "Upload",
+        "icon": "IconUpload",
+        "types": [
+          "uuid"
+        ],
+        "localTypes": [
+          "file"
+        ],
+        "group": "relational",
+        "order": 8,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "color",
+      "title": "Color",
+      "description": "Color picker with RGB/HSL support, presets, and opacity",
+      "category": "media",
+      "files": [
+        {
+          "source": "ui-interfaces/src/color/Color.tsx",
+          "target": "components/ui/color.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "select-color",
+        "name": "Color",
+        "icon": "IconPalette",
+        "types": [
+          "string"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "selection",
+        "order": 8,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "list-m2m",
+      "title": "ListM2M",
+      "description": "Many-to-Many relationship interface with inline editing",
+      "category": "relational",
+      "files": [
+        {
+          "source": "ui-interfaces/src/list-m2m/ListM2M.tsx",
+          "target": "components/ui/list-m2m.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/list-m2m/ListM2MInterface.tsx",
+          "target": "components/ui/list-m2m-interface.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/list-m2m/translations.ts",
+          "target": "components/ui/list-m2m/translations.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services"
+      ],
+      "registryDependencies": [
+        "collection-form",
+        "collection-list",
+        "list-m2a"
+      ],
+      "interface": {
+        "id": "list-m2m",
+        "name": "Many to Many",
+        "icon": "IconArrowsRightLeft",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "m2m"
+        ],
+        "group": "relational",
+        "order": 2,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "select-dropdown-m2o",
+      "title": "SelectDropdownM2O",
+      "description": "Many-to-One dropdown selector with search and modal",
+      "category": "relational",
+      "files": [
+        {
+          "source": "ui-interfaces/src/select-dropdown-m2o/SelectDropdownM2O.tsx",
+          "target": "components/ui/select-dropdown-m2o.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/select-dropdown-m2o/SelectDropdownM2OInterface.tsx",
+          "target": "components/ui/select-dropdown-m2o-interface.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services"
+      ],
+      "registryDependencies": [
+        "collection-form",
+        "collection-list",
+        "list-m2a"
+      ],
+      "interface": {
+        "id": "select-dropdown-m2o",
+        "name": "Many to One",
+        "icon": "IconArrowRight",
+        "types": [
+          "string",
+          "integer",
+          "bigInteger",
+          "uuid"
+        ],
+        "localTypes": [
+          "m2o"
+        ],
+        "group": "relational",
+        "order": 3,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true,
+        "aliases": ["list-m2o"]
+      }
+    },
+    {
+      "name": "list-o2m",
+      "title": "ListO2M",
+      "description": "One-to-Many relationship interface with changeset staging, permission gates, batch edit, drag-and-drop reorder, unique FK / singleton guards, nested template rendering, and dynamic filter interpolation",
+      "category": "relational",
+      "files": [
+        {
+          "source": "ui-interfaces/src/list-o2m/ListO2M.tsx",
+          "target": "components/ui/list-o2m.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services"
+      ],
+      "registryDependencies": [
+        "collection-form",
+        "collection-list",
+        "list-m2a"
+      ],
+      "interface": {
+        "id": "list-o2m",
+        "name": "One to Many",
+        "icon": "IconArrowsRight",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "o2m"
+        ],
+        "group": "relational",
+        "order": 4,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "list-m2a",
+      "title": "ListM2A",
+      "description": "Many-to-Any polymorphic relationship interface",
+      "category": "relational",
+      "files": [
+        {
+          "source": "ui-interfaces/src/list-m2a/ListM2A.tsx",
+          "target": "components/ui/list-m2a.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/list-m2a/JunctionItemForm.tsx",
+          "target": "components/ui/list-m2a/JunctionItemForm.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/list-m2a/render-template.ts",
+          "target": "components/ui/list-m2a/render-template.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services"
+      ],
+      "registryDependencies": [
+        "collection-form",
+        "collection-list"
+      ],
+      "interface": {
+        "id": "list-m2a",
+        "name": "Many to Any",
+        "icon": "IconArrowsSplit",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "m2a"
+        ],
+        "group": "relational",
+        "order": 5,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "divider",
+      "title": "Divider",
+      "description": "Horizontal/vertical divider with title support",
+      "category": "layout",
+      "files": [
+        {
+          "source": "ui-interfaces/src/divider/Divider.tsx",
+          "target": "components/ui/divider.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "presentation-divider",
+        "name": "Divider",
+        "icon": "IconMinus",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "presentation"
+        ],
+        "group": "presentation",
+        "order": 1,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "notice",
+      "title": "Notice",
+      "description": "Alert/notice component (info, success, warning, danger)",
+      "category": "layout",
+      "files": [
+        {
+          "source": "ui-interfaces/src/notice/Notice.tsx",
+          "target": "components/ui/notice.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "presentation-notice",
+        "name": "Notice",
+        "icon": "IconAlertCircle",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "presentation"
+        ],
+        "group": "presentation",
+        "order": 2,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "group-detail",
+      "title": "GroupDetail",
+      "description": "Collapsible form section with header",
+      "category": "layout",
+      "files": [
+        {
+          "source": "ui-interfaces/src/group-detail/GroupDetail.tsx",
+          "target": "components/ui/group-detail.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "group-detail",
+        "name": "Detail Group",
+        "icon": "IconBoxModel2",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "group"
+        ],
+        "group": "group",
+        "order": 1,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "group-accordion",
+      "title": "GroupAccordion",
+      "description": "Accordion-style group with expandable sections",
+      "category": "layout",
+      "files": [
+        {
+          "source": "ui-interfaces/src/group-accordion/GroupAccordion.tsx",
+          "target": "components/ui/group-accordion.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "group-accordion",
+        "name": "Accordion Group",
+        "icon": "IconLayoutList",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "group"
+        ],
+        "group": "group",
+        "order": 2,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "group-raw",
+      "title": "GroupRaw",
+      "description": "Transparent group wrapper that renders children inline",
+      "category": "layout",
+      "files": [
+        {
+          "source": "ui-interfaces/src/group-raw/GroupRaw.tsx",
+          "target": "components/ui/group-raw.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "group-raw",
+        "name": "Raw Group",
+        "icon": "IconSquare",
+        "types": [
+          "alias"
+        ],
+        "localTypes": [
+          "group"
+        ],
+        "group": "group",
+        "order": 3,
+        "supported": true,
+        "hasOptions": false
+      }
+    },
+    {
+      "name": "slider",
+      "title": "Slider",
+      "description": "Range slider with numeric type support",
+      "category": "layout",
+      "files": [
+        {
+          "source": "ui-interfaces/src/slider/Slider.tsx",
+          "target": "components/ui/slider.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "slider",
+        "name": "Slider",
+        "icon": "IconSlideshow",
+        "types": [
+          "integer",
+          "bigInteger",
+          "float",
+          "decimal"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 8,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "rich-text-html",
+      "title": "RichTextHTML",
+      "description": "WYSIWYG HTML editor powered by TipTap",
+      "category": "rich-text",
+      "files": [
+        {
+          "source": "ui-interfaces/src/rich-text-html/RichTextHTML.tsx",
+          "target": "components/ui/rich-text-html.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/rich-text-html/RichTextHTML.css",
+          "target": "components/ui/RichTextHTML.css"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/tiptap",
+        "@tiptap/react",
+        "@tiptap/starter-kit",
+        "@tiptap/extension-link",
+        "@tiptap/extension-highlight",
+        "@tiptap/extension-text-align",
+        "@tiptap/extension-superscript",
+        "@tiptap/extension-subscript",
+        "@tiptap/extension-placeholder",
+        "@tiptap/extension-color",
+        "@tiptap/extension-text-style",
+        "@tiptap/extension-underline"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-rich-text-html",
+        "name": "WYSIWYG",
+        "icon": "IconTextCaption",
+        "types": [
+          "text"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 9,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "rich-text-markdown",
+      "title": "RichTextMarkdown",
+      "description": "Markdown editor with live preview",
+      "category": "rich-text",
+      "files": [
+        {
+          "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.tsx",
+          "target": "components/ui/rich-text-markdown.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.css",
+          "target": "components/ui/RichTextMarkdown.css"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/tiptap",
+        "@tiptap/react",
+        "@tiptap/starter-kit",
+        "@tiptap/extension-link",
+        "@tiptap/extension-underline",
+        "@tiptap/extension-highlight",
+        "@tiptap/extension-text-align",
+        "@tiptap/extension-superscript",
+        "@tiptap/extension-subscript",
+        "@tiptap/extension-placeholder",
+        "@tiptap/extension-color",
+        "@tiptap/extension-text-style",
+        "@tiptap/extension-code-block-lowlight",
+        "lowlight",
+        "highlight.js"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-rich-text-md",
+        "name": "Markdown",
+        "icon": "IconMarkdown",
+        "types": [
+          "text"
+        ],
+        "localTypes": [
+          "standard"
+        ],
+        "group": "standard",
+        "order": 10,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "vform",
+      "title": "VForm",
+      "description": "Dynamic form component that renders all 40+ interface types based on field schema (DaaS v-form equivalent)",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-form/src/VForm.tsx",
+          "target": "components/ui/vform/VForm.tsx"
+        },
+        {
+          "source": "ui-form/src/VForm.css",
+          "target": "components/ui/vform/VForm.css"
+        },
+        {
+          "source": "ui-form/src/types.ts",
+          "target": "components/ui/vform/types.ts"
+        },
+        {
+          "source": "ui-form/src/components/FormField.tsx",
+          "target": "components/ui/vform/components/FormField.tsx"
+        },
+        {
+          "source": "ui-form/src/components/FormFieldLabel.tsx",
+          "target": "components/ui/vform/components/FormFieldLabel.tsx"
+        },
+        {
+          "source": "ui-form/src/components/FormFieldInterface.tsx",
+          "target": "components/ui/vform/components/FormFieldInterface.tsx"
+        },
+        {
+          "source": "ui-form/src/components/FormGroupField.tsx",
+          "target": "components/ui/vform/components/FormGroupField.tsx"
+        },
+        {
+          "source": "ui-form/src/components/InterfaceErrorBoundary.tsx",
+          "target": "components/ui/vform/components/InterfaceErrorBoundary.tsx"
+        },
+        {
+          "source": "ui-form/src/components/ValidationErrors.tsx",
+          "target": "components/ui/vform/components/ValidationErrors.tsx"
+        },
+        {
+          "source": "ui-form/src/components/index.ts",
+          "target": "components/ui/vform/components/index.ts"
+        },
+        {
+          "source": "ui-form/src/utils/get-default-values.ts",
+          "target": "components/ui/vform/utils/get-default-values.ts"
+        },
+        {
+          "source": "ui-form/src/utils/get-form-fields.ts",
+          "target": "components/ui/vform/utils/get-form-fields.ts"
+        },
+        {
+          "source": "ui-form/src/utils/update-field-widths.ts",
+          "target": "components/ui/vform/utils/update-field-widths.ts"
+        },
+        {
+          "source": "ui-form/src/utils/apply-conditions.ts",
+          "target": "components/ui/vform/utils/apply-conditions.ts"
+        },
+        {
+          "source": "ui-form/src/utils/push-group-options-down.ts",
+          "target": "components/ui/vform/utils/push-group-options-down.ts"
+        },
+        {
+          "source": "ui-form/src/utils/set-primary-key-readonly.ts",
+          "target": "components/ui/vform/utils/set-primary-key-readonly.ts"
+        },
+        {
+          "source": "ui-form/src/utils/update-system-divider.ts",
+          "target": "components/ui/vform/utils/update-system-divider.ts"
+        },
+        {
+          "source": "ui-form/src/utils/index.ts",
+          "target": "components/ui/vform/utils/index.ts"
+        },
+        {
+          "source": "cli/templates/lib/vform/index.ts",
+          "target": "components/ui/vform/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "services",
+        "hooks",
+        "utils"
+      ],
+      "registryDependencies": [
+        "input",
+        "textarea",
+        "input-code",
+        "input-block-editor",
+        "boolean",
+        "toggle",
+        "datetime",
+        "select-dropdown",
+        "select-radio",
+        "select-icon",
+        "color",
+        "tags",
+        "slider",
+        "select-multiple-checkbox",
+        "select-multiple-dropdown",
+        "select-multiple-checkbox-tree",
+        "autocomplete-api",
+        "collection-item-dropdown",
+        "file",
+        "file-image",
+        "files",
+        "upload",
+        "list-m2m",
+        "select-dropdown-m2o",
+        "list-o2m",
+        "list-m2a",
+        "divider",
+        "notice",
+        "group-detail",
+        "group-accordion",
+        "group-raw",
+        "rich-text-html",
+        "rich-text-markdown",
+        "map",
+        "workflow-button"
+      ]
+    },
+    {
+      "name": "collection-form",
+      "title": "CollectionForm",
+      "description": "CRUD form wrapper with data fetching - uses VForm for rendering all interface types",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-collections/src/CollectionForm.tsx",
+          "target": "components/ui/collection-form.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/notifications"
+      ],
+      "internalDependencies": [
+        "types",
+        "services"
+      ],
+      "registryDependencies": [
+        "vform",
+        "save-options"
+      ]
+    },
+    {
+      "name": "vtable",
+      "title": "VTable",
+      "description": "Presentation table with CSS Grid layout, column sorting, resizing, reordering (dnd-kit), row selection, manual row drag-and-drop, header context menus, and loading/empty states",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-table/src/VTable.tsx",
+          "target": "components/ui/vtable.tsx"
+        },
+        {
+          "source": "ui-table/src/VTable.css",
+          "target": "components/ui/vtable.css"
+        },
+        {
+          "source": "ui-table/src/components/TableHeader.tsx",
+          "target": "components/ui/table-header.tsx"
+        },
+        {
+          "source": "ui-table/src/components/TableHeader.css",
+          "target": "components/ui/table-header.css"
+        },
+        {
+          "source": "ui-table/src/components/TableRow.tsx",
+          "target": "components/ui/table-row.tsx"
+        },
+        {
+          "source": "ui-table/src/components/TableRow.css",
+          "target": "components/ui/table-row.css"
+        },
+        {
+          "source": "ui-table/src/types.ts",
+          "target": "components/ui/vtable-types.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@dnd-kit/core",
+        "@dnd-kit/sortable",
+        "@dnd-kit/utilities",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": []
+    },
+    {
+      "name": "collection-list",
+      "title": "CollectionList",
+      "description": "Data-connected collection table with pagination, search, sorting, column resize/reorder, header context menus, field add/remove, filtering, and bulk delete",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-collections/src/CollectionList.tsx",
+          "target": "components/ui/collection-list.tsx"
+        },
+        {
+          "source": "ui-collections/src/CollectionList.css",
+          "target": "components/ui/collection-list.css"
+        },
+        {
+          "source": "ui-collections/src/CollectionListToolbar.tsx",
+          "target": "components/ui/collection-list-toolbar.tsx"
+        },
+        {
+          "source": "ui-collections/src/CollectionListFooter.tsx",
+          "target": "components/ui/collection-list-footer.tsx"
+        },
+        {
+          "source": "ui-collections/src/DeleteConfirmModal.tsx",
+          "target": "components/ui/delete-confirm-modal.tsx"
+        },
+        {
+          "source": "ui-collections/src/BulkActionsBar.tsx",
+          "target": "components/ui/bulk-actions-bar.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "services"
+      ],
+      "registryDependencies": [
+        "vtable",
+        "filter-panel"
+      ]
+    },
+    {
+      "name": "filter-panel",
+      "title": "FilterPanel",
+      "description": "Field-type-aware filter builder producing DaaS-compatible JSON with AND/OR logic, nested groups, and panel/inline/collapsible display modes",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-collections/src/FilterPanel.tsx",
+          "target": "components/ui/filter-panel.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types"
+      ]
+    },
+    {
+      "name": "content-navigation",
+      "title": "ContentNavigation",
+      "description": "Hierarchical sidebar navigation for the content module with collection tree, search, bookmarks, and group expand/collapse",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-collections/src/ContentNavigation.tsx",
+          "target": "components/ui/content-navigation.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks"
+      ]
+    },
+    {
+      "name": "content-layout",
+      "title": "ContentLayout",
+      "description": "Content module shell layout with responsive sidebar, header bar (breadcrumbs, title, actions), and main content area",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-collections/src/ContentLayout.tsx",
+          "target": "components/ui/content-layout.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "registryDependencies": [
+        "content-navigation"
+      ]
+    },
+    {
+      "name": "save-options",
+      "title": "SaveOptions",
+      "description": "Dropdown menu for additional save actions (save & stay, save & add new, save as copy, discard)",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-collections/src/SaveOptions.tsx",
+          "target": "components/ui/save-options.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": []
+    },
+    {
+      "name": "map",
+      "title": "Map",
+      "description": "Placeholder map component for geometry input (no map library)",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/map/Map.tsx",
+          "target": "components/ui/map.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-map",
+        "name": "Map",
+        "icon": "IconMap",
+        "types": [
+          "geometry",
+          "json",
+          "text"
+        ],
+        "localTypes": [
+          "geometry"
+        ],
+        "group": "standard",
+        "order": 11,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "map-with-real-map",
+      "title": "MapWithRealMap",
+      "description": "Full-featured map with MapLibre GL JS and drawing tools",
+      "category": "input",
+      "files": [
+        {
+          "source": "ui-interfaces/src/map/MapWithRealMap.tsx",
+          "target": "components/ui/map-with-real-map.tsx"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react",
+        "maplibre-gl",
+        "@mapbox/mapbox-gl-draw"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "input-map-gl",
+        "name": "Map (MapLibre)",
+        "icon": "IconMapPin",
+        "types": [
+          "geometry",
+          "json",
+          "text"
+        ],
+        "localTypes": [
+          "geometry"
+        ],
+        "group": "standard",
+        "order": 12,
+        "supported": true,
+        "hasOptions": true
+      }
+    },
+    {
+      "name": "workflow-button",
+      "title": "WorkflowButton",
+      "description": "Workflow state button with transitions and revision comparison",
+      "category": "workflow",
+      "files": [
+        {
+          "source": "ui-interfaces/src/workflow-button/workflow-button.tsx",
+          "target": "components/ui/workflow-button/workflow-button.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/workflow-button/use-workflow.ts",
+          "target": "components/ui/workflow-button/use-workflow.ts"
+        },
+        {
+          "source": "ui-interfaces/src/workflow-button/types.ts",
+          "target": "components/ui/workflow-button/types.ts"
+        },
+        {
+          "source": "ui-interfaces/src/workflow-button/index.ts",
+          "target": "components/ui/workflow-button/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [],
+      "interface": {
+        "id": "workflow-button",
+        "name": "Workflow Button",
+        "icon": "IconGitBranch",
+        "types": [
+          "string",
+          "uuid"
+        ],
+        "localTypes": [
+          "workflow"
+        ],
+        "group": "workflow",
+        "order": 1,
+        "supported": true,
+        "recommended": true,
+        "hasOptions": true
+      }
+    }
+  ],
+  "categories": [
+    {
+      "name": "input",
+      "title": "Input",
+      "description": "Text and data input components"
+    },
+    {
+      "name": "selection",
+      "title": "Selection",
+      "description": "Dropdowns, checkboxes, and selection components"
+    },
+    {
+      "name": "datetime",
+      "title": "Date & Time",
+      "description": "Date and time picker components"
+    },
+    {
+      "name": "boolean",
+      "title": "Boolean",
+      "description": "Toggle and checkbox components"
+    },
+    {
+      "name": "media",
+      "title": "Media",
+      "description": "File upload and media components"
+    },
+    {
+      "name": "relational",
+      "title": "Relational",
+      "description": "Relationship management components (M2M, M2O, O2M)"
+    },
+    {
+      "name": "layout",
+      "title": "Layout",
+      "description": "Layout and organizational components"
+    },
+    {
+      "name": "rich-text",
+      "title": "Rich Text",
+      "description": "Rich text and content editing components"
+    },
+    {
+      "name": "collection",
+      "title": "Collection",
+      "description": "Dynamic collection components"
+    },
+    {
+      "name": "workflow",
+      "title": "Workflow",
+      "description": "Workflow state and transition components"
+    }
+  ]
+}

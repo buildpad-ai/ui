@@ -26,10 +26,13 @@ npm install -g @buildpad/cli
 | `buildpad info <component>` | Get detailed info about a component |
 | `buildpad tree <component>` | Show dependency tree |
 | `buildpad diff <component>` | Preview changes before adding |
-| `buildpad status` | Show installed components |
+| `buildpad status` | Show installed components and modification state |
 | `buildpad validate` | Validate installation for common issues |
 | `buildpad fix` | Auto-fix common issues |
-| `buildpad outdated` | Check for component updates |
+| `buildpad outdated` | Check which installed components have newer versions |
+| `buildpad upgrade <component>` | Upgrade component(s) to the latest registry version |
+| `buildpad changelog <pkg>` | View changelog between your installed and latest version |
+| `buildpad migrate` | Migrate `buildpad.json` from schema v1 to v2 |
 
 ## Adding Components
 
@@ -66,6 +69,92 @@ import type { M2MItem } from '@buildpad/types';
 import { useRelationM2M } from '@/lib/buildpad/hooks';
 import type { M2MItem } from '@/lib/buildpad/types';
 ```
+
+## Versioning & Upgrades
+
+Buildpad tracks per-file SHA-256 checksums in `buildpad.json` so it knows exactly what was installed and whether you've modified it locally.
+
+```bash copy
+# See which installed components have newer versions
+buildpad outdated
+
+# Upgrade all components
+buildpad upgrade --all
+
+# Upgrade specific components
+buildpad upgrade input vform
+
+# Preview what would change without writing files
+buildpad upgrade --all --dry-run
+```
+
+When a component has been locally modified, `upgrade` will prompt you for each file. You can control the behaviour with `--strategy`:
+
+| Strategy | Behaviour |
+|---|---|
+| `prompt` (default) | Ask per file: skip / overwrite / write `.new` |
+| `overwrite` | Replace file in-place |
+| `new-file` | Write upstream version as `<file>.new`, leave original untouched |
+| `three-way` | Attempt a `diff3` merge; falls back to `.new` on conflict |
+
+```bash copy
+# 3-way merge for conflict resolution
+buildpad upgrade --all --three-way
+
+# Write .new files for all modified files (keep originals)
+buildpad upgrade --all --strategy=new-file
+```
+
+### Re-syncing with `--force`
+
+`upgrade` skips any component whose installed version already matches the registry. Pass `--force` to re-sync anyway — it bypasses the version check but still honours `--strategy`, so locally-modified files are merged, not clobbered:
+
+```bash copy
+# Re-sync every installed component to current source
+buildpad upgrade --force --three-way
+
+# Re-sync specific components
+buildpad upgrade input vform --force
+```
+
+With `--force` and no component arguments, the default target is **all installed components** (not just outdated ones).
+
+### Changelogs
+
+```bash copy
+# See what changed between your installed version and latest
+buildpad changelog input
+buildpad changelog @buildpad/ui-interfaces
+
+# Filter from a specific version
+buildpad changelog @buildpad/ui-form --since=1.3.0
+```
+
+### Migration from v1
+
+If your `buildpad.json` was created before v2, run `migrate` once to compute SHA-256 checksums and enable safe upgrades:
+
+```bash copy
+# Preview migration
+buildpad migrate --dry-run
+
+# Apply migration
+buildpad migrate
+```
+
+`migrate` baselines every component to the **current** registry version — it cannot reconstruct the version a component was originally installed at, because v1 `buildpad.json` never recorded per-package versions. So immediately after migrating, `outdated` and `upgrade` will report everything up to date even if your installed files lag behind current source.
+
+To actually re-sync a freshly-migrated project, follow up with a forced upgrade:
+
+```bash copy
+# Re-sync all components to current source (merges local edits)
+buildpad upgrade --force --three-way
+
+# Confirm the result
+buildpad status
+```
+
+Note: three-way merge fetches its merge base from a git tag for the installed version. A pre-v2 project usually has no such tag, so locally-modified files fall back to `.new` files for manual resolution — pristine files still re-sync cleanly. From your next release onward, `outdated` and `upgrade` work normally with no `--force` needed.
 
 ## Validation
 

@@ -15,7 +15,9 @@
 │  │ - Read source code       │      │ - buildpad add         │    │
 │  │ - Generate examples      │      │ - buildpad bootstrap   │    │
 │  │ - Code generation        │      │ - buildpad list        │    │
-│  │ - RBAC patterns          │      │ - Copy source files      │    │
+│  │ - RBAC patterns          │      │ - buildpad outdated    │    │
+│  │ - Upgrade plans          │      │ - buildpad upgrade     │    │
+│  │ - Changelog slices       │      │ - buildpad changelog   │    │
 │  └──────────┬───────────────┘      └──────────┬───────────────┘    │
 │             │                                  │                     │
 │             └──────────────┬───────────────────┘                     │
@@ -329,54 +331,62 @@ The `apps/storybook-host` Next.js app serves as both a DaaS authentication proxy
 └──────────────────────┘
 ```
 
-## Component Registry Structure
+## Component Registry Structure (v2)
+
+The registry is **auto-generated** from `registry.template.json` via `scripts/build-registry.mjs`. Never hand-edit `registry.json`.
 
 ```
-registry.ts
-├── PACKAGES[]
-│   ├── @buildpad/types
-│   │   └── exports: [Field, Collection, ...]
-│   ├── @buildpad/services
-│   │   └── exports: [FieldsService, CollectionsService, DaaSProvider, ...]
-│   ├── @buildpad/hooks
-│   │   └── exports: [useAuth, usePermissions, useRelationM2M, ...]
-│   ├── @buildpad/ui-interfaces
-│   │   └── components: [
-│   │       { name: 'Input', category: 'input', ... },
-│   │       { name: 'SelectDropdown', category: 'selection', ... },
-│   │       ...33 components
-│   │   ]
-│   ├── @buildpad/ui-form
-│   │   └── components: [
-│   │       { name: 'VForm', ... },
-│   │       { name: 'FormField', ... },
-│   │       { name: 'FormFieldLabel', ... }
-│   │   ]
-│   └── @buildpad/ui-collections
-│       └── components: [
-│           { name: 'CollectionForm', ... },
-│           { name: 'CollectionList', ... }
-│       ]
-└── Helper functions
-    ├── getAllComponents()
-    ├── getComponentsByCategory()
-    ├── getComponent(name)
-    └── getCategories()
+registry.json (schemaVersion: 2)
+├── meta
+│   ├── model: "copy-own"
+│   ├── framework: "react"
+│   └── uiLibrary: "mantine-v8"
+├── packages (per-package semver map)
+│   ├── @buildpad/ui-interfaces: { version: "1.4.2", changelogUrl }
+│   ├── @buildpad/ui-form:       { version: "0.9.1", changelogUrl }
+│   ├── @buildpad/hooks:         { version: "1.2.0", changelogUrl }
+│   └── … 5 more
+├── lib
+│   ├── types:    { files: [{ source, target, sourceSha256 }] }
+│   ├── services: { … }
+│   ├── hooks:    { … }
+│   └── utils:    { … }
+├── components[] (40+ components)
+│   └── {
+│       name: "input",
+│       sourcePackage: "@buildpad/ui-interfaces",
+│       version: "1.4.2",
+│       lastChangedIn: "1.4.0",
+│       files: [{ source, target, sourceSha256 }],
+│       dependencies: ["@mantine/core", …],
+│       internalDependencies: ["types", "utils"],
+│       registryDependencies: ["textarea"]
+│   }
+└── categories[]
 ```
 
 ## Build Process
 
 ```
-Source Code Changes
-       │
-       ▼
-┌──────────────────┐
-│  packages/       │
-│  - types/        │
-│  - services/     │
-│  - hooks/        │
-│  - ui-*/         │
-└──────┬───────────┘
+Source Code Changes           Registry Template
+       │                      (hand-edited)
+       ▼                             │
+┌──────────────────┐                 │
+│  packages/       │                 │
+│  - types/        │                 │
+│  - services/     │                 │
+│  - hooks/        │                 │
+│  - ui-*/         │                 │
+└──────┬───────────┘                 │
+       │                             │
+       │ $ pnpm build:registry       │
+       │ ┌───────────────────────────┘
+       │ ▼
+       │ scripts/build-registry.mjs
+       │ ├── Read package.json for semver
+       │ ├── Compute SHA256 per file
+       │ ├── Merge with template
+       │ └── Write registry.json (schemaVersion 2)
        │
        │ $ pnpm build:packages
        ▼
@@ -753,6 +763,61 @@ Source Code Changes
 │                                                                        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+## Component Upgrade Flow
+
+The CLI tracks per-file SHA256 checksums so upgrades only overwrite files the consumer hasn't customized:
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                  Upgrade Flow (buildpad upgrade)                      │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  $ buildpad upgrade --all                                           │
+│                                                                        │
+│  Step 1: Compare (per-component)                                       │
+│  ┌─────────────────────────────────────────┐                         │
+│  │ • installed.version                     │                         │
+│  │ • registry.packages[sourcePackage].version                        │
+│  │ • Skip if installed >= lastChangedIn   │                         │
+│  └─────────────────────┬───────────────────┘                         │
+│                        ▼                                              │
+│  Step 2: Fetch fresh source (per file)                                 │
+│  ┌─────────────────────────────────────────┐                         │
+│  │ • Fetch from GitHub raw CDN at registry │                         │
+│  │   version (or local registry in monorepo)                         │
+│  │ • Transform imports per consumer alias cfg                         │
+│  └─────────────────────┬───────────────────┘                         │
+│                        ▼                                              │
+│  Step 3: Per-file decision                                              │
+│  ┌─────────────────────────────────────────┐                         │
+│  │ disk_sha == recorded_sha?               │                         │
+│  │   YES → Silent overwrite                │                         │
+│  │   NO  → Prompt: [s]kip [o]verwrite      │                         │
+│  │          [w]rite .new [3]way-merge      │                         │
+│  └─────────────────────┬───────────────────┘                         │
+│                        ▼                                              │
+│  Step 4: Record new state                                               │
+│  ┌─────────────────────────────────────────┐                         │
+│  │ • Update component.version              │                         │
+│  │ • Update file.sha256 for overwritten files                         │
+│  │ • Update packageVersions map            │                         │
+│  └─────────────────────────────────────────┘                         │
+│                                                                        │
+│  Three-Way Merge (--three-way):                                        │
+│  ┌─────────────────────────────────────────┐                         │
+│  │ base = source at installed-version     │                         │
+│  │ (fetched from GitHub raw at prior tag)  │                         │
+│  │ ours = consumer's modified file         │                         │
+│  │ theirs = fresh source at latest version │                         │
+│  │ → diff3(ours, base, theirs)             │                         │
+│  │ → On network failure: fall back to .new │                         │
+│  └─────────────────────────────────────────┘                         │
+│                                                                        │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**`--force`:** skips the Step 1 version check, so components already at `lastChangedIn` are still processed. Steps 2–4 are unchanged — per-file decisions and `--strategy` handling still apply, so local edits are merged rather than clobbered. This is the intended path for re-syncing a freshly-migrated (pre-v2) project, whose components are all baselined to the current version and would otherwise be skipped.
 
 ## MCP RBAC Pattern Tool
 

@@ -13,7 +13,6 @@ const mockWorkflowInstance: WorkflowInstance = {
   current_state: 'Draft',
   version_key: null,
   terminated: false,
-  revision_id: 100,
   workflow: {
     id: 1,
     name: 'Article Workflow',

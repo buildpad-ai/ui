@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/utils",
-  "version": "0.1.18",
+  "version": "0.2.0",
   "description": "Utility functions for Buildpad UI packages",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -38,6 +38,7 @@
   "peerDependencies": {
     "react": ">=18.0.0"
   },
+  "private": true,
   "keywords": [
     "buildpad",
     "utils",

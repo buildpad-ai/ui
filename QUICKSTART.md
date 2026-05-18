@@ -96,6 +96,15 @@ npx @buildpad/cli@latest tree collection-form
 
 # Check for updates
 npx @buildpad/cli@latest outdated
+
+# Upgrade components (safe per-file checksums)
+npx @buildpad/cli@latest upgrade --all
+
+# 3-way merge for customized files
+npx @buildpad/cli@latest upgrade --three-way
+
+# View changelogs
+npx @buildpad/cli@latest changelog @buildpad/ui-interfaces
 ```
 
 ### Option 2: Use from Workspace (Development)
@@ -290,6 +299,55 @@ The fix command auto-repairs:
 # Check which installed components have newer versions
 buildpad outdated
 ```
+
+### Upgrade Components (Safe Per-File Checksums)
+
+Buildpad tracks checksums of every copied file. Upgrades silently overwrite files you haven't modified and prompt when you have:
+
+```bash
+# Upgrade all outdated components
+buildpad upgrade --all
+
+# Upgrade specific components
+buildpad upgrade input select-dropdown
+
+# Preview changes without writing files
+buildpad upgrade --all --dry-run
+
+# 3-way merge (diff3) for conflict resolution on modified files
+buildpad upgrade --all --three-way
+
+# Write .new files for modified files (keep originals untouched)
+buildpad upgrade --all --strategy=new-file
+
+# Re-sync components already at the latest version (e.g. right after migrate)
+buildpad upgrade --force --three-way
+```
+
+### View Changelogs
+
+```bash
+# View what changed between your installed version and latest
+buildpad changelog @buildpad/ui-interfaces
+
+# Filter by version
+buildpad changelog @buildpad/ui-form --since=1.3.0
+
+# View changelog for a specific component
+buildpad changelog input
+```
+
+### Migrate Config Schema
+
+```bash
+# Migrate buildpad.json from v1 to v2 (enables per-file update tracking)
+buildpad migrate
+
+# Preview migration without writing files
+buildpad migrate --dry-run
+```
+
+`migrate` baselines every component to the current registry version, so `outdated`/`upgrade` will report everything up to date right after. To re-sync a freshly-migrated project to current source, run `buildpad upgrade --force --three-way`, then `buildpad status` to confirm.
 
 ## 🧪 Testing the Setup
 

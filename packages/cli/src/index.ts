@@ -23,6 +23,9 @@ import { tree } from './commands/tree.js';
 import { validate } from './commands/validate.js';
 import { fix } from './commands/fix.js';
 import { bootstrap } from './commands/bootstrap.js';
+import { upgrade } from './commands/upgrade.js';
+import { changelog } from './commands/changelog.js';
+import { migrate } from './commands/migrate.js';
 
 const program = new Command();
 
@@ -124,6 +127,62 @@ program
   .action(async (options) => {
     const { outdated } = await import('./commands/outdated.js');
     await outdated(options);
+  });
+
+program
+  .command('upgrade')
+  .description('Upgrade installed components to the latest registry versions')
+  .argument('[components...]', 'Specific components to upgrade (default: all outdated)')
+  .option('--all', 'Upgrade every installed component')
+  .option('--package <name>', 'Upgrade all components from a specific source package')
+  .option('--force', 'Re-sync components even when already at the latest version (default target: all installed)')
+  .option('-n, --dry-run', 'Show what would change without writing files')
+  .option('-y, --yes', 'Shorthand for --strategy=overwrite')
+  .option('--three-way', 'Shorthand for --strategy=three-way')
+  .option(
+    '--strategy <strategy>',
+    'How to handle locally-modified files: overwrite | new-file | three-way | prompt'
+  )
+  .option('--cwd <path>', 'Project directory', process.cwd())
+  .action(async (components, options) => {
+    const validStrategies = ['overwrite', 'new-file', 'three-way', 'prompt'] as const;
+    if (options.strategy && !validStrategies.includes(options.strategy)) {
+      console.error(
+        `Invalid --strategy value: ${options.strategy}. Use one of: ${validStrategies.join(', ')}.`
+      );
+      process.exit(1);
+    }
+    await upgrade({
+      components,
+      all: options.all,
+      package: options.package,
+      force: options.force,
+      dryRun: options.dryRun,
+      yes: options.yes,
+      threeWay: options.threeWay,
+      strategy: options.strategy,
+      cwd: options.cwd,
+    });
+  });
+
+program
+  .command('changelog')
+  .description('Display the changelog for a source package or component')
+  .argument('<target>', 'Package name (e.g. @buildpad/ui-interfaces) or component name (e.g. input)')
+  .option('--since <version>', 'Show only entries newer than this semver')
+  .option('--json', 'Output as JSON')
+  .option('--cwd <path>', 'Project directory', process.cwd())
+  .action(async (target, options) => {
+    await changelog({ target, since: options.since, json: options.json, cwd: options.cwd });
+  });
+
+program
+  .command('migrate')
+  .description('Migrate buildpad.json from schema v1 to v2 (enables per-file update tracking)')
+  .option('-n, --dry-run', 'Preview migration without writing files')
+  .option('--cwd <path>', 'Project directory', process.cwd())
+  .action(async (options) => {
+    await migrate({ cwd: options.cwd, dryRun: options.dryRun });
   });
 
 program.parse();

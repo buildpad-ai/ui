@@ -285,6 +285,40 @@ Users configure in VS Code:
 
 ---
 
+## Registry v2: Generated Artifact
+
+`packages/registry.json` is **auto-generated** — never hand-edit it directly.
+
+```
+packages/registry.template.json   ← Hand-edited source (categories, aliases,
+   │                                   dependencies, component metadata)
+   │
+   ▼  scripts/build-registry.mjs
+   │
+packages/registry.json            ← Generated artifact (includes versions,
+                                     per-file SHA256 checksums, package map)
+```
+
+The generator (`scripts/build-registry.mjs`):
+1. Reads all `packages/*/package.json` → produces a `packages` map with current semver and `changelogUrl`
+2. For each component file, computes `sha256(source)` — the canonical hash of **untransformed** source bytes
+3. Sets `lastChangedIn` from git history (so `outdated` can skip "package bumped but file is byte-identical" cases)
+4. Writes `packages/registry.json` with `schemaVersion: 2`
+
+**Why SHA256 on untransformed source:** The CLI transforms imports based on each consumer's alias config. By hashing the raw source in the registry and letting the CLI hash the transformed local file, we avoid per-consumer hash drift while still detecting local modifications.
+
+The root `package.json` wires this into the build:
+```json
+{
+  "scripts": {
+    "build:registry": "node scripts/build-registry.mjs",
+    "build": "pnpm build:registry && pnpm -r build"
+  }
+}
+```
+
+---
+
 ## How the Remote Registry Works
 
 When `@buildpad/cli` is installed via npm (not running from the monorepo), it:
@@ -311,13 +345,48 @@ When running from the monorepo checkout (`pnpm cli add input`), the CLI detects 
 
 ## Version Strategy
 
+### Two classes of packages
+
+| Type | Packages | Published to npm? | Versioned? |
+|------|----------|-------------------|------------|
+| **Publishable** | `@buildpad/cli`, `@buildpad/mcp` | Yes | Yes (semver) |
+| **Private (source)** | `ui-interfaces`, `ui-form`, `ui-table`, `ui-collections`, `hooks`, `services`, `types`, `utils` | No (`private: true`) | Yes (semver via Changesets) |
+
+Private source packages are **never published** — consumer apps get their source files copied via the CLI (Copy & Own model). However, they still carry semantic versions and `CHANGELOG.md` entries so the CLI can tell consumers exactly what changed.
+
+### Per-package semver
+
+Each package carries its own semver. Components inherit the version of their source package:
+
+```
+@buildpad/ui-interfaces@1.4.2   ←  input, select-dropdown, datetime, …
+@buildpad/ui-form@0.9.1         ←  vform
+@buildpad/hooks@1.2.0           ←  useAuth, usePermissions, …
+```
+
+This means `buildpad outdated` only flags components whose source package version actually increased — not every component on every registry bump.
+
+### Changesets configuration
+
+The `.changeset/config.json` is configured with `privatePackages` so Changesets bumps versions and writes `CHANGELOG.md` for private packages without trying to publish them:
+
+```json
+{
+  "privatePackages": { "version": true, "tag": true }
+}
+```
+
+This requires `@changesets/cli >= 2.27.10`.
+
+### Linked publishables
+
+The CLI and MCP server are **linked** in changeset config — they always publish together at the same version. Private packages version independently.
+
 | Change | Bump | Example |
 |--------|------|---------|
 | Bug fix | `patch` | 0.1.0 → 0.1.1 |
 | New component / feature | `minor` | 0.1.0 → 0.2.0 |
 | Breaking CLI change | `major` | 0.2.0 → 1.0.0 |
-
-The CLI and MCP server are **linked** in changeset config — they always publish together at the same version.
 
 ---
 

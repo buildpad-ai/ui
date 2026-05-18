@@ -574,3 +574,141 @@ The Storybook tests cover all major interface types:
 | Loading state | Loading | ✅ |
 | Field widths | HalfWidthLayout | ✅ |
 | Readonly fields | WithReadonlyFields | ✅ |
+
+## CLI Local Testing Guide (Pre-Commit)
+
+Run these steps in order when making changes to the CLI versioning/upgrade infrastructure. Each one targets a specific part of the implementation.
+
+### Step 1 — Unit test suite
+
+```bash
+pnpm --filter @buildpad/cli test
+```
+
+Expect: 110 tests passing across `checksum`, `transformer-determinism`, `changelog-parser`, `three-way-merge`, `resolver`, `upgrade`, `build-registry`.
+
+### Step 2 — Typecheck + build
+
+```bash
+pnpm --filter @buildpad/cli build
+pnpm --filter @buildpad/mcp-server build
+```
+
+Both must emit zero errors.
+
+### Step 3 — Regenerate registry
+
+```bash
+pnpm build:registry
+```
+
+Confirm `packages/registry.json` has `"schemaVersion": 2`, a populated `packages` map with 8 entries, per-component `sourceSha256`, `version`, and `lastChangedIn` on each file.
+
+### Step 4 — Create a throwaway consumer project
+
+```bash
+mkdir /tmp/bp-test && cd /tmp/bp-test
+npm init -y
+# Point CLI at the local build (not the published version)
+node /path/to/buildpad-ui/packages/cli/dist/index.js init
+```
+
+After `init`, check `buildpad.json`:
+- `schemaVersion: 2` present
+- `components: {}`, `lib: {}`, `packageVersions: {}` all empty maps
+
+### Step 5 — Install a component and verify sha256 recording
+
+```bash
+node /path/to/buildpad-ui/packages/cli/dist/index.js add input
+```
+
+Then inspect `buildpad.json`:
+- `components.input.files[0].sha256` must be a 64-char hex string
+- `components.input.version` must match `packages["@buildpad/ui-interfaces"].version` in `registry.json`
+- `packageVersions["@buildpad/ui-interfaces"]` must be set
+
+Also check the copied file has an `@buildpad-origin` header but **no** `@buildpad-date` line.
+
+### Step 6 — Status (pristine path)
+
+```bash
+node /path/to/buildpad-ui/packages/cli/dist/index.js status
+```
+
+Every file must show `pristine`. Run twice — the result must be identical (regression test for the old volatile-date bug).
+
+### Step 7 — Outdated (no-op path)
+
+```bash
+node /path/to/buildpad-ui/packages/cli/dist/index.js outdated
+```
+
+Should report nothing outdated (the component version == registry version). No crash.
+
+### Step 8 — Simulate a package bump and test outdated
+
+In the monorepo, temporarily bump `packages/ui-interfaces/package.json` version (e.g. `0.1.18` → `0.2.0`), rebuild registry:
+
+```bash
+pnpm build:registry
+node /path/to/buildpad-ui/packages/cli/dist/index.js outdated
+```
+
+`input` should now appear as outdated. Revert the bump after verifying.
+
+### Step 9 — Pristine upgrade (silent overwrite)
+
+With the bumped registry in place:
+
+```bash
+node /path/to/buildpad-ui/packages/cli/dist/index.js upgrade input --strategy overwrite
+```
+
+- File on disk must contain the new content
+- No `.new` sibling created
+- `buildpad.json` `components.input.version` updated, sha256 refreshed
+
+### Step 10 — Modified file upgrade (new-file path)
+
+Reset, reinstall, then manually edit the copied `input.tsx` (add a comment). Then run:
+
+```bash
+node /path/to/buildpad-ui/packages/cli/dist/index.js upgrade input --strategy new-file
+```
+
+- Original file untouched (your comment still there)
+- `input.tsx.new` created with upstream content
+
+### Step 11 — Migration of a v1 consumer
+
+Create a minimal v1 `buildpad.json` (no `schemaVersion`, uses `componentVersions`) then run:
+
+```bash
+node /path/to/buildpad-ui/packages/cli/dist/index.js migrate
+```
+
+Verify:
+- `buildpad.json` gains `schemaVersion: 2`
+- `components[name].files[].sha256` populated for each previously-installed component
+- Consumer files on disk are **not touched**
+- Running `status` afterwards shows `pristine`
+
+### Step 12 — Changelog command
+
+```bash
+node /path/to/buildpad-ui/packages/cli/dist/index.js changelog @buildpad/ui-interfaces
+```
+
+Should fetch and print the `ui-interfaces/CHANGELOG.md` slice. (Requires network; skip if offline and verify the graceful error message instead.)
+
+### Step 13 — MCP server smoke test (optional)
+
+```bash
+node /path/to/buildpad-ui/packages/mcp-server/dist/index.js
+# In a second terminal, use an MCP client or curl-style test to call:
+# list_outdated({ projectPath: "/tmp/bp-test" })
+# get_upgrade_plan({ projectPath: "/tmp/bp-test" })
+```
+
+Verify JSON shapes match `outdated` CLI output.

@@ -28,6 +28,13 @@ buildpad validate                # Validate installation (imports, SSR, missing 
 buildpad validate --json         # JSON output for CI/CD
 buildpad fix                     # Auto-fix common issues
 buildpad outdated                # Check for component updates
+buildpad upgrade --all           # Upgrade all components with safe per-file checksums
+buildpad upgrade --three-way     # 3-way merge (diff3) for conflict resolution on modified files
+buildpad upgrade --force         # Re-sync components even when already at latest version
+buildpad upgrade <comp> --dry-run # Preview upgrade without writing files
+buildpad changelog <pkg>         # View changelog between installed and latest versions
+buildpad changelog <pkg> --since # Filter changelog by version
+buildpad migrate                 # Migrate buildpad.json from schema v1 to v2
 ```
 
 ## Component Locations
@@ -209,13 +216,87 @@ The validate command checks for:
 - **SSR issues** - Components exported without SSR-safe wrappers
 - **Missing API routes** - DaaS integration routes
 
+### Task 8: Check for component updates
+```bash
+# See which installed components have newer versions
+buildpad outdated
+buildpad outdated --json
+```
+
+### Task 9: Upgrade components safely
+```bash
+# Upgrade all components (silent overwrite for pristine, prompt for modified)
+buildpad upgrade --all
+
+# Upgrade specific components
+buildpad upgrade input vform
+
+# Preview what would change
+buildpad upgrade --all --dry-run
+
+# 3-way merge (diff3) for conflict resolution
+buildpad upgrade --all --three-way
+
+# Write .new files for modified files (keep originals)
+buildpad upgrade --all --strategy=new-file
+
+# Re-sync even when already at the latest version (bypasses the version
+# gate, still honours --strategy). Default target is all installed components.
+buildpad upgrade --force --three-way
+```
+
+### Task 10: View changelogs
+```bash
+# See what changed between installed and latest version
+buildpad changelog @buildpad/ui-interfaces
+
+# Filter by version
+buildpad changelog @buildpad/ui-form --since=1.3.0
+
+# Changelog for a specific component (resolves to its source package)
+buildpad changelog input
+```
+
+### Task 11: Migrate config schema
+```bash
+# Migrate buildpad.json from v1 to v2 (enables per-file update tracking)
+buildpad migrate
+
+# Preview migration
+buildpad migrate --dry-run
+```
+
+`migrate` baselines every component to the **current** registry version — v1 `buildpad.json`
+never recorded per-package versions, so the original install version cannot be reconstructed.
+Right after migrating, `outdated`/`upgrade` will therefore report everything up to date.
+To re-sync a freshly-migrated (pre-v2) project to current source, follow up with a forced
+upgrade, then verify:
+
+```bash
+buildpad upgrade --force --three-way   # re-sync all components, merging local edits
+buildpad status                        # confirm files are pristine
+```
+
+From the next release onward, `outdated`/`upgrade` work normally with no `--force` needed.
+
+### Task 12: Check if config needs migration
+```bash
+# status command will prompt if schemaVersion is missing
+buildpad status
+
+# If you see "Run 'npx buildpad migrate' to enable safe updates", run migrate
+buildpad migrate
+```
+
 ## Registry Schema
 
 The `packages/registry.json` follows this structure:
 
 ```typescript
 interface Registry {
-  version: string;
+  schemaVersion: number;    // 2
+  generatedAt: string;      // ISO-8601 timestamp
+  version: string;          // Global version string
   name: string;
   description: string;
   
@@ -238,6 +319,13 @@ interface Registry {
     // ...
   };
   
+  packages: {
+    [packageName: string]: {
+      version: string;          // semver from package.json
+      changelogUrl: string;     // relative path to CHANGELOG.md
+    }
+  };
+  
   lib: {
     types: LibModule;    // Core types
     services: LibModule; // API services  
@@ -250,14 +338,23 @@ interface Registry {
 }
 
 interface ComponentEntry {
-  name: string;           // e.g., "input", "vform"
-  title: string;          // e.g., "Input", "VForm"
+  name: string;               // e.g., "input", "vform"
+  title: string;              // e.g., "Input", "VForm"
   description: string;
-  category: string;       // e.g., "input", "collection"
-  files: FileMapping[];   // source → target mappings
-  dependencies: string[]; // npm packages
+  category: string;           // e.g., "input", "collection"
+  sourcePackage: string;      // e.g., "@buildpad/ui-interfaces"
+  version: string;            // inherited from sourcePackage
+  lastChangedIn?: string;     // semver of last actual file change (for outdated optimization)
+  files: FileMapping[];       // source → target mappings
+  dependencies: string[];     // npm packages
   internalDependencies: string[];    // lib modules
   registryDependencies?: string[];   // other components
+}
+
+interface FileMapping {
+  source: string;             // e.g., "ui-interfaces/src/input/Input.tsx"
+  target: string;             // e.g., "components/ui/input.tsx"
+  sourceSha256?: string;      // SHA256 of untransformed source (registry v2)
 }
 ```
 
@@ -289,6 +386,26 @@ To read a component's source code before adding:
 # The source is in packages/
 cat packages/ui-interfaces/src/input/Input.tsx
 cat packages/ui-form/src/VForm.tsx
+```
+
+### "Schema v1 detected" Warning
+```bash
+# Migrate to v2 to enable safe per-file updates
+buildpad migrate
+# Or with preview
+buildpad migrate --dry-run
+```
+
+### "Component is locally modified" During Upgrade
+```bash
+# Preview the diff before deciding
+buildpad diff <component>
+
+# Upgrade with .new file strategy (preserves original)
+buildpad upgrade <component> --strategy=new-file
+
+# Force overwrite (back up first!)
+buildpad upgrade <component> --yes
 ```
 
 ## Bootstrap Command (Recommended for AI Agents)
@@ -348,3 +465,7 @@ pnpm add @mantine/core @mantine/hooks @tabler/icons-react
 ```
 
 See [QUICKSTART.md](../QUICKSTART.md) for complete setup guide.
+
+## Testing the CLI Locally
+
+For pre-commit testing of the CLI versioning/upgrade infrastructure, follow the 13-step guide at [docs/TESTING.md](TESTING.md#cli-local-testing-guide-pre-commit).
