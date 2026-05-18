@@ -817,6 +817,8 @@ The CLI tracks per-file SHA256 checksums so upgrades only overwrite files the co
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
+**`--force`:** skips the Step 1 version check, so components already at `lastChangedIn` are still processed. Steps 2–4 are unchanged — per-file decisions and `--strategy` handling still apply, so local edits are merged rather than clobbered. This is the intended path for re-syncing a freshly-migrated (pre-v2) project, whose components are all baselined to the current version and would otherwise be skipped.
+
 ## MCP RBAC Pattern Tool
 
 ```

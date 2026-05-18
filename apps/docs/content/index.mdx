@@ -45,6 +45,7 @@ Buildpad UI is also a code distribution system. It defines a schema for componen
 
 - **Schema**: A flat-file structure (`registry.json`) that defines the components, their dependencies, and properties.
 - **CLI**: A command-line tool to distribute and install components across projects with cross-framework support.
+- **Versioning**: Per-file SHA-256 checksums track exactly what was installed so you can safely upgrade, detect local modifications, and view changelogs.
 
 You can use the schema to distribute your components to other projects or have AI generate completely new components based on existing schema.
 
@@ -52,6 +53,19 @@ You can use the schema to distribute your components to other projects or have A
 npx @buildpad/cli@latest init
 npx @buildpad/cli@latest add collection-form
 npx @buildpad/cli@latest bootstrap
+```
+
+Once components are installed you own the code — edit freely. When upstream releases a fix or new feature you can pull it in selectively:
+
+```bash copy
+# Check which installed components have newer versions
+npx @buildpad/cli@latest outdated
+
+# Upgrade all components (prompts per file when locally modified)
+npx @buildpad/cli@latest upgrade --all
+
+# See what changed since your installed version
+npx @buildpad/cli@latest changelog input
 ```
 
 ## Permission-Aware

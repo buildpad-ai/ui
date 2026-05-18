@@ -17,8 +17,10 @@
  *     compare it to detect local modifications without needing the registry hash.
  *
  * Usage:
- *   node scripts/build-registry.mjs
+ *   node scripts/build-registry.mjs            generate packages/registry.json
+ *   node scripts/build-registry.mjs --check    verify it is in sync (CI; no write)
  *   pnpm build:registry
+ *   pnpm registry:check
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
@@ -63,6 +65,35 @@ function computeFileSha256(source) {
   if (!existsSync(fullPath)) return undefined;
   const bytes = readFileSync(fullPath);
   return sha256(bytes);
+}
+
+/** Compare bare semver strings: >0 if a>b, <0 if a<b, 0 if equal. */
+function compareSemver(a, b) {
+  const pa = String(a).split('.').map(Number);
+  const pb = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+/** Deterministic JSON string with recursively sorted keys (for diff-safe compares). */
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return '[' + value.map(stableStringify).join(',') + ']';
+  }
+  if (value && typeof value === 'object') {
+    return (
+      '{' +
+      Object.keys(value)
+        .sort()
+        .map((k) => JSON.stringify(k) + ':' + stableStringify(value[k]))
+        .join(',') +
+      '}'
+    );
+  }
+  return JSON.stringify(value);
 }
 
 /**
@@ -123,114 +154,224 @@ function inferSourcePackage(source) {
   return '@buildpad/cli';
 }
 
-// ─── Main (only runs when executed directly, not on import) ──────
+// ─── Registry assembly ──────────────────────────────────────────
 
-function main() {
-const packagesMap = {};
-for (const [pkgName, folder] of Object.entries(PACKAGE_FOLDERS)) {
-  packagesMap[pkgName] = {
-    version: getPackageVersion(folder),
-    changelogUrl: `${folder}/CHANGELOG.md`,
-  };
-}
-
-// ─── Load template ───────────────────────────────────────────────
-
-const templatePath = join(PACKAGES_DIR, 'registry.template.json');
-if (!existsSync(templatePath)) {
-  console.error('Error: packages/registry.template.json not found.');
-  console.error('Create it by copying packages/registry.json, then re-run.');
-  process.exit(1);
-}
-const template = JSON.parse(readFileSync(templatePath, 'utf8'));
-
-// ─── Enrich components ───────────────────────────────────────────
-
-const enrichedComponents = (template.components ?? []).map((component) => {
-  const firstFile = component.files?.[0];
-  const sourcePackage = firstFile
-    ? inferSourcePackage(firstFile.source)
-    : '@buildpad/ui-interfaces';
-
-  const version = packagesMap[sourcePackage]?.version ?? '0.1.18';
-
-  // lastChangedIn: last git tag that touched the first source file (fallback: version)
-  let lastChangedIn = version;
-  if (firstFile) {
-    const fullPath = join(PACKAGES_DIR, firstFile.source);
-    const tag = getLastChangedTag(fullPath);
-    if (tag) lastChangedIn = tag;
+/**
+ * Build the registry artifact in memory (does not write to disk).
+ * Pure aside from reading the source tree + git history.
+ */
+function buildRegistry() {
+  const packagesMap = {};
+  for (const [pkgName, folder] of Object.entries(PACKAGE_FOLDERS)) {
+    packagesMap[pkgName] = {
+      version: getPackageVersion(folder),
+      changelogUrl: `${folder}/CHANGELOG.md`,
+    };
   }
 
-  // Enrich each file with its source SHA-256
-  const enrichedFiles = (component.files ?? []).map((file) => {
-    const sourceSha256 = computeFileSha256(file.source);
-    return sourceSha256 ? { ...file, sourceSha256 } : file;
-  });
+  // ─── Load template ─────────────────────────────────────────────
+  const templatePath = join(PACKAGES_DIR, 'registry.template.json');
+  if (!existsSync(templatePath)) {
+    console.error('Error: packages/registry.template.json not found.');
+    console.error('Create it by copying packages/registry.json, then re-run.');
+    process.exit(1);
+  }
+  const template = JSON.parse(readFileSync(templatePath, 'utf8'));
 
-  return {
-    ...component,
-    sourcePackage,
-    version,
-    lastChangedIn,
-    files: enrichedFiles,
-  };
-});
+  // ─── Enrich components ─────────────────────────────────────────
+  const enrichedComponents = (template.components ?? []).map((component) => {
+    const firstFile = component.files?.[0];
+    const sourcePackage = firstFile
+      ? inferSourcePackage(firstFile.source)
+      : '@buildpad/ui-interfaces';
 
-// ─── Enrich lib modules ──────────────────────────────────────────
+    const version = packagesMap[sourcePackage]?.version ?? '0.1.18';
 
-const enrichedLib = Object.fromEntries(
-  Object.entries(template.lib ?? {}).map(([key, mod]) => {
-    const enrichedFiles = (mod.files ?? []).map((file) => {
+    // lastChangedIn: most recent git tag (by semver) that touched ANY of this
+    // component's source files. Scanning every file matters — a change to a
+    // non-first file (a hook, a types module) must still bump lastChangedIn.
+    // Falls back to the package version when no file has a tagged change.
+    let foundTag;
+    for (const file of component.files ?? []) {
+      const tag = getLastChangedTag(join(PACKAGES_DIR, file.source));
+      if (tag && (!foundTag || compareSemver(tag, foundTag) > 0)) {
+        foundTag = tag;
+      }
+    }
+    const lastChangedIn = foundTag ?? version;
+
+    // Enrich each file with its source SHA-256
+    const enrichedFiles = (component.files ?? []).map((file) => {
       const sourceSha256 = computeFileSha256(file.source);
       return sourceSha256 ? { ...file, sourceSha256 } : file;
     });
-    // Single-file modules
-    let enrichedMod = { ...mod, files: enrichedFiles };
-    if (mod.path) {
-      const sourceSha256 = computeFileSha256(mod.path);
-      if (sourceSha256) enrichedMod = { ...enrichedMod, sourceSha256 };
+
+    return {
+      ...component,
+      sourcePackage,
+      version,
+      lastChangedIn,
+      files: enrichedFiles,
+    };
+  });
+
+  // ─── Enrich lib modules ────────────────────────────────────────
+  const enrichedLib = Object.fromEntries(
+    Object.entries(template.lib ?? {}).map(([key, mod]) => {
+      const enrichedFiles = (mod.files ?? []).map((file) => {
+        const sourceSha256 = computeFileSha256(file.source);
+        return sourceSha256 ? { ...file, sourceSha256 } : file;
+      });
+      // Single-file modules
+      let enrichedMod = { ...mod, files: enrichedFiles };
+      if (mod.path) {
+        const sourceSha256 = computeFileSha256(mod.path);
+        if (sourceSha256) enrichedMod = { ...enrichedMod, sourceSha256 };
+      }
+      return [key, enrichedMod];
+    })
+  );
+
+  // ─── Assemble output ───────────────────────────────────────────
+  return {
+    $schema: template.$schema,
+    schemaVersion: 2,
+    generatedAt: new Date().toISOString(),
+    // Legacy v1 field kept for backward compat with older CLI versions
+    version: template.version,
+    name: template.name,
+    description: template.description,
+    license: template.license,
+    repository: template.repository,
+    meta: template.meta,
+    aliases: template.aliases,
+    dependencies: template.dependencies,
+    packages: packagesMap,
+    lib: enrichedLib,
+    components: enrichedComponents,
+    categories: template.categories,
+  };
+}
+
+// ─── Generate mode ──────────────────────────────────────────────
+
+function writeRegistry() {
+  const output = buildRegistry();
+  const outPath = join(PACKAGES_DIR, 'registry.json');
+  writeFileSync(outPath, JSON.stringify(output, null, 2) + '\n');
+
+  console.log(`✓ Generated packages/registry.json`);
+  console.log(`  schemaVersion : 2`);
+  console.log(`  generatedAt   : ${output.generatedAt}`);
+  console.log(`  packages      : ${Object.keys(output.packages).length}`);
+  console.log(`  components    : ${output.components.length}`);
+  console.log(`  lib modules   : ${Object.keys(output.lib).length}`);
+}
+
+// ─── Check mode (CI / pre-publish guard) ────────────────────────
+
+/** Collect every source file → its recorded sourceSha256 from a registry. */
+function collectFileHashes(registry) {
+  const hashes = new Map();
+  for (const c of registry.components ?? []) {
+    for (const f of c.files ?? []) {
+      if (f.source && f.sourceSha256) hashes.set(f.source, f.sourceSha256);
     }
-    return [key, enrichedMod];
-  })
-);
+  }
+  for (const mod of Object.values(registry.lib ?? {})) {
+    for (const f of mod.files ?? []) {
+      if (f.source && f.sourceSha256) hashes.set(f.source, f.sourceSha256);
+    }
+    if (mod.path && mod.sourceSha256) hashes.set(mod.path, mod.sourceSha256);
+  }
+  return hashes;
+}
 
-// ─── Assemble output ─────────────────────────────────────────────
+/**
+ * Verify packages/registry.json is in sync with the source tree WITHOUT
+ * writing anything. Intended for CI / pre-publish.
+ *
+ * Exits non-zero when:
+ *   1. A source file's hash changed but its owning package version was NOT
+ *      bumped — the dangerous "silent un-versioned change" case.
+ *   2. registry.json is otherwise stale (version bumped / files added but the
+ *      artifact was never regenerated).
+ */
+function checkRegistry() {
+  const outPath = join(PACKAGES_DIR, 'registry.json');
+  if (!existsSync(outPath)) {
+    console.error('✗ packages/registry.json not found. Run: pnpm build:registry');
+    process.exit(1);
+  }
 
-const output = {
-  $schema: template.$schema,
-  schemaVersion: 2,
-  generatedAt: new Date().toISOString(),
-  // Legacy v1 field kept for backward compat with older CLI versions
-  version: template.version,
-  name: template.name,
-  description: template.description,
-  license: template.license,
-  repository: template.repository,
-  meta: template.meta,
-  aliases: template.aliases,
-  dependencies: template.dependencies,
-  packages: packagesMap,
-  lib: enrichedLib,
-  components: enrichedComponents,
-  categories: template.categories,
-};
+  const committed = JSON.parse(readFileSync(outPath, 'utf8'));
+  const fresh = buildRegistry();
+  const committedHashes = collectFileHashes(committed);
 
-// ─── Write output ─────────────────────────────────────────────────
+  const unversioned = []; // changed source, package version NOT bumped
+  const needsRegen = new Set(); // changed/new source, regeneration required
 
-const outPath = join(PACKAGES_DIR, 'registry.json');
-writeFileSync(outPath, JSON.stringify(output, null, 2) + '\n');
+  const checkFile = (source, freshHash, pkg) => {
+    if (!source || !freshHash) return;
+    const recorded = committedHashes.get(source);
+    if (recorded === undefined) {
+      needsRegen.add(source); // newly added file
+      return;
+    }
+    if (recorded === freshHash) return; // unchanged
+    const recordedVer = committed.packages?.[pkg]?.version;
+    const freshVer = fresh.packages?.[pkg]?.version;
+    if (recordedVer && freshVer && recordedVer === freshVer) {
+      unversioned.push({ file: source, pkg, version: freshVer });
+    } else {
+      needsRegen.add(source);
+    }
+  };
 
-console.log(`✓ Generated packages/registry.json`);
-console.log(`  schemaVersion : 2`);
-console.log(`  generatedAt   : ${output.generatedAt}`);
-console.log(`  packages      : ${Object.keys(packagesMap).length}`);
-console.log(`  components    : ${enrichedComponents.length}`);
-console.log(`  lib modules   : ${Object.keys(enrichedLib).length}`);
+  for (const c of fresh.components ?? []) {
+    for (const f of c.files ?? []) checkFile(f.source, f.sourceSha256, c.sourcePackage);
+  }
+  for (const mod of Object.values(fresh.lib ?? {})) {
+    for (const f of mod.files ?? []) {
+      checkFile(f.source, f.sourceSha256, inferSourcePackage(f.source));
+    }
+    if (mod.path) checkFile(mod.path, mod.sourceSha256, inferSourcePackage(mod.path));
+  }
+
+  // Non-hash staleness: compare the whole artifact, key-order-independent,
+  // ignoring the always-changing generatedAt timestamp.
+  const strip = (r) => { const { generatedAt, ...rest } = r; return rest; };
+  const registryStale =
+    stableStringify(strip(fresh)) !== stableStringify(strip(committed));
+
+  if (unversioned.length > 0) {
+    console.error('\n✗ Source changed without a version bump:\n');
+    for (const u of unversioned) {
+      console.error(`    ${u.file}`);
+      console.error(`      owner: ${u.pkg} (still at ${u.version})`);
+    }
+    console.error('\n  These files changed but their package version was not bumped,');
+    console.error('  so "outdated" cannot detect the change. Add a changeset, bump the');
+    console.error('  package, then run: pnpm build:registry\n');
+    process.exit(1);
+  }
+
+  if (registryStale) {
+    console.error('\n✗ packages/registry.json is out of date.\n');
+    for (const f of needsRegen) console.error(`    ${f}`);
+    console.error('\n  Regenerate it with: pnpm build:registry\n');
+    process.exit(1);
+  }
+
+  console.log('✓ registry.json is in sync — all source changes are versioned.');
 }
 
 // Run only when invoked directly (e.g. `node scripts/build-registry.mjs`),
 // not when imported by tests for the helper exports.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  if (process.argv.includes('--check')) {
+    checkRegistry();
+  } else {
+    writeRegistry();
+  }
 }

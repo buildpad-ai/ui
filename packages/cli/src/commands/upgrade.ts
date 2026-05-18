@@ -7,6 +7,12 @@
  *   [components...]              Specific components to upgrade (default: all outdated)
  *   --all                        Upgrade every installed component
  *   --package <name>             Upgrade all components from a specific source package
+ *   --force                      Re-sync even when already at the latest version.
+ *                                Bypasses the version gate but still honours --strategy,
+ *                                so locally-modified files are merged, not clobbered.
+ *                                Default target with --force is all installed components.
+ *                                Intended for freshly-migrated (pre-0.2.0) projects whose
+ *                                components were baselined to the current version.
  *   --dry-run                    Show what would change without writing files
  *   --yes                        Shorthand for --strategy=overwrite (overwrites modified files)
  *   --three-way                  Shorthand for --strategy=three-way
@@ -101,6 +107,7 @@ interface UpgradeOptions {
   components: string[];
   all?: boolean;
   package?: string;
+  force?: boolean;
   dryRun?: boolean;
   yes?: boolean;
   threeWay?: boolean;
@@ -132,6 +139,7 @@ export async function upgrade(options: UpgradeOptions) {
     components: requestedComponents,
     all = false,
     package: packageFilter,
+    force = false,
     dryRun = false,
     cwd,
   } = options;
@@ -174,6 +182,10 @@ export async function upgrade(options: UpgradeOptions) {
     });
   } else if (requestedComponents.length > 0) {
     targetComponents = requestedComponents;
+  } else if (force) {
+    // --force with no explicit selection → re-sync every installed component,
+    // since the whole point of --force is to ignore version equality.
+    targetComponents = config.installedComponents;
   } else {
     // Default: all outdated
     targetComponents = config.installedComponents.filter(name => {
@@ -211,7 +223,8 @@ export async function upgrade(options: UpgradeOptions) {
     const installedRecord = config.components?.[componentName];
     const installedVersion = installedRecord?.version ?? '0.0.0';
 
-    if (semverGte(installedVersion, lastChangedIn)) {
+    const upToDate = semverGte(installedVersion, lastChangedIn);
+    if (upToDate && !force) {
       console.log(chalk.dim(`  ${componentName} — already up to date (${installedVersion})`));
       skipped++;
       continue;
@@ -219,7 +232,11 @@ export async function upgrade(options: UpgradeOptions) {
 
     console.log(
       chalk.cyan(`  ${componentName}`) +
-      chalk.dim(` ${installedVersion} → ${latestVersion}`)
+      chalk.dim(
+        upToDate
+          ? ` re-sync @ ${latestVersion} (--force)`
+          : ` ${installedVersion} → ${latestVersion}`
+      )
     );
 
     const fileSpinner = ora('').start();
@@ -385,10 +402,11 @@ export async function upgrade(options: UpgradeOptions) {
       };
     }
 
+    const verb = upToDate ? 're-synced at' : 'upgraded to';
     if (!componentHadConflict) {
-      console.log(chalk.green(`  ✓ ${componentName} upgraded to ${latestVersion}`));
+      console.log(chalk.green(`  ✓ ${componentName} ${verb} ${latestVersion}`));
     } else {
-      console.log(chalk.yellow(`  ⚠ ${componentName} upgraded to ${latestVersion} (with conflicts — resolve .new files)`));
+      console.log(chalk.yellow(`  ⚠ ${componentName} ${verb} ${latestVersion} (with conflicts — resolve .new files)`));
     }
     upgraded++;
   }

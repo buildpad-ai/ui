@@ -319,6 +319,9 @@ buildpad upgrade --all --three-way
 
 # Write .new files for modified files (keep originals untouched)
 buildpad upgrade --all --strategy=new-file
+
+# Re-sync components already at the latest version (e.g. right after migrate)
+buildpad upgrade --force --three-way
 ```
 
 ### View Changelogs
@@ -343,6 +346,8 @@ buildpad migrate
 # Preview migration without writing files
 buildpad migrate --dry-run
 ```
+
+`migrate` baselines every component to the current registry version, so `outdated`/`upgrade` will report everything up to date right after. To re-sync a freshly-migrated project to current source, run `buildpad upgrade --force --three-way`, then `buildpad status` to confirm.
 
 ## 🧪 Testing the Setup
 

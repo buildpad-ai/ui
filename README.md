@@ -661,6 +661,7 @@ Buildpad uses a **per-file checksum** system so updates only touch files you hav
 | `buildpad outdated` | Check which installed components have newer versions |
 | `buildpad upgrade` | Upgrade components — silent overwrite for pristine files, interactive prompt for modified files |
 | `buildpad upgrade --three-way` | 3-way merge (diff3) for conflict resolution on modified files |
+| `buildpad upgrade --force` | Re-sync components even when already at the latest version (honours `--strategy`) |
 | `buildpad changelog <pkg>` | View changelog slices between installed and latest versions |
 | `buildpad migrate` | Migrate `buildpad.json` from schema v1 to v2 (enables per-file update tracking) |
 

@@ -30,6 +30,7 @@ buildpad fix                     # Auto-fix common issues
 buildpad outdated                # Check for component updates
 buildpad upgrade --all           # Upgrade all components with safe per-file checksums
 buildpad upgrade --three-way     # 3-way merge (diff3) for conflict resolution on modified files
+buildpad upgrade --force         # Re-sync components even when already at latest version
 buildpad upgrade <comp> --dry-run # Preview upgrade without writing files
 buildpad changelog <pkg>         # View changelog between installed and latest versions
 buildpad changelog <pkg> --since # Filter changelog by version
@@ -238,6 +239,10 @@ buildpad upgrade --all --three-way
 
 # Write .new files for modified files (keep originals)
 buildpad upgrade --all --strategy=new-file
+
+# Re-sync even when already at the latest version (bypasses the version
+# gate, still honours --strategy). Default target is all installed components.
+buildpad upgrade --force --three-way
 ```
 
 ### Task 10: View changelogs
@@ -260,6 +265,19 @@ buildpad migrate
 # Preview migration
 buildpad migrate --dry-run
 ```
+
+`migrate` baselines every component to the **current** registry version — v1 `buildpad.json`
+never recorded per-package versions, so the original install version cannot be reconstructed.
+Right after migrating, `outdated`/`upgrade` will therefore report everything up to date.
+To re-sync a freshly-migrated (pre-v2) project to current source, follow up with a forced
+upgrade, then verify:
+
+```bash
+buildpad upgrade --force --three-way   # re-sync all components, merging local edits
+buildpad status                        # confirm files are pristine
+```
+
+From the next release onward, `outdated`/`upgrade` work normally with no `--force` needed.
 
 ### Task 12: Check if config needs migration
 ```bash

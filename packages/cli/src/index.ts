@@ -135,6 +135,7 @@ program
   .argument('[components...]', 'Specific components to upgrade (default: all outdated)')
   .option('--all', 'Upgrade every installed component')
   .option('--package <name>', 'Upgrade all components from a specific source package')
+  .option('--force', 'Re-sync components even when already at the latest version (default target: all installed)')
   .option('-n, --dry-run', 'Show what would change without writing files')
   .option('-y, --yes', 'Shorthand for --strategy=overwrite')
   .option('--three-way', 'Shorthand for --strategy=three-way')
@@ -155,6 +156,7 @@ program
       components,
       all: options.all,
       package: options.package,
+      force: options.force,
       dryRun: options.dryRun,
       yes: options.yes,
       threeWay: options.threeWay,
