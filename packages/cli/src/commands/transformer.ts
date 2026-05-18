@@ -6,6 +6,7 @@
  */
 
 import path from 'path';
+import { sha256 } from '../utils/checksum.js';
 import type { Config } from './init.js';
 
 /**
@@ -527,22 +528,31 @@ export function removeUseClient(content: string): string {
 }
 
 /**
- * Generate origin header comment for copied files
+ * Generate origin header comment for copied files.
+ *
+ * The header contains only stable, deterministic fields so that the file hash
+ * remains reproducible across machines and time.  The volatile `installedAt`
+ * timestamp is recorded in `buildpad.json` only (not in the file).
+ *
+ * @param componentName - e.g. "input" or "vform/components/VFormField"
+ * @param sourcePackage  - e.g. "@buildpad/ui-interfaces"
+ * @param version        - semver string of the source package, e.g. "1.4.2"
+ * @param sourceSha256   - optional SHA-256 of the untransformed source bytes
  */
 export function generateOriginHeader(
   componentName: string,
   sourcePackage: string,
-  version: string = '1.0.0'
+  version: string = '1.0.0',
+  sourceSha256?: string
 ): string {
-  const timestamp = new Date().toISOString().split('T')[0];
+  const sha256Line = sourceSha256 ? ` * @buildpad-source-sha256 ${sourceSha256}\n` : '';
   return `/**
  * @buildpad-origin ${sourcePackage}/${componentName}
  * @buildpad-version ${version}
- * @buildpad-date ${timestamp}
- * 
+${sha256Line} *
  * This file was copied from Buildpad UI Packages.
  * To update, run: npx @buildpad/cli add ${componentName} --overwrite
- * 
+ *
  * Docs: https://buildpad.dev/components/${componentName}
  */
 
@@ -550,15 +560,22 @@ export function generateOriginHeader(
 }
 
 /**
- * Add origin header to file content
+ * Add origin header to file content.
+ *
+ * @param content       - File content to prepend the header to
+ * @param componentName - e.g. "input"
+ * @param sourcePackage - e.g. "@buildpad/ui-interfaces"
+ * @param version       - semver string
+ * @param sourceSha256  - optional SHA-256 of the untransformed source bytes
  */
 export function addOriginHeader(
   content: string,
   componentName: string,
   sourcePackage: string,
-  version: string = '1.0.0'
+  version: string = '1.0.0',
+  sourceSha256?: string
 ): string {
-  const header = generateOriginHeader(componentName, sourcePackage, version);
+  const header = generateOriginHeader(componentName, sourcePackage, version, sourceSha256);
   
   // If file has "use client", insert header after it
   const useClientMatch = content.match(/^(["']use client["'];?\s*\n)/);
@@ -570,6 +587,48 @@ export function addOriginHeader(
 }
 
 /**
+ * Strip the Buildpad origin-header block from `content`.
+ *
+ * Handles both the old format (which included `@buildpad-date`) and the new
+ * stable format.  Returns the content unchanged when no header is present.
+ *
+ * The header is the `/** ... *\/` block that immediately precedes (or follows
+ * a "use client" directive) the rest of the file, and contains
+ * `@buildpad-origin`.
+ */
+export function stripOriginHeader(content: string): string {
+  // Match an optional "use client" directive, then the JSDoc block containing
+  // @buildpad-origin, then any trailing blank lines.
+  return content.replace(
+    /^(["']use client["'];?\s*\n)?\/\*\*[\s\S]*?@buildpad-origin[\s\S]*?\*\/\s*\n?/,
+    '$1'
+  );
+}
+
+/**
+ * Compute a stable SHA-256 hash of a *transformed* file's content.
+ *
+ * The hash is computed over the file content with:
+ *   1. The origin-header block stripped (it contains version info that will
+ *      change on every upgrade, so it must not be part of the comparison hash).
+ *   2. Line endings normalised to LF (`\n`).
+ *   3. A single trailing newline appended (ensures the hash is stable
+ *      regardless of whether the editor added one or not).
+ *
+ * This is the value stored in `buildpad.json` under
+ * `components[name].files[].sha256` so that `outdated`/`upgrade` can detect
+ * whether the consumer has modified the file locally.
+ */
+export function hashTransformed(content: string): string {
+  const stripped = stripOriginHeader(content);
+  // Normalise CRLF → LF
+  const normalised = stripped.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Ensure exactly one trailing newline
+  const withTrailingNewline = normalised.trimEnd() + '\n';
+  return sha256(withTrailingNewline);
+}
+
+/**
  * Check if file has buildpad origin header
  */
 export function hasBuildpadOrigin(content: string): boolean {
@@ -577,15 +636,23 @@ export function hasBuildpadOrigin(content: string): boolean {
 }
 
 /**
- * Extract origin info from file
+ * Extract origin info from file header.
+ *
+ * Compatible with both the old format (which had `@buildpad-date`) and the
+ * new stable format.  `date` is included for backward-compat but will be
+ * `undefined` for files written by CLI >= v2 (it is stored in buildpad.json
+ * instead).
  */
 export function extractOriginInfo(content: string): {
   origin?: string;
   version?: string;
+  sourceSha256?: string;
+  /** @deprecated Recorded in buildpad.json since CLI v2. Not present in new-style headers. */
   date?: string;
 } | null {
   const originMatch = content.match(/@buildpad-origin\s+([^\n*]+)/);
   const versionMatch = content.match(/@buildpad-version\s+([^\n*]+)/);
+  const sha256Match = content.match(/@buildpad-source-sha256\s+([^\n*]+)/);
   const dateMatch = content.match(/@buildpad-date\s+([^\n*]+)/);
   
   if (!originMatch) return null;
@@ -593,6 +660,7 @@ export function extractOriginInfo(content: string): {
   return {
     origin: originMatch[1].trim(),
     version: versionMatch?.[1].trim(),
+    sourceSha256: sha256Match?.[1].trim(),
     date: dateMatch?.[1].trim(),
   };
 }
