@@ -170,7 +170,7 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
           params: {
             filter: JSON.stringify(filter),
             fields:
-              'id,collection,current_state,date_created,date_updated,item_id,revision_id,terminated,version_key,workflow',
+              'id,collection,current_state,date_created,date_updated,item_id,terminated,version_key,workflow',
           },
         });
 

@@ -93,8 +93,6 @@ export interface WorkflowInstance {
   terminated?: boolean;
   /** Whether the item is unpublished */
   unpublished?: boolean;
-  /** Revision ID for comparison */
-  revision_id?: number;
   /** Workflow definition reference */
   workflow: {
     id: number;
