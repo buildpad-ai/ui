@@ -40,6 +40,22 @@ const DEFAULT_REGISTRY_URL =
 export const REGISTRY_BASE_URL =
   process.env.BUILDPAD_REGISTRY_URL ?? DEFAULT_REGISTRY_URL;
 
+/**
+ * Base URL for fetching CHANGELOG.md files. Override via env var.
+ * Defaults to the same repo as the registry, on the `main` branch.
+ */
+export const CHANGELOG_BASE_URL =
+  process.env.BUILDPAD_CHANGELOG_URL ??
+  'https://raw.githubusercontent.com/microbuild-ui/ui/main/packages';
+
+/**
+ * Build the URL to a versioned source file on GitHub raw CDN.
+ * `ref` should already be encoded (or URL-safe).
+ */
+export function buildVersionedSourceUrl(ref: string, source: string): string {
+  return `https://raw.githubusercontent.com/microbuild-ui/ui/${ref}/packages/${source}`;
+}
+
 // Local packages root (only valid when running from monorepo)
 // From dist/index.js → packages/cli/dist → needs ../../ to reach packages/
 const LOCAL_PACKAGES_ROOT = path.resolve(__dirname, '../..');
@@ -53,7 +69,18 @@ function isLocalMode(): boolean {
 
 // ─── Public API ──────────────────────────────────────────────────
 
+/** Registry v2: per-package version + changelog location */
+export interface RegistryPackageInfo {
+  version: string;
+  changelogUrl: string;
+}
+
 export interface Registry {
+  /** Schema version — 1 (legacy) or 2 (generated artifact). */
+  schemaVersion?: number;
+  /** ISO timestamp when registry.json was last generated. */
+  generatedAt?: string;
+  /** Legacy single-version field (v1 compat). */
   version: string;
   name: string;
   lib: Record<string, LibModule>;
@@ -62,11 +89,15 @@ export interface Registry {
   dependencies?: Record<string, string[]>;
   aliases?: Record<string, string>;
   meta?: Record<string, unknown>;
+  /** v2: per-package semver map. */
+  packages?: Record<string, RegistryPackageInfo>;
 }
 
 export interface FileMapping {
   source: string;
   target: string;
+  /** SHA-256 of the raw (untransformed) source file bytes (v2 only). */
+  sourceSha256?: string;
 }
 
 export interface LibModule {
@@ -88,6 +119,12 @@ export interface ComponentEntry {
   dependencies: string[];
   internalDependencies: string[];
   registryDependencies?: string[];
+  /** v2: owning source package, e.g. "@buildpad/ui-interfaces". */
+  sourcePackage?: string;
+  /** v2: semver of the source package at registry generation time. */
+  version?: string;
+  /** v2: last package version in which any of this component's files changed. */
+  lastChangedIn?: string;
 }
 
 // In-memory cache so we fetch registry.json at most once per CLI invocation
@@ -167,6 +204,52 @@ export function getTemplatesRoot(): string {
  */
 export function getLocalPackagesRoot(): string {
   return LOCAL_PACKAGES_ROOT;
+}
+
+/**
+ * Build a changesets-style git tag for a specific package + version.
+ *
+ * Changesets emits tags like `@buildpad/ui-interfaces@1.4.2` for scoped packages
+ * (and `pkg@1.4.2` for unscoped). We replicate that convention so historical
+ * sources are reachable on the GitHub raw CDN.
+ *
+ * Exposed for testing.
+ */
+export function buildPackageTag(sourcePackage: string, version: string): string {
+  return `${sourcePackage}@${version}`;
+}
+
+/**
+ * Fetch a specific version of a source file from GitHub raw CDN.
+ *
+ * Used by `upgrade --three-way` to obtain the "base" (common ancestor)
+ * for three-way merging.  Falls back gracefully — callers should catch
+ * errors and degrade to a 2-way `.new` flow when the network is unavailable.
+ *
+ * Tries two ref formats in order:
+ *   1. `${sourcePackage}@${version}` (changesets-style; works for per-package releases)
+ *   2. bare `${version}` (legacy / lockstep releases)
+ *
+ * @param source         - registry-relative source path, e.g. "ui-interfaces/src/input/Input.tsx"
+ * @param sourcePackage  - e.g. "@buildpad/ui-interfaces"
+ * @param version        - semver string, e.g. "1.4.2"
+ */
+export async function fetchSourceAtVersion(
+  source: string,
+  sourcePackage: string,
+  version: string
+): Promise<string> {
+  const refs = [buildPackageTag(sourcePackage, version), version];
+  let lastErr: unknown;
+  for (const ref of refs) {
+    const url = buildVersionedSourceUrl(encodeURIComponent(ref), source);
+    try {
+      return await fetchText(url);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr ?? new Error(`Failed to fetch ${source} at any known ref`);
 }
 
 // ─── HTTP helpers ────────────────────────────────────────────────

@@ -11,8 +11,6 @@ import chalk from 'chalk';
 import {
   getRegistry as fetchRegistry,
   type Registry,
-  type FileMapping,
-  type LibModule,
   type ComponentEntry,
 } from '../resolver.js';
 

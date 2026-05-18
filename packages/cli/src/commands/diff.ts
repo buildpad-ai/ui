@@ -1,15 +1,12 @@
 import fs from 'fs-extra';
 import path from 'path';
 import chalk from 'chalk';
-import { loadConfig, resolveAlias } from './init.js';
+import { loadConfig } from './init.js';
 import { transformImports } from './transformer.js';
 import {
   getRegistry as fetchRegistry,
   resolveSourceFile,
-  sourceFileExists,
   type Registry,
-  type FileMapping,
-  type ComponentEntry,
 } from '../resolver.js';
 
 async function getRegistry(): Promise<Registry> {

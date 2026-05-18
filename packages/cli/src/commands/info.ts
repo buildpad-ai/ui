@@ -11,8 +11,6 @@ import chalk from 'chalk';
 import {
   getRegistry as fetchRegistry,
   type Registry,
-  type FileMapping,
-  type LibModule,
   type ComponentEntry,
 } from '../resolver.js';
 
@@ -33,8 +31,6 @@ interface InterfaceMetadata {
 interface ComponentEntryWithInterface extends ComponentEntry {
   interface?: InterfaceMetadata;
 }
-
-// Load registry (local or remote via resolver)
 async function getRegistry(): Promise<Registry> {
   try {
     return await fetchRegistry();
@@ -216,12 +212,13 @@ export async function info(componentName: string, options: { json?: boolean }) {
   }
   
   // Interface metadata
-  if (component.interface) {
+  const componentWithIface = component as ComponentEntryWithInterface;
+  if (componentWithIface.interface) {
     console.log(chalk.bold('\n🎨 Interface Metadata'));
-    console.log(`   ID: ${chalk.green(component.interface.id)}`);
-    console.log(`   Icon: ${chalk.cyan(component.interface.icon)}`);
-    console.log(`   Field Types: ${chalk.yellow(component.interface.types.join(', '))}`);
-    if (component.interface.recommended) {
+    console.log(`   ID: ${chalk.green(componentWithIface.interface.id)}`);
+    console.log(`   Icon: ${chalk.cyan(componentWithIface.interface.icon)}`);
+    console.log(`   Field Types: ${chalk.yellow(componentWithIface.interface.types.join(', '))}`);
+    if (componentWithIface.interface.recommended) {
       console.log(`   ${chalk.green('★')} Recommended interface for its field types`);
     }
   }

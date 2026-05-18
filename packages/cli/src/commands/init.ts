@@ -6,7 +6,34 @@ import prompts from 'prompts';
 import { getTemplatesRoot } from '../resolver.js';
 
 /**
- * Component version info for tracking updates
+ * Per-file checksum recorded in buildpad.json.
+ * The sha256 is computed over the TRANSFORMED file content with the
+ * origin-header stripped, line endings normalised to LF, and a trailing
+ * newline appended — see `hashTransformed()` in transformer.ts.
+ */
+export interface FileChecksum {
+  /** Consumer-relative target path, e.g. "components/ui/input.tsx" */
+  target: string;
+  /** SHA-256 of the transformed content (minus origin header). */
+  sha256: string;
+}
+
+/**
+ * Per-component (or per-lib-module) installation record (Config v2).
+ */
+export interface ComponentInstall {
+  /** Semver of the source package at install time, e.g. "1.4.2" */
+  version: string;
+  /** Source package name, e.g. "@buildpad/ui-interfaces" */
+  sourcePackage: string;
+  /** ISO 8601 timestamp of the installation */
+  installedAt: string;
+  /** One entry per copied file */
+  files: FileChecksum[];
+}
+
+/**
+ * Component version info for tracking updates (Config v1 — kept for migration)
  */
 export interface ComponentVersion {
   /** Registry version when installed */
@@ -28,6 +55,12 @@ export interface ComponentVersion {
  */
 export interface Config {
   $schema?: string;
+  /**
+   * Manifest schema version.
+   * - 1 (or absent): legacy format — componentVersions + registryVersion
+   * - 2: v2 format — components/lib maps with per-file sha256 + packageVersions
+   */
+  schemaVersion?: 1 | 2;
   /** Distribution model - always 'copy-own' */
   model: 'copy-own';
   /** Use TypeScript (.tsx) or JavaScript (.jsx) */
@@ -45,14 +78,36 @@ export interface Config {
   installedLib: string[];
   /** Installed components */
   installedComponents: string[];
-  /** Component version tracking for update detection */
+
+  // ── v2 fields ────────────────────────────────────────────────────────────
+
+  /**
+   * v2: per-component installation records with per-file sha256 checksums.
+   * Keyed by component name, e.g. `components["input"]`.
+   */
+  components?: Record<string, ComponentInstall>;
+  /**
+   * v2: per-lib-module installation records with per-file sha256 checksums.
+   * Keyed by module name, e.g. `lib["types"]`.
+   */
+  lib?: Record<string, ComponentInstall>;
+  /**
+   * v2: snapshot of source-package semver at the time of the last install/upgrade.
+   * e.g. `packageVersions["@buildpad/ui-interfaces"] = "1.4.2"`.
+   */
+  packageVersions?: Record<string, string>;
+
+  // ── v1 legacy fields (read-only after migration) ─────────────────────────
+
+  /** @deprecated Use `components[name].version` in v2. */
   componentVersions?: Record<string, ComponentVersion>;
-  /** Registry version at last install */
+  /** @deprecated Use `packageVersions` in v2. */
   registryVersion?: string;
 }
 
 const DEFAULT_CONFIG: Config = {
   $schema: 'https://buildpad.dev/schema.json',
+  schemaVersion: 2,
   model: 'copy-own',
   tsx: true,
   srcDir: true,
@@ -62,8 +117,9 @@ const DEFAULT_CONFIG: Config = {
   },
   installedLib: [],
   installedComponents: [],
-  componentVersions: {},
-  registryVersion: '1.0.0',
+  components: {},
+  lib: {},
+  packageVersions: {},
 };
 
 const TEMPLATES_ROOT = getTemplatesRoot();
@@ -390,14 +446,30 @@ export function resolveAlias(alias: string, cwd: string, srcDir: boolean = true)
 }
 
 /**
- * Load and validate the buildpad.json config
+ * Load and validate the buildpad.json config.
+ *
+ * If the config is v1 (no `schemaVersion`), a migration hint is printed so
+ * the user knows to run `npx buildpad migrate`.  The v1 config is returned
+ * as-is so existing commands continue to work.
  */
 export async function loadConfig(cwd: string): Promise<Config | null> {
   const configPath = path.join(cwd, 'buildpad.json');
   if (!fs.existsSync(configPath)) {
     return null;
   }
-  return await fs.readJSON(configPath) as Config;
+  const config = await fs.readJSON(configPath) as Config;
+
+  if (!config.schemaVersion) {
+    // v1 config — print a one-time hint, then return for backward compat
+    console.warn(
+      chalk.yellow(
+        '\n⚠ buildpad.json is v1 (no schemaVersion). ' +
+        'Run \'npx buildpad migrate\' to enable safe per-file update tracking.\n'
+      )
+    );
+  }
+
+  return config;
 }
 
 /**

@@ -10,21 +10,29 @@
 import fs from 'fs-extra';
 import path from 'path';
 import chalk from 'chalk';
-import { loadConfig, resolveAlias } from './init.js';
-import { extractOriginInfo, hasBuildpadOrigin } from './transformer.js';
+import { loadConfig, type Config } from './init.js';
+import { extractOriginInfo, hasBuildpadOrigin, hashTransformed } from './transformer.js';
 
 interface InstalledFile {
   path: string;
   origin: string;
   version: string;
+  /** installedAt from old-style header (kept for backward compat display) */
   date: string;
+  /** true when the file's current hash differs from the recorded sha256 in buildpad.json */
   modified: boolean;
+  /** sha256 of current disk content (stripped + normalised) */
+  currentSha256: string;
 }
 
 /**
- * Recursively find all files with buildpad origin headers
+ * Recursively find all files with buildpad origin headers.
+ * @param manifestComponents - v2 components map from buildpad.json (optional)
  */
-async function findBuildpadFiles(dir: string): Promise<InstalledFile[]> {
+async function findBuildpadFiles(
+  dir: string,
+  manifestComponents?: Config['components']
+): Promise<InstalledFile[]> {
   const files: InstalledFile[] = [];
   
   if (!fs.existsSync(dir)) {
@@ -39,7 +47,7 @@ async function findBuildpadFiles(dir: string): Promise<InstalledFile[]> {
     if (entry.isDirectory()) {
       // Skip node_modules and hidden directories
       if (entry.name !== 'node_modules' && !entry.name.startsWith('.')) {
-        const subFiles = await findBuildpadFiles(fullPath);
+        const subFiles = await findBuildpadFiles(fullPath, manifestComponents);
         files.push(...subFiles);
       }
     } else if (entry.isFile() && /\.(tsx?|jsx?)$/.test(entry.name)) {
@@ -48,12 +56,30 @@ async function findBuildpadFiles(dir: string): Promise<InstalledFile[]> {
       if (hasBuildpadOrigin(content)) {
         const info = extractOriginInfo(content);
         if (info && info.origin) {
+          const currentSha256 = hashTransformed(content);
+
+          // Look up recorded sha256 in v2 manifest to determine modification status.
+          let modified = false;
+          if (manifestComponents) {
+            // The origin string is like "@buildpad/ui-interfaces/input"
+            // Component name is the last segment
+            const componentName = info.origin.split('/').pop() ?? '';
+            const record = manifestComponents[componentName];
+            if (record) {
+              // Find the matching file entry by sha256 comparison
+              const hasMatch = record.files.some(f => f.sha256 === currentSha256);
+              modified = !hasMatch;
+            }
+            // If no record found (component not in manifest) → assume pristine (unknown)
+          }
+
           files.push({
             path: fullPath,
             origin: info.origin,
             version: info.version || 'unknown',
             date: info.date || 'unknown',
-            modified: false, // TODO: Compare with registry hash
+            currentSha256,
+            modified,
           });
         }
       }
@@ -96,9 +122,9 @@ export async function status(options: { cwd: string; json?: boolean }) {
     return;
   }
 
-  // Scan for installed files
+  // Scan for installed files — pass v2 component map for modification detection
   const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
-  const files = await findBuildpadFiles(srcDir);
+  const files = await findBuildpadFiles(srcDir, config.components);
 
   if (json) {
     console.log(JSON.stringify({
@@ -107,8 +133,11 @@ export async function status(options: { cwd: string; json?: boolean }) {
         installedComponents: config.installedComponents,
       },
       files: files.map(f => ({
-        ...f,
         path: path.relative(cwd, f.path),
+        origin: f.origin,
+        version: f.version,
+        modified: f.modified,
+        currentSha256: f.currentSha256,
       })),
     }, null, 2));
     return;
@@ -135,8 +164,10 @@ export async function status(options: { cwd: string; json?: boolean }) {
     console.log(chalk.cyan(`  ${origin}`));
     for (const file of groupFiles) {
       const relativePath = path.relative(cwd, file.path);
-      console.log(chalk.gray(`    └─ ${relativePath}`));
-      console.log(chalk.gray(`       v${file.version} (${file.date})`));
+      const modTag = file.modified ? chalk.yellow(' [modified]') : chalk.green(' [pristine]');
+      console.log(chalk.gray(`    └─ ${relativePath}`) + modTag);
+      const meta = [`v${file.version}`, ...(file.date !== 'unknown' ? [file.date] : [])].join(' • ');
+      console.log(chalk.gray(`       ${meta}`));
     }
     console.log();
   }

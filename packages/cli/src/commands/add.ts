@@ -13,14 +13,16 @@ import path from 'path';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import prompts from 'prompts';
-import { type Config, loadConfig, saveConfig } from './init.js';
-import { 
-  transformImports, 
+import { type Config, type FileChecksum, loadConfig, saveConfig } from './init.js';
+import {
+  transformImports,
   transformRelativeImports,
   transformIntraComponentImports,
   transformVFormImports,
-  addOriginHeader
+  addOriginHeader,
+  hashTransformed
 } from './transformer.js';
+import { inferSourcePackage, resolvePackageVersion } from '../utils/checksum.js';
 import { validate } from './validate.js';
 import {
   getRegistry as fetchRegistry,
@@ -214,6 +216,13 @@ async function copyLibModule(
     }
   }
 
+  // Track per-file checksums for v2 manifest. The "primary" sourcePackage
+  // for the lib module is inferred from its first source file (most lib
+  // modules are single-package, mixed modules just attribute to the
+  // dominant source).
+  const writtenFiles: FileChecksum[] = [];
+  let primarySource: string | undefined;
+
   // Handle single file module (like utils)
   if (libModule.path && libModule.target) {
     const targetPath = path.join(
@@ -222,11 +231,15 @@ async function copyLibModule(
     );
 
     if (await sourceFileExists(libModule.path)) {
+      const sourcePackage = inferSourcePackage(libModule.path);
+      const version = resolvePackageVersion(registry, sourcePackage);
       let content = await resolveSourceFile(libModule.path);
       content = transformImports(content, config);
-      content = addOriginHeader(content, moduleName, '@buildpad/lib', registry.version);
+      content = addOriginHeader(content, moduleName, sourcePackage, version);
       await fs.ensureDir(path.dirname(targetPath));
       await fs.writeFile(targetPath, content);
+      writtenFiles.push({ target: libModule.target, sha256: hashTransformed(content) });
+      primarySource = libModule.path;
     }
   }
 
@@ -239,13 +252,17 @@ async function copyLibModule(
       );
 
       if (await sourceFileExists(file.source)) {
+        const sourcePackage = inferSourcePackage(file.source);
+        const version = resolvePackageVersion(registry, sourcePackage);
         let content = await resolveSourceFile(file.source);
         content = transformImports(content, config);
         // Extract filename for origin tracking
         const fileName = path.basename(file.source, path.extname(file.source));
-        content = addOriginHeader(content, `${moduleName}/${fileName}`, '@buildpad/lib', registry.version);
+        content = addOriginHeader(content, `${moduleName}/${fileName}`, sourcePackage, version);
         await fs.ensureDir(path.dirname(targetPath));
         await fs.writeFile(targetPath, content);
+        writtenFiles.push({ target: file.target, sha256: hashTransformed(content) });
+        if (!primarySource) primarySource = file.source;
       } else {
         spinner.warn(`Source file not found: ${file.source}`);
       }
@@ -255,6 +272,22 @@ async function copyLibModule(
   if (!config.installedLib.includes(moduleName)) {
     config.installedLib.push(moduleName);
   }
+
+  // v2: record per-file checksums in `config.lib[moduleName]`
+  if (config.schemaVersion === 2 && writtenFiles.length > 0 && primarySource) {
+    const sourcePackage = inferSourcePackage(primarySource);
+    const version = resolvePackageVersion(registry, sourcePackage);
+    if (!config.lib) config.lib = {};
+    config.lib[moduleName] = {
+      version,
+      sourcePackage,
+      installedAt: new Date().toISOString(),
+      files: writtenFiles,
+    };
+    if (!config.packageVersions) config.packageVersions = {};
+    config.packageVersions[sourcePackage] = version;
+  }
+
   spinner.succeed(`Installed lib: ${moduleName}`);
   return true;
 }
@@ -389,8 +422,15 @@ async function copyComponent(
       content = transformVFormImports(content, file.source, file.target);
     }
     
+    // Determine source package for this component (v2 registry supplies it, fallback for v1)
+    const sourcePackage = component.sourcePackage ?? '@buildpad/ui-interfaces';
+    // Determine version: prefer per-package version from v2 registry, fallback to global
+    const regV2 = registry;
+    const componentVersion =
+      regV2.packages?.[sourcePackage]?.version ?? component.version ?? registry.version;
+
     // Add origin header for maintainability
-    content = addOriginHeader(content, component.name, '@buildpad/ui-interfaces', registry.version);
+    content = addOriginHeader(content, component.name, sourcePackage, componentVersion);
 
     // Ensure directory exists
     await fs.ensureDir(path.dirname(targetPath));
@@ -399,22 +439,61 @@ async function copyComponent(
     const ext = config.tsx ? '.tsx' : '.jsx';
     const finalPath = targetPath.replace(/\.tsx?$/, ext);
     await fs.writeFile(finalPath, content);
+
+    // v2: record per-file sha256 (computed over content without the origin header)
+    if (config.schemaVersion === 2) {
+      if (!config.components) config.components = {};
+      if (!config.components[component.name]) {
+        config.components[component.name] = {
+          version: componentVersion,
+          sourcePackage,
+          installedAt: new Date().toISOString(),
+          files: [],
+        };
+      }
+      // Use relative target path for portability
+      const relTarget = file.target;
+      const existingIdx = config.components[component.name].files.findIndex(f => f.target === relTarget);
+      const checksum = { target: relTarget, sha256: hashTransformed(content) };
+      if (existingIdx >= 0) {
+        config.components[component.name].files[existingIdx] = checksum;
+      } else {
+        config.components[component.name].files.push(checksum);
+      }
+    }
   }
+
+  // Determine source package / version once for the whole component
+  const sourcePackageFinal = component.sourcePackage ?? '@buildpad/ui-interfaces';
+  const regV2Final = registry;
+  const installVersion =
+    regV2Final.packages?.[sourcePackageFinal]?.version ?? component.version ?? registry.version;
 
   // Track installation with version info
   if (!config.installedComponents.includes(component.name)) {
     config.installedComponents.push(component.name);
   }
   
-  // Track component version
+  // Track component version (v1 compat)
   if (!config.componentVersions) {
     config.componentVersions = {};
   }
   config.componentVersions[component.name] = {
-    version: registry.version,
+    version: installVersion,
     installedAt: new Date().toISOString(),
-    source: '@buildpad/ui-interfaces',
+    source: sourcePackageFinal,
   };
+
+  // v2: update components map installedAt + packageVersions
+  if (config.schemaVersion === 2) {
+    if (!config.components) config.components = {};
+    if (config.components[component.name]) {
+      config.components[component.name].installedAt = new Date().toISOString();
+      config.components[component.name].version = installVersion;
+    }
+    if (!config.packageVersions) config.packageVersions = {};
+    config.packageVersions[sourcePackageFinal] = installVersion;
+  }
 
   spinner.succeed(`Added ${component.title}`);
   return true;
@@ -753,7 +832,7 @@ export async function add(
       }
     }
 
-    // Update registry version
+    // Update registry version (v1 compat)
     config.registryVersion = registry.version;
 
     // Save updated config

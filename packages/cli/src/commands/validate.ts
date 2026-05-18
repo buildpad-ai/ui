@@ -669,6 +669,18 @@ export async function validate(options: {
     
     const errors = [...untransformedErrors, ...brokenImportErrors, ...libModuleErrors, ...tsErrors];
     const warnings = [...missingCssWarnings, ...ssrWarnings, ...apiRouteWarnings, ...react19Warnings, ...duplicateExportWarnings];
+
+    // v2 schema checks: warn when packageVersions is missing on a v2 config
+    if ((config.schemaVersion ?? 1) >= 2) {
+      if (!config.packageVersions || Object.keys(config.packageVersions).length === 0) {
+        warnings.push({
+          file: 'buildpad.json',
+          message: 'packageVersions is missing or empty. Run \'npx buildpad migrate\' to populate it.',
+          code: 'MISSING_PACKAGE_VERSIONS',
+        } as any);
+      }
+    }
+
     const suggestions = generateSuggestions(errors, warnings);
     
     const result: ValidationResult = {
