@@ -4,8 +4,9 @@
   "private": true,
   "description": "Shared components between Next.js projects",
   "scripts": {
-    "build": "pnpm --filter @buildpad/ui-form build && pnpm -r --filter '!@buildpad/ui-form' build",
+    "build": "pnpm build:registry && pnpm --filter @buildpad/ui-form build && pnpm -r --filter '!@buildpad/ui-form' build",
     "build:cli": "pnpm --filter @buildpad/cli build",
+    "build:registry": "node scripts/build-registry.mjs",
     "build:host": "pnpm --filter storybook-host build",
     "build:mcp": "pnpm --filter @buildpad/mcp build",
     "build:packages": "pnpm --filter './packages/**' build",
@@ -36,7 +37,7 @@
     "version-packages": "changeset version"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.0",
+    "@changesets/cli": "^2.27.10",
     "@playwright/test": "^1.50.1",
     "dotenv": "^17.2.3",
     "rimraf": "^5.0.5",
