@@ -16,6 +16,8 @@ import {
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createHash } from 'crypto';
+import { spawnSync } from 'child_process';
 import {
   PACKAGES,
   getAllComponents,
@@ -33,6 +35,85 @@ const __dirname = dirname(__filename);
 
 // Get the packages root (mcp-server/dist -> packages)
 const PACKAGES_ROOT = join(__dirname, '../..');
+
+// ---------------------------------------------------------------------------
+// Phase 5 helpers — versioning / upgrade support
+// ---------------------------------------------------------------------------
+
+/**
+ * Strip the `@buildpad-origin` JSDoc header from a transformed file so that
+ * the remaining content can be hashed stably (the header contains the version
+ * string which changes on every upgrade).
+ */
+function stripOriginHeader(content: string): string {
+  return content.replace(
+    /^(["']use client["'];?\s*\n)?\/\*\*[\s\S]*?@buildpad-origin[\s\S]*?\*\/\s*\n?/,
+    '$1'
+  );
+}
+
+/**
+ * Compute a stable SHA-256 hash of a transformed file — strips the origin
+ * header, normalises line endings to LF, and ensures a trailing newline.
+ */
+function hashTransformed(content: string): string {
+  const stripped = stripOriginHeader(content);
+  const normalised = stripped.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const withNewline = normalised.trimEnd() + '\n';
+  return createHash('sha256').update(withNewline, 'utf8').digest('hex');
+}
+
+/**
+ * Compare two semver strings.  Returns -1, 0, or 1.
+ * Strips leading non-numeric characters (e.g. "^", "~") before comparing.
+ */
+function compareSemver(a: string, b: string): number {
+  const parse = (v: string) =>
+    v.replace(/^[^0-9]*/, '').split('.').map(n => parseInt(n, 10) || 0);
+  const [a0, a1, a2] = parse(a);
+  const [b0, b1, b2] = parse(b);
+  if (a0 !== b0) return a0 < b0 ? -1 : 1;
+  if (a1 !== b1) return a1 < b1 ? -1 : 1;
+  if (a2 !== b2) return a2 < b2 ? -1 : 1;
+  return 0;
+}
+
+const CHANGELOG_RAW_BASE =
+  process.env.BUILDPAD_CHANGELOG_URL?.replace(/\/?$/, '/') ??
+  'https://raw.githubusercontent.com/microbuild-ui/ui/main/packages/';
+
+/** Fetch raw CHANGELOG.md content; returns null on network error. */
+async function fetchChangelogContent(changelogUrl: string): Promise<string | null> {
+  const url = changelogUrl.startsWith('http')
+    ? changelogUrl
+    : `${CHANGELOG_RAW_BASE}${changelogUrl}`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    return res.text();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Return only the changelog sections newer than `since`.
+ * If `since` is omitted the full content is returned.
+ */
+function changelogSince(content: string, since?: string): string {
+  if (!since) return content.trim();
+  const lines = content.split('\n');
+  let inRange = false;
+  const result: string[] = [];
+  for (const line of lines) {
+    const m = line.match(/^## (\d+\.\d+\.\d+)/);
+    if (m) {
+      inRange = compareSemver(m[1], since) > 0;
+    }
+    if (inRange) result.push(line);
+  }
+  return result.join('\n').trim();
+}
 
 /**
  * Read file content safely
@@ -469,6 +550,89 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
           },
           required: ['pattern'],
+        },
+      },
+      {
+        name: 'get_package_versions',
+        description: 'Get current versions for all Buildpad source packages from the registry. Returns a map of package name → { version, changelogUrl }.',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+        },
+      },
+      {
+        name: 'list_outdated',
+        description: "List Buildpad components that have available updates. Reads the consumer project's buildpad.json and compares installed package versions against the registry.",
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Absolute path to the consumer project root (directory containing buildpad.json)',
+            },
+          },
+          required: ['projectPath'],
+        },
+      },
+      {
+        name: 'get_component_changelog',
+        description: 'Get the changelog for a Buildpad source package or component. Fetches and returns the relevant CHANGELOG.md slice from the registry.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            target: {
+              type: 'string',
+              description: 'Package name (e.g. "@buildpad/ui-interfaces") or component name (e.g. "input")',
+            },
+            sinceVersion: {
+              type: 'string',
+              description: 'Only return entries newer than this version (e.g. "1.3.0")',
+            },
+          },
+          required: ['target'],
+        },
+      },
+      {
+        name: 'get_upgrade_plan',
+        description: 'Dry-run upgrade plan: for each outdated component shows version delta, local-modification status per file, and recommended action. Read-only — does not touch any consumer files.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Absolute path to the consumer project root (directory containing buildpad.json)',
+            },
+            components: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Specific component names to check. Omit to plan all outdated components.',
+            },
+          },
+          required: ['projectPath'],
+        },
+      },
+      {
+        name: 'apply_upgrade',
+        description: '⚠️ WRITE TOOL — Upgrade Buildpad components in a consumer project by invoking the CLI upgrade command. For locally-modified files, strategy controls conflict resolution: "overwrite" replaces them, "new-file" writes a .new file, "three-way" attempts a 3-way merge.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Absolute path to the consumer project root (directory containing buildpad.json)',
+            },
+            components: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Component names to upgrade. Omit to upgrade all outdated components.',
+            },
+            strategy: {
+              type: 'string',
+              enum: ['overwrite', 'new-file', 'three-way'],
+              description: 'Conflict resolution strategy for locally-modified files. Defaults to "new-file".',
+            },
+          },
+          required: ['projectPath'],
         },
       },
     ],
@@ -1028,6 +1192,212 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
       if (name === 'get_rbac_pattern') {
         return handleGetRbacPattern(args as any);
       }
+
+      // --- Phase 5: versioning tools ---
+
+      if (name === 'get_package_versions') {
+        const registry = getRegistry();
+        const packages = (registry as any).packages ?? {};
+        return {
+          content: [{ type: 'text', text: JSON.stringify(packages, null, 2) }],
+        };
+      }
+
+      if (name === 'list_outdated') {
+        const { projectPath } = args as any;
+        if (!projectPath) throw new Error('projectPath is required');
+        const configPath = join(projectPath, 'buildpad.json');
+        if (!existsSync(configPath)) {
+          throw new Error(`buildpad.json not found at: ${configPath}`);
+        }
+        const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+        const registry = getRegistry();
+        const registryPackages: Record<string, { version: string; changelogUrl?: string }> =
+          (registry as any).packages ?? {};
+        const installedVersions: Record<string, string> = config.packageVersions ?? {};
+        const components: Record<string, any> = config.components ?? {};
+        const allComps = getAllComponents() as any[];
+
+        const outdated: object[] = [];
+        for (const [name, comp] of Object.entries(components)) {
+          const sourcePackage: string | undefined = (comp as any).sourcePackage;
+          if (!sourcePackage) continue;
+          const installedVersion = installedVersions[sourcePackage];
+          if (!installedVersion) continue;
+          const pkg = registryPackages[sourcePackage];
+          if (!pkg) continue;
+          const regComp = allComps.find(c => c.name === name);
+          const lastChangedIn: string | undefined = regComp?.lastChangedIn;
+          // Skip if this component hasn't actually changed since installed version
+          if (lastChangedIn && compareSemver(installedVersion, lastChangedIn) >= 0) continue;
+          if (compareSemver(installedVersion, pkg.version) >= 0) continue;
+          outdated.push({
+            name,
+            sourcePackage,
+            installedVersion,
+            latestVersion: pkg.version,
+            lastChangedIn: lastChangedIn ?? null,
+            changelogUrl: pkg.changelogUrl ?? null,
+          });
+        }
+        return {
+          content: [{ type: 'text', text: JSON.stringify(outdated, null, 2) }],
+        };
+      }
+
+      if (name === 'get_component_changelog') {
+        const { target, sinceVersion } = args as any;
+        if (!target) throw new Error('target is required');
+        const registry = getRegistry();
+        const registryPackages: Record<string, { version: string; changelogUrl?: string }> =
+          (registry as any).packages ?? {};
+
+        let changelogUrl: string | undefined;
+        if (registryPackages[target]) {
+          changelogUrl = registryPackages[target].changelogUrl;
+        } else {
+          const comp = (getAllComponents() as any[]).find(c => c.name === target);
+          if (comp?.sourcePackage && registryPackages[comp.sourcePackage]) {
+            changelogUrl = registryPackages[comp.sourcePackage].changelogUrl;
+          }
+        }
+        if (!changelogUrl) {
+          throw new Error(
+            `Cannot find changelog for: ${target}. ` +
+            `Use a package name like "@buildpad/ui-interfaces" or a component name like "input".`
+          );
+        }
+        const content = await fetchChangelogContent(changelogUrl);
+        if (!content) {
+          return {
+            content: [{
+              type: 'text',
+              text: `Changelog unavailable (network error or not yet published) for: ${target}`,
+            }],
+          };
+        }
+        const slice = changelogSince(content, sinceVersion);
+        return {
+          content: [{
+            type: 'text',
+            text: slice || `No changelog entries found${sinceVersion ? ` after version ${sinceVersion}` : ''}.`,
+          }],
+        };
+      }
+
+      if (name === 'get_upgrade_plan') {
+        const { projectPath, components: requestedComponents } = args as any;
+        if (!projectPath) throw new Error('projectPath is required');
+        const configPath = join(projectPath, 'buildpad.json');
+        if (!existsSync(configPath)) {
+          throw new Error(`buildpad.json not found at: ${configPath}`);
+        }
+        const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+        const registry = getRegistry();
+        const registryPackages: Record<string, { version: string; changelogUrl?: string }> =
+          (registry as any).packages ?? {};
+        const installedVersions: Record<string, string> = config.packageVersions ?? {};
+        const components: Record<string, any> = config.components ?? {};
+        const allComps = getAllComponents() as any[];
+        // Honour the consumer's srcDir layout — files live at `<projectPath>/src/<target>`
+        // when srcDir=true, otherwise `<projectPath>/<target>`.
+        const fileRoot = config.srcDir ? join(projectPath, 'src') : projectPath;
+
+        const plan: object[] = [];
+        for (const [compName, comp] of Object.entries(components)) {
+          if (requestedComponents?.length && !(requestedComponents as string[]).includes(compName)) {
+            continue;
+          }
+          const sourcePackage: string | undefined = (comp as any).sourcePackage;
+          if (!sourcePackage) continue;
+          const installedVersion = installedVersions[sourcePackage];
+          if (!installedVersion) continue;
+          const pkg = registryPackages[sourcePackage];
+          if (!pkg) continue;
+          const regComp = allComps.find(c => c.name === compName);
+          const lastChangedIn: string | undefined = regComp?.lastChangedIn;
+
+          const isOutdated =
+            (lastChangedIn ? compareSemver(installedVersion, lastChangedIn) < 0 : true) &&
+            compareSemver(installedVersion, pkg.version) < 0;
+
+          // Per-file modification check (paths honour srcDir)
+          const files: Array<{ target: string; sha256: string }> = (comp as any).files ?? [];
+          const fileStatuses = files.map(f => {
+            const diskPath = join(fileRoot, f.target);
+            if (!existsSync(diskPath)) return { target: f.target, status: 'missing' as const };
+            const diskContent = readFileSync(diskPath, 'utf-8');
+            const diskHash = hashTransformed(diskContent);
+            return {
+              target: f.target,
+              status: (diskHash === f.sha256 ? 'pristine' : 'modified') as 'pristine' | 'modified',
+            };
+          });
+
+          const modifiedLocally = fileStatuses.some(f => f.status === 'modified');
+          const recommendedAction = !isOutdated
+            ? 'up-to-date'
+            : !modifiedLocally
+              ? 'safe-overwrite'
+              : 'prompt-or-three-way';
+
+          plan.push({
+            name: compName,
+            sourcePackage,
+            installedVersion,
+            latestVersion: pkg.version,
+            lastChangedIn: lastChangedIn ?? null,
+            isOutdated,
+            modifiedLocally,
+            recommendedAction,
+            files: fileStatuses,
+          });
+        }
+        return {
+          content: [{ type: 'text', text: JSON.stringify(plan, null, 2) }],
+        };
+      }
+
+      if (name === 'apply_upgrade') {
+        const { projectPath, components: requestedComponents, strategy = 'new-file' } = args as any;
+        if (!projectPath) throw new Error('projectPath is required');
+        const configPath = join(projectPath, 'buildpad.json');
+        if (!existsSync(configPath)) {
+          throw new Error(
+            `buildpad.json not found at: ${configPath}. ` +
+            `Ensure projectPath points to a valid Buildpad consumer project.`
+          );
+        }
+
+        const cliArgs = ['@buildpad/cli', 'upgrade'];
+        if ((requestedComponents as string[] | undefined)?.length) {
+          cliArgs.push(...(requestedComponents as string[]));
+        } else {
+          cliArgs.push('--all');
+        }
+        cliArgs.push('--cwd', projectPath, '--strategy', strategy);
+
+        const result = spawnSync('npx', cliArgs, {
+          cwd: projectPath,
+          encoding: 'utf-8',
+          timeout: 60_000,
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              success: result.status === 0,
+              exitCode: result.status ?? -1,
+              stdout: result.stdout ?? '',
+              stderr: result.stderr ?? '',
+              components: requestedComponents ?? 'all outdated',
+              strategy,
+            }, null, 2),
+          }],
+        };
+      }
+
       throw new Error(`Unknown tool: ${name}`);
   }
 });
