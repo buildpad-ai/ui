@@ -35,6 +35,12 @@ buildpad add <component>      # Add component with all dependencies
 buildpad bootstrap            # Full setup: init + add --all + deps + validate
 buildpad validate             # Check for common installation issues
 buildpad validate --json      # JSON output for CI/CD
+buildpad outdated             # Check for component updates
+buildpad outdated --json      # JSON output for programmatic use
+buildpad upgrade --all        # Upgrade all components (safe per-file checksums)
+buildpad upgrade --three-way  # 3-way merge for customized files
+buildpad changelog <pkg>      # View changelog between installed and latest
+buildpad migrate              # Migrate buildpad.json to v2 schema
 ```
 
 ## 🎯 Quick Navigation
@@ -111,6 +117,8 @@ buildpad validate --json      # JSON output for CI/CD
 | Type check | `pnpm -r typecheck` | [packages/README.md](../packages/README.md#scripts) |
 | Run E2E tests | `pnpm test:e2e` | [TESTING.md](TESTING.md#running-tests) |
 | Run E2E tests (UI) | `pnpm test:e2e:ui` | [TESTING.md](TESTING.md#running-tests) |
+| Run CLI unit tests | `pnpm --filter @buildpad/cli test` | [TESTING.md](TESTING.md#cli-local-testing-guide-pre-commit) |
+| CLI local testing (pre-commit) | See 13-step guide | [TESTING.md](TESTING.md#cli-local-testing-guide-pre-commit) |
 
 ### Distribution Tasks
 
@@ -122,6 +130,10 @@ buildpad validate --json      # JSON output for CI/CD
 | Bootstrap project | `buildpad bootstrap` | [CLI.md](CLI.md#bootstrap-command-recommended-for-ai-agents) |
 | Check status | `buildpad status` | [packages/cli/README.md](../packages/cli/README.md#status) |
 | Validate installation | `buildpad validate` | [packages/cli/README.md](../packages/cli/README.md#validate) |
+| Check for updates | `buildpad outdated` | [packages/cli/README.md](../packages/cli/README.md#outdated) |
+| Upgrade components | `buildpad upgrade --all` | [packages/cli/README.md](../packages/cli/README.md#upgrade) |
+| View changelog | `buildpad changelog <pkg>` | [packages/cli/README.md](../packages/cli/README.md#changelog) |
+| Migrate schema | `buildpad migrate` | [packages/cli/README.md](../packages/cli/README.md#migrate) |
 
 ## 🎨 Component Categories
 
@@ -323,6 +335,19 @@ Buildpad Architecture
 - Check existing documentation first
 
 ## 📝 Changelog
+
+### Version 1.8.0 (May 2026)
+- ✨ Per-file **checksum tracking** — CLI records SHA256 of every copied file in `buildpad.json`
+- ✨ New `upgrade` command — safe upgrades with pristine-file silent overwrite + modified-file prompt
+- ✨ New `changelog` command — view CHANGELOG.md slices between installed and latest versions
+- ✨ New `migrate` command — migrate `buildpad.json` from schema v1 to v2
+- ✨ `--three-way` merge mode — use `diff3` to resolve conflicts on customized files
+- ✨ Registry v2 — auto-generated from `registry.template.json` with per-package semver and checksums
+- ✨ `registry.template.json` — hand-edited registry source; `scripts/build-registry.mjs` generates final JSON
+- ✨ Four component packages (`ui-form`, `ui-table`, `ui-collections`, `utils`) marked `private: true`
+- 🔧 `outdated` command redesigned — per-package comparison, skips byte-identical files, groups by source package
+- 🔧 `transformer.ts` — origin header v2, `stripOriginHeader`, `hashTransformed` helpers for deterministic checksums
+- 🔧 `buildpad.json` schema v2 — `componentVersions` → `components: { [name]: { version, files: [{sha256}] } }`
 
 ### Version 1.7.0 (April 2026)
 - ✨ Field name translations — `FieldMeta.translations` typed as `Array<{language, translation}>` for multi-language display labels

@@ -30,7 +30,7 @@ buildpad-ui/
 │   ├── DISTRIBUTION.md     # Distribution guide
 │   ├── PUBLISHING.md       # npm publishing & release workflow
 │   ├── TESTING.md          # Playwright E2E testing guide
-│   └── WINDOWS.md          # Windows setup
+│   ├── WINDOWS.md          # Windows setup
 ├── apps/                   # Standalone applications
 │   └── storybook-host/     # Next.js auth proxy & Storybook host (Amplify)
 │       ├── app/api/        # DaaS proxy routes (connect, disconnect, status, catch-all)
@@ -40,8 +40,11 @@ buildpad-ui/
 │   ├── auth.setup.ts       # Authentication setup
 │   ├── ui-form/            # VForm component tests
 │   └── ui-table/           # VTable component tests
+├── scripts/               # Build & maintenance scripts
+│   └── build-registry.mjs  # Registry generator (registry.template.json → registry.json)
 └── packages/               # Component library (source of truth)
-    ├── registry.json       # Component registry schema
+    ├── registry.json              # Component registry (auto-generated)
+    ├── registry.template.json     # Registry template (hand-edited source)
     ├── cli/                # CLI tool for developers (@buildpad/cli)
     ├── mcp-server/         # MCP server for AI agents (@buildpad/mcp)
     ├── ui-interfaces/      # Field interface components (Storybook port 6005)
@@ -618,6 +621,15 @@ npx @buildpad/cli@latest add --all
 
 # Bootstrap entire project in one command (recommended for AI agents)
 npx @buildpad/cli@latest bootstrap
+
+# Check for component updates
+npx @buildpad/cli@latest outdated
+
+# Upgrade installed components with safe merge
+npx @buildpad/cli@latest upgrade --all
+
+# View changelogs
+npx @buildpad/cli@latest changelog @buildpad/ui-interfaces
 ```
 
 **What `bootstrap` does:**
@@ -640,6 +652,20 @@ npx @buildpad/cli@latest bootstrap
 
 See [QUICKSTART.md](./QUICKSTART.md) for detailed setup guide.
 
+## 🔄 Versioning & Updates
+
+Buildpad uses a **per-file checksum** system so updates only touch files you haven't customized:
+
+| Command | Description |
+|---------|-------------|
+| `buildpad outdated` | Check which installed components have newer versions |
+| `buildpad upgrade` | Upgrade components — silent overwrite for pristine files, interactive prompt for modified files |
+| `buildpad upgrade --three-way` | 3-way merge (diff3) for conflict resolution on modified files |
+| `buildpad changelog <pkg>` | View changelog slices between installed and latest versions |
+| `buildpad migrate` | Migrate `buildpad.json` from schema v1 to v2 (enables per-file update tracking) |
+
+**How it works:** Each component file copied to your project has an SHA256 checksum recorded in `buildpad.json`. On upgrade, pristine files (disk matches recorded hash) are silently overwritten. Customized files trigger an interactive prompt with skip/overwrite/.new/three-way merge options. Components carry per-package semver (e.g. `@buildpad/ui-interfaces@1.4.2`), so `outdated` only flags files from packages that actually changed. See [docs/PUBLISHING.md](docs/PUBLISHING.md) for the versioning and release workflow.
+
 ## 🔧 Workspace Commands
 
 | Command                      | Description                                      |
@@ -652,6 +678,9 @@ See [QUICKSTART.md](./QUICKSTART.md) for detailed setup guide.
 | `pnpm mcp:dev`               | Run MCP server in watch mode                     |
 | `pnpm cli`                   | Run CLI tool locally                             |
 | `pnpm cli validate`          | Validate Buildpad installation in a project    |
+| `pnpm cli upgrade`           | Upgrade installed components in a test project   |
+| `pnpm cli changelog`         | View changelog for a package                      |
+| `pnpm cli migrate`           | Migrate buildpad.json from v1 to v2 schema        |
 | `pnpm storybook:interfaces`             | Run Storybook for ui-interfaces (port 6005)      |
 | `pnpm storybook:form`        | Run VForm Storybook (port 6006)                  |
 | `pnpm storybook:table`       | Run VTable Storybook (port 6007)                 |
