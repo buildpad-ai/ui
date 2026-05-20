@@ -1,4 +1,5 @@
 import { Layout, Navbar } from "nextra-theme-docs";
+import Script from 'next/script';
 import { Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import "nextra-theme-docs/style-prefixed.css";
@@ -15,6 +16,13 @@ export const metadata = {
   },
 };
 
+const baseUrl =
+    process.env.NODE_ENV === "production"
+        ? "https://main.d39rgal2lwiqqo.amplifyapp.com"
+        : "http://localhost:3000";
+
+const widgetApiKey = "30a073d4dc67d8b35b26277d31705fb32928cb1b635191fdda5597e804d9ba15";
+
 export default async function RootLayout({
   children,
 }: {
@@ -25,6 +33,8 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <Head />
       <body>
+        <Script src={`${baseUrl}/api/widget/v1/widget.js`} data-api-key={widgetApiKey} strategy="beforeInteractive"></Script>
+        
         <Layout
           navbar={
             <Navbar
