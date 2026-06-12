@@ -27,6 +27,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Full history + tags: build-registry.mjs derives lastChangedIn from git tags
+      - run: git fetch --tags --unshallow || git fetch --tags
+
+      - name: Registry in sync with sources
+        run: pnpm registry:check
+
       - name: Build all packages
         run: pnpm build
 

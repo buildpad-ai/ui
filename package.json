@@ -4,7 +4,7 @@
   "private": true,
   "description": "Shared components between Next.js projects",
   "scripts": {
-    "build": "pnpm build:registry && pnpm --filter @buildpad/ui-form build && pnpm -r --filter '!@buildpad/ui-form' build",
+    "build": "pnpm build:registry && pnpm --filter @buildpad/utils build && pnpm --filter @buildpad/ui-form build && pnpm -r --filter '!@buildpad/utils' --filter '!@buildpad/ui-form' build",
     "build:cli": "pnpm --filter @buildpad/cli build",
     "build:registry": "node scripts/build-registry.mjs",
     "registry:check": "node scripts/build-registry.mjs --check",

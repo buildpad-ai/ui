@@ -68,3 +68,7 @@ storybook-static/
 # docs build artifacts copied into storybook-host at build time
 /apps/storybook-host/public/docs/
 .vscode
+
+# local code-intelligence index
+.codegraph/
+
