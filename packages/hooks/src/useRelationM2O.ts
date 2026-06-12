@@ -335,11 +335,26 @@ export function useRelationM2OItem(
         if (fields.length > 0) {
           queryParams.set("fields", fields.join(","));
         }
-        const qs = queryParams.toString();
-        const path = `/api/items/${col}/${primaryKey}${qs ? `?${qs}` : ""}`;
-
-        const response = await apiRequest<{ data: M2OItem }>(path);
-        const fetched = (response.data ?? null) as M2OItem | null;
+        let fetched: M2OItem | null;
+        if (pkField === "id") {
+          const qs = queryParams.toString();
+          const path = `/api/items/${col}/${primaryKey}${qs ? `?${qs}` : ""}`;
+          const response = await apiRequest<{ data: M2OItem }>(path);
+          fetched = (response.data ?? null) as M2OItem | null;
+        } else {
+          // The relation targets a non-id column (e.g. daas_scope_items.uri_path).
+          // The by-id path route can't resolve those values — and they may contain
+          // path-breaking characters like "/" — so look the item up via a filter.
+          queryParams.set(
+            "filter",
+            JSON.stringify({ [pkField]: { _eq: primaryKey } }),
+          );
+          queryParams.set("limit", "1");
+          const response = await apiRequest<{ data: M2OItem[] }>(
+            `/api/items/${col}?${queryParams.toString()}`,
+          );
+          fetched = (response.data?.[0] ?? null) as M2OItem | null;
+        }
 
         // Merge inline edits on top of fetched data
         if (fetched && inlineData) {

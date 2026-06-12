@@ -13,6 +13,7 @@
  */
 
 import { Command } from 'commander';
+import { createRequire } from 'module';
 import { init } from './commands/init.js';
 import { add } from './commands/add.js';
 import { list } from './commands/list.js';
@@ -27,12 +28,16 @@ import { upgrade } from './commands/upgrade.js';
 import { changelog } from './commands/changelog.js';
 import { migrate } from './commands/migrate.js';
 
+// Read the version from package.json so it never drifts from the published version
+const require = createRequire(import.meta.url);
+const { version: cliVersion } = require('../package.json') as { version: string };
+
 const program = new Command();
 
 program
   .name('buildpad')
   .description('Copy & Own CLI - Add Buildpad components to your project')
-  .version('1.0.0');
+  .version(cliVersion);
 
 program
   .command('init')

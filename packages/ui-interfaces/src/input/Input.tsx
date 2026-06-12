@@ -224,7 +224,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
     <TextInput
       {...commonProps}
       ref={ref}
-      value={typeof value === 'string' ? value : ''}
+      value={value == null ? '' : String(value)}
       onChange={(e) => handleChange(e.currentTarget.value)}
       leftSection={iconLeft}
       rightSection={iconRight || clearButton}

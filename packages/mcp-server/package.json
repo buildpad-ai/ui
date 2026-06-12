@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/mcp",
-  "version": "0.2.0",
+  "version": "1.1.0",
   "description": "Model Context Protocol server for Buildpad components - enables AI agents to discover and use Buildpad packages",
   "type": "module",
   "main": "dist/index.js",
