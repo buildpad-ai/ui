@@ -2,10 +2,21 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [],
-  "linked": [
-    ["@buildpad/cli", "@buildpad/mcp"]
+  "fixed": [
+    [
+      "@buildpad/cli",
+      "@buildpad/mcp",
+      "@buildpad/hooks",
+      "@buildpad/services",
+      "@buildpad/types",
+      "@buildpad/ui-collections",
+      "@buildpad/ui-form",
+      "@buildpad/ui-interfaces",
+      "@buildpad/ui-table",
+      "@buildpad/utils"
+    ]
   ],
+  "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",

@@ -271,7 +271,10 @@ function Example() {
 const server = new Server(
   {
     name: 'buildpad-mcp-server',
-    version: '1.0.0',
+    // Read the version from package.json so it never drifts from the published version
+    version: (JSON.parse(
+      readFileSync(join(__dirname, '..', 'package.json'), 'utf8'),
+    ) as { version: string }).version,
   },
   {
     capabilities: {
