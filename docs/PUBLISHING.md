@@ -307,12 +307,13 @@ The generator (`scripts/build-registry.mjs`):
 
 **Why SHA256 on untransformed source:** The CLI transforms imports based on each consumer's alias config. By hashing the raw source in the registry and letting the CLI hash the transformed local file, we avoid per-consumer hash drift while still detecting local modifications.
 
-The root `package.json` wires this into the build:
+The root `package.json` wires this into the build (`ui-form` builds first — other packages need its `.d.ts`):
 ```json
 {
   "scripts": {
     "build:registry": "node scripts/build-registry.mjs",
-    "build": "pnpm build:registry && pnpm -r build"
+    "registry:check": "node scripts/build-registry.mjs --check",
+    "build": "pnpm build:registry && pnpm --filter @buildpad/ui-form build && pnpm -r --filter '!@buildpad/ui-form' build"
   }
 }
 ```
@@ -354,17 +355,21 @@ When running from the monorepo checkout (`pnpm cli add input`), the CLI detects 
 
 Private source packages are **never published** — consumer apps get their source files copied via the CLI (Copy & Own model). However, they still carry semantic versions and `CHANGELOG.md` entries so the CLI can tell consumers exactly what changed.
 
-### Per-package semver
+### Lockstep semver (since 1.1.0)
 
-Each package carries its own semver. Components inherit the version of their source package:
+All 10 `@buildpad/*` packages release **in lockstep** — same version, every release — via a single `fixed` group in `.changeset/config.json`. Components inherit the version of their source package:
 
 ```
-@buildpad/ui-interfaces@1.4.2   ←  input, select-dropdown, datetime, …
-@buildpad/ui-form@0.9.1         ←  vform
-@buildpad/hooks@1.2.0           ←  useAuth, usePermissions, …
+@buildpad/ui-interfaces@1.1.0   ←  input, select-dropdown, datetime, …
+@buildpad/ui-form@1.1.0         ←  vform
+@buildpad/hooks@1.1.0           ←  useAuth, usePermissions, …
 ```
 
-This means `buildpad outdated` only flags components whose source package version actually increased — not every component on every registry bump.
+Lockstep does **not** make `buildpad outdated` noisy: each component's `lastChangedIn` is derived from git tags by `scripts/build-registry.mjs`, so components whose files didn't change keep their older `lastChangedIn` and consumers stay "up to date".
+
+> **⚠️ Version floor: never release below `1.1.0`.** Consumer `buildpad.json` manifests written before per-package versioning recorded every component at `1.0.0`, and the CLI's outdated check is `semverGte(installed, lastChangedIn)`. The `0.1.x`–`0.2.0` series was therefore invisible to all existing consumers — upgrades silently never triggered. Versions must only move forward from `1.1.0`.
+
+Also bump the top-level `"version"` in `packages/registry.template.json` to the release version — v1 manifests compare against it directly, and `changeset version` does not touch it.
 
 ### Changesets configuration
 
@@ -378,15 +383,15 @@ The `.changeset/config.json` is configured with `privatePackages` so Changesets 
 
 This requires `@changesets/cli >= 2.27.10`.
 
-### Linked publishables
+### Fixed lockstep group
 
-The CLI and MCP server are **linked** in changeset config — they always publish together at the same version. Private packages version independently.
+All 10 packages (publishable **and** private) are in one `fixed` group in changeset config — `pnpm changeset version` bumps them together to the same version. Do not remove packages from that group.
 
 | Change | Bump | Example |
 |--------|------|---------|
-| Bug fix | `patch` | 0.1.0 → 0.1.1 |
-| New component / feature | `minor` | 0.1.0 → 0.2.0 |
-| Breaking CLI change | `major` | 0.2.0 → 1.0.0 |
+| Bug fix | `patch` | 1.1.0 → 1.1.1 |
+| New component / feature | `minor` | 1.1.0 → 1.2.0 |
+| Breaking CLI / component API change | `major` | 1.2.0 → 2.0.0 |
 
 ---
 
