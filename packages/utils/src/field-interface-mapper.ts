@@ -122,7 +122,9 @@ function getExplicitInterface(
       return {
         type: "input",
         props: {
-          type: "string",
+          // No hardcoded `type` here — FormFieldInterface passes `type: field.type`
+          // so numeric fields (integer/decimal/...) render as NumberInput.
+          // Field options may still override `type` via the spread below.
           ...options,
         },
       };

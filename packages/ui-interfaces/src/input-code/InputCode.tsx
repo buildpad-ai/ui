@@ -4,11 +4,27 @@ import React, { forwardRef, useRef, useState, useMemo } from 'react';
 import { Box, Text, Paper, Tooltip, Button } from '@mantine/core';
 import { IconPlaylistAdd } from '@tabler/icons-react';
 
+/**
+ * Normalizes an incoming value to a string suitable for the code editor.
+ * - null/undefined → empty string
+ * - string → as-is
+ * - object/array → pretty-printed JSON
+ * - other primitives (number, boolean) → String(v)
+ */
+function toEditorString(v: unknown): string {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') return JSON.stringify(v, null, 2);
+  return String(v);
+}
+
 export interface InputCodeProps extends Omit<React.ComponentPropsWithRef<'textarea'>, 'onChange' | 'value'> {
   /** Current value of the code input */
-  value?: string | null;
+  value?: unknown;
   /** Callback when value changes */
-  onChange?: (value: string | null) => void;
+  onChange?: (value: unknown) => void;
+  /** Field type from FormFieldInterface (e.g. "json", "csv", "string", "text") */
+  type?: string;
   /** Field label */
   label?: string;
   /** Whether the field is disabled */
@@ -62,6 +78,7 @@ export interface InputCodeProps extends Omit<React.ComponentPropsWithRef<'textar
 export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
   value,
   onChange,
+  type,
   label,
   disabled = false,
   required = false,
@@ -75,11 +92,11 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
   ...props
 }, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [internalValue, setInternalValue] = useState(value || '');
+  const [internalValue, setInternalValue] = useState(toEditorString(value));
 
   // Sync internal state when value prop changes externally
   React.useEffect(() => {
-    setInternalValue(value || '');
+    setInternalValue(toEditorString(value));
   }, [value]);
 
   // Map language prop to internal language
@@ -97,7 +114,20 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = event.target.value;
     setInternalValue(newValue);
-    onChange?.(newValue || null);
+
+    // For structured fields (json/csv type or json language), attempt to parse
+    // so the stored type is preserved on save. Invalid JSON mid-edit emits the
+    // raw string. Plain string/text fields keep emitting strings.
+    const isStructuredField = type === 'json' || type === 'csv' || language === 'json';
+    if (isStructuredField) {
+      try {
+        onChange?.(JSON.parse(newValue));
+      } catch {
+        onChange?.(newValue || null);
+      }
+    } else {
+      onChange?.(newValue || null);
+    }
   };
 
   const fillTemplate = () => {

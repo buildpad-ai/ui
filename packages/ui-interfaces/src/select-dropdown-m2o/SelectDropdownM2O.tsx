@@ -188,6 +188,11 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   // Combined loading state
   const loading = relationLoading || itemLoading;
 
+  // The column on the related collection that this relation references.
+  // Usually "id", but can be a unique non-PK column (e.g. a uri_path) —
+  // selection must emit/compare this value, not item.id.
+  const relationKeyField = relationInfo?.relatedPrimaryKeyField.field ?? "id";
+
   // Load selected item when value changes
   useEffect(() => {
     if (relationInfo && value) {
@@ -429,9 +434,9 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                 ) : (
                   availableItems.map((item) => (
                     <Combobox.Option
-                      key={String(item.id)}
-                      value={String(item.id)}
-                      active={value === item.id}
+                      key={String(item[relationKeyField])}
+                      value={String(item[relationKeyField])}
+                      active={value === item[relationKeyField]}
                     >
                       <Group gap="xs" wrap="nowrap">
                         <IconLink size={14} />
@@ -661,16 +666,16 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                     ) : (
                       availableItems.map((item) => (
                         <Table.Tr
-                          key={String(item.id)}
+                          key={String(item[relationKeyField])}
                           style={{
                             cursor: "pointer",
                             backgroundColor:
-                              value === item.id
+                              value === item[relationKeyField]
                                 ? "var(--mantine-primary-color-light)"
                                 : undefined,
                           }}
                           onClick={() => {
-                            handleSelect(item.id as string | number);
+                            handleSelect(item[relationKeyField] as string | number);
                             closeSelectModal();
                           }}
                         >
@@ -682,14 +687,14 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                           <Table.Td>
                             <Button
                               size="xs"
-                              variant={value === item.id ? "filled" : "light"}
+                              variant={value === item[relationKeyField] ? "filled" : "light"}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSelect(item.id as string | number);
+                                handleSelect(item[relationKeyField] as string | number);
                                 closeSelectModal();
                               }}
                             >
-                              {value === item.id ? "Selected" : "Select"}
+                              {value === item[relationKeyField] ? "Selected" : "Select"}
                             </Button>
                           </Table.Td>
                         </Table.Tr>
