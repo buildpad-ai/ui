@@ -1,26 +1,26 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
-  --bg: #f7f5ef;
-  --bg-alt: #efe7d8;
+  --bg: #f8fafc;
+  --bg-alt: #f1f5f9;
   --surface: #ffffff;
-  --surface-alt: #f7f1e6;
-  --border: #d9cfbe;
-  --text: #191612;
-  --text-muted: #6f6558;
-  --primary: #e35b2a;
-  --primary-strong: #c2451a;
-  --accent: #1e3a8a;
-  --green: #1b7a3f;
-  --green-bg: #dff3e6;
-  --red: #b4232a;
-  --red-bg: #fdecea;
-  --yellow: #a46b00;
-  --yellow-bg: #fff1c2;
-  --radius: 12px;
-  --radius-lg: 20px;
-  --font: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Fraunces", "Times New Roman", serif;
+  --surface-alt: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --primary: #ea580c;
+  --primary-strong: #c2410c;
+  --accent: #2563eb;
+  --green: #16a34a;
+  --green-bg: #dcfce7;
+  --red: #dc2626;
+  --red-bg: #fee2e2;
+  --yellow: #d97706;
+  --yellow-bg: #fef3c7;
+  --radius: 0.5rem;
+  --radius-lg: 0.75rem;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", "SF Mono", SFMono-Regular, Consolas, monospace;
 }
 
@@ -32,9 +32,9 @@
 
 body {
   font-family: var(--font);
-  background: radial-gradient(circle at top left, #fff7e8, transparent 55%),
-    radial-gradient(circle at 20% 10%, #fde7c7, transparent 45%),
-    linear-gradient(180deg, var(--bg) 0%, #f9f7f0 60%, #f4efe4 100%);
+  background: radial-gradient(circle at top left, #fff7ed, transparent 55%),
+    radial-gradient(circle at 20% 10%, #ffedd5, transparent 45%),
+    linear-gradient(180deg, var(--bg) 0%, #ffffff 60%, #f1f5f9 100%);
   color: var(--text);
   line-height: 1.6;
 }
@@ -115,7 +115,7 @@ a {
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   border: 1px solid var(--border);
-  box-shadow: 0 20px 40px rgba(25, 22, 18, 0.08);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 .code-title {
@@ -129,8 +129,8 @@ a {
 
 .code-card pre {
   font-family: var(--mono);
-  background: #1e1b16;
-  color: #f4f0e7;
+  background: #0f172a;
+  color: #e2e8f0;
   padding: 1rem 1.2rem;
   border-radius: 12px;
   font-size: 0.85rem;
@@ -179,7 +179,7 @@ a {
   border-radius: var(--radius);
   padding: 1.25rem 1.35rem;
   border: 1px solid var(--border);
-  box-shadow: 0 12px 28px rgba(25, 22, 18, 0.05);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
 .feature-card h2 {
@@ -198,7 +198,7 @@ a {
   border-radius: var(--radius);
   padding: 1.75rem;
   margin-bottom: 1.75rem;
-  box-shadow: 0 12px 28px rgba(25, 22, 18, 0.05);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }
 
 .card-header {
@@ -269,7 +269,7 @@ a {
 .form-group input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(227, 91, 42, 0.18);
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.25);
 }
 
 .form-group small {
@@ -302,7 +302,7 @@ a {
 .btn-primary {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 10px 20px rgba(227, 91, 42, 0.25);
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -358,19 +358,19 @@ a {
 .alert-error {
   background: var(--red-bg);
   color: var(--red);
-  border: 1px solid rgba(180, 35, 42, 0.2);
+  border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
 .alert-info {
-  background: #f2f6ff;
+  background: #eff6ff;
   color: var(--accent);
-  border: 1px solid rgba(30, 58, 138, 0.2);
+  border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 .alert-warning {
   background: var(--yellow-bg);
   color: var(--yellow);
-  border: 1px solid rgba(164, 107, 0, 0.2);
+  border: 1px solid rgba(217, 119, 6, 0.2);
 }
 
 .alert-mt {
@@ -427,7 +427,7 @@ a {
 
 .storybook-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 12px 24px rgba(227, 91, 42, 0.15);
+  box-shadow: 0 12px 24px rgba(234, 88, 12, 0.15);
   transform: translateY(-2px);
 }
 
@@ -452,7 +452,7 @@ a {
 .dev-note {
   margin-top: 1rem;
   padding: 0.9rem 1rem;
-  background: #f6f1e7;
+  background: #f1f5f9;
   border-radius: 12px;
   font-size: 0.85rem;
   border: 1px solid var(--border);
@@ -463,8 +463,8 @@ a {
   font-size: 0.8rem;
   margin-top: 0.5rem;
   padding: 0.6rem;
-  background: #191612;
-  color: #f4f0e7;
+  background: #0f172a;
+  color: #e2e8f0;
   border-radius: 8px;
   overflow-x: auto;
 }

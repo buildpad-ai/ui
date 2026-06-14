@@ -1,8 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 /* ═══════════════════════════════════════════════════════════
    Buildpad Storybook Preview — shared across all packages
-   Warm, earthy palette from storybook-host.
+   Modern neutral palette (Tailwind slate + orange accent).
    Import in each .storybook/preview.css.
    ═══════════════════════════════════════════════════════════ */
 
@@ -15,42 +15,46 @@
 .sb-enterprise-wrapper {
   padding: 1.5rem 2rem;
   margin: 0 auto;
-  font-family: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
-  color: #191612;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  color: #0f172a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Raise muted text to WCAG AA on white (7.4:1) and on the lightest
-     striped row (#f7f5ef = gray[0]) at 6.7:1. Reuses the gray[6] stop
+  /* Raise muted text to WCAG AA on white and on the lightest striped
+     row (#f8fafc = gray[0]). Reuses the gray[6] stop (slate-600)
      already defined in storybook-enterprise-theme.ts. */
   --mantine-color-dimmed: var(--mantine-color-gray-6);
 
+  /* Mantine derives default-border from gray-4 (slate-400 here) — repoint
+     to slate-200, the card/divider border convention. */
+  --mantine-color-default-border: #e2e8f0;
+
   /* Mantine resolves `variant="light"` text to `--mantine-color-{name}-light-color`,
-     which by default points at stop [5] of each custom palette. For our warm/earthy
-     stops (e.g. warning[5]=#a46b00, primary[5]=#e35b2a) that fails WCAG AA on the
-     matching [0]/[1] tint backgrounds. Promote these to stop [7] so Alert titles,
+     which by default points at a light stop of each custom palette. Tailwind's
+     600 stops on the matching 50/100 tint backgrounds sit around 3.5:1 — below
+     WCAG AA for small text. Promote these to stop [7] (the 700s) so Alert titles,
      Button labels, and Badge text on tinted bg pass contrast. Filled variants and
      brand backgrounds are unaffected. */
-  --mantine-color-primary-light-color: #9a3412; /* primary[7] */
-  --mantine-color-warning-light-color: #78350f; /* warning[7] */
-  --mantine-color-success-light-color: #166534; /* success[7] */
-  --mantine-color-info-light-color: #075985;    /* info[7] */
-  --mantine-color-danger-light-color: #7f1d1d;  /* danger[7] */
+  --mantine-color-primary-light-color: #c2410c; /* primary[7] */
+  --mantine-color-warning-light-color: #b45309; /* warning[7] */
+  --mantine-color-success-light-color: #15803d; /* success[7] */
+  --mantine-color-info-light-color: #0369a1;    /* info[7] */
+  --mantine-color-danger-light-color: #b91c1c;  /* danger[7] */
   --mantine-color-accent-light-color: #1d4ed8;  /* accent[7] */
 }
 
 /* ── Focus Ring ───────────────────────────────────────────── */
 .sb-enterprise-wrapper :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(227, 91, 42, 0.18);
-  border-radius: 4px;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.25);
+  border-radius: 0.25rem;
 }
 
 /* ── Input Focus ──────────────────────────────────────────── */
 .sb-enterprise-wrapper .mantine-Input-input:focus,
 .sb-enterprise-wrapper .mantine-Input-input:focus-within {
-  border-color: #e35b2a;
-  box-shadow: 0 0 0 3px rgba(227, 91, 42, 0.18);
+  border-color: #ea580c;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.25);
 }
 
 /* ── Tabs ─────────────────────────────────────────────────── */
@@ -59,14 +63,14 @@
 }
 
 .sb-enterprise-wrapper .mantine-Tabs-tab:hover {
-  background-color: #f7f1e6;
-  color: #191612;
+  background-color: #f1f5f9;
+  color: #0f172a;
 }
 
 .sb-enterprise-wrapper .mantine-Tabs-tab[data-active],
 .sb-enterprise-wrapper .mantine-Tabs-tab[data-active]:hover {
-  color: #e35b2a;
-  border-bottom-color: #e35b2a;
+  color: #ea580c;
+  border-bottom-color: #ea580c;
   font-weight: 600;
 }
 
@@ -76,23 +80,18 @@
 }
 
 .sb-enterprise-wrapper .mantine-ActionIcon-root:hover {
-  background-color: #f7f1e6;
-}
-
-/* ── Button Hover Lift ────────────────────────────────────── */
-.sb-enterprise-wrapper .mantine-Button-root:hover {
-  transform: translateY(-1px);
+  background-color: #f1f5f9;
 }
 
 /* ── Cards ────────────────────────────────────────────────── */
 .sb-enterprise-wrapper .mantine-Card-root {
-  border: 1px solid #d9cfbe;
-  box-shadow: 0 12px 28px rgba(25, 22, 18, 0.05);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
 /* ── Notification Accents ─────────────────────────────────── */
 .sb-enterprise-wrapper .mantine-Notification-root[data-variant="success"] {
-  border-left-color: #059669;
+  border-left-color: #16a34a;
 }
 
 .sb-enterprise-wrapper .mantine-Notification-root[data-variant="error"] {

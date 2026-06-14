@@ -1943,7 +1943,7 @@ var CollectionList = ({
     }
     return `${from}\u2013${to} of ${filterCount} items`;
   }, [loading, totalCount, filterCount, page, limit, isFiltered]);
-  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Stack, { gap: 0, "data-testid": "collection-list", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Stack, { gap: 0, className: "collection-list", "data-testid": "collection-list", children: [
     /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
       CollectionListToolbar,
       {
@@ -2336,7 +2336,7 @@ var ContentNavigation = ({
       {
         p: "xs",
         style: {
-          borderTop: "1px solid var(--mantine-color-gray-3)",
+          borderTop: "1px solid var(--mantine-color-default-border)",
           position: "sticky",
           bottom: 0
         },
@@ -2411,8 +2411,8 @@ var ContentLayout = ({
               py: "sm",
               px: "md",
               style: {
-                borderBottom: "1px solid var(--mantine-color-gray-3)",
-                boxShadow: showHeaderShadow ? "var(--ds-shadow-md, 0 4px 6px -1px rgba(25, 22, 18, 0.07))" : void 0,
+                borderBottom: "1px solid var(--mantine-color-default-border)",
+                boxShadow: showHeaderShadow ? "var(--ds-shadow-md, 0 4px 6px -1px rgb(0 0 0 / 0.1))" : void 0,
                 transition: "box-shadow 150ms ease",
                 position: "sticky",
                 top: 0,

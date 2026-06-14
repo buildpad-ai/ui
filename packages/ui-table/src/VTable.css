@@ -14,6 +14,14 @@
   position: relative;
   height: auto;
   overflow-y: auto;
+  background: var(--mantine-color-body);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: var(--mantine-shadow-xs, 0 1px 2px 0 rgb(0 0 0 / 0.05));
+}
+
+.v-table table .table-row:last-of-type .cell {
+  border-bottom: none;
 }
 
 .v-table table {
@@ -136,15 +144,10 @@
   color: var(--mantine-color-dimmed);
 }
 
-/* Inline style (bordered) */
+/* Inline style — kept for backwards compatibility; the default table is
+   now bordered, so this only switches the rounded clip to a hard one. */
 .v-table.inline {
-  border: 1px solid var(--mantine-color-default-border);
-  border-radius: var(--mantine-radius-md);
   overflow: hidden;
-}
-
-.v-table.inline table .table-row:last-of-type .cell {
-  border-bottom: none;
 }
 
 /* Disabled state */

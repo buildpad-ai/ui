@@ -474,7 +474,7 @@ export const ContentNavigation: React.FC<ContentNavigationProps> = ({
         <Box
           p="xs"
           style={{
-            borderTop: '1px solid var(--mantine-color-gray-3)',
+            borderTop: '1px solid var(--mantine-color-default-border)',
             position: 'sticky',
             bottom: 0,
           }}

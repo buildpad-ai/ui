@@ -59,15 +59,15 @@
 .story-form-container {
   max-width: 400px;
   padding: 2rem;
-  border: 1px solid var(--mantine-color-gray-3, #d9cfbe);
+  border: 1px solid var(--mantine-color-gray-2, #e2e8f0);
   border-radius: 8px;
-  background-color: var(--mantine-color-gray-0, #f7f5ef);
+  background-color: var(--mantine-color-gray-0, #f8fafc);
 }
 
 .story-form-container-lg {
   max-width: 500px;
   padding: 2rem;
-  border: 1px solid var(--mantine-color-gray-3, #d9cfbe);
+  border: 1px solid var(--mantine-color-gray-2, #e2e8f0);
 /* Form heading */
 .story-form-heading {
   margin-top: 0;
@@ -103,6 +103,6 @@
 /* Comparison description text */
 .story-description {
   font-size: 14px;
-  color: var(--mantine-color-gray-6, #6f6558);
+  color: var(--mantine-color-gray-6, #475569);
   margin-bottom: 1.5rem;
 }

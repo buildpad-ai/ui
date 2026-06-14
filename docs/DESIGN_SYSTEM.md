@@ -1,6 +1,6 @@
 # Design System Architecture
 
-This workspace ships an enterprise-grade, token-based design system built for professional applications. The palette uses a warm, earthy aesthetic—burnt orange primary, cream-tinted warm grays, and refined typography—designed to feel approachable yet authoritative.
+This workspace ships an enterprise-grade, token-based design system built for professional applications. The palette is built on the Tailwind reference scales—an orange accent on slate neutrals with crisp white surfaces and Inter typography—for a modern, polished look.
 
 ## Overview
 
@@ -23,36 +23,37 @@ components/ColorSchemeToggle.tsx  # Optional light/dark toggle
 
 | Role        | Light Mode | Dark Mode  | Notes                        |
 |-------------|-----------|------------|------------------------------|
-| **Primary** | `#e35b2a` | `#fb923c`  | Burnt orange                 |
-| **Accent**  | `#1e3a8a` | `#60a5fa`  | Deep blue accent             |
-| **Success** | `#1b7a3f` | `#34d399`  | Forest green                 |
-| **Info**    | `#0ea5e9` | `#38bdf8`  | Sky blue                     |
-| **Warning** | `#a46b00` | `#fbbf24`  | Professional amber           |
-| **Danger**  | `#b4232a` | `#f87171`  | Clean red                    |
-| **Gray**    | Warm cream | Warm (inverted) | Cream-tinted warm grays |
+| **Primary** | `#ea580c` | `#fb923c`  | Orange (Tailwind orange-600) |
+| **Accent**  | `#2563eb` | `#60a5fa`  | Blue (Tailwind blue-600)     |
+| **Success** | `#16a34a` | `#4ade80`  | Green                        |
+| **Info**    | `#0284c7` | `#38bdf8`  | Sky                          |
+| **Warning** | `#d97706` | `#fbbf24`  | Amber                        |
+| **Danger**  | `#dc2626` | `#f87171`  | Red                          |
+| **Gray**    | Slate     | Slate (inverted) | Tailwind slate neutrals |
 
-### Gray Scale (Warm)
+### Gray Scale (Slate)
 
 | Token          | Light       | Dark (inverted) |
 |----------------|-------------|-----------------|
-| `--ds-gray-100`| `#f7f5ef`   | `#191612`       |
-| `--ds-gray-200`| `#f7f1e6`   | `#252118`       |
-| `--ds-gray-300`| `#efe7d8`   | `#3a342c`       |
-| `--ds-gray-400`| `#d9cfbe`   | `#524a3f`       |
-| `--ds-gray-500`| `#6f6558`   | `#a59e90`       |
-| `--ds-gray-900`| `#191612`   | `#f7f5ef`       |
+| `--ds-gray-50` | `#f8fafc`   | `#020617`       |
+| `--ds-gray-100`| `#f1f5f9`   | `#0f172a`       |
+| `--ds-gray-200`| `#e2e8f0`   | `#1e293b`       |
+| `--ds-gray-300`| `#cbd5e1`   | `#334155`       |
+| `--ds-gray-400`| `#94a3b8`   | `#475569`       |
+| `--ds-gray-500`| `#64748b`   | `#94a3b8`       |
+| `--ds-gray-900`| `#0f172a`   | `#f8fafc`       |
 
 ## Typography
 
 | Role       | Font Family     | Usage                    |
 |------------|-----------------|--------------------------|
-| **Body**   | Space Grotesk   | All body text, UI labels |
-| **Display**| Fraunces        | Headings, hero text      |
+| **Body**   | Inter           | All body text, UI labels |
+| **Display**| Inter           | Headings, hero text      |
 | **Code**   | JetBrains Mono  | Monospace, code blocks   |
 
 ```css
---ds-font-family: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
---ds-font-display: "Fraunces", "Times New Roman", serif;
+--ds-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+--ds-font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 --ds-font-mono: "JetBrains Mono", "SF Mono", SFMono-Regular, Consolas, monospace;
 ```
 
@@ -62,14 +63,14 @@ Tokens are defined with the `--ds-` prefix and use CSS custom properties so them
 
 ```css
 :root {
-  --ds-primary: #e35b2a;
-  --ds-gray-500: #6f6558;
+  --ds-primary: #ea580c;
+  --ds-gray-500: #64748b;
   --ds-spacing-4: 1rem;
-  --ds-radius: 8px;
-  --ds-shadow-sm: 0 1px 2px 0 rgba(25, 22, 18, 0.04);
-  --ds-focus-ring: 0 0 0 3px rgba(227, 91, 42, 0.18);
+  --ds-radius: 0.375rem;
+  --ds-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --ds-focus-ring: 0 0 0 3px rgba(234, 88, 12, 0.25);
   --ds-transition-fast: 150ms ease;
-  --ds-body-bg: #f7f5ef;
+  --ds-body-bg: #ffffff;
 }
 ```
 
@@ -82,7 +83,7 @@ import { createTheme } from "@mantine/core";
 
 export const theme = createTheme({
   primaryColor: "primary",
-  primaryShade: { light: 4, dark: 3 },
+  primaryShade: 6,
   fontFamily: "var(--ds-font-family)",
   headings: { fontFamily: "var(--ds-font-display)" },
   spacing: {
@@ -108,13 +109,13 @@ This ensures components adapt automatically when the primary color or fonts chan
 
 ## Dark Mode
 
-Dark mode is handled with the `[data-mantine-color-scheme="dark"]` selector in `design-tokens.css`. Mantine uses `ColorSchemeScript` and `defaultColorScheme="auto"` in the root layout. In dark mode the primary shifts to a lighter orange (`#fb923c`) and grays invert from dark-to-light.
+Dark mode is handled with the `[data-mantine-color-scheme="dark"]` selector in `design-tokens.css`. Mantine uses `ColorSchemeScript` and `defaultColorScheme="auto"` in the root layout. In dark mode every hue's numbered scale is mirrored (50↔950, 100↔900, …), the primary shifts to a lighter orange (`#fb923c`), and surfaces move to slate-950/900.
 
 ## Storybook Enterprise Theme
 
 All package Storybooks share a consistent enterprise look via three shared files at the `packages/` root:
 
-- `storybook-enterprise-theme.ts` — Mantine theme for the canvas (preview), with hardcoded warm palette values (no CSS variables, since Storybook renders in isolation)
+- `storybook-enterprise-theme.ts` — Mantine theme for the canvas (preview), with hardcoded Tailwind palette values (no CSS variables, since Storybook renders in isolation)
 - `storybook-enterprise-manager.ts` — Storybook UI chrome theme (sidebar, toolbar)
 - `storybook-enterprise-preview.css` — Shared CSS for preview wrappers
 

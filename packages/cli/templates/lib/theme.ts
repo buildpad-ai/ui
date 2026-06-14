@@ -2,100 +2,108 @@
 
 import { createTheme } from "@mantine/core";
 
+/*
+ * Palette arrays map Mantine indices 0–9 to the Tailwind 50–900 stops of
+ * each hue (the 950 stop is intentionally dropped). primaryShade is a
+ * single number (6) because design-tokens.css mirrors the --ds-* variables
+ * themselves in dark mode — index 6 resolves to the 400 stop there, so a
+ * per-scheme shade would double-invert. Keep primaryShade and that
+ * mirroring in sync.
+ */
 export const theme = createTheme({
   colors: {
     primary: [
-      "var(--ds-primary-100, #fff7ed)",
-      "var(--ds-primary-200, #ffedd5)",
-      "var(--ds-primary-300, #fed7aa)",
-      "var(--ds-primary-400, #fdba74)",
-      "var(--ds-primary, #fb923c)",
-      "var(--ds-primary, #e35b2a)",
-      "var(--ds-primary-600, #c2451a)",
-      "var(--ds-primary-700, #9a3412)",
-      "var(--ds-primary-800, #7c2d12)",
-      "var(--ds-primary-900, #431407)"
+      "var(--ds-primary-50, #fff7ed)",
+      "var(--ds-primary-100, #ffedd5)",
+      "var(--ds-primary-200, #fed7aa)",
+      "var(--ds-primary-300, #fdba74)",
+      "var(--ds-primary-400, #fb923c)",
+      "var(--ds-primary-500, #f97316)",
+      "var(--ds-primary, #ea580c)",
+      "var(--ds-primary-700, #c2410c)",
+      "var(--ds-primary-800, #9a3412)",
+      "var(--ds-primary-900, #7c2d12)"
     ],
     accent: [
-      "var(--ds-accent-100, #eff6ff)",
-      "var(--ds-accent-200, #dbeafe)",
-      "var(--ds-accent-300, #bfdbfe)",
-      "var(--ds-accent-400, #93c5fd)",
-      "var(--ds-accent, #60a5fa)",
-      "var(--ds-accent, #3b82f6)",
-      "var(--ds-accent-600, #2563eb)",
-      "var(--ds-accent-700, #1d4ed8)",
-      "var(--ds-accent-800, #1e40af)",
-      "var(--ds-accent-900, #1e3a8a)"
+      "var(--ds-secondary-50, #eff6ff)",
+      "var(--ds-secondary-100, #dbeafe)",
+      "var(--ds-secondary-200, #bfdbfe)",
+      "var(--ds-secondary-300, #93c5fd)",
+      "var(--ds-secondary-400, #60a5fa)",
+      "var(--ds-secondary-500, #3b82f6)",
+      "var(--ds-secondary, #2563eb)",
+      "var(--ds-secondary-700, #1d4ed8)",
+      "var(--ds-secondary-800, #1e40af)",
+      "var(--ds-secondary-900, #1e3a8a)"
     ],
     success: [
-      "var(--ds-success-100, #ecfdf5)",
-      "var(--ds-success-200, #dff3e6)",
-      "var(--ds-success-300, #a7f3d0)",
-      "var(--ds-success-400, #6ee7b7)",
-      "var(--ds-success-500, #34d399)",
-      "var(--ds-success, #1b7a3f)",
+      "var(--ds-success-50, #f0fdf4)",
+      "var(--ds-success-100, #dcfce7)",
+      "var(--ds-success-200, #bbf7d0)",
+      "var(--ds-success-300, #86efac)",
+      "var(--ds-success-400, #4ade80)",
+      "var(--ds-success-500, #22c55e)",
+      "var(--ds-success, #16a34a)",
       "var(--ds-success-700, #15803d)",
       "var(--ds-success-800, #166534)",
-      "var(--ds-success-900, #14532d)",
-      "var(--ds-success-950, #052e16)"
+      "var(--ds-success-900, #14532d)"
     ],
     info: [
-      "var(--ds-info-100, #f0f9ff)",
-      "var(--ds-info-200, #e0f2fe)",
-      "var(--ds-info-300, #bae6fd)",
-      "var(--ds-info-400, #7dd3fc)",
-      "var(--ds-info-500, #38bdf8)",
-      "var(--ds-info, #0ea5e9)",
-      "var(--ds-info-700, #0284c7)",
-      "var(--ds-info-800, #0369a1)",
-      "var(--ds-info-900, #075985)",
-      "var(--ds-info-950, #082f49)"
+      "var(--ds-info-50, #f0f9ff)",
+      "var(--ds-info-100, #e0f2fe)",
+      "var(--ds-info-200, #bae6fd)",
+      "var(--ds-info-300, #7dd3fc)",
+      "var(--ds-info-400, #38bdf8)",
+      "var(--ds-info-500, #0ea5e9)",
+      "var(--ds-info, #0284c7)",
+      "var(--ds-info-700, #0369a1)",
+      "var(--ds-info-800, #075985)",
+      "var(--ds-info-900, #0c4a6e)"
     ],
     warning: [
-      "var(--ds-warning-100, #fffbeb)",
-      "var(--ds-warning-200, #fff1c2)",
-      "var(--ds-warning-300, #fde68a)",
-      "var(--ds-warning-400, #fcd34d)",
-      "var(--ds-warning-500, #fbbf24)",
-      "var(--ds-warning, #a46b00)",
-      "var(--ds-warning-700, #92400e)",
-      "var(--ds-warning-800, #78350f)",
-      "var(--ds-warning-900, #5c2a0f)",
-      "var(--ds-warning-950, #451a03)"
+      "var(--ds-warning-50, #fffbeb)",
+      "var(--ds-warning-100, #fef3c7)",
+      "var(--ds-warning-200, #fde68a)",
+      "var(--ds-warning-300, #fcd34d)",
+      "var(--ds-warning-400, #fbbf24)",
+      "var(--ds-warning-500, #f59e0b)",
+      "var(--ds-warning, #d97706)",
+      "var(--ds-warning-700, #b45309)",
+      "var(--ds-warning-800, #92400e)",
+      "var(--ds-warning-900, #78350f)"
     ],
     danger: [
-      "var(--ds-danger-100, #fef2f2)",
-      "var(--ds-danger-200, #fdecea)",
-      "var(--ds-danger-300, #fecaca)",
-      "var(--ds-danger-400, #fca5a5)",
-      "var(--ds-danger-500, #f87171)",
-      "var(--ds-danger, #b4232a)",
-      "var(--ds-danger-700, #991b1b)",
-      "var(--ds-danger-800, #7f1d1d)",
-      "var(--ds-danger-900, #6b1515)",
-      "var(--ds-danger-950, #450a0a)"
+      "var(--ds-danger-50, #fef2f2)",
+      "var(--ds-danger-100, #fee2e2)",
+      "var(--ds-danger-200, #fecaca)",
+      "var(--ds-danger-300, #fca5a5)",
+      "var(--ds-danger-400, #f87171)",
+      "var(--ds-danger-500, #ef4444)",
+      "var(--ds-danger, #dc2626)",
+      "var(--ds-danger-700, #b91c1c)",
+      "var(--ds-danger-800, #991b1b)",
+      "var(--ds-danger-900, #7f1d1d)"
     ],
     gray: [
-      "var(--ds-gray-100, #f7f5ef)",
-      "var(--ds-gray-200, #f7f1e6)",
-      "var(--ds-gray-300, #efe7d8)",
-      "var(--ds-gray-400, #d9cfbe)",
-      "var(--ds-gray-500, #6f6558)",
-      "var(--ds-gray-600, #524a3f)",
-      "var(--ds-gray-700, #3a342c)",
-      "var(--ds-gray-800, #252118)",
-      "var(--ds-gray-900, #191612)",
-      "var(--ds-gray-950, #0d0b08)"
+      "var(--ds-gray-50, #f8fafc)",
+      "var(--ds-gray-100, #f1f5f9)",
+      "var(--ds-gray-200, #e2e8f0)",
+      "var(--ds-gray-300, #cbd5e1)",
+      "var(--ds-gray-400, #94a3b8)",
+      "var(--ds-gray-500, #64748b)",
+      "var(--ds-gray-600, #475569)",
+      "var(--ds-gray-700, #334155)",
+      "var(--ds-gray-800, #1e293b)",
+      "var(--ds-gray-900, #0f172a)"
     ]
   },
   primaryColor: "primary",
-  primaryShade: { light: 5, dark: 4 },
+  primaryShade: 6,
   fontFamily: "var(--ds-font-family)",
   fontFamilyMonospace:
     "var(--ds-font-mono, 'JetBrains Mono', SFMono-Regular, Consolas, monospace)",
   headings: {
-    fontWeight: "700",
+    fontWeight: "600",
     fontFamily: "var(--ds-font-family)",
     sizes: {
       h1: { lineHeight: "1.2" },
@@ -106,10 +114,10 @@ export const theme = createTheme({
   },
   fontSizes: {
     xs: "var(--ds-font-size-xs)",
-    sm: "var(--ds-font-size-sm)",
-    md: "var(--ds-font-size-base)",
-    lg: "var(--ds-font-size-lg)",
-    xl: "var(--ds-font-size-2xl)"
+    sm: "0.8125rem",
+    md: "var(--ds-body-font-size)",
+    lg: "var(--ds-font-size-base)",
+    xl: "var(--ds-font-size-xl)"
   },
   spacing: {
     xs: "var(--ds-spacing-2)",
@@ -119,38 +127,39 @@ export const theme = createTheme({
     xl: "var(--ds-spacing-8)"
   },
   radius: {
-    xs: "var(--ds-radius-sm, 4px)",
-    sm: "var(--ds-radius, 8px)",
-    md: "var(--ds-radius-md, 12px)",
-    lg: "var(--ds-radius-lg, 16px)",
-    xl: "var(--ds-radius-xl, 20px)"
+    xs: "var(--ds-radius-sm, 0.25rem)",
+    sm: "var(--ds-radius, 0.375rem)",
+    md: "var(--ds-radius-md, 0.5rem)",
+    lg: "var(--ds-radius-lg, 0.75rem)",
+    xl: "var(--ds-radius-xl, 1rem)"
   },
   shadows: {
     xs: "var(--ds-shadow-sm)",
-    sm: "var(--ds-shadow-sm)",
-    md: "var(--ds-shadow)",
+    sm: "var(--ds-shadow)",
+    md: "var(--ds-shadow-md)",
     lg: "var(--ds-shadow-lg)",
     xl: "var(--ds-shadow-xl)"
   },
+  defaultRadius: "sm",
   components: {
     Button: {
       defaultProps: {
-        radius: "xl",
+        radius: "sm",
       },
       styles: {
         root: {
-          fontWeight: "600",
-          fontSize: "var(--mantine-font-size-sm)",
-          transition: "transform 0.15s, box-shadow 0.15s, background 0.15s"
+          fontWeight: "500",
+          fontSize: "var(--mantine-font-size-md)",
+          transition: "background-color var(--ds-transition-fast, 150ms ease), border-color var(--ds-transition-fast, 150ms ease)"
         }
       }
     },
     Input: {
       styles: {
         input: {
-          borderRadius: "10px",
-          borderColor: "var(--ds-gray-400, #d9cfbe)",
-          fontSize: "var(--mantine-font-size-sm)",
+          borderRadius: "var(--ds-radius, 0.375rem)",
+          borderColor: "var(--ds-gray-300, #cbd5e1)",
+          fontSize: "var(--mantine-font-size-md)",
           transition: "border-color var(--ds-transition-fast, 150ms ease), box-shadow var(--ds-transition-fast, 150ms ease)"
         }
       }
@@ -158,50 +167,50 @@ export const theme = createTheme({
     Card: {
       defaultProps: {
         radius: "md",
-        shadow: "lg",
+        shadow: "xs",
       },
       styles: {
         root: {
-          borderColor: "var(--ds-gray-400, #d9cfbe)",
+          borderColor: "var(--ds-border-color, #e2e8f0)",
         }
       }
     },
     Paper: {
       styles: {
         root: {
-          borderRadius: "var(--ds-radius-md, 12px)"
+          borderRadius: "var(--ds-radius-md, 0.5rem)"
         }
       }
     },
     Modal: {
       styles: {
         header: {
-          borderBottom: "1px solid var(--ds-gray-400, #d9cfbe)",
+          borderBottom: "1px solid var(--ds-border-color, #e2e8f0)",
           padding: "var(--ds-spacing-4) var(--ds-spacing-6)",
           marginBottom: 0
         },
         title: {
           fontWeight: 600,
-          fontSize: "var(--ds-font-size-lg)"
+          fontSize: "var(--ds-font-size-base)"
         },
         body: {
           padding: "var(--ds-spacing-6)"
         },
         content: {
-          borderRadius: "var(--ds-radius-xl, 20px)",
+          borderRadius: "var(--ds-radius-lg, 0.75rem)",
           boxShadow: "var(--ds-shadow-xl)"
         },
         close: {
-          color: "var(--ds-gray-500, #6f6558)"
+          color: "var(--ds-gray-400, #94a3b8)"
         }
       }
     },
     Popover: {
       styles: {
         dropdown: {
-          borderRadius: "var(--ds-radius-md, 12px)",
-          boxShadow: "var(--mantine-shadow-lg)",
-          border: "1px solid var(--ds-gray-400, #d9cfbe)"
+          borderRadius: "var(--ds-radius-md, 0.5rem)",
+          boxShadow: "var(--ds-shadow-md)",
+          border: "1px solid var(--ds-border-color, #e2e8f0)"
         }
       }
     },
@@ -210,7 +219,7 @@ export const theme = createTheme({
         root: {
           borderRadius: "999px",
           fontSize: "var(--ds-font-size-xs)",
-          fontWeight: "600",
+          fontWeight: "500",
           textTransform: "none" as const
         }
       }
@@ -219,8 +228,8 @@ export const theme = createTheme({
       styles: {
         label: {
           fontSize: "var(--mantine-font-size-sm)",
-          fontWeight: "600",
-          color: "var(--ds-gray-900, #191612)",
+          fontWeight: "500",
+          color: "var(--ds-gray-700, #334155)",
           marginBottom: "4px"
         },
         input: {
@@ -232,8 +241,8 @@ export const theme = createTheme({
       styles: {
         label: {
           fontSize: "var(--mantine-font-size-sm)",
-          fontWeight: "600",
-          color: "var(--ds-gray-900, #191612)",
+          fontWeight: "500",
+          color: "var(--ds-gray-700, #334155)",
           marginBottom: "4px"
         }
       }
@@ -242,21 +251,22 @@ export const theme = createTheme({
       styles: {
         label: {
           fontSize: "var(--mantine-font-size-sm)",
-          fontWeight: "600",
-          color: "var(--ds-gray-900, #191612)",
+          fontWeight: "500",
+          color: "var(--ds-gray-700, #334155)",
           marginBottom: "4px"
         }
       }
     },
     Table: {
+      defaultProps: { withTableBorder: true },
       styles: {
         table: {
-          fontSize: "var(--mantine-font-size-sm)"
+          fontSize: "var(--mantine-font-size-md)"
         },
         th: {
-          fontWeight: "600",
+          fontWeight: "500",
           fontSize: "var(--ds-font-size-xs)",
-          color: "var(--ds-gray-500, #6f6558)"
+          color: "var(--ds-gray-500, #64748b)"
         }
       }
     },
@@ -264,8 +274,8 @@ export const theme = createTheme({
       styles: {
         tab: {
           fontWeight: "500",
-          fontSize: "var(--mantine-font-size-sm)",
-          borderRadius: "8px",
+          fontSize: "var(--mantine-font-size-md)",
+          borderRadius: "var(--ds-radius, 0.375rem)",
           transition: "background var(--ds-transition-fast, 150ms ease), color var(--ds-transition-fast, 150ms ease)"
         }
       }
@@ -278,7 +288,7 @@ export const theme = createTheme({
       styles: {
         tooltip: {
           fontSize: "var(--ds-font-size-xs)",
-          borderRadius: "var(--mantine-radius-sm)"
+          borderRadius: "var(--ds-radius, 0.375rem)"
         }
       }
     },
