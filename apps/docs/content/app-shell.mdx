@@ -1,0 +1,264 @@
+---
+title: App Shell Recipe
+description: Compose ContentLayout, ContentNavigation, CollectionList, and CollectionForm into a complete admin screen.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# App Shell Recipe
+
+How to compose the shell components into a complete content-management
+screen: a collapsible collection sidebar, a header bar with breadcrumbs and
+actions, a paginated list view, and a create/edit form — all driven by your
+DaaS schema.
+
+![App shell with collection sidebar and list view](/app-shell-list.png)
+
+## The pieces
+
+| Piece | Package | Role |
+|---|---|---|
+| `ContentLayout` | `@buildpad/ui-collections` | The shell: AppShell with left sidebar, sticky header (title, breadcrumbs, actions), optional right detail panel |
+| `ContentNavigation` | `@buildpad/ui-collections` | The sidebar: collection tree with search, groups, bookmarks, hidden-collection toggle |
+| `CollectionList` | `@buildpad/ui-collections` | The list view: schema-aware table with search, filters, pagination, selection, bulk actions |
+| `CollectionForm` | `@buildpad/ui-collections` | The detail view: dynamic create/edit form rendering every field interface |
+| `useCollections` | `@buildpad/hooks` | Fetches the collection tree and manages group expand/collapse state |
+
+<Callout type="info">
+`buildpad init` scaffolds this entire recipe for you — the code below is the
+generated `app/content/` module, shown here so you understand the wiring and
+can adapt it. In a generated app the imports point at your local copies
+(`@/components/ui/content-layout`, `@/lib/buildpad/hooks`); when consuming
+the packages directly, import from `@buildpad/ui-collections` and
+`@buildpad/hooks` instead.
+</Callout>
+
+## The routes
+
+Three files give you the whole module:
+
+```
+app/content/
+├── layout.tsx                  # shell: sidebar + header (wraps everything below)
+├── page.tsx                    # index: redirects to the last-used collection
+└── [collection]/
+    ├── page.tsx                # list view
+    └── [id]/page.tsx           # edit view ("+new" id = create)
+```
+
+<Steps>
+
+### The shell layout
+
+`app/content/layout.tsx` renders `ContentLayout` once for the whole module.
+The sidebar is `ContentNavigation` fed by `useCollections`; the current
+collection is derived from the URL so the active item stays in sync with
+routing.
+
+```tsx filename="app/content/layout.tsx" copy
+"use client";
+
+import { usePathname, useRouter } from 'next/navigation';
+import { ContentLayout } from '@/components/ui/content-layout';
+import { ContentNavigation } from '@/components/ui/content-navigation';
+import { useCollections } from '@/lib/buildpad/hooks';
+
+export default function ContentModuleLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // /content/[collection]/... → active sidebar item
+  const segments = pathname.split('/');
+  const currentCollection = segments.length > 2 ? segments[2] : undefined;
+
+  const {
+    rootCollections,
+    activeGroups,
+    toggleGroup,
+    showHidden,
+    setShowHidden,
+    hasHiddenCollections,
+    showSearch,   // auto: true when >20 collections
+    dense,        // auto: true when >5 collections
+    loading,
+  } = useCollections({ currentCollection });
+
+  return (
+    <ContentLayout
+      breadcrumbs={[{ label: 'Content', href: '/content' }]}
+      sidebar={
+        <ContentNavigation
+          rootCollections={rootCollections}
+          activeGroups={activeGroups}
+          onToggleGroup={toggleGroup}
+          currentCollection={currentCollection}
+          onNavigate={(collection) => router.push(`/content/${collection}`)}
+          showHidden={showHidden}
+          onToggleHidden={() => setShowHidden(!showHidden)}
+          hasHiddenCollections={hasHiddenCollections}
+          showSearch={showSearch}
+          dense={dense}
+          loading={loading}
+        />
+      }
+    >
+      {children}
+    </ContentLayout>
+  );
+}
+```
+
+`ContentLayout` also accepts `title`, `icon`, `actions` (header buttons),
+`headline`, `showBack`/`onBack`, and `sidebarDetail` for a right-hand detail
+panel — see the ContentLayout stories for each in action.
+
+### The list view
+
+`app/content/[collection]/page.tsx` is just `CollectionList` wired to the
+router. Search, filters, pagination, column controls, and the bordered card
+styling are built in.
+
+```tsx filename="app/content/[collection]/page.tsx" copy
+"use client";
+
+import { use } from 'react';
+import { useRouter } from 'next/navigation';
+import { CollectionList } from '@/components/ui/collection-list';
+
+export default function CollectionPage({
+  params,
+}: {
+  params: Promise<{ collection: string }>;
+}) {
+  const { collection } = use(params);
+  const router = useRouter();
+
+  return (
+    <CollectionList
+      collection={collection}
+      enableSearch
+      enableSelection
+      onItemClick={(item) => router.push(`/content/${collection}/${item.id}`)}
+      onCreate={() => router.push(`/content/${collection}/+new`)}
+    />
+  );
+}
+```
+
+Useful extras: `enableFilter` (inline filter panel), `bulkActions` (toolbar
+actions for selected rows), `archiveField` (archive/unarchive UI), `fields`
+(explicit column list), `tableSpacing` (`compact` / `cozy` / `comfortable`).
+
+### The edit view
+
+`app/content/[collection]/[id]/page.tsx` renders `CollectionForm`, which
+wraps VForm with every field interface plus save/delete handling and
+permission enforcement. A sentinel id (`+new`) switches it to create mode.
+
+```tsx filename="app/content/[collection]/[id]/page.tsx" copy
+"use client";
+
+import { use } from 'react';
+import { useRouter } from 'next/navigation';
+import { CollectionForm } from '@/components/ui/collection-form';
+import { isNewItem } from '@/lib/buildpad/utils';
+
+export default function ItemPage({
+  params,
+}: {
+  params: Promise<{ collection: string; id: string }>;
+}) {
+  const { collection, id } = use(params);
+  const router = useRouter();
+  const isNew = isNewItem(id);
+
+  return (
+    <CollectionForm
+      collection={collection}
+      id={isNew ? undefined : id}
+      mode={isNew ? 'create' : 'edit'}
+      onSuccess={() => router.push(`/content/${collection}`)}
+      onCancel={() => router.back()}
+    />
+  );
+}
+```
+
+![App shell with item edit form](/app-shell-edit.png)
+
+</Steps>
+
+## A standalone shell for your own pages
+
+`ContentLayout` is purpose-built for schema-driven collection browsing. For
+your own screens — a dashboard, a settings page, anything that isn't the
+collection browser — `buildpad init` also scaffolds a generic
+**`AuthenticatedShell`** at `components/layout/AuthenticatedShell.tsx`: a
+glass-blur header with a breadcrumb and optional search/notification
+affordances, a sidebar with a brand mark and your navigation, and a bottom
+user-profile menu. Its styling lives in `app/globals.css` under the `.bp-*`
+namespace and is built entirely from design tokens, so light/dark mode come
+for free.
+
+```tsx filename="app/(authenticated)/dashboard/layout.tsx" copy
+"use client";
+
+import { AuthenticatedShell } from '@/components/layout/AuthenticatedShell';
+import { IconHome, IconLayoutDashboard } from '@tabler/icons-react';
+
+const NAV_ITEMS = [
+  { label: 'Home', href: '/', icon: IconHome },
+  { label: 'Dashboard', href: '/dashboard', icon: IconLayoutDashboard },
+];
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthenticatedShell
+      navItems={NAV_ITEMS}
+      brand={{ name: 'Acme', initial: 'A' }}
+    >
+      {children}
+    </AuthenticatedShell>
+  );
+}
+```
+
+Props: `navItems` (sidebar links, defaults to a single `Home` entry),
+`brand` (mark + name, defaults to `NEXT_PUBLIC_APP_NAME`), and
+`showSearch` / `showNotifications` (presentational header affordances, both
+default `true` — wire them to your own features when ready).
+
+<Callout type="warning">
+Pick one shell per route subtree. Don't nest `AuthenticatedShell` around
+`/content/*` — that already renders `ContentLayout`, and you'd get duplicate
+sidebars and headers. Use `AuthenticatedShell` for your custom pages and
+`ContentLayout` for the collection browser.
+</Callout>
+
+## Prerequisites
+
+- The module must live under your authenticated layout so `DaaSProvider` is
+  above it — `buildpad init` generates this as `app/(authenticated)/` with a
+  `DaaSProviderWrapper`. The data hooks call your `/api/collections`,
+  `/api/fields/*`, and `/api/items/*` proxy routes.
+- No extra styling is needed: the shell consumes the design tokens through
+  the Mantine theme — header and sidebar dividers use
+  `--mantine-color-default-border` (slate-200), the sticky header elevates
+  with `--ds-shadow-md` on scroll, and `CollectionList` renders as a bordered
+  card. See the [Styleguide](/styleguide) for the token reference.
+
+## See the components live
+
+Every state of the shell is in the Collections Storybook — ContentLayout
+(list view, edit view, header shadow, detail sidebar, narrow sidebar,
+loading) and ContentNavigation (bookmarks, dense, locked groups, non-admin,
+empty). Run it locally with `pnpm storybook:collections` (port 6008) or
+browse the deployed <a href="/storybook/collections">Collections Storybook</a>.

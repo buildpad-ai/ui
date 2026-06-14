@@ -35,7 +35,7 @@
 /* Field States */
 .form-field[data-edited="true"] {
   /* Visual indicator for edited fields — subtle left border */
-  border-left: 2px solid var(--mantine-primary-color-5, var(--ds-primary, #e35b2a));
+  border-left: 2px solid var(--mantine-primary-color-6, var(--ds-primary, #ea580c));
   padding-left: var(--mantine-spacing-xs, 8px);
 }
 

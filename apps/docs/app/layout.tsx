@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
 import "nextra-theme-docs/style-prefixed.css";
+import "../../../packages/cli/templates/app/design-tokens.css";
 
 export const metadata = {
   title: {

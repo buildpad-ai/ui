@@ -201,6 +201,11 @@ export async function init(options: { yes?: boolean; cwd: string }) {
         '@mantine/notifications': '^8.0.0',
         '@mantine/form': '^8.0.0',
         '@tabler/icons-react': '^3.0.0',
+        // Auth layer scaffolded by `add --with-api` (always run during bootstrap):
+        // supabase/middleware.ts is loaded on every request, lib/oauth uses jose.
+        '@supabase/ssr': '^0.5',
+        '@supabase/supabase-js': '^2',
+        'jose': '^5',
         'clsx': '^2.0.0',
         'tailwind-merge': '^2.0.0'
       },
@@ -347,6 +352,11 @@ export async function init(options: { yes?: boolean; cwd: string }) {
         path.join(componentsRoot, 'ColorSchemeToggle.tsx'),
         cwd
       );
+      await copyTemplateFile(
+        'components/layout/AuthenticatedShell.tsx',
+        path.join(componentsRoot, 'layout', 'AuthenticatedShell.tsx'),
+        cwd
+      );
     }
 
     // Check for required dependencies
@@ -356,6 +366,13 @@ export async function init(options: { yes?: boolean; cwd: string }) {
     const coreDeps = [
       '@mantine/core',
       '@mantine/hooks',
+      // Required by the scaffolded AuthenticatedShell (components/layout).
+      '@tabler/icons-react',
+      // Auth layer scaffolded by `add --with-api`: supabase clients/middleware
+      // (@supabase/ssr always loaded via root middleware.ts) and oauth (jose).
+      '@supabase/ssr',
+      '@supabase/supabase-js',
+      'jose',
       'react',
       'react-dom',
     ];
@@ -364,7 +381,6 @@ export async function init(options: { yes?: boolean; cwd: string }) {
     // @mantine/dates - DateTime component
     // @mantine/notifications - CollectionForm notifications
     // @mantine/dropzone - Upload component
-    // @tabler/icons-react - Icon components
     // dayjs - DateTime component
 
     // Utility dependencies (for utils.ts)

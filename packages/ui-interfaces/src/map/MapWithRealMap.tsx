@@ -554,7 +554,7 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
                 bottom: 10,
                 right: 10,
               borderRadius: 'var(--mantine-radius-sm)',
-              boxShadow: 'var(--ds-shadow, 0 2px 4px rgba(25, 22, 18, 0.05))',
+              boxShadow: 'var(--ds-shadow, 0 1px 3px 0 rgb(0 0 0 / 0.1))',
               border: '1px solid var(--mantine-color-gray-3)',
               }}
             >

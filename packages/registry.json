@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-06-12T09:14:39.614Z",
+  "generatedAt": "2026-06-14T13:27:42.081Z",
   "version": "1.1.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -772,7 +772,7 @@
         {
           "source": "ui-interfaces/src/input-hash/InputHash.css",
           "target": "components/ui/InputHash.css",
-          "sourceSha256": "66437bfbd9db67533d47427a7d1e0bced9d94fce5e155c29dc1e210e5c2d272a"
+          "sourceSha256": "6a1cd5a46e4e75ad609e834f42fc9233c08f22775f4c8e96b0f78488dcc5da53"
         }
       ],
       "dependencies": [
@@ -813,7 +813,7 @@
         {
           "source": "ui-interfaces/src/system-token/SystemToken.css",
           "target": "components/ui/SystemToken.css",
-          "sourceSha256": "7eb2718271ee8aac0896978d7f24cb917d538838718badf82a7c05ba43227df0"
+          "sourceSha256": "05c157fb6bf962b4d9065141ba6225b33a0a36309f321996747604e0663a693d"
         }
       ],
       "dependencies": [
@@ -2152,7 +2152,7 @@
         {
           "source": "ui-form/src/VForm.css",
           "target": "components/ui/vform/VForm.css",
-          "sourceSha256": "daa47f7807775a54921037fafd1e3f033e78d9c738c9be18e9608604e68b9e8d"
+          "sourceSha256": "8b2b5f4b9217c3e2a1ec9e9679744a74c9fe0e7875658deceab556686bd5ddd1"
         },
         {
           "source": "ui-form/src/types.ts",
@@ -2334,7 +2334,7 @@
         {
           "source": "ui-table/src/VTable.css",
           "target": "components/ui/vtable.css",
-          "sourceSha256": "8bc2673916d186c90a282c70d6b886f8ec10c915ac510d6682a078a81c3e30dd"
+          "sourceSha256": "7dcc01b6a298018b32e6249402ea9f65103d1efe600280b4d77d5ed7d7668dbd"
         },
         {
           "source": "ui-table/src/components/TableHeader.tsx",
@@ -2384,12 +2384,12 @@
         {
           "source": "ui-collections/src/CollectionList.tsx",
           "target": "components/ui/collection-list.tsx",
-          "sourceSha256": "de3b93fb34523b4651b5bef45ca3bbaa970b2e1a4f985e97b6a2a9e35e463bba"
+          "sourceSha256": "6abe30a1c2a291c89e8edc324f0d1b80398f3e7effbbf74c56557f8cdca0e4b8"
         },
         {
           "source": "ui-collections/src/CollectionList.css",
           "target": "components/ui/collection-list.css",
-          "sourceSha256": "796f5094603dde224c598e77a4f97b3f89ad88193bbb98477d937a56b5b652d9"
+          "sourceSha256": "dea9d30f350214efcec63e9edb4032c962d2a946d647f09b1fc7f0947076ed66"
         },
         {
           "source": "ui-collections/src/CollectionListToolbar.tsx",
@@ -2460,7 +2460,7 @@
         {
           "source": "ui-collections/src/ContentNavigation.tsx",
           "target": "components/ui/content-navigation.tsx",
-          "sourceSha256": "bd8132dd86a05dbca1d495cb4454d48001eb34e8952260161593a22b8af26393"
+          "sourceSha256": "35a836c7ce50614e283c4507c5cbed7f7e6d93ba69787eee4fbc3d9e71abd6f0"
         }
       ],
       "dependencies": [
@@ -2485,7 +2485,7 @@
         {
           "source": "ui-collections/src/ContentLayout.tsx",
           "target": "components/ui/content-layout.tsx",
-          "sourceSha256": "de958b3c6a045cc68a0a5912cd8f329270294bb7eaccfd0a453eb156ac726cb9"
+          "sourceSha256": "0c3f4061f649a1ecb640b5a904b012e44249782bef2fc603c19154438ff477a6"
         }
       ],
       "dependencies": [
@@ -2569,7 +2569,7 @@
         {
           "source": "ui-interfaces/src/map/MapWithRealMap.tsx",
           "target": "components/ui/map-with-real-map.tsx",
-          "sourceSha256": "749f2626dc181636ed2d5fdd563ac52eae999e128272dbfc9a8f04da81379359"
+          "sourceSha256": "97ddfff337e7d83ad38dfc8e8ab763d637585899e91ff458978510c146468dd4"
         }
       ],
       "dependencies": [

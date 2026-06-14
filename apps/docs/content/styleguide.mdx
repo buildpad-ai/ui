@@ -1,0 +1,118 @@
+---
+title: Styleguide
+description: Visual reference for the --ds-* design tokens — colors, typography, spacing, radius, shadows, and interactive states.
+---
+
+import { Callout } from 'nextra/components'
+import {
+  Showcase,
+  ColorScale,
+  SemanticTokens,
+  TypeScale,
+  SpacingScale,
+  RadiusScale,
+  ShadowScale,
+  FocusRingDemo,
+  Specimens,
+  StorybookLinks,
+} from '@/components/styleguide'
+
+# Styleguide
+
+A visual reference for the design tokens. Everything on this page is rendered
+from the real `app/design-tokens.css` — the swatches read the live CSS custom
+properties, so this page cannot drift from the shipped values. See
+[Design System](/design-system) for how the token, theme, and override layers
+fit together.
+
+The palette is built on the Tailwind reference scales: an **orange accent**
+on **slate neutrals**, with Inter typography and crisp white surfaces.
+
+<Callout type="info">
+**Usage rules**
+
+- **Main Stop**: The unsuffixed main of each hue (`--ds-primary`, `--ds-success`, …) is the **600** stop in light mode and the **400** stop in dark mode.
+- **Small Text Contrast**: Small colored text on white/tinted backgrounds must use the **700** stop (`--ds-primary-700`, …) to meet WCAG AA contrast ratios. The 600 stops only pass contrast for UI components and large text.
+- **Borders**: `gray-200` (`--ds-border-color`) is reserved for cards and dividers. `gray-300` is used for form inputs and boundaries.
+- **Interactive Toggles**: Hover states transition to stop **700** for filled states, or to `gray-100` for outline/border states.
+</Callout>
+
+<Showcase>
+
+## Colors
+
+Each hue has eleven numbered stops (50–950) plus an unsuffixed semantic main.
+In dark mode the numbered scales mirror (50↔950, 100↔900, …), so a token
+chosen for light backgrounds stays legible automatically. Click any swatch to
+copy its variable.
+
+#
+<ColorScale hue="primary" />
+<ColorScale hue="secondary" />
+<ColorScale hue="success" />
+<ColorScale hue="info" />
+<ColorScale hue="warning" />
+<ColorScale hue="danger" />
+<ColorScale hue="gray" />
+
+## Semantic tokens
+
+Prefer these over raw stops — they carry the light/dark switch with them.
+#
+<SemanticTokens />
+
+## Typography
+
+Inter for everything (`--ds-font-family`, `--ds-font-sans`, `--ds-font-display`),
+JetBrains Mono for code (`--ds-font-mono`). App UI runs at the `sm` size
+(`--ds-body-font-size: 0.875rem`) for density.
+#
+<TypeScale />
+
+## Spacing
+
+A 4px base grid (`--ds-spacing-1` … `--ds-spacing-16`), identical to the
+Tailwind spacing scale.
+#
+<SpacingScale />
+
+## Radius
+
+Corner rounding tokens control the appearance of controls, cards, and overlays.
+#
+<RadiusScale />
+
+## Shadows
+
+Neutral, layered shadows from the Tailwind scale. Cards default to `sm`;
+elevation increases with interactivity (dropdowns `md`, modals `xl`).
+#
+<ShadowScale />
+
+## Focus & states
+
+Interactive states (hover, focus, disabled, active) are standard across the system.
+#
+<FocusRingDemo />
+
+## Specimens & Mock Compositions
+
+Below is a live showcase of compositions using solely the system design tokens. These specimens demonstrate interactive components, state mapping, typography, color contrasts, elevation, and layout spacing.
+
+#
+<Specimens />
+
+</Showcase>
+
+## Real components
+
+The actual Mantine components — with every state, prop, and live DaaS data —
+live in the package Storybooks:
+
+<StorybookLinks />
+
+<Callout type="default">
+The links above use production paths. In local development run the Storybooks
+directly: `pnpm storybook:interfaces` (6005), `storybook:form` (6006),
+`storybook:table` (6007), `storybook:collections` (6008).
+</Callout>

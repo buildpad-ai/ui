@@ -1,7 +1,9 @@
 /**
  * Shared Mantine theme for all Storybook previews.
  *
- * Follows the warm, earthy palette from the storybook-host landing page.
+ * Modern neutral palette built on the Tailwind reference scales:
+ * slate neutrals, orange accent (main = orange-600), Inter type.
+ * Palette arrays map Mantine indices 0–9 to Tailwind stops 50–900.
  * Each package's .storybook/preview.tsx should import and use this theme
  * so every component renders with the same professional look in the canvas.
  */
@@ -15,11 +17,11 @@ export const enterpriseTheme = createTheme({
       "#fed7aa",
       "#fdba74",
       "#fb923c",
-      "#e35b2a",  // main — burnt orange
-      "#c2451a",  // strong
+      "#f97316",
+      "#ea580c",  // main — orange-600
+      "#c2410c",  // hover/strong — orange-700
       "#9a3412",
       "#7c2d12",
-      "#431407",
     ],
     accent: [
       "#eff6ff",
@@ -28,22 +30,22 @@ export const enterpriseTheme = createTheme({
       "#93c5fd",
       "#60a5fa",
       "#3b82f6",
-      "#2563eb",
+      "#2563eb",  // main — blue-600
       "#1d4ed8",
       "#1e40af",
-      "#1e3a8a",  // deep blue accent
+      "#1e3a8a",
     ],
     success: [
-      "#ecfdf5",
-      "#dff3e6",
-      "#a7f3d0",
-      "#6ee7b7",
-      "#34d399",
-      "#1b7a3f",
+      "#f0fdf4",
+      "#dcfce7",
+      "#bbf7d0",
+      "#86efac",
+      "#4ade80",
+      "#22c55e",
+      "#16a34a",  // main — green-600
       "#15803d",
       "#166534",
       "#14532d",
-      "#052e16",
     ],
     info: [
       "#f0f9ff",
@@ -52,58 +54,58 @@ export const enterpriseTheme = createTheme({
       "#7dd3fc",
       "#38bdf8",
       "#0ea5e9",
-      "#0284c7",
+      "#0284c7",  // main — sky-600
       "#0369a1",
       "#075985",
-      "#082f49",
+      "#0c4a6e",
     ],
     warning: [
       "#fffbeb",
-      "#fff1c2",
+      "#fef3c7",
       "#fde68a",
       "#fcd34d",
       "#fbbf24",
-      "#a46b00",
+      "#f59e0b",
+      "#d97706",  // main — amber-600
+      "#b45309",
       "#92400e",
       "#78350f",
-      "#5c2a0f",
-      "#451a03",
     ],
     danger: [
       "#fef2f2",
-      "#fdecea",
+      "#fee2e2",
       "#fecaca",
       "#fca5a5",
       "#f87171",
-      "#b4232a",
+      "#ef4444",
+      "#dc2626",  // main — red-600
+      "#b91c1c",
       "#991b1b",
       "#7f1d1d",
-      "#6b1515",
-      "#450a0a",
     ],
     gray: [
-      "#f7f5ef",  // --bg
-      "#f7f1e6",  // --surface-alt
-      "#efe7d8",  // --bg-alt
-      "#d9cfbe",  // --border
-      "#a59e90",
-      "#6f6558",  // --text-muted
-      "#524a3f",
-      "#3a342c",
-      "#252118",
-      "#191612",  // --text
+      "#f8fafc",  // slate-50
+      "#f1f5f9",
+      "#e2e8f0",  // border
+      "#cbd5e1",  // input border
+      "#94a3b8",
+      "#64748b",  // muted text
+      "#475569",
+      "#334155",
+      "#1e293b",
+      "#0f172a",  // text
     ],
   },
   primaryColor: "primary",
-  primaryShade: { light: 5, dark: 4 },
+  primaryShade: { light: 6, dark: 4 },
   fontFamily:
-    '"Space Grotesk", "Helvetica Neue", Arial, sans-serif',
+    '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
   fontFamilyMonospace:
     '"JetBrains Mono", "SF Mono", SFMono-Regular, Consolas, monospace',
   headings: {
-    fontWeight: "700",
+    fontWeight: "600",
     fontFamily:
-      '"Space Grotesk", "Helvetica Neue", Arial, sans-serif',
+      '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
     sizes: {
       h1: { lineHeight: "1.1" },
       h2: { lineHeight: "1.15" },
@@ -112,8 +114,8 @@ export const enterpriseTheme = createTheme({
   },
   fontSizes: {
     xs: "0.75rem",
-    sm: "0.85rem",
-    md: "0.9rem",
+    sm: "0.8125rem",
+    md: "0.875rem",
     lg: "1rem",
     xl: "1.25rem",
   },
@@ -125,74 +127,76 @@ export const enterpriseTheme = createTheme({
     xl: "2rem",
   },
   radius: {
-    xs: "4px",
-    sm: "8px",
-    md: "12px",
-    lg: "16px",
-    xl: "20px",
+    xs: "0.25rem",
+    sm: "0.375rem",
+    md: "0.5rem",
+    lg: "0.75rem",
+    xl: "1rem",
   },
   shadows: {
-    xs: "0 1px 2px 0 rgba(25, 22, 18, 0.04)",
-    sm: "0 2px 4px 0 rgba(25, 22, 18, 0.05)",
-    md: "0 4px 6px -1px rgba(25, 22, 18, 0.07), 0 2px 4px -2px rgba(25, 22, 18, 0.05)",
-    lg: "0 12px 28px rgba(25, 22, 18, 0.05)",
-    xl: "0 20px 40px rgba(25, 22, 18, 0.08)",
+    xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+    sm: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+    md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+    lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+    xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
   },
-  defaultRadius: "md",
+  defaultRadius: "sm",
   components: {
     Button: {
-      defaultProps: { radius: "xl" },
+      defaultProps: { radius: "sm" },
       styles: {
         root: {
-          fontWeight: "600",
-          fontSize: "0.9rem",
-          transition: "transform 0.15s, box-shadow 0.15s, background 0.15s",
+          fontWeight: "500",
+          fontSize: "0.875rem",
+          transition: "background-color 0.15s, border-color 0.15s",
         },
       },
     },
     Input: {
       styles: {
         input: {
-          borderColor: "#d9cfbe",
-          fontSize: "0.9rem",
-          borderRadius: "10px",
+          borderColor: "#cbd5e1",
+          fontSize: "0.875rem",
+          borderRadius: "0.375rem",
           transition: "border-color 0.15s, box-shadow 0.15s",
         },
       },
     },
     Card: {
-      defaultProps: { radius: "md", shadow: "lg" },
+      defaultProps: { radius: "md", shadow: "xs" },
       styles: {
-        root: { borderColor: "#d9cfbe" },
+        root: { borderColor: "#e2e8f0" },
       },
     },
     Paper: {
       styles: {
-        root: { borderRadius: "12px" },
+        root: { borderRadius: "0.5rem" },
       },
     },
     Modal: {
       styles: {
         header: {
-          borderBottom: "1px solid #d9cfbe",
+          borderBottom: "1px solid #e2e8f0",
           padding: "1rem 1.5rem",
           marginBottom: 0,
         },
-        title: { fontWeight: 600, fontSize: "1.1rem" },
+        title: { fontWeight: 600, fontSize: "1rem" },
         body: { padding: "1.5rem" },
         content: {
-          borderRadius: "20px",
-          boxShadow: "0 20px 40px rgba(25, 22, 18, 0.08)",
+          borderRadius: "0.75rem",
+          boxShadow:
+            "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
         },
-        close: { color: "#a59e90" },
+        close: { color: "#94a3b8" },
       },
     },
     Popover: {
       styles: {
         dropdown: {
-          borderRadius: "12px",
-          boxShadow: "0 12px 28px rgba(25, 22, 18, 0.05)",
-          border: "1px solid #d9cfbe",
+          borderRadius: "0.5rem",
+          boxShadow:
+            "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+          border: "1px solid #e2e8f0",
         },
       },
     },
@@ -201,7 +205,7 @@ export const enterpriseTheme = createTheme({
         root: {
           borderRadius: "999px",
           fontSize: "0.75rem",
-          fontWeight: "600",
+          fontWeight: "500",
           textTransform: "none" as const,
         },
       },
@@ -209,9 +213,9 @@ export const enterpriseTheme = createTheme({
     TextInput: {
       styles: {
         label: {
-          fontSize: "0.85rem",
-          fontWeight: "600",
-          color: "#191612",
+          fontSize: "0.8125rem",
+          fontWeight: "500",
+          color: "#334155",
           marginBottom: "4px",
         },
       },
@@ -219,9 +223,9 @@ export const enterpriseTheme = createTheme({
     NumberInput: {
       styles: {
         label: {
-          fontSize: "0.85rem",
-          fontWeight: "600",
-          color: "#191612",
+          fontSize: "0.8125rem",
+          fontWeight: "500",
+          color: "#334155",
           marginBottom: "4px",
         },
       },
@@ -229,19 +233,23 @@ export const enterpriseTheme = createTheme({
     Select: {
       styles: {
         label: {
-          fontSize: "0.85rem",
-          fontWeight: "600",
-          color: "#191612",
+          fontSize: "0.8125rem",
+          fontWeight: "500",
+          color: "#334155",
           marginBottom: "4px",
         },
       },
     },
     Table: {
+      defaultProps: { withTableBorder: true },
       styles: {
+        table: {
+          fontSize: "0.875rem",
+        },
         th: {
-          fontWeight: "600",
-          fontSize: "0.82rem",
-          color: "#3a342c",
+          fontWeight: "500",
+          fontSize: "0.75rem",
+          color: "#64748b",
         },
       },
     },
@@ -250,7 +258,7 @@ export const enterpriseTheme = createTheme({
         tab: {
           fontWeight: "500",
           fontSize: "0.875rem",
-          borderRadius: "8px",
+          borderRadius: "0.375rem",
           transition: "background 0.15s, color 0.15s",
         },
       },
@@ -258,7 +266,7 @@ export const enterpriseTheme = createTheme({
     Tooltip: {
       defaultProps: { withArrow: true, arrowSize: 6 },
       styles: {
-        tooltip: { fontSize: "0.75rem", borderRadius: "8px" },
+        tooltip: { fontSize: "0.75rem", borderRadius: "0.375rem" },
       },
     },
     Group: { defaultProps: { gap: "sm" } },

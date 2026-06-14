@@ -55,8 +55,12 @@ const MOCK_TREE: CollectionTreeNode[] = [
 // ============================================================================
 
 function MockCollectionList() {
+  // Mirror the real CollectionList/VTable default surface: bordered card
+  // with radius-md and shadow-sm (the Paper carries the chrome, so the
+  // table's own theme-default border is disabled).
   return (
-    <Table striped highlightOnHover>
+    <Paper radius="md" shadow="xs" withBorder p={0} style={{ overflow: 'hidden', marginTop: 16 }}>
+    <Table striped highlightOnHover withTableBorder={false}>
       <Table.Thead>
         <Table.Tr>
           <Table.Th>Title</Table.Th>
@@ -85,6 +89,7 @@ function MockCollectionList() {
         ))}
       </Table.Tbody>
     </Table>
+    </Paper>
   );
 }
 

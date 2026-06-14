@@ -1,7 +1,7 @@
 .vform-stories-debug-panel {
   margin-top: 2rem;
   padding: 1rem;
-  background: var(--mantine-color-gray-0, #f7f5ef);
+  background: var(--mantine-color-gray-0, #f8fafc);
   border-radius: var(--mantine-radius-md, 8px);
 }
 

@@ -1,5 +1,5 @@
 /**
- * Shared Storybook Manager theme — branded warm sidebar.
+ * Shared Storybook Manager theme — modern neutral sidebar.
  *
  * Usage in each package's .storybook/manager.ts:
  *   import { enterpriseManagerTheme } from '../../storybook-enterprise-manager';
@@ -15,38 +15,38 @@ export function enterpriseManagerTheme(brandTitle: string): StoryTheme {
     brandTitle,
     brandUrl: "https://github.com/buildpad",
 
-    // UI chrome — warm earthy palette
-    appBg: "#f7f5ef",
+    // UI chrome — slate neutrals
+    appBg: "#f8fafc",
     appContentBg: "#ffffff",
     appPreviewBg: "#ffffff",
-    appBorderColor: "#d9cfbe",
-    appBorderRadius: 12,
+    appBorderColor: "#e2e8f0",
+    appBorderRadius: 8,
 
     // Typography
     fontBase:
-      '"Space Grotesk", "Helvetica Neue", Arial, sans-serif',
+      '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
     fontCode:
       '"JetBrains Mono", "SF Mono", SFMono-Regular, Consolas, monospace',
 
     // Text colors
-    textColor: "#191612",
+    textColor: "#0f172a",
     textInverseColor: "#ffffff",
-    textMutedColor: "#6f6558",
+    textMutedColor: "#64748b",
 
     // Brand colors
-    colorPrimary: "#e35b2a",
-    colorSecondary: "#e35b2a",
+    colorPrimary: "#ea580c",
+    colorSecondary: "#ea580c",
 
     // Toolbar
-    barTextColor: "#6f6558",
-    barSelectedColor: "#e35b2a",
-    barHoverColor: "#c2451a",
+    barTextColor: "#64748b",
+    barSelectedColor: "#ea580c",
+    barHoverColor: "#c2410c",
     barBg: "#ffffff",
 
     // Form inputs in sidebar
     inputBg: "#ffffff",
-    inputBorder: "#d9cfbe",
-    inputTextColor: "#191612",
-    inputBorderRadius: 10,
+    inputBorder: "#cbd5e1",
+    inputTextColor: "#0f172a",
+    inputBorderRadius: 6,
   });
 }

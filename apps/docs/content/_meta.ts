@@ -15,12 +15,14 @@ const meta: MetaRecord = {
   },
   architecture: 'Architecture',
   'design-system': 'Design System',
+  styleguide: 'Styleguide',
   distribution: 'Distribution',
   '--- reference': {
     type: 'separator',
     title: 'Reference',
   },
   components: 'Component Map',
+  'app-shell': 'App Shell Recipe',
   testing: 'Testing Guide',
 };
 

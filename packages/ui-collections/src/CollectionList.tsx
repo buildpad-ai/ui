@@ -950,7 +950,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   // Render
   // =========================================================================
   return (
-    <Stack gap={0} data-testid="collection-list">
+    <Stack gap={0} className="collection-list" data-testid="collection-list">
       {/* ── Action Toolbar ── */}
       <CollectionListToolbar
         enableSearch={enableSearch}
