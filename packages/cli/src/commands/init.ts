@@ -3,7 +3,13 @@ import path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
 import prompts from 'prompts';
-import { getTemplatesRoot } from '../resolver.js';
+import {
+  getTemplatesRoot,
+  getBundledRegistry,
+  resolveBundledTemplate,
+  bundledTemplateExists,
+} from '../resolver.js';
+import { copyLibModule } from './add.js';
 
 /**
  * Per-file checksum recorded in buildpad.json.
@@ -342,21 +348,25 @@ export async function init(options: { yes?: boolean; cwd: string }) {
       await fs.ensureDir(libRoot);
       await fs.ensureDir(componentsRoot);
 
-      await copyTemplateFile('app/design-tokens.css', path.join(appDir, 'design-tokens.css'), cwd);
-      await copyTemplateFile('app/globals.css', path.join(appDir, 'globals.css'), cwd);
+      // Plain skeleton files (not part of the upgradeable design system).
       await copyTemplateFile('app/layout.tsx', path.join(appDir, 'layout.tsx'), cwd);
       await copyTemplateFile('app/page.tsx', path.join(appDir, 'page.tsx'), cwd);
-      await copyTemplateFile('lib/theme.ts', path.join(libRoot, 'theme.ts'), cwd);
-      await copyTemplateFile(
-        'components/ColorSchemeToggle.tsx',
-        path.join(componentsRoot, 'ColorSchemeToggle.tsx'),
-        cwd
-      );
-      await copyTemplateFile(
-        'components/layout/AuthenticatedShell.tsx',
-        path.join(componentsRoot, 'layout', 'AuthenticatedShell.tsx'),
-        cwd
-      );
+
+      // Install the design system (tokens, globals, theme, app shell) as a
+      // tracked lib module from the bundled CLI templates — offline and
+      // version-matched to this CLI. Recording it in buildpad.json gives
+      // `upgrade --design` a baseline to three-way merge against later.
+      const dsSpinner = ora('Installing design system...').start();
+      try {
+        const bundledRegistry = await getBundledRegistry();
+        await copyLibModule('design-system', bundledRegistry, config, cwd, dsSpinner, true, {
+          readSource: resolveBundledTemplate,
+          sourceExists: bundledTemplateExists,
+        });
+        await fs.writeJSON(configPath, config, { spaces: 2 });
+      } catch (err: any) {
+        dsSpinner.warn(`Design system install skipped: ${err.message}`);
+      }
     }
 
     // Check for required dependencies

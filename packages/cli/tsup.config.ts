@@ -20,5 +20,13 @@ export default defineConfig({
       { recursive: true }
     );
     console.log('✓ Copied templates → dist/templates');
+
+    // Bundle registry.json so `init` can install the design-system module
+    // offline (no network round trip), matching the installed CLI version.
+    cpSync(
+      resolve(__tsupDir, '../registry.json'),
+      resolve(__tsupDir, 'dist/registry.json')
+    );
+    console.log('✓ Copied registry.json → dist/registry.json');
   },
 });

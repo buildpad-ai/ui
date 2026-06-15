@@ -27,8 +27,9 @@ buildpad status --json           # JSON output for scripting
 buildpad validate                # Validate installation (imports, SSR, missing files)
 buildpad validate --json         # JSON output for CI/CD
 buildpad fix                     # Auto-fix common issues
-buildpad outdated                # Check for component updates
+buildpad outdated                # Check for component AND lib-module updates (incl. design-system)
 buildpad upgrade --all           # Upgrade all components with safe per-file checksums
+buildpad upgrade --design        # Upgrade only the design-system module (tokens, globals, theme, app shell)
 buildpad upgrade --three-way     # 3-way merge (diff3) for conflict resolution on modified files
 buildpad upgrade --force         # Re-sync components even when already at latest version
 buildpad upgrade <comp> --dry-run # Preview upgrade without writing files
@@ -204,10 +205,15 @@ buildpad bootstrap --skip-validate --cwd /path/to/project
 Bootstrap installs everything non-interactively, including:
 - All 40+ UI components
 - Lib modules (types, services, hooks, utils)
+- **Design system** (`design-system` module): `app/design-tokens.css`, `app/globals.css`,
+  `lib/theme.ts`, and the app shell (`ColorSchemeToggle`, `AuthenticatedShell`) — tracked in
+  `buildpad.json` so `upgrade --design` can refresh it later
 - API proxy routes (fields, items, relations, files)
 - Auth proxy routes (login, logout, user, callback) + login page
 - Supabase auth utilities and middleware
-- npm dependencies via `pnpm install`
+- **OAuth helpers** (`external-oauth` module): `lib/oauth/*` (config, pkce, validate) + OAuth
+  provider route and login buttons — required because the auth routes import `@/lib/oauth/*`
+- npm dependencies via `pnpm install` (incl. `@supabase/ssr`, `@supabase/supabase-js`, `jose`)
 
 The validate command checks for:
 - **Untransformed imports** - `@buildpad/*` imports that weren't converted to local paths
@@ -243,7 +249,19 @@ buildpad upgrade --all --strategy=new-file
 # Re-sync even when already at the latest version (bypasses the version
 # gate, still honours --strategy). Default target is all installed components.
 buildpad upgrade --force --three-way
+
+# Upgrade ONLY the design system (tokens, globals, theme, app shell)
+buildpad upgrade --design
+buildpad upgrade --design --three-way   # merge local token edits instead of overwriting
 ```
+
+`upgrade` handles **lib modules** (not just components). The `design-system` module —
+scaffolded by `init` and tracked in `buildpad.json` — is refreshed with `--design`, or
+automatically when you run a bare `buildpad upgrade` and it's behind. Because design-token
+files are meant to be customized, modified files are three-way merged (or written as `.new`),
+never silently clobbered. You can also name it explicitly: `buildpad upgrade design-system`.
+If a project has the design files but no tracking record (installed before this feature),
+`upgrade --design` adopts and records the module.
 
 ### Task 10: View changelogs
 ```bash

@@ -38,6 +38,7 @@ buildpad validate --json      # JSON output for CI/CD
 buildpad outdated             # Check for component updates
 buildpad outdated --json      # JSON output for programmatic use
 buildpad upgrade --all        # Upgrade all components (safe per-file checksums)
+buildpad upgrade --design     # Upgrade the design-system module (tokens, theme, app shell)
 buildpad upgrade --three-way  # 3-way merge for customized files
 buildpad changelog <pkg>      # View changelog between installed and latest
 buildpad migrate              # Migrate buildpad.json to v2 schema

@@ -151,10 +151,31 @@ export async function outdated(options: {
       }
     }
     
-    // Check lib modules too (unknown without v2 records)
+    // Check lib modules. Tracked (v2) modules with a registry lastChangedIn are
+    // version-checked like components (e.g. design-system); untracked ones are unknown.
     for (const libName of config.installedLib) {
       const key = `lib/${libName}`;
-      if (!config.lib?.[libName] && !config.componentVersions?.[key]) {
+      const installedRecord = config.lib?.[libName];
+      const mod = registry.lib?.[libName];
+
+      if (isV2 && installedRecord && mod?.lastChangedIn) {
+        const sourcePackage = mod.sourcePackage ?? '@buildpad/cli';
+        const latestVersion = mod.version ?? registry.packages?.[sourcePackage]?.version ?? registry.version;
+        if (semverGte(installedRecord.version, mod.lastChangedIn)) {
+          result.upToDate.push(key);
+        } else {
+          // Use the bare module name so the suggested `upgrade <name>` resolves
+          // it as a lib module (upgrade checks registry.lib first).
+          result.outdated.push({
+            name: libName,
+            installedVersion: installedRecord.version,
+            latestVersion,
+            lastChangedIn: mod.lastChangedIn,
+            sourcePackage,
+            installedAt: installedRecord.installedAt,
+          });
+        }
+      } else if (!installedRecord && !config.componentVersions?.[key]) {
         result.unknown.push(key);
       }
     }

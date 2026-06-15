@@ -29,8 +29,9 @@ npm install -g @buildpad/cli
 | `buildpad status` | Show installed components and modification state |
 | `buildpad validate` | Validate installation for common issues |
 | `buildpad fix` | Auto-fix common issues |
-| `buildpad outdated` | Check which installed components have newer versions |
-| `buildpad upgrade <component>` | Upgrade component(s) to the latest registry version |
+| `buildpad outdated` | Check which installed components **and lib modules** (incl. `design-system`) have newer versions |
+| `buildpad upgrade <component>` | Upgrade component(s) or lib module(s) to the latest registry version |
+| `buildpad upgrade --design` | Upgrade only the design-system module (tokens, globals, theme, app shell) |
 | `buildpad changelog <pkg>` | View changelog between your installed and latest version |
 | `buildpad migrate` | Migrate `buildpad.json` from schema v1 to v2 |
 
@@ -118,6 +119,22 @@ buildpad upgrade input vform --force
 ```
 
 With `--force` and no component arguments, the default target is **all installed components** (not just outdated ones).
+
+### Upgrading the design system
+
+The design foundation — `app/design-tokens.css`, `app/globals.css`, `lib/theme.ts`, and the app shell (`ColorSchemeToggle`, `AuthenticatedShell`) — is installed by `init`/`bootstrap` as the **`design-system` lib module** and tracked in `buildpad.json`. Unlike before, it's now upgradeable:
+
+```bash copy
+# Refresh the design system to the latest registry version
+buildpad upgrade --design
+
+# Merge your local token edits instead of overwriting
+buildpad upgrade --design --three-way
+```
+
+Because token/theme files are meant to be customized, `--design` honours the same `--strategy` rules as components: pristine files are overwritten cleanly, locally-modified files are three-way merged (or written as `.new`) — your edits are never silently lost. A bare `buildpad upgrade` also picks up the design system when it's behind, and `buildpad outdated` reports it. Projects that have the design files but predate this tracking are adopted on the first `upgrade --design`.
+
+Note: `upgrade` only refreshes the design-system **files**. Wiring the shell into your `app/(authenticated)/layout.tsx` is your application code — `AuthenticatedShell` ships as a component you opt into; it doesn't rewrite your layout.
 
 ### Changelogs
 

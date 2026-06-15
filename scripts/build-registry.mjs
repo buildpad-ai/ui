@@ -216,14 +216,44 @@ function buildRegistry() {
   });
 
   // ─── Enrich lib modules ────────────────────────────────────────
+  // Mirror the component enrichment: each module gets a sourcePackage,
+  // version, and lastChangedIn so `outdated`/`upgrade` can detect staleness
+  // (e.g. the design-system module). Sources under cli/templates/* are
+  // attributed to @buildpad/cli via inferSourcePackage.
   const enrichedLib = Object.fromEntries(
     Object.entries(template.lib ?? {}).map(([key, mod]) => {
       const enrichedFiles = (mod.files ?? []).map((file) => {
         const sourceSha256 = computeFileSha256(file.source);
         return sourceSha256 ? { ...file, sourceSha256 } : file;
       });
-      // Single-file modules
-      let enrichedMod = { ...mod, files: enrichedFiles };
+
+      // Determine the owning package from the first source (files or path).
+      const firstSource = mod.files?.[0]?.source ?? mod.path;
+      const sourcePackage = firstSource
+        ? inferSourcePackage(firstSource)
+        : '@buildpad/cli';
+      const version = packagesMap[sourcePackage]?.version ?? template.version;
+
+      // lastChangedIn: highest semver tag that touched ANY of the module's
+      // source files (and its single-file `path`). Falls back to version.
+      let foundTag;
+      const allSources = [...(mod.files ?? []).map((f) => f.source)];
+      if (mod.path) allSources.push(mod.path);
+      for (const source of allSources) {
+        const tag = getLastChangedTag(join(PACKAGES_DIR, source));
+        if (tag && (!foundTag || compareSemver(tag, foundTag) > 0)) {
+          foundTag = tag;
+        }
+      }
+      const lastChangedIn = foundTag ?? version;
+
+      let enrichedMod = {
+        ...mod,
+        sourcePackage,
+        version,
+        lastChangedIn,
+        files: enrichedFiles,
+      };
       if (mod.path) {
         const sourceSha256 = computeFileSha256(mod.path);
         if (sourceSha256) enrichedMod = { ...enrichedMod, sourceSha256 };
