@@ -140,6 +140,7 @@ program
   .argument('[components...]', 'Specific components to upgrade (default: all outdated)')
   .option('--all', 'Upgrade every installed component')
   .option('--package <name>', 'Upgrade all components from a specific source package')
+  .option('--design', 'Upgrade only the design-system module (tokens, globals, theme, app shell)')
   .option('--force', 'Re-sync components even when already at the latest version (default target: all installed)')
   .option('-n, --dry-run', 'Show what would change without writing files')
   .option('-y, --yes', 'Shorthand for --strategy=overwrite')
@@ -161,6 +162,7 @@ program
       components,
       all: options.all,
       package: options.package,
+      design: options.design,
       force: options.force,
       dryRun: options.dryRun,
       yes: options.yes,

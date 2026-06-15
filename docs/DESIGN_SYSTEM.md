@@ -126,6 +126,17 @@ All package Storybooks share a consistent enterprise look via three shared files
 3. Add any global overrides in `app/globals.css`.
 4. Update `packages/storybook-enterprise-theme.ts` to match (uses hardcoded values).
 
+## Delivery & Upgrades
+
+The design files ship as the **`design-system`** lib module (registry `lib.design-system`):
+`app/design-tokens.css`, `app/globals.css`, `lib/theme.ts`, plus the app shell
+(`components/ColorSchemeToggle.tsx`, `components/layout/AuthenticatedShell.tsx`). `buildpad init`
+installs them from the bundled CLI templates (offline, version-matched) and records them in
+`buildpad.json` with per-file checksums. Consumers refresh with `buildpad upgrade --design`
+(three-way merge preserves local token edits); `buildpad outdated` reports the module when behind.
+Sources live under `packages/cli/templates/` and are CLI-owned (`@buildpad/cli`), so `lastChangedIn`
+tracks the CLI package version.
+
 ## Notes
 
 - Tokens use the `--ds-` prefix and are brand-neutral so they can be re-themed.

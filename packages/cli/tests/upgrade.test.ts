@@ -27,6 +27,7 @@ const MOCK_REGISTRY = {
   name: 'buildpad',
   packages: {
     '@buildpad/ui-interfaces': { version: '2.0.0', changelogUrl: 'ui-interfaces/CHANGELOG.md' },
+    '@buildpad/cli': { version: '2.0.0', changelogUrl: 'cli/CHANGELOG.md' },
   },
   components: [
     {
@@ -48,7 +49,22 @@ const MOCK_REGISTRY = {
       internalDependencies: [],
     },
   ],
-  lib: {},
+  lib: {
+    'design-system': {
+      name: 'design-system',
+      description: 'Design tokens, globals, theme, app shell',
+      sourcePackage: '@buildpad/cli',
+      version: '2.0.0',
+      lastChangedIn: '2.0.0',
+      files: [
+        {
+          source: 'cli/templates/app/globals.css',
+          target: 'app/globals.css',
+          sourceSha256: 'stub',
+        },
+      ],
+    },
+  },
   categories: [],
 };
 
@@ -59,10 +75,13 @@ export function Demo() {
 }
 `;
 
+const NEW_GLOBALS = `body { color: green; }\n/* globals v2 */\n`;
+
 vi.mock('../src/resolver.js', () => ({
   getRegistry: vi.fn(async () => MOCK_REGISTRY),
   resolveSourceFile: vi.fn(async (source: string) => {
     if (source === 'ui-interfaces/src/demo/Demo.tsx') return NEW_SOURCE;
+    if (source === 'cli/templates/app/globals.css') return NEW_GLOBALS;
     throw new Error(`unexpected source: ${source}`);
   }),
   sourceFileExists: vi.fn(async () => true),
@@ -78,6 +97,13 @@ vi.mock('../src/resolver.js', () => ({
   // init.ts calls this at module load time — must be present in the mock
   getTemplatesRoot: () => '/tmp/mock-templates',
   getLocalPackagesRoot: () => '/tmp/mock-packages',
+  // init.ts imports these for the bundled design-system install
+  getBundledRegistry: vi.fn(async () => MOCK_REGISTRY),
+  resolveBundledTemplate: vi.fn(async (source: string) => {
+    if (source === 'cli/templates/app/globals.css') return NEW_GLOBALS;
+    throw new Error(`unexpected bundled source: ${source}`);
+  }),
+  bundledTemplateExists: vi.fn(async () => true),
 }));
 
 // Now import the SUT — must come after vi.mock
@@ -260,5 +286,136 @@ describe('upgrade — manifest gating', () => {
     ).rejects.toThrow(/exit:1/);
 
     exitSpy.mockRestore();
+  });
+});
+
+// ── design-system lib module (--design) ──────────────────────────────────────
+
+interface DesignSetupOpts {
+  installedVersion: string;
+  fileBody: string;
+  recordedSha?: string;
+}
+
+async function setupDesignConsumer(opts: DesignSetupOpts) {
+  const targetRel = 'app/globals.css';
+  const targetAbs = path.join(tmpdir, targetRel);
+  await fs.ensureDir(path.dirname(targetAbs));
+  await fs.writeFile(targetAbs, opts.fileBody);
+
+  const recordedSha = opts.recordedSha ?? hashTransformed(opts.fileBody);
+
+  await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), {
+    $schema: 'https://buildpad.dev/schema.json',
+    schemaVersion: 2,
+    model: 'copy-own',
+    tsx: true,
+    srcDir: false,
+    aliases: { components: '@/components/ui', lib: '@/lib/buildpad' },
+    installedLib: ['design-system'],
+    installedComponents: [],
+    components: {},
+    lib: {
+      'design-system': {
+        version: opts.installedVersion,
+        sourcePackage: '@buildpad/cli',
+        installedAt: '2026-01-01T00:00:00Z',
+        files: [{ target: targetRel, sha256: recordedSha }],
+      },
+    },
+    packageVersions: { '@buildpad/cli': opts.installedVersion },
+  });
+
+  return { targetAbs, targetRel };
+}
+
+describe('upgrade --design', () => {
+  test('overwrites a pristine design file and bumps the module version', async () => {
+    const OLD = 'body { color: red; }\n';
+    const { targetAbs } = await setupDesignConsumer({
+      installedVersion: '1.1.0',
+      fileBody: OLD,
+    });
+
+    await upgrade({ components: [], design: true, cwd: tmpdir, strategy: 'overwrite' });
+
+    const onDisk = await fs.readFile(targetAbs, 'utf8');
+    expect(onDisk).toContain('globals v2');
+    expect(await fs.pathExists(targetAbs + '.new')).toBe(false);
+
+    const manifest = await readManifest();
+    expect(manifest.lib['design-system'].version).toBe('2.0.0');
+    expect(manifest.packageVersions['@buildpad/cli']).toBe('2.0.0');
+  });
+
+  test('preserves local edits via .new when base is unavailable (three-way)', async () => {
+    const MODIFIED = 'body { color: blue; } /* my edit */\n';
+    const { targetAbs } = await setupDesignConsumer({
+      installedVersion: '1.1.0',
+      fileBody: MODIFIED,
+      recordedSha: 'different-hash-than-modified', // mark as locally modified
+    });
+
+    await upgrade({ components: [], design: true, cwd: tmpdir, strategy: 'three-way' });
+
+    // Original kept (edit not clobbered); new version lands in .new.
+    expect(await fs.readFile(targetAbs, 'utf8')).toContain('my edit');
+    expect(await fs.pathExists(targetAbs + '.new')).toBe(true);
+    expect(await fs.readFile(targetAbs + '.new', 'utf8')).toContain('globals v2');
+  });
+
+  test('--design does not touch installed components', async () => {
+    const OLD = 'body { color: red; }\n';
+    await setupDesignConsumer({ installedVersion: '1.1.0', fileBody: OLD });
+
+    // Add an outdated component alongside the design module.
+    const manifest = await readManifest();
+    manifest.installedComponents = ['demo'];
+    manifest.components.demo = {
+      version: '1.0.0',
+      sourcePackage: '@buildpad/ui-interfaces',
+      installedAt: '2026-01-01T00:00:00Z',
+      files: [{ target: 'components/ui/demo.tsx', sha256: 'whatever' }],
+    };
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), manifest);
+    const demoAbs = path.join(tmpdir, 'components/ui/demo.tsx');
+    await fs.ensureDir(path.dirname(demoAbs));
+    await fs.writeFile(demoAbs, 'export const old = 1;\n');
+
+    await upgrade({ components: [], design: true, cwd: tmpdir, strategy: 'overwrite' });
+
+    // demo component left untouched (still v1, file unchanged)
+    const after = await readManifest();
+    expect(after.components.demo.version).toBe('1.0.0');
+    expect(await fs.readFile(demoAbs, 'utf8')).toContain('old = 1');
+    expect(after.lib['design-system'].version).toBe('2.0.0');
+  });
+
+  test('adopts an untracked design-system (no lib record) by installing it', async () => {
+    // Consumer has the file but no lib.design-system record (pre-feature app).
+    const targetRel = 'app/globals.css';
+    const targetAbs = path.join(tmpdir, targetRel);
+    await fs.ensureDir(path.dirname(targetAbs));
+    await fs.writeFile(targetAbs, 'body { color: red; }\n');
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), {
+      $schema: 'https://buildpad.dev/schema.json',
+      schemaVersion: 2,
+      model: 'copy-own',
+      tsx: true,
+      srcDir: false,
+      aliases: { components: '@/components/ui', lib: '@/lib/buildpad' },
+      installedLib: [],
+      installedComponents: [],
+      components: {},
+      lib: {},
+      packageVersions: {},
+    });
+
+    await upgrade({ components: [], design: true, cwd: tmpdir, strategy: 'overwrite' });
+
+    const manifest = await readManifest();
+    expect(manifest.installedLib).toContain('design-system');
+    expect(manifest.lib['design-system'].version).toBe('2.0.0');
+    expect(await fs.readFile(targetAbs, 'utf8')).toContain('globals v2');
   });
 });

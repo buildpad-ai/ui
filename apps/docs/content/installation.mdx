@@ -26,10 +26,11 @@ This installs:
 - `buildpad.json` configuration + Next.js skeleton
 - 40+ UI components in `components/ui/`
 - Types, services, hooks in `lib/buildpad/`
+- Design system (`design-tokens.css`, `globals.css`, `lib/theme.ts`) + app shell (`ColorSchemeToggle`, `AuthenticatedShell`) — tracked, refreshable via `buildpad upgrade --design`
 - API proxy routes (fields, items, relations, files)
 - Auth proxy routes (login, logout, user, OAuth callback) + login page
-- Supabase auth utilities and middleware
-- npm dependencies via `pnpm install`
+- Supabase auth utilities/middleware and OAuth helpers (`lib/oauth/*`)
+- npm dependencies via `pnpm install` (incl. `@supabase/ssr`, `@supabase/supabase-js`, `jose`)
 
 ## Manual Setup
 

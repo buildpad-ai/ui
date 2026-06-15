@@ -204,6 +204,11 @@ user-profile menu. Its styling lives in `app/globals.css` under the `.bp-*`
 namespace and is built entirely from design tokens, so light/dark mode come
 for free.
 
+It ships as part of the tracked [`design-system` module](/design-system#delivery--upgrades),
+so `buildpad upgrade --design` keeps the component (and its `.bp-*` styles) current.
+Note that `upgrade` refreshes the **file** — wiring it into a layout (below) is your
+application code and is never rewritten for you.
+
 ```tsx filename="app/(authenticated)/dashboard/layout.tsx" copy
 "use client";
 

@@ -51,3 +51,19 @@ Dark mode is handled with the `[data-mantine-color-scheme="dark"]` selector in `
 1. Update token values in `app/design-tokens.css`
 2. Extend `lib/theme.ts` for component-level defaults
 3. Add any global overrides in `app/globals.css`
+
+## Delivery & upgrades
+
+These files are scaffolded by `buildpad init`/`bootstrap` as the **`design-system`** lib module
+(`design-tokens.css`, `globals.css`, `theme.ts`, plus the `ColorSchemeToggle` and `AuthenticatedShell`
+app shell) and tracked in `buildpad.json`. To pull a newer design from the registry without losing
+your customizations:
+
+```bash copy
+buildpad upgrade --design              # refresh tokens/theme/globals/shell
+buildpad upgrade --design --three-way  # merge your local token edits
+```
+
+Your edits are preserved via three-way merge (or written as `.new`) — pristine files overwrite
+cleanly. `buildpad outdated` reports the module when it's behind. See the
+[CLI docs](/cli#upgrading-the-design-system) for details.

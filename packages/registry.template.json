@@ -515,6 +515,32 @@
           "target": "app/select-scope/page.tsx"
         }
       ]
+    },
+    "design-system": {
+      "name": "design-system",
+      "description": "Design tokens, global styles, Mantine theme, and the app shell (ColorSchemeToggle, AuthenticatedShell). Scaffolded by init and refreshable via `upgrade --design`.",
+      "files": [
+        {
+          "source": "cli/templates/app/design-tokens.css",
+          "target": "app/design-tokens.css"
+        },
+        {
+          "source": "cli/templates/app/globals.css",
+          "target": "app/globals.css"
+        },
+        {
+          "source": "cli/templates/lib/theme.ts",
+          "target": "lib/theme.ts"
+        },
+        {
+          "source": "cli/templates/components/ColorSchemeToggle.tsx",
+          "target": "components/ColorSchemeToggle.tsx"
+        },
+        {
+          "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
+          "target": "components/layout/AuthenticatedShell.tsx"
+        }
+      ]
     }
   },
   "components": [

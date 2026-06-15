@@ -1,12 +1,14 @@
 /**
  * Buildpad CLI - Upgrade Command
  *
- * Upgrade installed components to the latest registry versions.
+ * Upgrade installed components (and lib modules) to the latest registry versions.
  *
  * Flags:
  *   [components...]              Specific components to upgrade (default: all outdated)
  *   --all                        Upgrade every installed component
  *   --package <name>             Upgrade all components from a specific source package
+ *   --design                     Upgrade only the design-system module (tokens, globals,
+ *                                theme, app shell). Shorthand scope for the lib module.
  *   --force                      Re-sync even when already at the latest version.
  *                                Bypasses the version gate but still honours --strategy,
  *                                so locally-modified files are merged, not clobbered.
@@ -30,7 +32,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import chalk from 'chalk';
-import ora from 'ora';
+import ora, { type Ora } from 'ora';
 import prompts from 'prompts';
 import {
   type Config,
@@ -45,6 +47,7 @@ import {
   fetchSourceAtVersion,
   type Registry,
   type ComponentEntry,
+  type LibModule,
 } from '../resolver.js';
 import {
   transformImports,
@@ -78,7 +81,7 @@ function semverGte(a: string, b: string): boolean {
 }
 
 /**
- * Transform a source file's content the same way add.ts does.
+ * Transform a component source file's content the same way add.ts does.
  */
 async function transformContent(
   rawContent: string,
@@ -101,12 +104,31 @@ async function transformContent(
   return content;
 }
 
+/**
+ * Transform a lib-module source file's content the same way copyLibModule does.
+ * Must match `add.ts` so the recomputed sha equals the recorded baseline.
+ */
+function transformLibContent(
+  rawContent: string,
+  file: { source: string },
+  moduleName: string,
+  config: Config,
+  sourcePackage: string,
+  version: string
+): string {
+  let content = transformImports(rawContent, config);
+  const fileName = path.basename(file.source, path.extname(file.source));
+  content = addOriginHeader(content, `${moduleName}/${fileName}`, sourcePackage, version);
+  return content;
+}
+
 export type UpgradeStrategy = 'overwrite' | 'new-file' | 'three-way' | 'prompt';
 
 interface UpgradeOptions {
   components: string[];
   all?: boolean;
   package?: string;
+  design?: boolean;
   force?: boolean;
   dryRun?: boolean;
   yes?: boolean;
@@ -134,11 +156,135 @@ function resolveStrategy(options: {
   return 'prompt';
 }
 
+interface ProcessFileResult {
+  record: FileChecksum;
+  conflict: boolean;
+}
+
+/**
+ * Write one upgraded file, handling pristine vs locally-modified state and the
+ * chosen strategy. Transform-agnostic: callers pass the already-transformed
+ * `newContent` plus a `getBaseContent` thunk (for three-way merge). Shared by
+ * the component and lib-module upgrade loops.
+ */
+async function processModifiableFile(args: {
+  finalPath: string;
+  relativeTarget: string;
+  newContent: string;
+  currentSha256: string | undefined;
+  strategy: UpgradeStrategy;
+  dryRun: boolean;
+  fileSpinner: Ora;
+  getBaseContent: () => Promise<string | null>;
+}): Promise<ProcessFileResult> {
+  const {
+    finalPath, relativeTarget, newContent, currentSha256,
+    strategy, dryRun, fileSpinner, getBaseContent,
+  } = args;
+  const newSha256 = hashTransformed(newContent);
+  const base = path.basename(relativeTarget);
+
+  if (dryRun) {
+    const pristine = currentSha256 === undefined || currentSha256 === newSha256;
+    fileSpinner.info(`    ${base} — ${pristine ? 'clean overwrite' : 'has local modifications'}`);
+    return { record: { target: relativeTarget, sha256: newSha256 }, conflict: false };
+  }
+
+  // Pristine = disk content matches the recorded baseline (or no baseline / no file yet).
+  let isPristine: boolean;
+  if (!currentSha256) {
+    isPristine = true;
+  } else if (!(await fs.pathExists(finalPath))) {
+    isPristine = true;
+  } else {
+    const diskContent = await fs.readFile(finalPath, 'utf8');
+    isPristine = hashTransformed(diskContent) === currentSha256;
+  }
+
+  const writeOverwrite = async (): Promise<ProcessFileResult> => {
+    await fs.ensureDir(path.dirname(finalPath));
+    await fs.writeFile(finalPath, newContent);
+    return { record: { target: relativeTarget, sha256: newSha256 }, conflict: false };
+  };
+  const writeNewFile = async (content: string): Promise<ProcessFileResult> => {
+    const newFilePath = finalPath + '.new';
+    await fs.ensureDir(path.dirname(newFilePath));
+    await fs.writeFile(newFilePath, content);
+    // Preserve the recorded sha so the file stays "pristine" relative to the
+    // manifest; the user resolves the .new file out-of-band.
+    return { record: { target: relativeTarget, sha256: currentSha256 ?? newSha256 }, conflict: true };
+  };
+
+  if (isPristine) {
+    return writeOverwrite();
+  }
+
+  if (strategy === 'overwrite') {
+    const r = await writeOverwrite();
+    fileSpinner.info(`    ${base} — overwritten (--strategy=overwrite)`);
+    return r;
+  }
+
+  if (strategy === 'three-way') {
+    const baseContent = await getBaseContent();
+    if (baseContent !== null) {
+      const currentOnDisk = (await fs.pathExists(finalPath))
+        ? await fs.readFile(finalPath, 'utf8')
+        : newContent;
+      const merged = threeWayMerge(currentOnDisk, baseContent, newContent);
+      if (merged.ok) {
+        await fs.ensureDir(path.dirname(finalPath));
+        await fs.writeFile(finalPath, merged.text);
+        fileSpinner.succeed(`    ${base} — merged cleanly`);
+        return { record: { target: relativeTarget, sha256: hashTransformed(merged.text) }, conflict: false };
+      }
+      fileSpinner.warn(`    ${base} — merge conflict → writing .new`);
+      return writeNewFile(merged.text);
+    }
+    fileSpinner.warn(`    ${base} — base unavailable, writing .new`);
+    return writeNewFile(newContent);
+  }
+
+  if (strategy === 'new-file') {
+    const r = await writeNewFile(newContent);
+    fileSpinner.info(`    ${base} — wrote .new`);
+    return r;
+  }
+
+  // strategy === 'prompt' — interactive
+  fileSpinner.stop();
+  const { action } = await prompts({
+    type: 'select',
+    name: 'action',
+    message: `  ${base} has local modifications. What do you want to do?`,
+    choices: [
+      { title: 'Write new version as .new file', value: 'new' },
+      { title: 'Overwrite (discard local changes)', value: 'overwrite' },
+      { title: 'Skip this file', value: 'skip' },
+    ],
+    initial: 0,
+  });
+  fileSpinner.start();
+
+  if (action === 'overwrite') {
+    return writeOverwrite();
+  }
+  if (action === 'new') {
+    const r = await writeNewFile(newContent);
+    fileSpinner.info(`    Written: ${base}.new`);
+    return r;
+  }
+  fileSpinner.info(`    Skipped: ${base}`);
+  // Keep file untouched — preserve the recorded sha.
+  return { record: { target: relativeTarget, sha256: currentSha256 ?? newSha256 }, conflict: false };
+}
+
 export async function upgrade(options: UpgradeOptions) {
   const {
     components: requestedComponents,
     all = false,
     package: packageFilter,
+    design = false,
     force = false,
     dryRun = false,
     cwd,
@@ -170,10 +316,14 @@ export async function upgrade(options: UpgradeOptions) {
   const registry = await getRegistry();
   spinner.succeed('Registry loaded');
 
-  // Build list of components to upgrade
-  let targetComponents: string[];
+  // ── Resolve targets ───────────────────────────────────────────────
+  // `--design` scopes strictly to the design-system lib module (no components).
+  let targetComponents: string[] = [];
+  let targetLibModules: string[] = [];
 
-  if (all) {
+  if (design) {
+    targetLibModules = ['design-system'];
+  } else if (all) {
     targetComponents = config.installedComponents;
   } else if (packageFilter) {
     targetComponents = config.installedComponents.filter(name => {
@@ -181,13 +331,15 @@ export async function upgrade(options: UpgradeOptions) {
       return rec?.sourcePackage === packageFilter;
     });
   } else if (requestedComponents.length > 0) {
-    targetComponents = requestedComponents;
+    // Allow naming a lib module (e.g. "design-system") explicitly.
+    for (const name of requestedComponents) {
+      if (registry.lib[name]) targetLibModules.push(name);
+      else targetComponents.push(name);
+    }
   } else if (force) {
-    // --force with no explicit selection → re-sync every installed component,
-    // since the whole point of --force is to ignore version equality.
     targetComponents = config.installedComponents;
   } else {
-    // Default: all outdated
+    // Default: all outdated components AND all outdated lib modules.
     targetComponents = config.installedComponents.filter(name => {
       const regComp = registry.components.find(c => c.name === name);
       if (!regComp) return false;
@@ -196,18 +348,28 @@ export async function upgrade(options: UpgradeOptions) {
       const installedVersion = config.components?.[name]?.version ?? '0.0.0';
       return !semverGte(installedVersion, lastChangedIn);
     });
+    targetLibModules = config.installedLib.filter(name => {
+      const mod = registry.lib[name];
+      if (!mod?.lastChangedIn) return false;
+      const installedVersion = config.lib?.[name]?.version ?? '0.0.0';
+      return !semverGte(installedVersion, mod.lastChangedIn);
+    });
   }
 
-  if (targetComponents.length === 0) {
-    console.log(chalk.green('\n✓ All components are up to date.\n'));
+  if (targetComponents.length === 0 && targetLibModules.length === 0) {
+    console.log(chalk.green('\n✓ Everything is up to date.\n'));
     return;
   }
-
-  console.log(chalk.bold(`\n⬆  Upgrading ${targetComponents.length} component(s)...\n`));
 
   let upgraded = 0;
   let skipped = 0;
   let conflicts = 0;
+  let dirty = false;
+
+  // ── Components ────────────────────────────────────────────────────
+  if (targetComponents.length > 0) {
+    console.log(chalk.bold(`\n⬆  Upgrading ${targetComponents.length} component(s)...\n`));
+  }
 
   for (const componentName of targetComponents) {
     const regComponent = registry.components.find(c => c.name === componentName);
@@ -232,11 +394,7 @@ export async function upgrade(options: UpgradeOptions) {
 
     console.log(
       chalk.cyan(`  ${componentName}`) +
-      chalk.dim(
-        upToDate
-          ? ` re-sync @ ${latestVersion} (--force)`
-          : ` ${installedVersion} → ${latestVersion}`
-      )
+      chalk.dim(upToDate ? ` re-sync @ ${latestVersion} (--force)` : ` ${installedVersion} → ${latestVersion}`)
     );
 
     const fileSpinner = ora('').start();
@@ -246,13 +404,9 @@ export async function upgrade(options: UpgradeOptions) {
     for (const file of regComponent.files) {
       fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
 
-      const targetPath = path.join(
-        config.srcDir ? path.join(cwd, 'src') : cwd,
-        file.target
-      );
+      const targetPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
       const ext = config.tsx ? '.tsx' : '.jsx';
       const finalPath = targetPath.replace(/\.tsx?$/, ext);
-      const relativeTarget = file.target;
 
       if (!(await sourceFileExists(file.source))) {
         fileSpinner.warn(`    Source not found: ${file.source}`);
@@ -261,127 +415,32 @@ export async function upgrade(options: UpgradeOptions) {
 
       const rawContent = await resolveSourceFile(file.source);
       const newContent = await transformContent(rawContent, file, regComponent, config, sourcePackage, latestVersion);
-      const newSha256 = hashTransformed(newContent);
+      const currentSha256 = installedRecord?.files.find(f => f.target === file.target)?.sha256;
 
-      if (dryRun) {
-        const currentSha256 = installedRecord?.files.find(f => f.target === relativeTarget)?.sha256;
-        const pristine = currentSha256 === undefined || currentSha256 === newSha256;
-        fileSpinner.info(`    ${path.basename(file.target)} — ${pristine ? 'clean overwrite' : 'has local modifications'}`);
-        newFiles.push({ target: relativeTarget, sha256: newSha256 });
-        continue;
-      }
-
-      // Check if file has been locally modified by comparing disk sha to the
-      // recorded sha (what was written at install time). This mirrors status.ts.
-      const currentSha256 = installedRecord?.files.find(f => f.target === relativeTarget)?.sha256;
-      let isPristine: boolean;
-      if (!currentSha256) {
-        isPristine = true;
-      } else if (!(await fs.pathExists(finalPath))) {
-        isPristine = true;
-      } else {
-        const diskContent = await fs.readFile(finalPath, 'utf8');
-        isPristine = hashTransformed(diskContent) === currentSha256;
-      }
-
-      const writeOverwrite = async () => {
-        await fs.ensureDir(path.dirname(finalPath));
-        await fs.writeFile(finalPath, newContent);
-        newFiles.push({ target: relativeTarget, sha256: newSha256 });
-      };
-      const writeNewFile = async (content: string) => {
-        const newFilePath = finalPath + '.new';
-        await fs.ensureDir(path.dirname(newFilePath));
-        await fs.writeFile(newFilePath, content);
-        componentHadConflict = true;
-        conflicts++;
-        // Preserve the existing recorded sha so the file stays "pristine"
-        // relative to the manifest; the user resolves the .new file out-of-band.
-        newFiles.push({ target: relativeTarget, sha256: currentSha256 ?? newSha256 });
-      };
-
-      if (isPristine) {
-        await writeOverwrite();
-        continue;
-      }
-
-      // File is locally modified — branch on strategy.
-      if (strategy === 'overwrite') {
-        await writeOverwrite();
-        fileSpinner.info(`    ${path.basename(file.target)} — overwritten (--strategy=overwrite)`);
-        continue;
-      }
-
-      if (strategy === 'three-way') {
-        // Attempt three-way merge; on any failure (network / unmerged) → .new
-        let baseContent: string | null = null;
-        try {
-          const baseRaw = await fetchSourceAtVersion(file.source, sourcePackage, installedVersion);
-          baseContent = await transformContent(baseRaw, file, regComponent, config, sourcePackage, installedVersion);
-        } catch {
-          baseContent = null;
-        }
-
-        if (baseContent !== null) {
-          const currentOnDisk = await fs.pathExists(finalPath)
-            ? await fs.readFile(finalPath, 'utf8')
-            : newContent;
-          const merged = threeWayMerge(currentOnDisk, baseContent, newContent);
-
-          if (merged.ok) {
-            await fs.ensureDir(path.dirname(finalPath));
-            await fs.writeFile(finalPath, merged.text);
-            newFiles.push({ target: relativeTarget, sha256: hashTransformed(merged.text) });
-            fileSpinner.succeed(`    ${path.basename(file.target)} — merged cleanly`);
-            continue;
+      const { record, conflict } = await processModifiableFile({
+        finalPath,
+        relativeTarget: file.target,
+        newContent,
+        currentSha256,
+        strategy,
+        dryRun,
+        fileSpinner,
+        getBaseContent: async () => {
+          try {
+            const baseRaw = await fetchSourceAtVersion(file.source, sourcePackage, installedVersion);
+            return await transformContent(baseRaw, file, regComponent, config, sourcePackage, installedVersion);
+          } catch {
+            return null;
           }
-          fileSpinner.warn(`    ${path.basename(file.target)} — merge conflict → writing .new`);
-          await writeNewFile(merged.text);
-          continue;
-        }
-        // Fall through to new-file behaviour when base couldn't be fetched.
-        fileSpinner.warn(`    ${path.basename(file.target)} — base unavailable, writing .new`);
-        await writeNewFile(newContent);
-        continue;
-      }
-
-      if (strategy === 'new-file') {
-        await writeNewFile(newContent);
-        fileSpinner.info(`    ${path.basename(file.target)} — wrote .new`);
-        continue;
-      }
-
-      // strategy === 'prompt' — interactive
-      fileSpinner.stop();
-      const { action } = await prompts({
-        type: 'select',
-        name: 'action',
-        message: `  ${path.basename(file.target)} has local modifications. What do you want to do?`,
-        choices: [
-          { title: 'Write new version as .new file', value: 'new' },
-          { title: 'Overwrite (discard local changes)', value: 'overwrite' },
-          { title: 'Skip this file', value: 'skip' },
-        ],
-        initial: 0,
+        },
       });
-      fileSpinner.start();
-
-      if (action === 'overwrite') {
-        await writeOverwrite();
-      } else if (action === 'new') {
-        await writeNewFile(newContent);
-        fileSpinner.info(`    Written: ${path.basename(file.target)}.new`);
-      } else {
-        fileSpinner.info(`    Skipped: ${path.basename(file.target)}`);
-        // Keep file untouched — preserve the recorded sha
-        newFiles.push({ target: relativeTarget, sha256: currentSha256 ?? newSha256 });
-      }
+      newFiles.push(record);
+      if (conflict) { componentHadConflict = true; conflicts++; }
     }
 
     fileSpinner.stop();
 
     if (!dryRun) {
-      // Update config
       if (!config.components) config.components = {};
       config.components[componentName] = {
         version: latestVersion,
@@ -389,17 +448,15 @@ export async function upgrade(options: UpgradeOptions) {
         installedAt: installedRecord?.installedAt ?? new Date().toISOString(),
         files: newFiles,
       };
-
       if (!config.packageVersions) config.packageVersions = {};
       config.packageVersions[sourcePackage] = latestVersion;
-
-      // Update v1 compat field
       if (!config.componentVersions) config.componentVersions = {};
       config.componentVersions[componentName] = {
         version: latestVersion,
         installedAt: config.components[componentName].installedAt,
         source: sourcePackage,
       };
+      dirty = true;
     }
 
     const verb = upToDate ? 're-synced at' : 'upgraded to';
@@ -411,7 +468,105 @@ export async function upgrade(options: UpgradeOptions) {
     upgraded++;
   }
 
-  if (!dryRun && upgraded > 0) {
+  // ── Lib modules (e.g. design-system) ──────────────────────────────
+  if (targetLibModules.length > 0) {
+    console.log(chalk.bold(`\n⬆  Upgrading ${targetLibModules.length} lib module(s)...\n`));
+  }
+
+  for (const moduleName of targetLibModules) {
+    const mod: LibModule | undefined = registry.lib[moduleName];
+    if (!mod) {
+      console.log(chalk.dim(`  Skipping '${moduleName}' — not found in registry`));
+      skipped++;
+      continue;
+    }
+
+    const sourcePackage = mod.sourcePackage ?? '@buildpad/cli';
+    const latestVersion = mod.version ?? registry.packages?.[sourcePackage]?.version ?? registry.version;
+    const lastChangedIn = mod.lastChangedIn ?? latestVersion;
+    const installedRecord = config.lib?.[moduleName];
+    const installedVersion = installedRecord?.version ?? '0.0.0';
+    const isAdoption = !installedRecord;
+
+    const upToDate = !isAdoption && semverGte(installedVersion, lastChangedIn);
+    if (upToDate && !force) {
+      console.log(chalk.dim(`  ${moduleName} — already up to date (${installedVersion})`));
+      skipped++;
+      continue;
+    }
+
+    console.log(
+      chalk.cyan(`  ${moduleName}`) +
+      chalk.dim(isAdoption ? ` install @ ${latestVersion}` : ` ${installedVersion} → ${latestVersion}`)
+    );
+
+    const fileSpinner = ora('').start();
+    const newFiles: FileChecksum[] = [];
+    let moduleHadConflict = false;
+
+    for (const file of mod.files ?? []) {
+      fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
+
+      // Lib targets are literal paths (no .tsx/.jsx ext swap) — must match copyLibModule.
+      const finalPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
+
+      if (!(await sourceFileExists(file.source))) {
+        fileSpinner.warn(`    Source not found: ${file.source}`);
+        continue;
+      }
+
+      const rawContent = await resolveSourceFile(file.source);
+      const newContent = transformLibContent(rawContent, file, moduleName, config, sourcePackage, latestVersion);
+      const currentSha256 = installedRecord?.files.find(f => f.target === file.target)?.sha256;
+
+      const { record, conflict } = await processModifiableFile({
+        finalPath,
+        relativeTarget: file.target,
+        newContent,
+        currentSha256,
+        strategy,
+        dryRun,
+        fileSpinner,
+        getBaseContent: async () => {
+          if (isAdoption) return null; // no baseline to merge against
+          try {
+            const baseRaw = await fetchSourceAtVersion(file.source, sourcePackage, installedVersion);
+            return transformLibContent(baseRaw, file, moduleName, config, sourcePackage, installedVersion);
+          } catch {
+            return null;
+          }
+        },
+      });
+      newFiles.push(record);
+      if (conflict) { moduleHadConflict = true; conflicts++; }
+    }
+
+    fileSpinner.stop();
+
+    if (!dryRun) {
+      if (!config.lib) config.lib = {};
+      config.lib[moduleName] = {
+        version: latestVersion,
+        sourcePackage,
+        installedAt: installedRecord?.installedAt ?? new Date().toISOString(),
+        files: newFiles,
+      };
+      if (!config.installedLib.includes(moduleName)) config.installedLib.push(moduleName);
+      if (!config.packageVersions) config.packageVersions = {};
+      config.packageVersions[sourcePackage] = latestVersion;
+      dirty = true;
+    }
+
+    const verb = isAdoption ? 'installed at' : 'upgraded to';
+    if (!moduleHadConflict) {
+      console.log(chalk.green(`  ✓ ${moduleName} ${verb} ${latestVersion}`));
+    } else {
+      console.log(chalk.yellow(`  ⚠ ${moduleName} ${verb} ${latestVersion} (with conflicts — resolve .new files)`));
+    }
+    upgraded++;
+  }
+
+  if (!dryRun && dirty) {
     await saveConfig(cwd, config);
   }
 

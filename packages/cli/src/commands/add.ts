@@ -181,16 +181,32 @@ function calculateSimilarity(a: string, b: string): number {
 }
 
 /**
- * Copy and transform a lib module (types, services, or hooks)
+ * Options for {@link copyLibModule}. By default source files are read via the
+ * remote/local resolver; callers (e.g. `init`) can override `readSource` /
+ * `sourceExists` to install from the bundled CLI templates instead.
  */
-async function copyLibModule(
+export interface CopyLibModuleOptions {
+  readSource?: (source: string) => Promise<string>;
+  sourceExists?: (source: string) => Promise<boolean>;
+}
+
+/**
+ * Copy and transform a lib module (types, services, hooks, design-system, …).
+ * Records per-file checksums in `config.lib[moduleName]` so the module can be
+ * refreshed later via `upgrade` with three-way merge.
+ */
+export async function copyLibModule(
   moduleName: string,
   registry: Registry,
   config: Config,
   cwd: string,
   spinner: Ora,
-  overwrite = false
+  overwrite = false,
+  opts: CopyLibModuleOptions = {}
 ): Promise<boolean> {
+  const readSource = opts.readSource ?? resolveSourceFile;
+  const checkSource = opts.sourceExists ?? sourceFileExists;
+
   const libModule = registry.lib[moduleName];
   if (!libModule) {
     spinner.warn(`Lib module not found: ${moduleName}`);
@@ -211,7 +227,7 @@ async function copyLibModule(
   if (libModule.internalDependencies) {
     for (const dep of libModule.internalDependencies) {
       if (!config.installedLib.includes(dep)) {
-        await copyLibModule(dep, registry, config, cwd, spinner);
+        await copyLibModule(dep, registry, config, cwd, spinner, overwrite, opts);
       }
     }
   }
@@ -230,10 +246,10 @@ async function copyLibModule(
       libModule.target
     );
 
-    if (await sourceFileExists(libModule.path)) {
+    if (await checkSource(libModule.path)) {
       const sourcePackage = inferSourcePackage(libModule.path);
       const version = resolvePackageVersion(registry, sourcePackage);
-      let content = await resolveSourceFile(libModule.path);
+      let content = await readSource(libModule.path);
       content = transformImports(content, config);
       content = addOriginHeader(content, moduleName, sourcePackage, version);
       await fs.ensureDir(path.dirname(targetPath));
@@ -251,10 +267,10 @@ async function copyLibModule(
         file.target
       );
 
-      if (await sourceFileExists(file.source)) {
+      if (await checkSource(file.source)) {
         const sourcePackage = inferSourcePackage(file.source);
         const version = resolvePackageVersion(registry, sourcePackage);
-        let content = await resolveSourceFile(file.source);
+        let content = await readSource(file.source);
         content = transformImports(content, config);
         // Extract filename for origin tracking
         const fileName = path.basename(file.source, path.extname(file.source));
@@ -667,17 +683,26 @@ export async function add(
   if (withApi || all) {
     console.log(chalk.bold('\n🔌 Installing API routes and Supabase auth...\n'));
     const spinner = ora('Processing lib modules...').start();
-    
+
     // Install supabase-auth first (dependency of api-routes)
     if (registry.lib['supabase-auth'] && !config.installedLib.includes('supabase-auth')) {
       await copyLibModule('supabase-auth', registry, config, cwd, spinner);
     }
-    
+
     // Install api-routes
     if (registry.lib['api-routes'] && !config.installedLib.includes('api-routes')) {
       await copyLibModule('api-routes', registry, config, cwd, spinner);
     }
-    
+
+    // Install external-oauth. The api-routes auth handlers (logout/login/callback)
+    // import @/lib/oauth/*, so the oauth helpers must be present or those routes
+    // fail to resolve. external-oauth depends back on api-routes/supabase-auth
+    // (already installed above), so it only adds its own oauth files here — and
+    // its oauth-aware callback intentionally supersedes the basic one.
+    if (registry.lib['external-oauth'] && !config.installedLib.includes('external-oauth')) {
+      await copyLibModule('external-oauth', registry, config, cwd, spinner);
+    }
+
     spinner.succeed('API routes and auth installed!');
     await saveConfig(cwd, config);
   }

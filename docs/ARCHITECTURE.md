@@ -819,6 +819,8 @@ The CLI tracks per-file SHA256 checksums so upgrades only overwrite files the co
 
 **`--force`:** skips the Step 1 version check, so components already at `lastChangedIn` are still processed. Steps 2–4 are unchanged — per-file decisions and `--strategy` handling still apply, so local edits are merged rather than clobbered. This is the intended path for re-syncing a freshly-migrated (pre-v2) project, whose components are all baselined to the current version and would otherwise be skipped.
 
+**Lib modules:** the same flow applies to lib modules tracked in `config.lib` (with per-file checksums and a registry `lastChangedIn`), not just components. The **`design-system`** module (design tokens, globals, theme, app shell) is the primary case: `buildpad upgrade --design` scopes to it, a bare `buildpad upgrade` includes it when behind, and `buildpad outdated` reports it. Build-registry stamps each lib module with `version`/`lastChangedIn` (CLI-owned templates resolve to `@buildpad/cli`).
+
 ## MCP RBAC Pattern Tool
 
 ```

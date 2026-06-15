@@ -108,6 +108,12 @@ export interface LibModule {
   target?: string;
   dependencies?: string[];
   internalDependencies?: string[];
+  /** v2: owning source package, e.g. "@buildpad/cli". */
+  sourcePackage?: string;
+  /** v2: semver of the source package at registry generation time. */
+  version?: string;
+  /** v2: last package version in which any of this module's files changed. */
+  lastChangedIn?: string;
 }
 
 export interface ComponentEntry {
@@ -204,6 +210,55 @@ export function getTemplatesRoot(): string {
  */
 export function getLocalPackagesRoot(): string {
   return LOCAL_PACKAGES_ROOT;
+}
+
+/**
+ * Load registry.json from the CLI bundle (offline) instead of the network.
+ *
+ * `init` installs the bundled `design-system` module without a network round
+ * trip, so it needs the registry definition that ships with the CLI version
+ * the user invoked. The build step copies registry.json into `dist/` next to
+ * the compiled entry; locally it lives at `packages/registry.json`.
+ */
+export async function getBundledRegistry(): Promise<Registry> {
+  const bundled = path.resolve(__dirname, 'registry.json');
+  if (fs.existsSync(bundled)) {
+    return fs.readJSON(bundled) as Promise<Registry>;
+  }
+  const local = path.join(LOCAL_PACKAGES_ROOT, 'registry.json');
+  if (fs.existsSync(local)) {
+    return fs.readJSON(local) as Promise<Registry>;
+  }
+  throw new Error(
+    'Bundled registry.json not found. Ensure the CLI is built correctly.'
+  );
+}
+
+/**
+ * Read a `cli/templates/*` source file from the bundled templates (offline),
+ * mirroring `resolveSourceFile` but sourced from the CLI bundle rather than the
+ * network. Used by `init` so the scaffold matches the installed CLI version.
+ */
+export async function resolveBundledTemplate(source: string): Promise<string> {
+  const prefix = 'cli/templates/';
+  if (!source.startsWith(prefix)) {
+    throw new Error(
+      `resolveBundledTemplate only handles cli/templates/* sources, got: ${source}`
+    );
+  }
+  const rel = source.slice(prefix.length);
+  const fullPath = path.join(getTemplatesRoot(), rel);
+  if (!fs.existsSync(fullPath)) {
+    throw new Error(`Bundled template not found: ${fullPath}`);
+  }
+  return fs.readFile(fullPath, 'utf-8');
+}
+
+/** Whether a `cli/templates/*` source exists in the bundled templates. */
+export async function bundledTemplateExists(source: string): Promise<boolean> {
+  const prefix = 'cli/templates/';
+  if (!source.startsWith(prefix)) return false;
+  return fs.existsSync(path.join(getTemplatesRoot(), source.slice(prefix.length)));
 }
 
 /**
