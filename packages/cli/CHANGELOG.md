@@ -1,5 +1,13 @@
 # @buildpad/cli
 
+## 1.2.0
+
+### Minor Changes
+
+- Ship a generic `AuthenticatedShell` app-shell template (`.bp-*` design-token styles) in the scaffold, alongside the schema-driven `ContentLayout`.
+- Fix `buildpad init`/`bootstrap` producing a project that fails `next dev` with "Cannot resolve '@supabase/ssr'": the minimal scaffold now declares the always-installed auth layer (`@supabase/ssr`, `@supabase/supabase-js`, `jose`).
+- npm publishing support with remote GitHub-raw registry resolver (auto-detects local vs published).
+
 ## 1.1.0
 
 ### Minor Changes

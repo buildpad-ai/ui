@@ -1,5 +1,12 @@
 # @buildpad/mcp
 
+## 1.2.0
+
+### Minor Changes
+
+- Renamed from `@buildpad/mcp-server` to `@buildpad/mcp`.
+- npm publishing support.
+
 ## 1.1.0
 
 ### Minor Changes

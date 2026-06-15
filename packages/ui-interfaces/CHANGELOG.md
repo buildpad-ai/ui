@@ -1,5 +1,11 @@
 # @buildpad/ui-interfaces
 
+## 1.2.0
+
+### Patch Changes
+
+- Styling refinements across interface components (input-hash, system-token, map, shared stories).
+
 ## 1.1.0
 
 ### Minor Changes

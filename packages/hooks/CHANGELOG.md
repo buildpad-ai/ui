@@ -1,5 +1,11 @@
 # @buildpad/hooks
 
+## 1.2.0
+
+### Patch Changes
+
+- Released in lockstep; no functional changes.
+
 ## 1.1.0
 
 ### Minor Changes
