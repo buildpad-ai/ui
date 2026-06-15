@@ -1,5 +1,11 @@
 # @buildpad/ui-form
 
+## 1.3.0
+
+### Patch Changes
+
+- Released in lockstep; no functional changes.
+
 ## 1.2.0
 
 ### Patch Changes

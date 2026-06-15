@@ -1,5 +1,14 @@
 # @buildpad/cli
 
+## 1.3.0
+
+### Minor Changes
+
+- Add `buildpad upgrade --design` and make the design foundation a registry-tracked `design-system` lib module (design tokens, globals, theme, ColorSchemeToggle, AuthenticatedShell). `init`/`bootstrap` install it tracked; `outdated` reports it; three-way merge preserves local token edits.
+- Generalize `upgrade` to handle lib modules (not just components), with an adoption path for projects that predate tracking.
+- Fix bootstrap gap: install the `external-oauth` module during `--with-api`/`--all` so the api-routes auth handlers can resolve `@/lib/oauth/*` (previously `next dev` failed with "Can't resolve '@/lib/oauth/config'").
+- build-registry now stamps lib modules with version/lastChangedIn; registry.json is bundled into the CLI for offline `init`.
+
 ## 1.2.0
 
 ### Minor Changes
