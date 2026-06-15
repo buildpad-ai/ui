@@ -1,5 +1,11 @@
 # @buildpad/ui-table
 
+## 1.2.0
+
+### Patch Changes
+
+- Styling refinements in `VTable`.
+
 ## 1.1.0
 
 ### Minor Changes

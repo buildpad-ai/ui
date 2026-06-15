@@ -1,5 +1,11 @@
 # @buildpad/ui-form
 
+## 1.2.0
+
+### Patch Changes
+
+- Styling refinements in `VForm`.
+
 ## 1.1.0
 
 ### Minor Changes
