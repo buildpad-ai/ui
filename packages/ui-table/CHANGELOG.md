@@ -1,5 +1,11 @@
 # @buildpad/ui-table
 
+## 1.3.1
+
+### Patch Changes
+
+- Released in lockstep; no functional changes.
+
 ## 1.3.0
 
 ### Patch Changes

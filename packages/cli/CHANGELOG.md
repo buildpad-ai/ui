@@ -1,5 +1,11 @@
 # @buildpad/cli
 
+## 1.3.1
+
+### Patch Changes
+
+- Fix scaffolded `app/layout.tsx` not importing `@mantine/dates/styles.css` — the `datetime` calendar rendered unstyled/inline. `@mantine/dates` + `dayjs` are now always installed.
+
 ## 1.3.0
 
 ### Minor Changes
