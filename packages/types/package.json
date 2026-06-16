@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/types",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "private": true,
   "description": "Shared TypeScript type definitions for Buildpad projects - DaaS-compatible types",
   "main": "./src/index.ts",

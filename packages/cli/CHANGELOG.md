@@ -1,5 +1,12 @@
 # @buildpad/cli
 
+## 1.4.0
+
+### Minor Changes
+
+- Bootstrap now renders `AuthenticatedShell` by default: the generated `app/(authenticated)/layout.tsx` wraps pages in the app shell, and the home page is scaffolded at `app/(authenticated)/page.tsx` so `/` shows the header + sidebar after login.
+- `api-routes` now depends on `design-system`, so the shell component is always present when the auth layout is installed.
+
 ## 1.3.1
 
 ### Patch Changes
