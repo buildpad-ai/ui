@@ -206,6 +206,11 @@ export async function init(options: { yes?: boolean; cwd: string }) {
         '@mantine/modals': '^8.0.0',
         '@mantine/notifications': '^8.0.0',
         '@mantine/form': '^8.0.0',
+        // Date picker styles are imported by the scaffolded app/layout.tsx
+        // (@mantine/dates/styles.css), so the package + its dayjs peer must
+        // always be present or the layout fails to resolve.
+        '@mantine/dates': '^8.0.0',
+        'dayjs': '^1.11.0',
         '@tabler/icons-react': '^3.0.0',
         // Auth layer scaffolded by `add --with-api` (always run during bootstrap):
         // supabase/middleware.ts is loaded on every request, lib/oauth uses jose.
@@ -350,7 +355,16 @@ export async function init(options: { yes?: boolean; cwd: string }) {
 
       // Plain skeleton files (not part of the upgradeable design system).
       await copyTemplateFile('app/layout.tsx', path.join(appDir, 'layout.tsx'), cwd);
-      await copyTemplateFile('app/page.tsx', path.join(appDir, 'page.tsx'), cwd);
+      // Home page lives INSIDE the (authenticated) group so "/" renders within
+      // AuthenticatedShell (header + sidebar) once api-routes adds the layout.
+      // (No root app/page.tsx — that would render "/" outside the shell and
+      // conflict with this route.) Unauthenticated "/" is redirected to /login
+      // by the Supabase middleware.
+      await copyTemplateFile(
+        'app/authenticated-page.tsx',
+        path.join(appDir, '(authenticated)', 'page.tsx'),
+        cwd
+      );
 
       // Install the design system (tokens, globals, theme, app shell) as a
       // tracked lib module from the bundled CLI templates — offline and
@@ -376,6 +390,9 @@ export async function init(options: { yes?: boolean; cwd: string }) {
     const coreDeps = [
       '@mantine/core',
       '@mantine/hooks',
+      // @mantine/dates + dayjs: styles imported by the scaffolded app/layout.tsx.
+      '@mantine/dates',
+      'dayjs',
       // Required by the scaffolded AuthenticatedShell (components/layout).
       '@tabler/icons-react',
       // Auth layer scaffolded by `add --with-api`: supabase clients/middleware

@@ -17,10 +17,22 @@
  */
 
 import { DaaSProviderWrapper } from "@/components/DaaSProviderWrapper";
+import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
 import type { ReactNode } from "react";
 
 export default function AuthenticatedLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  return <DaaSProviderWrapper>{children}</DaaSProviderWrapper>;
+  // AuthenticatedShell renders the app chrome (header, sidebar nav, profile
+  // menu) around every authenticated page. It uses sensible defaults (a single
+  // "Home" nav item + the NEXT_PUBLIC_APP_NAME brand) so a fresh project works
+  // out of the box. To customize, create a "use client" wrapper that passes
+  // `navItems` / `brand` to <AuthenticatedShell> and render that here — see
+  // https://buildpad.dev/app-shell. (For the schema-driven content browser,
+  // use ContentLayout under its own /content route instead.)
+  return (
+    <DaaSProviderWrapper>
+      <AuthenticatedShell>{children}</AuthenticatedShell>
+    </DaaSProviderWrapper>
+  );
 }

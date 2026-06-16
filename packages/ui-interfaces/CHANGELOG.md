@@ -1,5 +1,17 @@
 # @buildpad/ui-interfaces
 
+## 1.4.0
+
+### Patch Changes
+
+- Released in lockstep; no functional changes.
+
+## 1.3.1
+
+### Patch Changes
+
+- Rich-text components (`rich-text-html`, `rich-text-markdown`) now import `@mantine/tiptap/styles.css` so the editor is styled when used.
+
 ## 1.3.0
 
 ### Patch Changes

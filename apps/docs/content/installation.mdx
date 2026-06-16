@@ -27,6 +27,7 @@ This installs:
 - 40+ UI components in `components/ui/`
 - Types, services, hooks in `lib/buildpad/`
 - Design system (`design-tokens.css`, `globals.css`, `lib/theme.ts`) + app shell (`ColorSchemeToggle`, `AuthenticatedShell`) — tracked, refreshable via `buildpad upgrade --design`
+- A wired `app/(authenticated)/layout.tsx` that renders `AuthenticatedShell` around every authenticated page out of the box ([customize the nav/brand](/app-shell#customizing-the-navigation--brand))
 - API proxy routes (fields, items, relations, files)
 - Auth proxy routes (login, logout, user, OAuth callback) + login page
 - Supabase auth utilities/middleware and OAuth helpers (`lib/oauth/*`)
