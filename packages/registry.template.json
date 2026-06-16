@@ -387,7 +387,8 @@
         }
       ],
       "internalDependencies": [
-        "supabase-auth"
+        "supabase-auth",
+        "design-system"
       ]
     },
     "content-routes": {

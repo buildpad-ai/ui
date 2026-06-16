@@ -134,7 +134,7 @@ buildpad upgrade --design --three-way
 
 Because token/theme files are meant to be customized, `--design` honours the same `--strategy` rules as components: pristine files are overwritten cleanly, locally-modified files are three-way merged (or written as `.new`) — your edits are never silently lost. A bare `buildpad upgrade` also picks up the design system when it's behind, and `buildpad outdated` reports it. Projects that have the design files but predate this tracking are adopted on the first `upgrade --design`.
 
-Note: `upgrade` only refreshes the design-system **files**. Wiring the shell into your `app/(authenticated)/layout.tsx` is your application code — `AuthenticatedShell` ships as a component you opt into; it doesn't rewrite your layout.
+Note: `bootstrap` wires `AuthenticatedShell` into the generated `app/(authenticated)/layout.tsx` by default, but `upgrade` only refreshes the design-system **files** — your layout wiring (and any nav/brand customization) is your application code and is never rewritten. See [App Shell](/app-shell#a-standalone-shell-for-your-own-pages).
 
 ### Changelogs
 

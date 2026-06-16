@@ -355,7 +355,16 @@ export async function init(options: { yes?: boolean; cwd: string }) {
 
       // Plain skeleton files (not part of the upgradeable design system).
       await copyTemplateFile('app/layout.tsx', path.join(appDir, 'layout.tsx'), cwd);
-      await copyTemplateFile('app/page.tsx', path.join(appDir, 'page.tsx'), cwd);
+      // Home page lives INSIDE the (authenticated) group so "/" renders within
+      // AuthenticatedShell (header + sidebar) once api-routes adds the layout.
+      // (No root app/page.tsx — that would render "/" outside the shell and
+      // conflict with this route.) Unauthenticated "/" is redirected to /login
+      // by the Supabase middleware.
+      await copyTemplateFile(
+        'app/authenticated-page.tsx',
+        path.join(appDir, '(authenticated)', 'page.tsx'),
+        cwd
+      );
 
       // Install the design system (tokens, globals, theme, app shell) as a
       // tracked lib module from the bundled CLI templates — offline and

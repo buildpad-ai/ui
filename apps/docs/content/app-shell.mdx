@@ -7,12 +7,20 @@ import { Callout, Steps } from 'nextra/components'
 
 # App Shell Recipe
 
-How to compose the shell components into a complete content-management
-screen: a collapsible collection sidebar, a header bar with breadcrumbs and
-actions, a paginated list view, and a create/edit form — all driven by your
-DaaS schema.
+Buildpad has **two shells for two different jobs** — don't confuse them:
 
-![App shell with collection sidebar and list view](/app-shell-list.png)
+- **`AuthenticatedShell`** — the generic app chrome (glass header, sidebar
+  navigation, profile menu) that `bootstrap` wires around your authenticated
+  pages by default. Use it for your own screens — dashboards, settings,
+  anything custom. Jump to
+  [A standalone shell for your own pages](#a-standalone-shell-for-your-own-pages).
+- **`ContentLayout`** (with `ContentNavigation`, `CollectionList`, and
+  `CollectionForm`) — a schema-driven **content-management** recipe: a
+  collapsible collection sidebar, a header bar with breadcrumbs and actions, a
+  paginated list view, and a create/edit form, all driven by your DaaS schema.
+  **The rest of this page walks through this recipe.**
+
+![ContentLayout content-management screen — collection sidebar and list view (from the Collections Storybook)](/app-shell-list.png)
 
 ## The pieces
 
@@ -25,12 +33,13 @@ DaaS schema.
 | `useCollections` | `@buildpad/hooks` | Fetches the collection tree and manages group expand/collapse state |
 
 <Callout type="info">
-`buildpad init` scaffolds this entire recipe for you — the code below is the
-generated `app/content/` module, shown here so you understand the wiring and
-can adapt it. In a generated app the imports point at your local copies
-(`@/components/ui/content-layout`, `@/lib/buildpad/hooks`); when consuming
-the packages directly, import from `@buildpad/ui-collections` and
-`@buildpad/hooks` instead.
+This recipe is **opt-in** — it is *not* part of `bootstrap`. Generate the
+`app/content/` module with `buildpad add content-routes` (it pulls in the
+`api-routes` and `hooks` lib modules). The code below is that generated module,
+shown here so you understand the wiring and can adapt it. In a generated app the
+imports point at your local copies (`@/components/ui/content-layout`,
+`@/lib/buildpad/hooks`); when consuming the packages directly, import from
+`@buildpad/ui-collections` and `@buildpad/hooks` instead.
 </Callout>
 
 ## The routes
@@ -188,7 +197,7 @@ export default function ItemPage({
 }
 ```
 
-![App shell with item edit form](/app-shell-edit.png)
+![ContentLayout item edit form (from the Collections Storybook)](/app-shell-edit.png)
 
 </Steps>
 
@@ -196,42 +205,76 @@ export default function ItemPage({
 
 `ContentLayout` is purpose-built for schema-driven collection browsing. For
 your own screens — a dashboard, a settings page, anything that isn't the
-collection browser — `buildpad init` also scaffolds a generic
-**`AuthenticatedShell`** at `components/layout/AuthenticatedShell.tsx`: a
-glass-blur header with a breadcrumb and optional search/notification
-affordances, a sidebar with a brand mark and your navigation, and a bottom
-user-profile menu. Its styling lives in `app/globals.css` under the `.bp-*`
-namespace and is built entirely from design tokens, so light/dark mode come
-for free.
+collection browser — `bootstrap` **wires a generic `AuthenticatedShell` into
+`app/(authenticated)/layout.tsx` for you**, so every authenticated page renders
+with the app chrome out of the box: a glass-blur header with a breadcrumb and
+optional search/notification affordances, a sidebar with a brand mark and
+navigation, and a bottom user-profile menu. The component lives at
+`components/layout/AuthenticatedShell.tsx`; its styling lives in `app/globals.css`
+under the `.bp-*` namespace and is built entirely from design tokens, so
+light/dark mode come for free.
 
-It ships as part of the tracked [`design-system` module](/design-system#delivery--upgrades),
-so `buildpad upgrade --design` keeps the component (and its `.bp-*` styles) current.
-Note that `upgrade` refreshes the **file** — wiring it into a layout (below) is your
-application code and is never rewritten for you.
+The generated layout renders it with **defaults** — a single `Home` nav item and
+the `NEXT_PUBLIC_APP_NAME` brand:
 
-```tsx filename="app/(authenticated)/dashboard/layout.tsx" copy
+```tsx filename="app/(authenticated)/layout.tsx (generated)" copy
+import { DaaSProviderWrapper } from '@/components/DaaSProviderWrapper';
+import { AuthenticatedShell } from '@/components/layout/AuthenticatedShell';
+
+export default function AuthenticatedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <DaaSProviderWrapper>
+      <AuthenticatedShell>{children}</AuthenticatedShell>
+    </DaaSProviderWrapper>
+  );
+}
+```
+
+### Customizing the navigation & brand
+
+To set your own `navItems`/`brand`, you can't pass them straight from the layout:
+it's a Server Component and Tabler icons are components, which can't cross the
+server/client boundary. Put the config in a small `"use client"` wrapper and
+render that from the layout instead:
+
+```tsx filename="components/PortalShell.tsx" copy
 "use client";
 
 import { AuthenticatedShell } from '@/components/layout/AuthenticatedShell';
 import { IconHome, IconLayoutDashboard } from '@tabler/icons-react';
+import type { ReactNode } from 'react';
 
 const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: IconHome },
   { label: 'Dashboard', href: '/dashboard', icon: IconLayoutDashboard },
 ];
 
-export default function DashboardLayout({
+export function PortalShell({ children }: { children: ReactNode }) {
+  return (
+    <AuthenticatedShell navItems={NAV_ITEMS} brand={{ name: 'Acme', initial: 'A' }}>
+      {children}
+    </AuthenticatedShell>
+  );
+}
+```
+
+```tsx filename="app/(authenticated)/layout.tsx" copy
+import { DaaSProviderWrapper } from '@/components/DaaSProviderWrapper';
+import { PortalShell } from '@/components/PortalShell';
+
+export default function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <AuthenticatedShell
-      navItems={NAV_ITEMS}
-      brand={{ name: 'Acme', initial: 'A' }}
-    >
-      {children}
-    </AuthenticatedShell>
+    <DaaSProviderWrapper>
+      <PortalShell>{children}</PortalShell>
+    </DaaSProviderWrapper>
   );
 }
 ```
@@ -240,6 +283,12 @@ Props: `navItems` (sidebar links, defaults to a single `Home` entry),
 `brand` (mark + name, defaults to `NEXT_PUBLIC_APP_NAME`), and
 `showSearch` / `showNotifications` (presentational header affordances, both
 default `true` — wire them to your own features when ready).
+
+The shell ships as part of the tracked
+[`design-system` module](/design-system#delivery--upgrades), so
+`buildpad upgrade --design` keeps the component (and its `.bp-*` styles) current.
+`upgrade` refreshes the component **file**; your layout wiring and nav config stay
+your code.
 
 <Callout type="warning">
 Pick one shell per route subtree. Don't nest `AuthenticatedShell` around
