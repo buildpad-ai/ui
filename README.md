@@ -826,7 +826,7 @@ See [buildpad-copilot](https://github.com/your-org/buildpad-copilot) for full do
 
 ## 🎯 Architecture (DaaS-Inspired)
 
-This workspace follows patterns from [DaaS](https://daas.io/):
+This workspace follows patterns from [DaaS](https://docs.daas.buildpad.ai):
 
 | DaaS Package        | Buildpad Equivalent        | Purpose                        |
 | ------------------- | ---------------------------- | ------------------------------ |
