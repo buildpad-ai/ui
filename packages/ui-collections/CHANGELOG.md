@@ -1,5 +1,15 @@
 # @buildpad/ui-collections
 
+## 1.4.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @buildpad/services@1.4.1
+  - @buildpad/ui-form@1.4.1
+  - @buildpad/ui-table@1.4.1
+  - @buildpad/types@1.4.1
+
 ## 1.4.0
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/services",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "description": "Shared service classes for Buildpad projects - DaaS-compatible CRUD services",
   "main": "./src/index.ts",

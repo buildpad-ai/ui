@@ -1,5 +1,22 @@
 # @buildpad/services
 
+## 1.4.1
+
+### Patch Changes
+
+- fix(services): initialize `authLoading` to `autoFetchUser` in `DaaSProvider`
+
+  `DaaSProvider` previously initialized `authLoading` to `false`, so during the
+  first render window — before `/api/users/me` resolves — consumers observed
+  `(authLoading=false, user=null)`, which auth-gated pages read as "signed out",
+  flashing a false error before the user loaded. `authLoading` now initializes to
+  `autoFetchUser` (identical on server and client, so no hydration mismatch), and
+  an `else` branch sets it back to `false` when the provider won't fetch
+  (auto-fetch off or no DaaS URL) so it never gets stuck on. The signed-out error
+  now only appears once auth genuinely settles with no user.
+
+  - @buildpad/types@1.4.1
+
 ## 1.4.0
 
 ### Patch Changes
