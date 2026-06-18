@@ -148,7 +148,10 @@ export function DaaSProvider({
   const effectiveToken = config?.token ?? dynamicToken;
 
   const [user, setUser] = useState<DaaSUser | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
+  // Start in the loading state when we will auto-fetch the user, so consumers
+  // never briefly observe (authLoading=false, user=null) — which reads as
+  // "signed out" — before the initial /api/users/me request has even started.
+  const [authLoading, setAuthLoading] = useState(autoFetchUser);
   const [authError, setAuthError] = useState<string | null>(null);
 
   /** Refresh the stored dynamic token */
@@ -217,6 +220,9 @@ export function DaaSProvider({
   useEffect(() => {
     if (autoFetchUser && resolvedUrl) {
       refreshUser();
+    } else {
+      // Won't fetch (auto-fetch disabled or no URL) — don't leave authLoading stuck on.
+      setAuthLoading(false);
     }
   }, [autoFetchUser, resolvedUrl, effectiveToken]); // re-run when token changes
 
