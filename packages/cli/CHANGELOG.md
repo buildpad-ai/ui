@@ -1,5 +1,7 @@
 # @buildpad/cli
 
+## 1.4.1
+
 ## 1.4.0
 
 ### Minor Changes
@@ -45,6 +47,7 @@
 ### Minor Changes
 
 - **`upgrade` command** — safely update installed components to the latest registry version. Per-file behaviour is driven by `--strategy`:
+
   - `overwrite` — replace file in-place (also the effect of `--yes`)
   - `new-file` — write upstream version as `<file>.new`, leave the original untouched
   - `three-way` — attempt a `diff3` merge; falls back to `.new` on conflict or when the base cannot be fetched offline
@@ -55,6 +58,7 @@
 - **`migrate` command** — one-shot migration for v1 `buildpad.json` manifests. Re-fetches and re-transforms each installed component and lib module at its recorded version, computes SHA-256 checksums, and writes them into the v2 `components` / `lib` maps without touching any consumer file. Idempotent.
 
 - **`buildpad.json` schema v2** — the manifest now tracks:
+
   - `schemaVersion: 2`
   - `components: Record<string, ComponentInstall>` with per-file `sha256` checksums
   - `lib: Record<string, ComponentInstall>` (same structure for lib modules)
