@@ -3,11 +3,12 @@
 #
 # Output structure:
 #   storybook-dist/
-#   ├── index.html          ← Landing page with links to all 4
+#   ├── index.html          ← Landing page with links to all 5
 #   ├── interfaces/         ← ui-interfaces Storybook
 #   ├── form/               ← ui-form Storybook
 #   ├── table/              ← ui-table Storybook
-#   └── collections/        ← ui-collections Storybook
+#   ├── collections/        ← ui-collections Storybook
+#   └── files/              ← ui-files Storybook
 
 set -euo pipefail
 
@@ -26,7 +27,7 @@ rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
 
 # Build ui-interfaces Storybook
-echo "📦 [1/4] Building ui-interfaces Storybook..."
+echo "📦 [1/5] Building ui-interfaces Storybook..."
 cd "${ROOT_DIR}/packages/ui-interfaces"
 npx storybook build -o "${OUTPUT_DIR}/interfaces" 2>&1 || {
   echo "❌ ui-interfaces Storybook build failed"
@@ -35,7 +36,7 @@ npx storybook build -o "${OUTPUT_DIR}/interfaces" 2>&1 || {
 echo "   ✅ ui-interfaces done"
 
 # Build ui-form Storybook
-echo "📦 [2/4] Building ui-form Storybook..."
+echo "📦 [2/5] Building ui-form Storybook..."
 cd "${ROOT_DIR}/packages/ui-form"
 npx storybook build -o "${OUTPUT_DIR}/form" 2>&1 || {
   echo "❌ ui-form Storybook build failed"
@@ -44,7 +45,7 @@ npx storybook build -o "${OUTPUT_DIR}/form" 2>&1 || {
 echo "   ✅ ui-form done"
 
 # Build ui-table Storybook
-echo "📦 [3/4] Building ui-table Storybook..."
+echo "📦 [3/5] Building ui-table Storybook..."
 cd "${ROOT_DIR}/packages/ui-table"
 npx storybook build -o "${OUTPUT_DIR}/table" 2>&1 || {
   echo "❌ ui-table Storybook build failed"
@@ -53,13 +54,22 @@ npx storybook build -o "${OUTPUT_DIR}/table" 2>&1 || {
 echo "   ✅ ui-table done"
 
 # Build ui-collections Storybook
-echo "📦 [4/4] Building ui-collections Storybook..."
+echo "📦 [4/5] Building ui-collections Storybook..."
 cd "${ROOT_DIR}/packages/ui-collections"
 npx storybook build -o "${OUTPUT_DIR}/collections" 2>&1 || {
   echo "❌ ui-collections Storybook build failed"
   exit 1
 }
 echo "   ✅ ui-collections done"
+
+# Build ui-files Storybook
+echo "📦 [5/5] Building ui-files Storybook..."
+cd "${ROOT_DIR}/packages/ui-files"
+npx storybook build -o "${OUTPUT_DIR}/files" 2>&1 || {
+  echo "❌ ui-files Storybook build failed"
+  exit 1
+}
+echo "   ✅ ui-files done"
 
 # No landing page needed — the Next.js host app serves as the landing page
 
@@ -69,7 +79,8 @@ echo "   📁 ${OUTPUT_DIR}/"
 echo "   ├── interfaces/      (40+ field components)"
 echo "   ├── form/            (VForm dynamic form)"
 echo "   ├── table/           (VTable dynamic table)"
-echo "   └── collections/     (CollectionForm & CollectionList)"
+echo "   ├── collections/     (CollectionForm & CollectionList)"
+echo "   └── files/           (file manager components)"
 echo ""
 echo "   Served by the Next.js host app at /storybook/*"
 echo "   To preview: pnpm build:host && pnpm start:host"

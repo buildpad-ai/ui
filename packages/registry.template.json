@@ -220,6 +220,10 @@
           "target": "lib/buildpad/hooks/useFiles.ts"
         },
         {
+          "source": "hooks/src/useFolders.ts",
+          "target": "lib/buildpad/hooks/useFolders.ts"
+        },
+        {
           "source": "hooks/src/useRelationM2M.ts",
           "target": "lib/buildpad/hooks/useRelationM2M.ts"
         },
@@ -370,6 +374,22 @@
           "target": "app/api/files/[id]/route.ts"
         },
         {
+          "source": "cli/templates/api/daas-files-id-download-route.ts",
+          "target": "app/api/files/[id]/download/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-import-route.ts",
+          "target": "app/api/files/import/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-folders-route.ts",
+          "target": "app/api/folders/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-folders-id-route.ts",
+          "target": "app/api/folders/[id]/route.ts"
+        },
+        {
           "source": "cli/templates/api/daas-assets-id-route.ts",
           "target": "app/api/assets/[id]/route.ts"
         },
@@ -415,6 +435,27 @@
       "internalDependencies": [
         "api-routes",
         "hooks"
+      ]
+    },
+    "files-routes": {
+      "name": "files-routes",
+      "description": "Files management module pages — /files (drag-and-drop upload, folders, grid/list, search, bulk delete, import-from-URL) and /files/[id] (metadata edit + preview). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the file-manager component.",
+      "files": [
+        {
+          "source": "cli/templates/app/files/page.tsx",
+          "target": "app/(authenticated)/files/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/files/[id]/page.tsx",
+          "target": "app/(authenticated)/files/[id]/page.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "file-manager"
       ]
     },
     "supabase-auth": {
@@ -2321,6 +2362,92 @@
         "recommended": true,
         "hasOptions": true
       }
+    },
+    {
+      "name": "file-manager",
+      "title": "FileManager",
+      "description": "Full files-management UI — list surface (drag-and-drop upload, import-from-URL, folders, grid/list views, search, bulk delete) and a file detail view (metadata edit + preview for image/video/audio/pdf). Composes the upload interface and the useFiles/useFolders hooks.",
+      "category": "media",
+      "files": [
+        {
+          "source": "ui-files/src/FileManager.tsx",
+          "target": "components/ui/file-manager/file-manager.tsx"
+        },
+        {
+          "source": "ui-files/src/FileManager.css",
+          "target": "components/ui/file-manager/file-manager.css"
+        },
+        {
+          "source": "ui-files/src/FilesToolbar.tsx",
+          "target": "components/ui/file-manager/files-toolbar.tsx"
+        },
+        {
+          "source": "ui-files/src/FilesGrid.tsx",
+          "target": "components/ui/file-manager/files-grid.tsx"
+        },
+        {
+          "source": "ui-files/src/FilesList.tsx",
+          "target": "components/ui/file-manager/files-list.tsx"
+        },
+        {
+          "source": "ui-files/src/FileCard.tsx",
+          "target": "components/ui/file-manager/file-card.tsx"
+        },
+        {
+          "source": "ui-files/src/FolderCard.tsx",
+          "target": "components/ui/file-manager/folder-card.tsx"
+        },
+        {
+          "source": "ui-files/src/FolderBreadcrumb.tsx",
+          "target": "components/ui/file-manager/folder-breadcrumb.tsx"
+        },
+        {
+          "source": "ui-files/src/NewFolderDialog.tsx",
+          "target": "components/ui/file-manager/new-folder-dialog.tsx"
+        },
+        {
+          "source": "ui-files/src/BulkActionsBar.tsx",
+          "target": "components/ui/file-manager/bulk-actions-bar.tsx"
+        },
+        {
+          "source": "ui-files/src/DeleteConfirmModal.tsx",
+          "target": "components/ui/file-manager/delete-confirm-modal.tsx"
+        },
+        {
+          "source": "ui-files/src/FileDetail.tsx",
+          "target": "components/ui/file-manager/file-detail.tsx"
+        },
+        {
+          "source": "ui-files/src/FileMetadataForm.tsx",
+          "target": "components/ui/file-manager/file-metadata-form.tsx"
+        },
+        {
+          "source": "ui-files/src/FilePreview.tsx",
+          "target": "components/ui/file-manager/file-preview.tsx"
+        },
+        {
+          "source": "ui-files/src/FileInfoPanel.tsx",
+          "target": "components/ui/file-manager/file-info-panel.tsx"
+        },
+        {
+          "source": "ui-files/src/index.ts",
+          "target": "components/ui/file-manager/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services"
+      ],
+      "registryDependencies": [
+        "upload"
+      ]
     }
   ],
   "categories": [

@@ -1,0 +1,21 @@
+/* FileManager layout */
+.bp-file-manager {
+  width: 100%;
+}
+
+.bp-file-manager__upload {
+  /* Keep the upload zone compact so the file grid stays the focus. */
+  --bp-upload-max-height: 160px;
+}
+
+.bp-file-manager__bulk {
+  position: sticky;
+  top: var(--mantine-spacing-sm, 12px);
+  z-index: 3;
+  background: var(--mantine-color-body, #fff);
+}
+
+[data-selected] {
+  border-color: var(--mantine-primary-color-6, #228be6);
+  box-shadow: 0 0 0 1px var(--mantine-primary-color-6, #228be6);
+}

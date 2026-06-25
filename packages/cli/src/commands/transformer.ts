@@ -70,6 +70,15 @@ export function getImportMappings(config: Config): ImportMapping[] {
       from: /from ['"]@buildpad\/ui-collections\/([^'"]+)['"]/g,
       to: `from '${componentsAlias}/$1'`,
     },
+    // UI Files (file manager + detail components)
+    {
+      from: /from ['"]@buildpad\/ui-files['"]/g,
+      to: `from '${componentsAlias}/file-manager'`,
+    },
+    {
+      from: /from ['"]@buildpad\/ui-files\/([^'"]+)['"]/g,
+      to: `from '${componentsAlias}/file-manager/$1'`,
+    },
     // Utils
     {
       from: /from ['"]@buildpad\/utils['"]/g,
@@ -362,7 +371,7 @@ export function transformIntraComponentImports(
  * Check if content has @buildpad/* imports
  */
 export function hasBuildpadImports(content: string): boolean {
-  return /@buildpad\/(types|services|hooks|utils|ui-interfaces|ui-collections|ui-form|ui-table)/.test(content);
+  return /@buildpad\/(types|services|hooks|utils|ui-interfaces|ui-collections|ui-files|ui-form|ui-table)/.test(content);
 }
 
 /**

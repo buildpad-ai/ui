@@ -16,6 +16,7 @@
 /coverage
 /test-results
 /playwright-report
+/playwright-report-files
 playwright/.auth/
 /recordings/
 
@@ -71,4 +72,7 @@ storybook-static/
 
 # local code-intelligence index
 .codegraph/
+
+# files E2E test fixtures (contains tokens — never commit)
+tests/ui-files/.files-rbac.json
 
