@@ -1,5 +1,18 @@
 # @buildpad/ui-interfaces
 
+## 1.5.0
+
+### Patch Changes
+
+- Updated dependencies [94604c9]
+- Updated dependencies [94604c9]
+  - @buildpad/hooks@1.5.0
+  - @buildpad/ui-collections@1.5.0
+  - @buildpad/ui-form@1.5.0
+  - @buildpad/services@1.5.0
+  - @buildpad/types@1.5.0
+  - @buildpad/utils@1.5.0
+
 ## 1.4.1
 
 ### Patch Changes
