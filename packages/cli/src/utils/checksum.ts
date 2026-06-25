@@ -29,6 +29,7 @@ export function inferSourcePackage(source: string): string {
   if (source.startsWith('ui-form/'))         return '@buildpad/ui-form';
   if (source.startsWith('ui-table/'))        return '@buildpad/ui-table';
   if (source.startsWith('ui-collections/'))  return '@buildpad/ui-collections';
+  if (source.startsWith('ui-files/'))        return '@buildpad/ui-files';
   if (source.startsWith('hooks/'))           return '@buildpad/hooks';
   if (source.startsWith('services/'))        return '@buildpad/services';
   if (source.startsWith('types/'))           return '@buildpad/types';

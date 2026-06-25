@@ -1,0 +1,207 @@
+---
+title: Files Module Recipe
+description: Drop a complete file manager into your app — drag-and-drop upload, folders, grid/list views, preview, and metadata editing — with one CLI command.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Files Module Recipe
+
+The Files module is a ready-made `/files` experience on top of the
+[Files API](/components#media-components). Instead of hand-building upload zones,
+folder navigation, previews, and bulk actions, you scaffold the whole thing with
+one command and own the code.
+
+It gives you two screens:
+
+- **`FileManager`** — the `/files` library: drag-and-drop upload, import-from-URL,
+  folder navigation with breadcrumbs, grid/list views, search, multi-select, and
+  bulk delete.
+- **`FileDetail`** — the `/files/[id]` page: a **Preview** tab (image, video,
+  audio, and PDF rendered inline) and a **Details** tab with an editable metadata
+  form (title, description, tags, location, download filename), plus single delete.
+
+## The pieces
+
+| Piece | Package | Role |
+|---|---|---|
+| `FileManager` | `@buildpad/ui-files` | The library view: upload, folders, grid/list, search, selection, bulk delete |
+| `FileDetail` | `@buildpad/ui-files` | The detail view: preview tabs + editable metadata form + delete |
+| `Upload` | `@buildpad/ui-interfaces` | The drag-and-drop / file-picker / import-from-URL affordance (reused by `FileManager`) |
+| `useFiles` | `@buildpad/hooks` | Upload, list, get, update, delete, and import-from-URL operations |
+| `useFolders` | `@buildpad/hooks` | List, create, rename, and delete folders |
+
+<Callout type="info">
+This recipe is **opt-in** — it is *not* part of `bootstrap`. Generate the
+`app/files/` module with `buildpad add files-routes`; it pulls in the
+`file-manager` component (which in turn pulls the `upload` component and the
+`types` / `hooks` / `services` lib modules). The code below is that generated
+module, shown so you understand the wiring. In a generated app the imports point
+at your local copies (`@/components/ui/file-manager`, `@/lib/buildpad/hooks`);
+when consuming the packages directly, import from `@buildpad/ui-files` and
+`@buildpad/hooks` instead.
+</Callout>
+
+## Install
+
+<Steps>
+
+### Add the module
+
+```bash copy
+buildpad add files-routes
+```
+
+This copies the page shells into `app/files/`, the component into
+`components/ui/file-manager/`, the `upload` component into `components/ui/`, and
+the `useFiles` / `useFolders` hooks into `lib/buildpad/hooks/`.
+
+### Add the API routes
+
+The module talks to your DaaS through proxy routes. If you haven't already added
+them, run:
+
+```bash copy
+buildpad add api-routes
+```
+
+This includes the routes the module needs: `app/api/files/route.ts`,
+`app/api/files/[id]/route.ts`, `app/api/files/import/route.ts`,
+`app/api/folders/route.ts`, `app/api/folders/[id]/route.ts`, and
+`app/api/assets/[id]/route.ts`.
+
+</Steps>
+
+## The routes
+
+Three files give you the whole module:
+
+```
+app/files/
+├── layout.tsx          # optional shell wrapper (centers content)
+├── page.tsx            # /files       — the FileManager library view
+└── [id]/page.tsx       # /files/[id]  — the FileDetail preview + metadata view
+```
+
+<Steps>
+
+### The list view
+
+`app/files/page.tsx` renders `FileManager` wired to the router so clicking a file
+opens its detail page. Upload, folders, search, view toggle, and bulk delete are
+all built in.
+
+```tsx filename="app/files/page.tsx" copy
+"use client";
+
+import { useRouter } from 'next/navigation';
+import { FileManager } from '@/components/ui/file-manager';
+
+export default function FilesPage() {
+  const router = useRouter();
+
+  return <FileManager onFileClick={(file) => router.push(`/files/${file.id}`)} />;
+}
+```
+
+`FileManager` props: `onFileClick` (open a file), `pageSize` (default `24`),
+`defaultView` (`'grid'` | `'list'`), and `enableFolders` (default `true` — set
+`false` for a flat library with no folder UI).
+
+### The detail view
+
+`app/files/[id]/page.tsx` renders `FileDetail`, which fetches the file, shows the
+Preview/Details tabs, saves metadata, and handles deletion.
+
+```tsx filename="app/files/[id]/page.tsx" copy
+"use client";
+
+import { use } from 'react';
+import { useRouter } from 'next/navigation';
+import { FileDetail } from '@/components/ui/file-manager';
+
+export default function FileDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const router = useRouter();
+
+  return (
+    <FileDetail
+      id={id}
+      onBack={() => router.push('/files')}
+      onDeleted={() => router.push('/files')}
+    />
+  );
+}
+```
+
+</Steps>
+
+## The data layer
+
+Both screens are thin — all the work lives in two hooks you can reuse anywhere.
+
+`useFiles` returns `uploadFiles`, `fetchFiles`, `getFile`, `updateFile`,
+`deleteFile`, `deleteFiles`, and `importFromUrl`. `updateFile` accepts the full
+editable metadata set:
+
+```tsx
+const { updateFile } = useFiles();
+
+await updateFile(fileId, {
+  title: 'Cover image',
+  description: 'Homepage hero',
+  tags: ['marketing', 'hero'],
+  location: 'HQ',
+  filename_download: 'hero.png',
+});
+```
+
+`useFolders` returns `fetchFolders`, `createFolder`, `updateFolder`, and
+`deleteFolder`. Scope a listing to a parent (pass `null` for root):
+
+```tsx
+const { fetchFolders, createFolder } = useFolders();
+
+const rootFolders = await fetchFolders({ parent: null });
+const folder = await createFolder({ name: 'Campaigns', parent: null });
+```
+
+<Callout type="info">
+Thumbnails and previews are served by `/api/assets/[id]`. Use `getAssetUrl(id, …)`
+from `@/lib/buildpad/types` to build transform URLs — e.g.
+`getAssetUrl(id, { width: 240, height: 240, fit: 'cover' })` for a grid thumbnail,
+or `getAssetUrl(id, { download: true })` for a download link.
+</Callout>
+
+## Preview behaviour
+
+The Preview tab renders inline based on MIME type:
+
+| Type | Behaviour |
+|---|---|
+| Image | `<img>` rendered inline |
+| Video | HTML5 `<video>` player |
+| Audio | HTML5 `<audio>` player |
+| PDF | Embedded `<iframe>` |
+| Anything else | File icon + a download button |
+
+## Prerequisites
+
+- The module must live under your authenticated layout so `DaaSProvider` is
+  above it — `buildpad init` generates this as `app/(authenticated)/` with a
+  `DaaSProviderWrapper`. The hooks call your `/api/files/*`, `/api/folders/*`,
+  and `/api/assets/*` proxy routes.
+- No extra styling is needed: the components consume the design tokens through
+  the Mantine theme. See the [Styleguide](/styleguide) for the token reference.
+
+## See the components live
+
+Every state of the Files module is in the Files Storybook — `FileManager`,
+`FileDetail`, `FilePreview`, and the supporting pieces. Run it locally with
+`pnpm --filter @buildpad/ui-files storybook` (port 6009). The
+`FileManager (DaaS)` story connects to a real DaaS instance through the
+storybook-host proxy.

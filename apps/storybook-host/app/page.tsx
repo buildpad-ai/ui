@@ -41,6 +41,12 @@ const storybooks = [
     port: 6008,
     description: "CollectionForm & CollectionList",
   },
+  {
+    name: "📁 Files",
+    path: "/storybook/files",
+    port: 6009,
+    description: "File upload & management components",
+  },
 ];
 
 export default function HomePage() {
@@ -201,6 +207,13 @@ npx @buildpad/cli@latest bootstrap`}</pre>
             production-ready CRUD.
           </p>
         </div>
+        <div className="feature-card">
+          <h2>Files</h2>
+          <p>
+            FileManager + FileDetail with upload, folders, search, bulk actions,
+            metadata editing, and DaaS RBAC gating.
+          </p>
+        </div>
       </section>
 
       <section className="card" id="storybooks">
@@ -242,7 +255,8 @@ npx @buildpad/cli@latest bootstrap`}</pre>
 pnpm storybook:interfaces   # Port 6005
 pnpm storybook:form         # Port 6006
 pnpm storybook:table        # Port 6007
-pnpm storybook:collections  # Port 6008`}</pre>
+pnpm storybook:collections  # Port 6008
+pnpm storybook:files        # Port 6009`}</pre>
           </div>
         )}
       </section>

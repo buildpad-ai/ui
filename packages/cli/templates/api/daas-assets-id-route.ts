@@ -11,7 +11,7 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { getAuthHeaders, getDaaSUrl } from '@/lib/api/auth-headers';
+import { getAuthHeaders, getDaasUrl } from '@/lib/api/auth-headers';
 
 export async function GET(
   request: NextRequest,
@@ -19,7 +19,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const daasUrl = getDaaSUrl();
+    const daasUrl = getDaasUrl();
     const searchParams = request.nextUrl.searchParams.toString();
     const url = `${daasUrl}/api/assets/${id}${searchParams ? `?${searchParams}` : ''}`;
 

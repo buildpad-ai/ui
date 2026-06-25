@@ -68,12 +68,17 @@ export {
 } from './useRelationPermissionsM2O';
 
 // File hooks
-export { 
-  useFiles, 
-  type FileUpload, 
-  type FileUploadOptions, 
-  type DaaSFile 
+export {
+  useFiles,
+  type FileUpload,
+  type FileUploadOptions,
+  type DaaSFile
 } from './useFiles';
+export {
+  useFolders,
+  type Folder,
+  type FetchFoldersParams
+} from './useFolders';
 
 // Selection & Preset hooks
 export { 

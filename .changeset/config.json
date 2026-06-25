@@ -10,6 +10,7 @@
       "@buildpad/services",
       "@buildpad/types",
       "@buildpad/ui-collections",
+      "@buildpad/ui-files",
       "@buildpad/ui-form",
       "@buildpad/ui-interfaces",
       "@buildpad/ui-table",

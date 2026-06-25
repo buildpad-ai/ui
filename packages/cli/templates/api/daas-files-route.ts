@@ -12,11 +12,11 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { getAuthHeaders, getDaaSUrl } from '@/lib/api/auth-headers';
+import { getAuthHeaders, getDaasUrl } from '@/lib/api/auth-headers';
 
 export async function GET(request: NextRequest) {
   try {
-    const daasUrl = getDaaSUrl();
+    const daasUrl = getDaasUrl();
     const headers = await getAuthHeaders();
     const searchParams = request.nextUrl.searchParams.toString();
     const url = `${daasUrl}/api/files${searchParams ? `?${searchParams}` : ''}`;
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const daasUrl = getDaaSUrl();
+    const daasUrl = getDaasUrl();
     // For file uploads, forward auth header but NOT Content-Type
     // (the browser/fetch sets the correct multipart boundary automatically)
     const authHeaders = await getAuthHeaders();

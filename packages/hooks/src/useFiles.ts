@@ -36,7 +36,12 @@ export interface DaaSFile {
   filesize: number;
   width?: number | null;
   height?: number | null;
+  duration?: number | null;
   description?: string | null;
+  location?: string | null;
+  tags?: string[] | null;
+  focal_point_x?: number | null;
+  focal_point_y?: number | null;
 }
 
 /**
@@ -48,11 +53,17 @@ export interface FileUpload {
   filename_disk: string;
   type: string;
   filesize: number;
+  storage?: string;
   width?: number;
   height?: number;
+  duration?: number;
   title?: string;
   description?: string;
   folder?: string;
+  location?: string;
+  tags?: string[];
+  focal_point_x?: number;
+  focal_point_y?: number;
   uploaded_on: string;
   uploaded_by: string;
   modified_on?: string;
@@ -68,11 +79,17 @@ function toFileUpload(file: DaaSFile): FileUpload {
     filename_disk: file.filename_disk || file.filename_download,
     type: file.type || 'application/octet-stream',
     filesize: file.filesize,
+    storage: file.storage || undefined,
     width: file.width || undefined,
     height: file.height || undefined,
+    duration: file.duration || undefined,
     title: file.title || undefined,
     description: file.description || undefined,
     folder: file.folder || undefined,
+    location: file.location || undefined,
+    tags: file.tags || undefined,
+    focal_point_x: file.focal_point_x ?? undefined,
+    focal_point_y: file.focal_point_y ?? undefined,
     uploaded_on: file.uploaded_on || new Date().toISOString(),
     uploaded_by: file.uploaded_by || '',
     modified_on: file.modified_on || undefined,
@@ -269,7 +286,16 @@ export function useFiles() {
    */
   const updateFile = useCallback(async (
     id: string,
-    data: { title?: string; description?: string; folder?: string; tags?: string[] }
+    data: {
+      title?: string;
+      description?: string;
+      folder?: string | null;
+      tags?: string[];
+      location?: string;
+      filename_download?: string;
+      focal_point_x?: number | null;
+      focal_point_y?: number | null;
+    }
   ): Promise<FileUpload> => {
     setLoading(true);
     setError(null);
@@ -331,6 +357,69 @@ export function useFiles() {
     }
   }, []);
 
+  /**
+   * Replace the binary contents of an existing file (keeps the same id/metadata).
+   */
+  const replaceFile = useCallback(async (
+    id: string,
+    file: File
+  ): Promise<FileUpload> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const url = buildApiUrl(`/api/files/${id}`);
+      const baseHeaders = getApiHeaders();
+      // FormData sets its own multipart boundary — drop Content-Type.
+      const { 'Content-Type': _contentType, ...headers } = baseHeaders;
+
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ errors: [{ message: 'Replace failed' }] }));
+        throw new Error(errorData.errors?.[0]?.message || 'Failed to replace file');
+      }
+
+      const { data } = await response.json();
+      return toFileUpload(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to replace file';
+      setError(message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Get a (typically signed, time-limited) download URL for a file.
+   * Falls back to the direct asset URL with `?download` when the
+   * dedicated download endpoint is unavailable.
+   */
+  const getDownloadUrl = useCallback(async (
+    id: string,
+    expiresIn = 3600
+  ): Promise<string> => {
+    try {
+      const result = await apiRequest<{ url?: string }>(
+        `/api/files/${id}/download?expires_in=${expiresIn}`
+      );
+      if (result?.url) return result.url;
+    } catch {
+      // Endpoint not available — fall back to the direct asset route.
+    }
+    return `/api/assets/${id}?download`;
+  }, []);
+
   return {
     loading,
     error,
@@ -339,6 +428,8 @@ export function useFiles() {
     importFromUrl,
     getFile,
     updateFile,
+    replaceFile,
+    getDownloadUrl,
     deleteFile,
     deleteFiles,
   };

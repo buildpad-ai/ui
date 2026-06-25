@@ -12,7 +12,7 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { getAuthHeaders, getDaaSUrl } from '@/lib/api/auth-headers';
+import { getAuthHeaders, getDaasUrl } from '@/lib/api/auth-headers';
 
 type Params = { params: Promise<{ collection: string; id: string }> };
 
@@ -22,7 +22,7 @@ async function proxyRequest(
   id: string,
   method: string
 ) {
-  const daasUrl = getDaaSUrl();
+  const daasUrl = getDaasUrl();
   const headers = await getAuthHeaders();
   const searchParams = request.nextUrl.searchParams.toString();
   const url = `${daasUrl}/api/items/${collection}/${id}${searchParams ? `?${searchParams}` : ''}`;

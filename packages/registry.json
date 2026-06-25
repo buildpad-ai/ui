@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-06-18T08:08:09.828Z",
+  "generatedAt": "2026-06-25T07:43:45.281Z",
   "version": "1.4.1",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -100,6 +100,10 @@
     "@buildpad/ui-collections": {
       "version": "1.4.1",
       "changelogUrl": "ui-collections/CHANGELOG.md"
+    },
+    "@buildpad/ui-files": {
+      "version": "1.4.1",
+      "changelogUrl": "ui-files/CHANGELOG.md"
     },
     "@buildpad/hooks": {
       "version": "1.4.1",
@@ -289,7 +293,12 @@
         {
           "source": "hooks/src/useFiles.ts",
           "target": "lib/buildpad/hooks/useFiles.ts",
-          "sourceSha256": "635544cdd262640e66aa13fb88454cda67d7d9c7c1a5226870797382f1258a7f"
+          "sourceSha256": "cf2a7a0b539ee6ca6bd856dd8a85df7fcb536c38767a31521c8fb0688a14fee4"
+        },
+        {
+          "source": "hooks/src/useFolders.ts",
+          "target": "lib/buildpad/hooks/useFolders.ts",
+          "sourceSha256": "b0e0e0dda9991b53a5afc1323f55bc12cef8405399124402851e23220a39e32a"
         },
         {
           "source": "hooks/src/useRelationM2M.ts",
@@ -404,7 +413,7 @@
         {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "719e03a0756fba4e4d3de46fbaf517f124187f904d8099c1d0dba144dd6da291"
+          "sourceSha256": "5125e5a2a9e478f26a2ee89d294086c0f0562502f925f1e6a907eb8ca8bb4be1"
         }
       ],
       "internalDependencies": [
@@ -452,42 +461,62 @@
         {
           "source": "cli/templates/api/daas-fields-route.ts",
           "target": "app/api/fields/[collection]/route.ts",
-          "sourceSha256": "d1b167f38452e1158954ce79f74c7228519646ccb1cdb18b18b22fad1f1f26a1"
+          "sourceSha256": "3e80287d63999110835e67f8443ab5eb78e467f800f62856d45220edb1c320fc"
         },
         {
           "source": "cli/templates/api/daas-items-collection-route.ts",
           "target": "app/api/items/[collection]/route.ts",
-          "sourceSha256": "3297cc579de45820bb99e35851b3788b53ed2a0f5d0bbdec62aaef81ec09ed5a"
+          "sourceSha256": "dba3ebdaa5b2e7bccc7eb43263ecc46ad96aa85877099956cd7d97e025a17be5"
         },
         {
           "source": "cli/templates/api/daas-items-id-route.ts",
           "target": "app/api/items/[collection]/[id]/route.ts",
-          "sourceSha256": "b3b813c0d23a34544b1d025b6de0cbdcb3434ec303327d1cf81845bc06cd4dc1"
+          "sourceSha256": "84b169abe0ffe0525f37e9a9725ebcaf2c2ee1013b55196c924580be93a914cd"
         },
         {
           "source": "cli/templates/api/daas-relations-route.ts",
           "target": "app/api/relations/route.ts",
-          "sourceSha256": "818ac0960398c4fcc38e0f086b81641049ed9053a3365147fe6fb3ced427a258"
+          "sourceSha256": "77f608f9721406618b9e42736018a9e852f272e4fa0f5c7751ff0295d0b316f4"
         },
         {
           "source": "cli/templates/api/daas-files-route.ts",
           "target": "app/api/files/route.ts",
-          "sourceSha256": "22f87fcca2b773c2498f759ae42624fa6d2cba149ee6771f14c524cf37a9e77e"
+          "sourceSha256": "6eaab9e1306274937a5dbf600a6e38fce5da736b3e4cf9debf99019f0f0a469a"
         },
         {
           "source": "cli/templates/api/daas-files-id-route.ts",
           "target": "app/api/files/[id]/route.ts",
-          "sourceSha256": "30ad8a35d1f9066d6539220b2639e6d60d0457dcebf5a8d54336ca1220889a5c"
+          "sourceSha256": "7ad3b3c60eedc1b59a1c959da7bb3ea7a3263e21b4b01b0fd68ea7b83026f897"
+        },
+        {
+          "source": "cli/templates/api/daas-files-id-download-route.ts",
+          "target": "app/api/files/[id]/download/route.ts",
+          "sourceSha256": "8793a2e25b6c66d55ce8eb0aa37eff5e511418c07fff286e697387d955616446"
+        },
+        {
+          "source": "cli/templates/api/daas-files-import-route.ts",
+          "target": "app/api/files/import/route.ts",
+          "sourceSha256": "f0bfb2ddc11da8d6af58e48ce36c5bb7f426f95ac8fcced0311e54c455c461a6"
+        },
+        {
+          "source": "cli/templates/api/daas-folders-route.ts",
+          "target": "app/api/folders/route.ts",
+          "sourceSha256": "ca5b29aac179f801994d1f44bb3645f91faa7531d5b31d981a4cbe70a17cdef7"
+        },
+        {
+          "source": "cli/templates/api/daas-folders-id-route.ts",
+          "target": "app/api/folders/[id]/route.ts",
+          "sourceSha256": "bc9ee2db737778b3aea9f717c28030c42964e82fe765ba7c8ee9aa3037cefa06"
         },
         {
           "source": "cli/templates/api/daas-assets-id-route.ts",
           "target": "app/api/assets/[id]/route.ts",
-          "sourceSha256": "94562dd04457bcbd522b2532d8d6154317be51f2568700e304ccee4467b24272"
+          "sourceSha256": "b7c63ad57472902651772d9fde6b57f29cbd1c6a5a394aedbe92bc6bd31cf411"
         },
         {
           "source": "cli/templates/api/daas-permissions-me-route.ts",
           "target": "app/api/permissions/me/route.ts",
-          "sourceSha256": "45ed445c12bec683629180a71c359529177ed4bb51764f350be23a0f20097087"
+          "sourceSha256": "bc5f0b43e7d3495d351361e634b9da21d2957e1ad16ff76bc59a47376baab9ff"
         },
         {
           "source": "cli/templates/components/DaaSProviderWrapper.tsx",
@@ -536,6 +565,32 @@
       "internalDependencies": [
         "api-routes",
         "hooks"
+      ],
+      "sourcePackage": "@buildpad/cli",
+      "version": "1.4.1",
+      "lastChangedIn": "1.4.1"
+    },
+    "files-routes": {
+      "name": "files-routes",
+      "description": "Files management module pages — /files (drag-and-drop upload, folders, grid/list, search, bulk delete, import-from-URL) and /files/[id] (metadata edit + preview). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the file-manager component.",
+      "files": [
+        {
+          "source": "cli/templates/app/files/page.tsx",
+          "target": "app/(authenticated)/files/page.tsx",
+          "sourceSha256": "b3c331be7112a71a37aef712ac2c1f90003713630c21ccc39395630929e63866"
+        },
+        {
+          "source": "cli/templates/app/files/[id]/page.tsx",
+          "target": "app/(authenticated)/files/[id]/page.tsx",
+          "sourceSha256": "4e92795e4774928fcc4ace3628bc0900b775b2a544a5c2b3aab4171e4a42d584"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "file-manager"
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.4.1",
@@ -2712,6 +2767,111 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
+      "version": "1.4.1",
+      "lastChangedIn": "1.4.1"
+    },
+    {
+      "name": "file-manager",
+      "title": "FileManager",
+      "description": "Full files-management UI — list surface (drag-and-drop upload, import-from-URL, folders, grid/list views, search, bulk delete) and a file detail view (metadata edit + preview for image/video/audio/pdf). Composes the upload interface and the useFiles/useFolders hooks.",
+      "category": "media",
+      "files": [
+        {
+          "source": "ui-files/src/FileManager.tsx",
+          "target": "components/ui/file-manager/file-manager.tsx",
+          "sourceSha256": "5dbadb27b0a735a75b3a6468bbfb7218a9bf76ff4c08427031f59ba45a11d96b"
+        },
+        {
+          "source": "ui-files/src/FileManager.css",
+          "target": "components/ui/file-manager/file-manager.css",
+          "sourceSha256": "83cb2b0f76638ed68d1d9858084c0a38b7d7a0003ac6795cd0672821f19d2609"
+        },
+        {
+          "source": "ui-files/src/FilesToolbar.tsx",
+          "target": "components/ui/file-manager/files-toolbar.tsx",
+          "sourceSha256": "943c3c2dbf49cbefcd0a135a69aae6454e9c65a12c4a9da21b5b1bab0c099a4d"
+        },
+        {
+          "source": "ui-files/src/FilesGrid.tsx",
+          "target": "components/ui/file-manager/files-grid.tsx",
+          "sourceSha256": "f5e1c9090d3824421e2db6c41b6832919a56878f790ea896196e8ae24109dfcc"
+        },
+        {
+          "source": "ui-files/src/FilesList.tsx",
+          "target": "components/ui/file-manager/files-list.tsx",
+          "sourceSha256": "e5607f35bc86f185ae76d913acb516b96c703864466c85a58a895458d70d8ab3"
+        },
+        {
+          "source": "ui-files/src/FileCard.tsx",
+          "target": "components/ui/file-manager/file-card.tsx",
+          "sourceSha256": "83b73d6dbe1dee7fa1fe91fc342f3f8ce7d6ece782c2e2deea4d5f5cb22a2219"
+        },
+        {
+          "source": "ui-files/src/FolderCard.tsx",
+          "target": "components/ui/file-manager/folder-card.tsx",
+          "sourceSha256": "49a32d20a02f171d17a1b7e515d5dac09edcea14a9200e96730f38e76490db0b"
+        },
+        {
+          "source": "ui-files/src/FolderBreadcrumb.tsx",
+          "target": "components/ui/file-manager/folder-breadcrumb.tsx",
+          "sourceSha256": "983515f390bf3f00c4dcaa706bb76330d520a16cb7e57e4e833f6f9ba43efd0e"
+        },
+        {
+          "source": "ui-files/src/NewFolderDialog.tsx",
+          "target": "components/ui/file-manager/new-folder-dialog.tsx",
+          "sourceSha256": "395230b88a5e494cb22eae65eb149084e4c46c39be6ccb68b04930cf27140156"
+        },
+        {
+          "source": "ui-files/src/BulkActionsBar.tsx",
+          "target": "components/ui/file-manager/bulk-actions-bar.tsx",
+          "sourceSha256": "2a641cc7bb696a33b1bd3b311df4a0a58f4462bea6246ccf7de329f67bae3fe8"
+        },
+        {
+          "source": "ui-files/src/DeleteConfirmModal.tsx",
+          "target": "components/ui/file-manager/delete-confirm-modal.tsx",
+          "sourceSha256": "6c271fc811895a2876ff1b09d897d9260ba4fbfc6e61e00e51bd5d42acafe477"
+        },
+        {
+          "source": "ui-files/src/FileDetail.tsx",
+          "target": "components/ui/file-manager/file-detail.tsx",
+          "sourceSha256": "4c146f2cae2400448a74a91e0d86dbc9a31197d6a280ca3d93554959c47d2447"
+        },
+        {
+          "source": "ui-files/src/FileMetadataForm.tsx",
+          "target": "components/ui/file-manager/file-metadata-form.tsx",
+          "sourceSha256": "804ded5c64200024d2f38f4388b3f04c8201048c59c8571c92cd35ea07467134"
+        },
+        {
+          "source": "ui-files/src/FilePreview.tsx",
+          "target": "components/ui/file-manager/file-preview.tsx",
+          "sourceSha256": "fdfa9c61924fbb9ae79bac6068ca723360bcc7feb0cc60455d82e718cc02da9f"
+        },
+        {
+          "source": "ui-files/src/FileInfoPanel.tsx",
+          "target": "components/ui/file-manager/file-info-panel.tsx",
+          "sourceSha256": "941ba5c1076aacabdc2eb2d182f35d5a45661ee3cef45a78ecce6467eb135b1a"
+        },
+        {
+          "source": "ui-files/src/index.ts",
+          "target": "components/ui/file-manager/index.ts",
+          "sourceSha256": "cbbb64708de3afe29ce07b2c8ce583333c1cdee4f1919a35c37257a3c0ff0b68"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services"
+      ],
+      "registryDependencies": [
+        "upload"
+      ],
+      "sourcePackage": "@buildpad/ui-files",
       "version": "1.4.1",
       "lastChangedIn": "1.4.1"
     }

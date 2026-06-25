@@ -51,6 +51,7 @@ buildpad-ui/
     ├── ui-form/            # VForm dynamic form component (Storybook port 6006)
     ├── ui-table/           # VTable dynamic table component (Storybook port 6007)
     ├── ui-collections/     # Collection Form & List (Storybook port 6005)
+    ├── ui-files/           # File manager module (Storybook port 6009)
     ├── types/              # Shared TypeScript types
     ├── services/           # Shared service classes
     ├── hooks/              # Shared React hooks
@@ -686,7 +687,8 @@ Buildpad uses a **per-file checksum** system so updates only touch files you hav
 | `pnpm storybook:form`        | Run VForm Storybook (port 6006)                  |
 | `pnpm storybook:table`       | Run VTable Storybook (port 6007)                 |
 | `pnpm storybook:collections` | Run Collections Storybook (port 6005)            |
-| `pnpm build:storybook`       | Build all 4 Storybooks to host app's public dir  |
+| `pnpm storybook:files`       | Run Files Storybook (port 6009)                  |
+| `pnpm build:storybook`       | Build all 5 Storybooks to host app's public dir  |
 | `pnpm dev:host`              | Start Storybook host app in dev mode (port 3000) |
 | `pnpm build:host`            | Build the Storybook host app for production      |
 | `pnpm start:host`            | Start production Storybook host app              |
@@ -706,6 +708,7 @@ pnpm storybook:interfaces     # ui-interfaces (port 6005)
 pnpm storybook:form           # VForm (port 6006)
 pnpm storybook:table          # VTable (port 6007)
 pnpm storybook:collections    # Collections (port 6005)
+pnpm storybook:files          # File manager (port 6009)
 
 # Build all Storybooks for hosting
 pnpm build:storybook
