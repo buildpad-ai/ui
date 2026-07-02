@@ -30,16 +30,21 @@ import {
   Stack,
   Switch,
   Text,
-  Textarea,
   TextInput,
 } from '@mantine/core';
 import { IconAlertCircle, IconColumns, IconBraces } from '@tabler/icons-react';
-import { interfaceForFieldType, provisionableInterfacesForType } from '@buildpad/utils';
+import {
+  interfaceForFieldType,
+  interfaceRequiresChoices,
+  provisionableInterfacesForType,
+} from '@buildpad/utils';
 import type {
   ExtraFieldDescriptor,
   FieldSpec,
   FieldStore,
 } from '@buildpad/types';
+import { ChoicesInput, type Choice } from './ChoicesInput';
+import { toFieldKey, fieldKeyError } from './field-name';
 
 /** Result handed to the parent when the author submits the modal. */
 export interface AddFieldResult {
@@ -104,44 +109,6 @@ const TYPE_OPTIONS = [
 ];
 
 /**
- * Interfaces that need an author-supplied choices list. The full provisionable
- * catalog (and its per-type compatibility) lives in `@buildpad/utils`
- * (`provisionableInterfacesForType`) and drives the type-aware picker below.
- */
-const CHOICE_INTERFACES = new Set([
-  'select-dropdown',
-  'select-radio',
-  'select-multiple-checkbox',
-  'select-multiple-dropdown',
-]);
-
-/** Convert a label to a snake_case field key. */
-function toFieldKey(label: string): string {
-  return label
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .replace(/_+/g, '_');
-}
-
-/** Parse a "label=value" / "value" per-line textarea into DaaS choices. */
-function parseChoices(
-  raw: string,
-): { text: string; value: string }[] | undefined {
-  const choices = raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const eq = line.indexOf('=');
-      if (eq === -1) return { text: line, value: line };
-      return { text: line.slice(0, eq).trim(), value: line.slice(eq + 1).trim() };
-    });
-  return choices.length > 0 ? choices : undefined;
-}
-
-/**
  * Modal form for defining and provisioning a new field.
  */
 export function AddFieldModal({
@@ -169,7 +136,7 @@ export function AddFieldModal({
   const [storage, setStorage] = useState<FieldStore>(defaultStorage);
   const [addIndex, setAddIndex] = useState(false);
   const [required, setRequired] = useState(false);
-  const [choicesRaw, setChoicesRaw] = useState('');
+  const [choices, setChoices] = useState<Choice[] | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -186,7 +153,7 @@ export function AddFieldModal({
   // The key auto-tracks the label until the author edits it directly.
   const effectiveKey = keyTouched ? fieldKey : toFieldKey(label);
   const resolvedInterface = interfaceId || interfaceForFieldType(type);
-  const isChoiceInterface = CHOICE_INTERFACES.has(resolvedInterface);
+  const isChoiceInterface = interfaceRequiresChoices(resolvedInterface);
 
   // Type-aware interface picker: only interfaces compatible with the chosen type,
   // grouped, plus an "Auto (from type)" default — mirroring how the DaaS data-model
@@ -215,13 +182,10 @@ export function AddFieldModal({
     }
   };
 
-  const keyError = useMemo(() => {
-    if (!effectiveKey) return 'A field key is required';
-    if (!/^[a-z][a-z0-9_]*$/.test(effectiveKey))
-      return 'Use lowercase letters, numbers and underscores (start with a letter)';
-    if (existingFieldNames.has(effectiveKey)) return 'A field with this key already exists';
-    return null;
-  }, [effectiveKey, existingFieldNames]);
+  const keyError = useMemo(
+    () => fieldKeyError(effectiveKey, existingFieldNames),
+    [effectiveKey, existingFieldNames],
+  );
 
   const reset = () => {
     setLabel('');
@@ -232,7 +196,7 @@ export function AddFieldModal({
     setStorage(defaultStorage);
     setAddIndex(false);
     setRequired(false);
-    setChoicesRaw('');
+    setChoices(undefined);
     setError(null);
   };
 
@@ -247,9 +211,7 @@ export function AddFieldModal({
     setSubmitting(true);
     setError(null);
 
-    const options = isChoiceInterface
-      ? { choices: parseChoices(choicesRaw) }
-      : undefined;
+    const options = isChoiceInterface ? { choices } : undefined;
 
     const spec: FieldSpec = {
       field: effectiveKey,
@@ -330,15 +292,10 @@ export function AddFieldModal({
         </Group>
 
         {isChoiceInterface && (
-          <Textarea
-            label="Choices"
-            description="One per line. Use label=value to set a separate value."
-            placeholder={'Low\nMedium\nHigh'}
-            autosize
-            minRows={2}
-            maxRows={6}
-            value={choicesRaw}
-            onChange={(e) => setChoicesRaw(e.currentTarget.value)}
+          <ChoicesInput
+            key={`${opened}-${resolvedInterface}`}
+            value={choices}
+            onChange={setChoices}
           />
         )}
 

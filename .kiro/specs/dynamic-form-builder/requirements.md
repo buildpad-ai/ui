@@ -85,23 +85,32 @@ screen without writing code.
 
 #### Acceptance Criteria
 1. WHEN the builder is opened for a target collection THE SYSTEM SHALL load that collection's field
-   schema via `FieldsService.readAll` and present unplaced fields in a field palette.
+   schema via `FieldsService.readAll` and present the palette as two draggable groups filterable by a
+   search box: (i) a **field-type catalog** — one chip per provisionable interface, grouped by category
+   (Text / Rich content / Selection / Numeric & date / Geospatial) from the shared catalog (Requirement
+   10.2a), each with an icon and label — and (ii) the collection's **unplaced existing fields**.
 1a. WHERE no target collection is bound yet (the auto-create flow, Requirement 12.1a) THE SYSTEM SHALL
-   still populate the palette with (i) **quick-add field-type templates** (one per provisionable interface,
-   from the shared catalog — Requirement 10.2a) that prefill the "create field" flow, and (ii) the
-   **full-storage system fields** the new collection will have (`fullBaselineFields()` — `status` plus the
-   hidden audit fields), so the author can see and place available fields before the collection exists.
-2. WHEN an admin adds a field from the palette to the canvas THE SYSTEM SHALL place it into a section
-   and remove it from the palette.
-2a. WHERE the field the admin needs does not yet exist THE SYSTEM SHALL let the admin **create a new
-   field** from the builder (choosing its type/interface and its **storage** — real column or `extras`),
-   per Requirement 10, and then place it like any other field. A **quick-add template** opens this flow
-   prefilled with that template's type/interface.
+   still show the field-type catalog and seed the existing-fields group with the **full-storage system
+   fields** the new collection will have (`fullBaselineFields()` — `status` plus the hidden audit fields),
+   so the author can see and place available fields before the collection exists.
+2. WHEN an admin drags (or clicks) an **existing field** from the palette THE SYSTEM SHALL place it into a
+   section — at the drop position when dragged, or appended to the last section when clicked — and remove
+   it from the palette.
+2a. WHEN an admin drags a **field-type catalog chip** onto the canvas THE SYSTEM SHALL prompt for the new
+   field's **column name only** (its type and interface come from the chip), place it at the drop position,
+   and **lock that column name thereafter** (DaaS columns are not renamable). The chip stays in the catalog
+   for reuse. The field's real column is provisioned per Requirement 10; because provisioning is deferred,
+   it is created on **Save** (Requirement 10.7). The advanced **"Add field"** flow (Requirement 10) remains
+   available for choosing `extras` storage or a B-tree index.
 3. WHEN an admin reorders fields or sections THE SYSTEM SHALL persist the new order in the definition.
 4. WHEN an admin sets a field's width THE SYSTEM SHALL constrain it to `half` or `full`.
 5. WHEN an admin toggles a field's `required`, `readonly`, or `hidden` setting THE SYSTEM SHALL record
    the override on that field's config.
 6. WHERE a field has no explicit label override THE SYSTEM SHALL use the field's schema display name.
+6a. WHEN a field created from the catalog is selected THE SYSTEM SHALL let the admin edit its **label** and,
+   for a **choice interface** (`select-dropdown`/`select-radio`/`select-multiple-checkbox`/
+   `select-multiple-dropdown`), its **choices**, in the settings panel; its **column name stays read-only**
+   (Requirement 1.2a). Choices SHALL be captured before the field is provisioned on Save.
 7. THE SYSTEM SHALL allow creating, renaming, and removing sections within a definition.
 
 ## Requirement 2 — Author conditional logic
@@ -284,6 +293,11 @@ directly from the builder, so that I can compose a screen without leaving to han
    fields or their data.
 6. IF a DDL call fails (insufficient rights, name conflict, invalid spec) THEN THE SYSTEM SHALL surface
    the error to the admin without losing in-progress definition state.
+7. THE SYSTEM SHALL **defer provisioning** of fields created from the catalog until **Save** — for both the
+   auto-create flow and screens bound to an existing collection — holding each new field's `FieldSpec` and
+   rendering it locally (a synthesized `Field`) meanwhile. On Save THE SYSTEM SHALL `createField` each
+   still-placed pending spec in canvas order, and SHALL block the save with a clear message if a pending
+   choice field has no choices or a pending column name is invalid or duplicates an existing column.
 
 ## Requirement 11 — Data storage & searchability (hybrid + full)
 

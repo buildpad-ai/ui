@@ -29,10 +29,13 @@ import { FormBuilder } from './FormBuilder';
  * a definition into the definitions collection.
  *
  * The Target collection is OPTIONAL and blank by default, so the playground
- * opens on the auto-create path: add fields, then Save, and the builder
- * provisions a `fb_` full collection (named from the screen name) and its
- * columns before persisting the definition. Enter an existing collection to
- * bind to it (hybrid) instead. Auto-create needs DaaS schema rights.
+ * opens on the auto-create path: drag a field type from the palette catalog onto
+ * the canvas (name its column in the prompt), tune its label/choices/width in the
+ * settings panel, then Save — the builder provisions a `fb_` full collection
+ * (named from the screen name) and every pending column before persisting the
+ * definition. Enter an existing collection to bind to it (hybrid): catalog fields
+ * are still deferred and provisioned on Save. Provisioning needs DaaS schema
+ * rights.
  *
  * 1. Start the host: `pnpm dev:host`
  * 2. Visit http://localhost:3000 and enter your DaaS URL + static token
@@ -190,8 +193,11 @@ export default meta;
 /**
  * Connected playground. Leave the target collection blank to author a NEW screen
  * on the auto-create path (a `fb_` full collection is provisioned on save); enter
- * an existing collection to bind to it (hybrid). Leave the definition id blank to
- * create, or enter an existing id to EDIT a saved screen (populated canvas).
+ * an existing collection to bind to it (hybrid). Drag field types from the
+ * palette catalog onto the canvas (each prompts for its column name, then is
+ * configured — label/choices — in the settings panel and provisioned on Save).
+ * Leave the definition id blank to create, or enter an existing id to EDIT a
+ * saved screen (populated canvas).
  */
 export const Playground: StoryObj<typeof FormBuilder> = {
   render: () => <DaaSFormBuilderPlayground />,

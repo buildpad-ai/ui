@@ -232,7 +232,7 @@ flowchart LR
         C2["FilterPanel (reused for rules)"]
     end
     subgraph UIFORMS["@buildpad/ui-forms (NEW package)"]
-        F1["FormBuilder · FieldPalette (+ Add field/storage selector)<br/>BuilderCanvas · BuilderSection · BuilderFieldRow · FieldSettingsPanel"]
+        F1["FormBuilder · FieldPalette (field-type catalog + fields) · NameFieldModal<br/>BuilderCanvas · BuilderSection · BuilderFieldRow · FieldSettingsPanel"]
         F2["ConditionsEditor"]
         F3["DynamicForm · FormPreview"]
     end
@@ -288,8 +288,9 @@ sequenceDiagram
     Items-->>Hook: FormDefinition (or none)
     Hook-->>FB: definition
 
-    Note over FB: unplaced fields → palette
-    Admin->>FB: drag field → canvas (dnd-kit), set width/required/readonly, add/rename sections
+    Note over FB: field-type catalog + unplaced fields → palette
+    Admin->>FB: drag existing field → canvas (dnd-kit); or drag a type chip → name prompt → new field
+    Admin->>FB: set width/required/readonly, label/choices, add/rename sections
     Admin->>FP: build rule (e.g. issue_type _eq bug)
     FP-->>FB: DaaS filter JSON → FieldCondition[]
 
@@ -374,16 +375,21 @@ sequenceDiagram
     participant FB as FormBuilder
     participant SVC as FieldsService/CollectionsService (DDL)
     participant Schema as DaaS Schema API
-    Admin->>FB: "Add field" → label, type/interface, storage?
-    alt storage = Real column (default)
+    Admin->>FB: drag catalog chip → NameFieldModal (column name only)
+    Note over FB: synth Field + hold FieldSpec in pendingSpecs (name locked);<br/>label/choices edited later in FieldSettingsPanel
+    Admin->>FB: Save
+    alt new collection (auto-create)
+        FB->>SVC: createCollection({ strategy: 'full' })<br/>(fb_-prefixed; system fields, no extras)
+        SVC->>Schema: POST /api/collections
+    end
+    loop each still-placed pending spec (bound OR new collection)
         FB->>SVC: createField(collection, spec)  (add_index if filterable)
         SVC->>Schema: POST /api/fields/{collection}
         Schema-->>SVC: created Field (real column)
-        SVC-->>FB: field added to schema → palette → overlay
-    else storage = Extra (jsonb, hybrid collections only)
-        Note over FB: offered only if the collection has an extras column;<br/>no DDL — descriptor kept in the definition; value → extras column
+        SVC-->>FB: replace synth → real field → overlay
     end
-    Note over FB: (new collection) createCollection({ strategy })<br/>hybrid → id + extras · full → system fields, no extras · name fb_-prefixed
+    Note over FB: block save if a pending choice field has no choices<br/>or a pending name is invalid/duplicate
+    Note over FB: advanced "Add field" also offers Extra (jsonb, hybrid only)<br/>— no DDL; descriptor kept in the definition
 ```
 
 ```mermaid

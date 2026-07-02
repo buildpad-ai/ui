@@ -97,3 +97,24 @@ export function provisionableInterfacesForType(
     i.types.includes(type as FieldType),
   );
 }
+
+/**
+ * Interfaces that require an author-supplied **choices** list (dropdowns, radios,
+ * checkbox/multi-select groups). Kept here — alongside the catalog — so both the
+ * "Add field" modal and the settings panel share one source of truth (and unit
+ * tests can assert it). Values are renderer-recognized interface ids.
+ */
+export const CHOICE_INTERFACES: ReadonlySet<string> = new Set([
+  'select-dropdown',
+  'select-radio',
+  'select-multiple-checkbox',
+  'select-multiple-dropdown',
+]);
+
+/**
+ * Whether an interface needs an author-supplied choices list. Used to gate the
+ * choices editor and to block a save when a choice field has no choices.
+ */
+export function interfaceRequiresChoices(interfaceValue: string): boolean {
+  return CHOICE_INTERFACES.has(interfaceValue);
+}

@@ -86,6 +86,8 @@ export {
 export {
   PROVISIONABLE_INTERFACES,
   provisionableInterfacesForType,
+  CHOICE_INTERFACES,
+  interfaceRequiresChoices,
   type ProvisionableInterface,
   type ProvisionableInterfaceGroup,
 } from './interface-catalog';

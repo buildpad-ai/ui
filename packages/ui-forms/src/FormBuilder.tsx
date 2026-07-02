@@ -59,7 +59,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CollectionsService, FieldsService, fullBaselineFields } from '@buildpad/services';
 import { useFormDefinitions, usePermissions } from '@buildpad/hooks';
-import { interfaceForFieldType } from '@buildpad/utils';
+import { interfaceForFieldType, interfaceRequiresChoices, PROVISIONABLE_INTERFACES } from '@buildpad/utils';
 import type {
   Field,
   FieldSpec,
@@ -68,12 +68,15 @@ import type {
   FormFieldConfig,
   FormSection,
 } from '@buildpad/types';
-import { FieldPalette, PALETTE_ID_PREFIX } from './FieldPalette';
+import { FieldPalette, PALETTE_ID_PREFIX, NEWFIELD_ID_PREFIX } from './FieldPalette';
 import { BuilderCanvas } from './BuilderCanvas';
 import { FieldSettingsPanel } from './FieldSettingsPanel';
 import { FormPreview } from './FormPreview';
 import { FormsEmptyState } from './FormsEmptyState';
 import { AddFieldModal, type AddFieldResult } from './AddFieldModal';
+import { NameFieldModal } from './NameFieldModal';
+import type { Choice } from './ChoicesInput';
+import { FIELD_KEY_PATTERN } from './field-name';
 import {
   SECTION_ID_PREFIX,
   SECTION_BODY_ID_PREFIX,
@@ -192,6 +195,71 @@ function sectionIdFrom(id: string): string | null {
   return null;
 }
 
+/** Where a new/moved field lands: a section id (null = append to the last
+ *  section, creating one if none) and the insert index within it. */
+interface DropTarget {
+  sectionId: string | null;
+  index: number;
+}
+
+/**
+ * Resolve the drop position from a drag's `over` id: dropping on a section
+ * header/body appends to that section; dropping on a field row inserts before
+ * it. Returns null when the target can't be resolved (drop is then ignored).
+ */
+function resolveDropTarget(
+  overId: string,
+  sections: FormSection[],
+): DropTarget | null {
+  const overSectionId = sectionIdFrom(overId);
+  if (overSectionId != null) {
+    const section = sections.find((s) => s.id === overSectionId);
+    if (!section) return null;
+    return { sectionId: overSectionId, index: section.fields.length };
+  }
+  const si = sections.findIndex((s) =>
+    s.fields.some((f) => f.field === overId),
+  );
+  if (si === -1) return null;
+  const idx = sections[si].fields.findIndex((f) => f.field === overId);
+  return { sectionId: sections[si].id, index: idx };
+}
+
+/**
+ * Insert a placed field config at a drop target. A null `sectionId` appends to
+ * the last section (creating a default one when there are none). Deduplicates:
+ * a field can only be placed once.
+ */
+function insertFieldAt(
+  sections: FormSection[],
+  drop: DropTarget,
+  config: FormFieldConfig,
+): FormSection[] {
+  if (sections.some((s) => s.fields.some((f) => f.field === config.field))) {
+    return sections;
+  }
+  // Append-to-last (click path, or a stale/absent section).
+  const targetIdx =
+    drop.sectionId == null
+      ? -1
+      : sections.findIndex((s) => s.id === drop.sectionId);
+  if (targetIdx === -1) {
+    if (sections.length === 0) {
+      return [{ id: genId('section'), title: 'Details', fields: [config] }];
+    }
+    const next = sections.map((s, i) =>
+      i === sections.length - 1 ? { ...s, fields: [...s.fields, config] } : s,
+    );
+    return next;
+  }
+  const next = sections.map((s, i) =>
+    i === targetIdx ? { ...s, fields: [...s.fields] } : s,
+  );
+  const pos = Math.min(Math.max(drop.index, 0), next[targetIdx].fields.length);
+  next[targetIdx].fields.splice(pos, 0, config);
+  return next;
+}
+
 /**
  * Visual form-definition builder.
  */
@@ -236,6 +304,16 @@ export function FormBuilder({
   // provisioned into the collection auto-created on the first save (keyed by
   // field key; only those still placed on the canvas are provisioned).
   const pendingSpecsRef = useRef<Map<string, FieldSpec>>(new Map());
+  // Mirror of `sections` for use inside stable (deps-`[]`) drag handlers, which
+  // must read the current layout without being re-created on every edit.
+  const sectionsRef = useRef<FormSection[]>([]);
+
+  // Pending "name the new field" prompt: a field-type chip was dropped/clicked
+  // and we're collecting its column name before placing it. Carries the chip's
+  // interface + the resolved drop position. Null = the modal is closed.
+  const [pendingDrop, setPendingDrop] = useState<
+    { interfaceValue: string; sectionId: string | null; index: number } | null
+  >(null);
 
   // Real-column/collection provisioning (DDL) needs DaaS schema rights. We have
   // no field-grained client signal for those, so gate on `isAdmin` (admins
@@ -323,6 +401,11 @@ export function FormBuilder({
     setLoadError(null);
     setReloadNonce((n) => n + 1);
   }, []);
+
+  // Keep the sections mirror current for the stable drag handlers.
+  useEffect(() => {
+    sectionsRef.current = sections;
+  }, [sections]);
 
   // ---- Derived: schema lookup + placed/unplaced field sets ----
   const schemaByKey = useMemo(
@@ -421,6 +504,103 @@ export function FormBuilder({
     (seed?: { type: string; interface: string }) => {
       setAddFieldSeed(seed ?? null);
       setAddFieldOpen(true);
+    },
+    [],
+  );
+
+  /**
+   * Start a new field from a field-type catalog chip (click path). Opens the
+   * column-name prompt targeting the **last section** (a new one is created on
+   * confirm if there are none). The drag path — dropping a chip on the canvas —
+   * is handled in `handleDragEnd`, which resolves an exact drop position.
+   */
+  const handleAddFieldType = useCallback((interfaceValue: string) => {
+    const sects = sectionsRef.current;
+    const last = sects[sects.length - 1];
+    setPendingDrop({
+      interfaceValue,
+      sectionId: last ? last.id : null,
+      index: last ? last.fields.length : -1,
+    });
+  }, []);
+
+  /**
+   * Confirm the column-name prompt: build the deferred `FieldSpec`, synthesize a
+   * local `Field` so it renders immediately, record it in `pendingSpecs` (real
+   * columns are provisioned on Save — deferred for bound and auto-create paths
+   * alike), insert the field at the stashed drop position, and select it so the
+   * settings panel opens for label/choices/etc.
+   */
+  const handleNameFieldConfirm = useCallback(
+    (fieldKey: string) => {
+      const drop = pendingDrop;
+      if (!drop) return;
+      const descriptor = PROVISIONABLE_INTERFACES.find(
+        (i) => i.value === drop.interfaceValue,
+      );
+      const type = descriptor?.types[0] ?? 'string';
+      const spec: FieldSpec = {
+        field: fieldKey,
+        type,
+        interface: drop.interfaceValue,
+      };
+      const result: AddFieldResult = {
+        storage: 'column',
+        spec,
+        extra: { type, interface: drop.interfaceValue },
+      };
+      const synth = synthField(collection, result, 'column');
+      pendingSpecsRef.current.set(fieldKey, spec);
+      setSchemaFields((prev) =>
+        prev.some((f) => f.field === fieldKey) ? prev : [...prev, synth],
+      );
+      setSections((prev) =>
+        insertFieldAt(prev, drop, { field: fieldKey }),
+      );
+      setSelectedField(fieldKey);
+      setPendingDrop(null);
+    },
+    [pendingDrop, collection],
+  );
+
+  /**
+   * Update a deferred (pending) field's **label**: writes it to the pending
+   * `FieldSpec` (so the provisioned column carries it) and to the synthesized
+   * `Field`'s `meta.note` (so the canvas/preview re-render).
+   */
+  const handleNewFieldLabelChange = useCallback(
+    (fieldKey: string, label: string | undefined) => {
+      const spec = pendingSpecsRef.current.get(fieldKey);
+      if (!spec) return;
+      pendingSpecsRef.current.set(fieldKey, { ...spec, label });
+      setSchemaFields((prev) =>
+        prev.map((f) =>
+          f.field === fieldKey && f.meta
+            ? { ...f, meta: { ...f.meta, note: label ?? null } }
+            : f,
+        ),
+      );
+    },
+    [],
+  );
+
+  /**
+   * Update a deferred (pending) choice field's **choices**: writes them to the
+   * pending `FieldSpec.options` and the synthesized `Field`'s `meta.options`.
+   */
+  const handleNewFieldChoicesChange = useCallback(
+    (fieldKey: string, choices: Choice[] | undefined) => {
+      const spec = pendingSpecsRef.current.get(fieldKey);
+      if (!spec) return;
+      const options = choices?.length ? { choices } : undefined;
+      pendingSpecsRef.current.set(fieldKey, { ...spec, options });
+      setSchemaFields((prev) =>
+        prev.map((f) =>
+          f.field === fieldKey && f.meta
+            ? { ...f, meta: { ...f.meta, options: options ?? null } }
+            : f,
+        ),
+      );
     },
     [],
   );
@@ -538,6 +718,20 @@ export function FormBuilder({
     const activeId = String(active.id);
     const overId = String(over.id);
     if (activeId === overId) return;
+
+    // Drag a field-type catalog chip onto the canvas: stash the drop position
+    // and open the column-name prompt. Placement is deferred to confirm.
+    if (activeId.startsWith(NEWFIELD_ID_PREFIX)) {
+      const interfaceValue = activeId.slice(NEWFIELD_ID_PREFIX.length);
+      const target = resolveDropTarget(overId, sectionsRef.current);
+      if (!target) return;
+      setPendingDrop({
+        interfaceValue,
+        sectionId: target.sectionId,
+        index: target.index,
+      });
+      return;
+    }
 
     // Drag from the palette: insert the unplaced field at the drop position.
     if (activeId.startsWith(PALETTE_ID_PREFIX)) {
@@ -668,10 +862,41 @@ export function FormBuilder({
     // definitions-store failure (show the create-collection empty state).
     let persistingDefinition = false;
     try {
+      // Validate deferred (pending) fields still placed on the canvas BEFORE any
+      // DDL, so a bad field blocks the save cleanly (no half-created collection).
+      const placedKeys = new Set<string>();
+      for (const s of sections) for (const f of s.fields) placedKeys.add(f.field);
+      for (const [key, spec] of pendingSpecsRef.current) {
+        if (!placedKeys.has(key)) continue;
+        if (!FIELD_KEY_PATTERN.test(key)) {
+          notifications.show({
+            color: 'red',
+            title: 'Invalid field name',
+            message: `“${key}” isn’t a valid column name (lowercase letters, numbers, underscores; start with a letter).`,
+          });
+          return;
+        }
+        if (interfaceRequiresChoices(spec.interface ?? '')) {
+          const choices = (spec.options as { choices?: unknown[] } | undefined)
+            ?.choices;
+          if (!choices || choices.length === 0) {
+            notifications.show({
+              color: 'red',
+              title: 'Choices required',
+              message: `“${spec.label || key}” is a choice field — add at least one choice in the settings panel before saving.`,
+            });
+            return;
+          }
+        }
+      }
+
+      // `collection` (closure value) tells us which path we're on: empty means
+      // auto-create; set means bound. It doesn't change under us mid-save.
+      const autoCreate = !collection;
       let resolvedCollection = collection;
 
       // Auto-create the target collection on the first save when none is bound.
-      if (!resolvedCollection) {
+      if (autoCreate) {
         if (!canProvisionSchema) {
           throw new Error(
             'No target collection is set, and you lack the schema rights to create one. Bind this screen to an existing collection instead.',
@@ -694,32 +919,42 @@ export function FormBuilder({
           collection: toCollectionName(screenName),
           strategy: 'full',
         });
-        resolvedCollection =
-          created.collection ?? toCollectionName(screenName);
+        resolvedCollection = created.collection ?? toCollectionName(screenName);
+        setCollection(resolvedCollection);
+      }
 
-        // Provision every deferred real field still on the canvas, in order.
-        const fieldsService = new FieldsService();
-        const provisioned: Field[] = [];
-        for (const s of sections) {
-          for (const f of s.fields) {
-            const spec = pendingSpecsRef.current.get(f.field);
-            if (spec) {
-              provisioned.push(
-                await fieldsService.createField(resolvedCollection, spec),
-              );
-            }
+      // Provision deferred real columns still placed on the canvas, in order —
+      // for both the auto-create AND bound-collection paths (Req 10.7). Replace
+      // each synth field with the real one and drop it from the pending map.
+      const fieldsService = new FieldsService();
+      const provisioned: Field[] = [];
+      for (const s of sections) {
+        for (const f of s.fields) {
+          const spec = pendingSpecsRef.current.get(f.field);
+          if (spec) {
+            provisioned.push(
+              await fieldsService.createField(resolvedCollection, spec),
+            );
           }
         }
-        pendingSpecsRef.current.clear();
-        setCollection(resolvedCollection);
-        if (provisioned.length > 0) {
-          const byKey = new Map(provisioned.map((f) => [f.field, f]));
-          setSchemaFields((prev) => prev.map((f) => byKey.get(f.field) ?? f));
-        }
+      }
+      if (provisioned.length > 0) {
+        for (const p of provisioned) pendingSpecsRef.current.delete(p.field);
+        const byKey = new Map(provisioned.map((f) => [f.field, f]));
+        setSchemaFields((prev) => prev.map((f) => byKey.get(f.field) ?? f));
+      }
+
+      if (autoCreate) {
         notifications.show({
           color: 'green',
           title: 'Collection created',
           message: `Created “${resolvedCollection}” with ${provisioned.length} field(s).`,
+        });
+      } else if (provisioned.length > 0) {
+        notifications.show({
+          color: 'green',
+          title: 'Fields added',
+          message: `Provisioned ${provisioned.length} new field(s) on ${resolvedCollection}.`,
         });
       }
 
@@ -777,6 +1012,13 @@ export function FormBuilder({
       const key = activeDragId.slice(PALETTE_ID_PREFIX.length);
       return schemaByKey.get(key)?.meta?.note || key;
     }
+    if (activeDragId.startsWith(NEWFIELD_ID_PREFIX)) {
+      const iface = activeDragId.slice(NEWFIELD_ID_PREFIX.length);
+      return (
+        PROVISIONABLE_INTERFACES.find((i) => i.value === iface)?.label ||
+        'New field'
+      );
+    }
     if (activeDragId.startsWith(SECTION_ID_PREFIX)) {
       const sid = activeDragId.slice(SECTION_ID_PREFIX.length);
       return sections.find((s) => s.id === sid)?.title || 'Section';
@@ -801,6 +1043,16 @@ export function FormBuilder({
     }
     return undefined;
   }, [selectedField, sections]);
+
+  // Is the selected field a deferred (not-yet-provisioned) new real column? If
+  // so, the settings panel edits its label/choices (written back to the pending
+  // spec) and locks its name.
+  const selectedIsNewColumn = selectedField
+    ? pendingSpecsRef.current.has(selectedField)
+    : false;
+  const selectedRequiresChoices = interfaceRequiresChoices(
+    selectedSchemaField?.meta?.interface ?? '',
+  );
 
   if (loading) {
     return (
@@ -913,7 +1165,8 @@ export function FormBuilder({
                     fields={paletteFields}
                     onAddField={addField}
                     onAddNewField={() => openAddField()}
-                    onQuickAdd={(seed) => openAddField(seed)}
+                    onAddFieldType={handleAddFieldType}
+                    canProvisionSchema={canProvisionSchema}
                   />
                 </Paper>
               </Grid.Col>
@@ -942,6 +1195,14 @@ export function FormBuilder({
                       fields={schemaFields}
                       onChange={(patch) =>
                         patchField(selectedConfig.field, patch)
+                      }
+                      isNewColumn={selectedIsNewColumn}
+                      requiresChoices={selectedRequiresChoices}
+                      onNewFieldLabelChange={(label) =>
+                        handleNewFieldLabelChange(selectedConfig.field, label)
+                      }
+                      onNewFieldChoicesChange={(choices) =>
+                        handleNewFieldChoicesChange(selectedConfig.field, choices)
                       }
                     />
                   ) : (
@@ -990,6 +1251,20 @@ export function FormBuilder({
         defaultType={addFieldSeed?.type}
         defaultInterface={addFieldSeed?.interface}
         onCreate={handleCreateField}
+      />
+
+      <NameFieldModal
+        opened={pendingDrop != null}
+        onClose={() => setPendingDrop(null)}
+        interfaceLabel={
+          pendingDrop
+            ? PROVISIONABLE_INTERFACES.find(
+                (i) => i.value === pendingDrop.interfaceValue,
+              )?.label
+            : undefined
+        }
+        existingFieldNames={existingFieldNames}
+        onConfirm={handleNameFieldConfirm}
       />
     </Stack>
   );

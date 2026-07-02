@@ -300,9 +300,45 @@ content (rich text / block editor) and geospatial (map) — with the extra rende
     `@tiptap/pm/*`) so every importer shares one pre-bundled copy; a stale optimize cache must be cleared once.
   - _Requirements: 1.2a, 6.1a, 10.2a_
 
-## Phase 6 — release
+## Phase 6 — Form.io-style drag-and-drop field-type palette (new)
 
-- [ ] 35. Release
+Replace the "Quick add" button cluster with a Form.io-style **draggable field-type catalog** (icon+label
+chips grouped by category). Dragging a chip onto the canvas prompts for the **column name only**, drops the
+field at that position with the name **locked**, and defers real-column provisioning to Save (for bound
+collections too). Label / choices / width / etc. are configured afterward in the settings panel. Existing
+schema fields remain draggable.
+
+- [X] 35. Draggable field-type catalog in `FieldPalette`
+  - In `packages/ui-forms/src/FieldPalette.tsx` replace the quick-add `Button` cluster with a grouped list of
+    `@dnd-kit` **draggable chips** (id `newfield:<interface>`, exported `NEWFIELD_ID_PREFIX`) derived from
+    `PROVISIONABLE_INTERFACES` — an icon+label per interface (`@tabler/icons-react`), grouped by
+    `ProvisionableInterface.group`. Keep the existing-fields draggable list and make the search box filter
+    both; gate the catalog on schema rights. Replace `onQuickAdd`/`QuickAddSeed` with `onAddFieldType`.
+  - _Requirements: 1.1, 1.1a, 1.2, 1.2a_
+- [X] 36. Drop → name prompt → deferred placement in `FormBuilder`
+  - Add a `newfield:*` branch to `handleDragEnd` that resolves the drop target (reusing `sectionIdFrom`),
+    stashes it, and opens a new minimal **`NameFieldModal`** (column name only; type/interface from the chip;
+    reuse `AddFieldModal`'s name/key derivation + `existingFieldNames` validation). On confirm: build a
+    `FieldSpec`, `synthField`, record in `pendingSpecs`, insert `{ field }` at the drop position, and
+    `setSelectedField`. Add a `newfield:*` `DragOverlay` preview; wire the click path (append to last
+    section).
+  - _Requirements: 1.2a, 10.7_
+- [X] 37. Configure-after (choices + locked key) and provision-on-save
+  - Extract `CHOICE_INTERFACES` + a shared `ChoicesInput` from `AddFieldModal.tsx` and export
+    `interfaceRequiresChoices()` from `packages/utils/src/interface-catalog.ts`. In
+    `packages/ui-forms/src/FieldSettingsPanel.tsx` add **label** + **choices** editing (writing back to the
+    pending `FieldSpec`) and keep the column name a read-only `Badge` (no rename).
+  - In `FormBuilder.handleSave`, provision pending specs for **bound** collections too (not only
+    auto-create): loop `sections` in order, `createField` each pending `store:'column'` spec and replace its
+    synth; block the save with a clear message when a pending choice field has no choices or a pending key is
+    invalid/duplicate.
+  - Update `FormBuilder.daas.stories.tsx` / Playground; add `packages/ui-forms/tests/` unit tests for
+    name/key uniqueness + `interfaceRequiresChoices`.
+  - _Requirements: 6a, 10.7, 11.1_
+
+## Phase 7 — release
+
+- [ ] 38. Release
   - Add a changeset (lockstep). Touched packages: `@buildpad/ui-forms` (new), `@buildpad/ui-collections`,
     `@buildpad/hooks`, `@buildpad/types`, `@buildpad/utils`, `@buildpad/services`, `@buildpad/cli`. Run
     `.claude/skills/release`.

@@ -23,11 +23,21 @@ export type { FormPreviewProps } from './FormPreview';
 export { FormBuilder } from './FormBuilder';
 export type { FormBuilderProps } from './FormBuilder';
 
-export { FieldPalette } from './FieldPalette';
+export { FieldPalette, PALETTE_ID_PREFIX, NEWFIELD_ID_PREFIX } from './FieldPalette';
 export type { FieldPaletteProps } from './FieldPalette';
 
 export { AddFieldModal } from './AddFieldModal';
 export type { AddFieldModalProps, AddFieldResult } from './AddFieldModal';
+
+export { NameFieldModal } from './NameFieldModal';
+export type { NameFieldModalProps } from './NameFieldModal';
+
+export {
+  ChoicesInput,
+  parseChoices,
+  choicesToRaw,
+} from './ChoicesInput';
+export type { ChoicesInputProps, Choice } from './ChoicesInput';
 
 export { BuilderCanvas } from './BuilderCanvas';
 export type { BuilderCanvasProps } from './BuilderCanvas';

@@ -61,7 +61,7 @@ Design time                                  Run time
 | Data | `useFormDefinitions(formsCollection?)` | `packages/hooks/src/useFormDefinitions.ts` |
 | Schema (NEW write) | `FieldsService`/`CollectionsService` DDL methods (create field/collection) | `packages/services/src/{fields,collections}.ts` |
 | Runtime prop | `CollectionForm` `definition?` + `extras` split write/read | `packages/ui-collections/src/CollectionForm.tsx` |
-| Builder | `FormBuilder`, `FieldPalette` (+ "Add field"/storage selector), `BuilderCanvas`, `BuilderSection`, `BuilderFieldRow`, `FieldSettingsPanel`, `ConditionsEditor`, `FormPreview`, `DynamicForm` | `packages/ui-forms/src/*` |
+| Builder | `FormBuilder`, `FieldPalette` (field-type catalog + existing fields), `NameFieldModal` (drop name prompt), `AddFieldModal` (advanced/storage), `BuilderCanvas`, `BuilderSection`, `BuilderFieldRow`, `FieldSettingsPanel`, `ChoicesInput`, `ConditionsEditor`, `FormPreview`, `DynamicForm` | `packages/ui-forms/src/*` |
 | Routes | forms list / new / `[id]` (build) / `[id]/fill` (render) | `packages/cli/templates/app/forms/*` |
 | API (NEW) | DDL proxy routes: `fields` (write) + `collections` | `packages/cli/templates/app/api/*` |
 
@@ -80,7 +80,10 @@ interface FormBuilderProps {
 Orchestrates three panes: palette (left), canvas (center), settings (right) + a preview tab. When
 `targetCollection` is set, loads its schema (`FieldsService.readAll`); when omitted, opens empty and
 auto-creates a **full** collection on the first save (see *Deferred provisioning* below). Loads/creates the
-definition via `useFormDefinitions`, and saves on demand. Drag/reorder via `@dnd-kit/sortable`. The live
+definition via `useFormDefinitions`, and saves on demand. Drag/reorder via `@dnd-kit/sortable`. Dragging a
+field-type catalog chip (`newfield:<interface>`) onto the canvas opens a **minimal name prompt**
+(`NameFieldModal`); on confirm it inserts a synthesized field at the drop position with its column name
+**locked**, holds the `FieldSpec` in `pendingSpecs`, and selects it so the settings panel opens. The live
 preview requires a bound collection, so on the auto-create path it becomes available after the first save.
 
 ### `ConditionsEditor`
@@ -109,11 +112,22 @@ Takes the in-memory draft (`definition`) plus the builder's current `schemaField
 still evaluate live — so the preview works before the first save. Both use empty values and never persist.
 
 ### `FieldPalette` (in `@buildpad/ui-forms`)
-Lists unplaced schema fields, plus (when `onQuickAdd` is provided) **quick-add field-type templates** derived
-from the shared `PROVISIONABLE_INTERFACES` catalog (grouped Text / Selection / Numeric-date); clicking one
-opens `AddFieldModal` prefilled with that template's type/interface (`defaultType`/`defaultInterface`). In the
-auto-create flow `FormBuilder` seeds `schemaFields` with `fullBaselineFields()` so the palette also lists the
-new collection's system fields (only `status` is user-facing; the rest are excluded by `PALETTE_EXCLUDE`).
+Two draggable groups under a shared search box: a **field-type catalog** and the **unplaced existing fields**.
+The catalog is derived from the shared `PROVISIONABLE_INTERFACES`, grouped by category (Text / Rich content /
+Selection / Numeric & date / Geospatial); each entry renders as an icon+label chip that is `@dnd-kit`
+draggable (id `newfield:<interface>`) — dropping it on the canvas opens the name prompt (see `FormBuilder`),
+and clicking it appends a new field to the last section. Existing fields are draggable (id `palette:<field>`)
+and removed from the palette once placed. The catalog is gated on schema rights (creating a real column is a
+DDL op). In the auto-create flow `FormBuilder` seeds `schemaFields` with `fullBaselineFields()` so the
+existing-fields group also lists the new collection's system fields (only `status` is user-facing; the rest
+are excluded by `PALETTE_EXCLUDE`).
+
+### `FieldSettingsPanel` (in `@buildpad/ui-forms`)
+Edits the selected field's `FormFieldConfig` — width, `required`/`readonly`/`hidden`, label/help note, and
+the `ConditionsEditor`. For a field created from the catalog it additionally edits the **label** and, for a
+**choice interface**, its **choices** (a shared `ChoicesInput`, extracted from `AddFieldModal`), writing them
+back into the field's pending `FieldSpec` so the provisioned column carries them. The **column name is shown
+read-only** (a locked `Badge`) — it is fixed at the name prompt and never renamable.
 
 ### `CollectionForm` extension (in `@buildpad/ui-collections`)
 Add `definition?: FormDefinition`. In the field-loading effect, after computing `editableFields` and
@@ -142,9 +156,12 @@ deleteCollection(collection: string): Promise<void>;
 ```
 A builder **field spec** → DaaS `Field` is produced by reusing `field-interface-mapper` /
 `interface-types` (type → `schema.data_type` + `meta.interface`/`options`). When the new field will be
-filtered/sorted, pass `add_index: true` (DaaS B-tree index). In the builder, **"Add field"** prompts for
-label/type/interface/options **and storage**: *Real column* (default → `createField`, searchable) or
-*Extra* (jsonb, no DDL — descriptor carried in the definition). The *Extra* option is offered **only** when
+filtered/sorted, pass `add_index: true` (DaaS B-tree index). In the builder the primary path is **dragging a
+catalog chip** onto the canvas, which opens a **minimal name prompt** (`NameFieldModal`) — column name only,
+since the chip fixes type/interface — then places the field at the drop position with its column name locked;
+its label and choices are edited afterward in `FieldSettingsPanel`. The advanced **"Add field"** flow still
+prompts for label/type/interface/options **and storage**: *Real column* (default → `createField`, searchable)
+or *Extra* (jsonb, no DDL — descriptor carried in the definition). The *Extra* option is offered **only** when
 the target collection has an `extras` column (a hybrid collection); a **full** collection shows *Real
 column* only. The **interface** picker is **type-aware**: it lists only the provisionable interfaces whose
 `types` include the selected field type (grouped: text / selection / numeric-date), plus an *Auto (from type)*
@@ -174,14 +191,16 @@ authoring with no collection bound, or **Use existing collection** (hybrid) bind
 **"Create collection"** action also provisions via the same service. Provisioning is permission-gated on
 DaaS schema rights; `extras` need none.
 
-**Deferred provisioning (optional target collection).** On the **Start building** path, `FormBuilder` opens
-with an empty `collection`. Fields the author adds are synthesized locally and their `FieldSpec`s held in a
-`pendingSpecs` map; a real column can't be created until a collection exists. On the **first save**,
-`FormBuilder` derives a collection name from the screen name, calls
-`createCollection({ strategy: 'full' })`, then `createField` for every still-placed pending spec, sets the
-result as `target_collection`, and persists the definition. A failure creating the collection/fields is
-surfaced without losing the in-progress draft (it does **not** trigger the definitions-missing empty state,
-which is reserved for a genuine definitions-store failure).
+**Deferred provisioning.** Every field created from the catalog is held as a pending `FieldSpec` and
+synthesized locally so it renders, and is **provisioned only on Save** — on both the **Start building** path
+(no collection yet) and screens **bound to an existing** collection. On the auto-create path the first save
+derives a collection name from the screen name and calls `createCollection({ strategy: 'full' })` before
+provisioning. In both cases `FormBuilder` then `createField`s every still-placed pending spec in canvas
+order, replaces each synthesized field with the returned real one, sets/keeps `target_collection`, and
+persists the definition. Before provisioning, the save is **blocked with a clear message** if a pending
+choice field has no choices or a pending column name is invalid/duplicate. A failure creating the
+collection/fields is surfaced without losing the in-progress draft (it does **not** trigger the
+definitions-missing empty state, which is reserved for a genuine definitions-store failure).
 
 **Collection naming.** A configurable `FORM_BUILDER_COLLECTION_PREFIX` (default `fb_`) plus a
 `normalizeCollectionName(name)` helper (prepend if absent, idempotent — never `fb_fb_`, reject `daas_`) is
