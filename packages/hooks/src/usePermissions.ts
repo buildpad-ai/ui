@@ -138,20 +138,35 @@ export function usePermissions(options: UsePermissionsOptions = {}): UsePermissi
   const [error, setError] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<Record<string, CollectionPermissions>>({});
   const [globalPermissions, setGlobalPermissions] = useState<UserPermissions | null>(null);
-  
+
+  // Stabilise the `collections` dependency by CONTENT rather than array
+  // identity. Callers frequently pass an inline array (or rely on the default
+  // `[]`), which produces a fresh reference every render. Depending on the raw
+  // array would re-create `refresh` each render, which in turn re-fires the
+  // auto-fetch effect below on every render — an infinite loop that hammers
+  // `/api/permissions/me`. A serialised key only changes when the contents do.
+  const collectionsKey = collections.join(',');
+
   // Build API URL helper
   // In direct mode, prepend the DaaS base URL but PRESERVE the `/api` prefix.
   // Stripping `/api` previously routed `/permissions/me` to a DaaS UI path that
   // 307-redirects to /auth/login, returning HTML and breaking JSON parsing
   // (causing isAdmin to silently fall back to false).
+  // Depend on the PRIMITIVE values this reads, not the whole `daasContext`
+  // object. A consumer that passes an inline `config`/callbacks to DaaSProvider
+  // gives the context a new `value` identity on every layout re-render; keying
+  // off the object would re-create `buildUrl` → `fetchGlobalPermissions` →
+  // `refresh` and re-fire the auto-fetch effect each time.
+  const isDirectMode = daasContext?.isDirectMode ?? false;
+  const daasUrl = daasContext?.config?.url;
   const buildUrl = useCallback((path: string): string => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    if (daasContext?.isDirectMode && daasContext.config) {
-      const baseUrl = daasContext.config.url.replace(/\/$/, '');
+    if (isDirectMode && daasUrl != null) {
+      const baseUrl = daasUrl.replace(/\/$/, '');
       return `${baseUrl}${cleanPath}`;
     }
     return cleanPath;
-  }, [daasContext]);
+  }, [isDirectMode, daasUrl]);
   
   // Get headers helper
   const getHeaders = useCallback((): Record<string, string> => {
@@ -244,8 +259,9 @@ export function usePermissions(options: UsePermissionsOptions = {}): UsePermissi
       }
       
       // Fetch permissions for specified collections
-      if (collections.length > 0) {
-        await Promise.all(collections.map(fetchCollectionPermissions));
+      const cols = collectionsKey ? collectionsKey.split(',') : [];
+      if (cols.length > 0) {
+        await Promise.all(cols.map(fetchCollectionPermissions));
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch permissions';
@@ -253,7 +269,7 @@ export function usePermissions(options: UsePermissionsOptions = {}): UsePermissi
     } finally {
       setLoading(false);
     }
-  }, [fetchGlobalPermissions, fetchCollectionPermissions, collections]);
+  }, [fetchGlobalPermissions, fetchCollectionPermissions, collectionsKey]);
   
   // Check if user can perform action
   const canPerform = useCallback((

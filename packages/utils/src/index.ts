@@ -67,3 +67,25 @@ export { isNewItem, isExistingItem } from './is-new-item';
 
 // Field Translation / Display Name
 export { getFieldDisplayName, formatFieldTitle } from './translate-field';
+
+// Form definition overlay merge (Dynamic Form Builder)
+export {
+  buildFieldsFromDefinition,
+  MISSING_FIELD_MARKER,
+} from './build-fields-from-definition';
+
+// Field/Collection provisioning spec → DaaS payload mapper (DDL)
+export {
+  fieldSpecToDaaSField,
+  dataTypeForFieldType,
+  interfaceForFieldType,
+  type DaaSFieldPayload,
+} from './field-spec-mapper';
+
+// Provisionable interface catalog (type-aware picker for the form builder)
+export {
+  PROVISIONABLE_INTERFACES,
+  provisionableInterfacesForType,
+  type ProvisionableInterface,
+  type ProvisionableInterfaceGroup,
+} from './interface-catalog';

@@ -1,5 +1,5 @@
+import { FormDefinition, AnyItem, Field, Collection, Bookmark } from '@buildpad/types';
 import React from 'react';
-import { AnyItem, Field, Collection, Bookmark } from '@buildpad/types';
 import { Sort, Header } from '@buildpad/ui-table';
 
 /**
@@ -48,6 +48,21 @@ interface CollectionFormProps {
     showSaveOptions?: boolean;
     /** Whether to show the delete button in edit mode (default: true when id is set) */
     showDelete?: boolean;
+    /**
+     * Optional form definition (Dynamic Form Builder). When set, the loaded
+     * schema fields are overlaid via `buildFieldsFromDefinition` before rendering
+     * — applying the definition's order, width, sections, per-field overrides,
+     * and conditions. All permission, M2M, save, and validation logic is
+     * unchanged. Fields absent from the definition are omitted.
+     */
+    definition?: FormDefinition;
+    /**
+     * When `false`, the form renders and evaluates conditions but **never writes**
+     * to DaaS on submit — used by the builder's live preview so "Create"/"Save"
+     * is a no-op that shows a preview-success message instead of persisting.
+     * Default `true`.
+     */
+    persist?: boolean;
 }
 /** Permission state exposed to parent components */
 interface FormPermissionState {
@@ -62,6 +77,47 @@ interface FormPermissionState {
  * CollectionForm - Dynamic form for creating/editing collection items
  */
 declare const CollectionForm: React.FC<CollectionFormProps>;
+
+/**
+ * Hybrid storage helpers — real columns + an `extras` jsonb tail.
+ *
+ * The Dynamic Form Builder stores most answers as real, searchable DaaS columns
+ * but allows an opt-in `extras` jsonb column for the rare non-searchable tail
+ * (fields whose merged `Field` carries `meta.store === 'extras'`). These pure
+ * helpers let `CollectionForm` split form values by storage on save and flatten
+ * the `extras` object back into form values on load, leaving the real-column,
+ * M2M, permission, and validation paths untouched.
+ *
+ * @package @buildpad/ui-collections
+ */
+/** The single jsonb column on the target collection that holds all extra answers. */
+declare const EXTRAS_COLUMN = "extras";
+/**
+ * Spread an item's `extras` jsonb object back into flat form values so extra
+ * fields hydrate. The raw `extras` key is preserved (it serves as the merge base
+ * on the next save). No-op when there is no `extras` object.
+ */
+declare function flattenExtras(values: Record<string, unknown>, extrasColumn?: string): Record<string, unknown>;
+/**
+ * Split `values` into `rest` (real columns + M2M change objects, handled by the
+ * existing save path) and `extras` (values for `store: 'extras'` fields). The
+ * raw `extras` container key is dropped — it is rebuilt from `extras` + the
+ * previously stored object by `mergeExtras`.
+ */
+declare function extractExtras(values: Record<string, unknown>, extrasFieldNames: ReadonlySet<string>, extrasColumn?: string): {
+    rest: Record<string, unknown>;
+    extras: Record<string, unknown>;
+};
+/**
+ * Merge changed extra values onto the item's previously stored `extras` object,
+ * so unchanged extras survive a partial update (`{ ...prev, ...changed }`).
+ */
+declare function mergeExtras(prev: unknown, changed: Record<string, unknown>): Record<string, unknown>;
+/**
+ * A clear, actionable error for when a screen uses `store: 'extras'` fields but
+ * the target collection has no `extras` jsonb column to store them in.
+ */
+declare function missingExtrasColumnMessage(collection: string): string;
 
 /**
  * CollectionList Component
@@ -456,4 +512,4 @@ interface SaveOptionsProps {
  */
 declare const SaveOptions: React.FC<SaveOptionsProps>;
 
-export { type ArchiveFilter, type BreadcrumbItem, type BulkAction, CollectionForm, type CollectionFormProps, CollectionList, type CollectionListProps, type CollectionTreeNode, ContentLayout, type ContentLayoutProps, ContentNavigation, type ContentNavigationProps, type FilterGroup, FilterPanel, type FilterPanelProps, type FilterRule, type FormPermissionState, type ListPermissionState, type SaveAction, SaveOptions, type SaveOptionsProps };
+export { type ArchiveFilter, type BreadcrumbItem, type BulkAction, CollectionForm, type CollectionFormProps, CollectionList, type CollectionListProps, type CollectionTreeNode, ContentLayout, type ContentLayoutProps, ContentNavigation, type ContentNavigationProps, EXTRAS_COLUMN, type FilterGroup, FilterPanel, type FilterPanelProps, type FilterRule, type FormPermissionState, type ListPermissionState, type SaveAction, SaveOptions, type SaveOptionsProps, extractExtras, flattenExtras, mergeExtras, missingExtrasColumnMessage };

@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-06-25T09:16:29.909Z",
+  "generatedAt": "2026-07-01T10:10:16.780Z",
   "version": "1.5.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -105,6 +105,10 @@
       "version": "1.5.0",
       "changelogUrl": "ui-files/CHANGELOG.md"
     },
+    "@buildpad/ui-forms": {
+      "version": "1.5.0",
+      "changelogUrl": "ui-forms/CHANGELOG.md"
+    },
     "@buildpad/hooks": {
       "version": "1.5.0",
       "changelogUrl": "hooks/CHANGELOG.md"
@@ -158,9 +162,19 @@
           "sourceSha256": "0574e3cc85110d9fc229974fc00ce5b5e27637e7c2ff06f215caa05c9e5e667c"
         },
         {
+          "source": "utils/src/build-fields-from-definition.ts",
+          "target": "lib/buildpad/build-fields-from-definition.ts",
+          "sourceSha256": "c09e507e2fafa4c941f681f37724d5defd35e0dd9e53b4933eec9e9f02360e85"
+        },
+        {
+          "source": "utils/src/field-spec-mapper.ts",
+          "target": "lib/buildpad/field-spec-mapper.ts",
+          "sourceSha256": "8dd0bf9be2ee76147bce6a0eeecbd3573497190d344cf7e5d3f7c32dd541f512"
+        },
+        {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "b2ac0fb330c5772219134a1852613d0652249b89ad093635efcb5a121a8e1646"
+          "sourceSha256": "fceb397c7b912d620e9848709aeb774b814b063a6cc1ba476b6a1c4184121d14"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -187,7 +201,7 @@
         {
           "source": "types/src/core.ts",
           "target": "lib/buildpad/types/core.ts",
-          "sourceSha256": "c8cf860d7dffb5fdf1d0b52d57f55fc98892ada8d1f762874fa953b8632d06eb"
+          "sourceSha256": "c98eee2f04e87fde3d2379d072a4c0449ca88d7fec49e6e2628c08631eaedcc5"
         },
         {
           "source": "types/src/file.ts",
@@ -200,9 +214,19 @@
           "sourceSha256": "838d987553cbe09d57cd5560bdde689ba0849f9de4303ea663cc66627bff2362"
         },
         {
+          "source": "types/src/form-definition.ts",
+          "target": "lib/buildpad/types/form-definition.ts",
+          "sourceSha256": "76fb865ab75e5d584063b2b46b5f1cac0a56a5eb46f52c629e71cddb719f0946"
+        },
+        {
+          "source": "types/src/field-spec.ts",
+          "target": "lib/buildpad/types/field-spec.ts",
+          "sourceSha256": "3632753aa9591f82873699df8e35661b79d97982e5d64403e2ff35a648600998"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts",
-          "sourceSha256": "0daf1d486099da5d5afb8f654a90c1e869128aa1feef7b67a22f6c7d428f0480"
+          "sourceSha256": "ba5cd007bd46206dfc5e95a6599310b998103af8959c63d2d1a5fd2d87325141"
         }
       ],
       "sourcePackage": "@buildpad/types",
@@ -221,12 +245,12 @@
         {
           "source": "services/src/fields.ts",
           "target": "lib/buildpad/services/fields.ts",
-          "sourceSha256": "7e73b8194d2a815b73a0ae930df7bb1d74b44f50e59ea55429bb32512e3e81e0"
+          "sourceSha256": "12eccf78eb5aff3974fa4b74f3a62bb2e580b233147f81b24a3d2939b0779958"
         },
         {
           "source": "services/src/collections.ts",
           "target": "lib/buildpad/services/collections.ts",
-          "sourceSha256": "2d5d6d51fbad485c10e49394b6b3c3ab488797a5c79725eb63cf83c7c71dc664"
+          "sourceSha256": "9aa50d06479196ceff25834abfe95c613a91c427cf65adbff07ac10ee32e7844"
         },
         {
           "source": "services/src/items.ts",
@@ -270,7 +294,8 @@
         }
       ],
       "internalDependencies": [
-        "types"
+        "types",
+        "utils"
       ],
       "sourcePackage": "@buildpad/services",
       "version": "1.5.0",
@@ -403,7 +428,7 @@
         {
           "source": "hooks/src/usePermissions.ts",
           "target": "lib/buildpad/hooks/usePermissions.ts",
-          "sourceSha256": "d6431a6fb14bce44947d0ea4f346154811b5313bc760d450702db61f2b9302e2"
+          "sourceSha256": "25598c3a05948025ef4cd30b497933a6705b4ee3f924baddb5940bc4c72063bf"
         },
         {
           "source": "hooks/src/useDaaSContext.tsx",
@@ -411,9 +436,14 @@
           "sourceSha256": "8cb0cd2a8582534c2009a3c3e99d6aa236dcae57c1c4b98b9848b39b6efb6114"
         },
         {
+          "source": "hooks/src/useFormDefinitions.ts",
+          "target": "lib/buildpad/hooks/useFormDefinitions.ts",
+          "sourceSha256": "68778186cc8f85531312b094fe6e3cfb52bc8f0240971fc4da879997919748e7"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "5125e5a2a9e478f26a2ee89d294086c0f0562502f925f1e6a907eb8ca8bb4be1"
+          "sourceSha256": "44083826dd7012092aef74347ee41989031ce72767a1e2439984c1abe8b595c3"
         }
       ],
       "internalDependencies": [
@@ -461,7 +491,22 @@
         {
           "source": "cli/templates/api/daas-fields-route.ts",
           "target": "app/api/fields/[collection]/route.ts",
-          "sourceSha256": "3e80287d63999110835e67f8443ab5eb78e467f800f62856d45220edb1c320fc"
+          "sourceSha256": "6796c7c5a508b421b9bb72a04410a06bc0e7d39c226adff6b4c9cac888858466"
+        },
+        {
+          "source": "cli/templates/api/daas-fields-id-route.ts",
+          "target": "app/api/fields/[collection]/[field]/route.ts",
+          "sourceSha256": "8ca89b5e2bd77aaaf76ec5d1fae294743f31a306860003bd733e6bf678e09cc0"
+        },
+        {
+          "source": "cli/templates/api/daas-collections-route.ts",
+          "target": "app/api/collections/route.ts",
+          "sourceSha256": "e60d9effd50e62920848b56cb84dfd5b842bda309a1297b64a6fe3b35ff84026"
+        },
+        {
+          "source": "cli/templates/api/daas-collections-id-route.ts",
+          "target": "app/api/collections/[collection]/route.ts",
+          "sourceSha256": "25a1e4d344506773c8f2bcec2c8455a9eca7bbd2747b70c2f1f2b5600ea91f04"
         },
         {
           "source": "cli/templates/api/daas-items-collection-route.ts",
@@ -591,6 +636,42 @@
       ],
       "registryDependencies": [
         "file-manager"
+      ],
+      "sourcePackage": "@buildpad/cli",
+      "version": "1.5.0",
+      "lastChangedIn": "1.5.0"
+    },
+    "forms-routes": {
+      "name": "forms-routes",
+      "description": "Dynamic form builder module pages — /forms (list of form definitions), /forms/new (create a definition), /forms/[id] (visual FormBuilder editor), and /forms/[id]/fill (render the definition with DynamicForm to create a real item). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the form-builder component.",
+      "files": [
+        {
+          "source": "cli/templates/app/forms/page.tsx",
+          "target": "app/(authenticated)/forms/page.tsx",
+          "sourceSha256": "0cf00a2cc903a24d39ecffd8195bae2b57188f284580435e796ca67759d31895"
+        },
+        {
+          "source": "cli/templates/app/forms/new/page.tsx",
+          "target": "app/(authenticated)/forms/new/page.tsx",
+          "sourceSha256": "2ea6d93f1dd4aa1dd9a1f86338cb38c1dc46fdda7ee1ef3524b71e10eb827133"
+        },
+        {
+          "source": "cli/templates/app/forms/[id]/page.tsx",
+          "target": "app/(authenticated)/forms/[id]/page.tsx",
+          "sourceSha256": "e652fac32b3e3933b5b6c22aef6e314b2ad1f27be0e075e93920c7f551c436f7"
+        },
+        {
+          "source": "cli/templates/app/forms/[id]/fill/page.tsx",
+          "target": "app/(authenticated)/forms/[id]/fill/page.tsx",
+          "sourceSha256": "4b1467696b7626992746e622c358e11a5006127239c2286744c5d6a0c384e953"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "form-builder"
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.5.0",
@@ -2264,7 +2345,7 @@
         {
           "source": "ui-form/src/VForm.tsx",
           "target": "components/ui/vform/VForm.tsx",
-          "sourceSha256": "26409c6b8b935708525daa7024dae6e44e80b79ffc0290ff119a82676c93f942"
+          "sourceSha256": "875e91bd25516ee283cb665bd81ffbbbadc2bb304333d4baf963371413d18727"
         },
         {
           "source": "ui-form/src/VForm.css",
@@ -2294,7 +2375,7 @@
         {
           "source": "ui-form/src/components/FormGroupField.tsx",
           "target": "components/ui/vform/components/FormGroupField.tsx",
-          "sourceSha256": "5a78bfb2c9ca2d178e57c032a3c7bbfa737e3c1cd4fea79dc6e3cf35ed3f5529"
+          "sourceSha256": "82ef98d5d284457614362994753ddc48ea4c4f0e375816374a71c5bb14dfa7bf"
         },
         {
           "source": "ui-form/src/components/InterfaceErrorBoundary.tsx",
@@ -2329,7 +2410,7 @@
         {
           "source": "ui-form/src/utils/apply-conditions.ts",
           "target": "components/ui/vform/utils/apply-conditions.ts",
-          "sourceSha256": "0eb0ae52bf66b21e719de5bef0b19db9aa1ec807bb0b408355ad5f99e23537d4"
+          "sourceSha256": "b790cfc96ac61b67dabe11d015cb89390c90554434d26ba1fea3ee3cd5423f63"
         },
         {
           "source": "ui-form/src/utils/push-group-options-down.ts",
@@ -2418,7 +2499,12 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "272bda8795971d789e2a874a3a17602b8babdd3b437ba8074de059dcb8d4ce93"
+          "sourceSha256": "fadd20169a1563b5bbfb7a20a22fc5d23c99001f991921f95afdbe34e41f9904"
+        },
+        {
+          "source": "ui-collections/src/extras-storage.ts",
+          "target": "components/ui/extras-storage.ts",
+          "sourceSha256": "bad12008c9d16281452c103555ba6f64ba6567a1bbdac821b9c44ab43489a3be"
         }
       ],
       "dependencies": [
@@ -2427,7 +2513,8 @@
       ],
       "internalDependencies": [
         "types",
-        "services"
+        "services",
+        "utils"
       ],
       "registryDependencies": [
         "vform",
@@ -2872,6 +2959,101 @@
         "upload"
       ],
       "sourcePackage": "@buildpad/ui-files",
+      "version": "1.5.0",
+      "lastChangedIn": "1.5.0"
+    },
+    {
+      "name": "form-builder",
+      "title": "FormBuilder",
+      "description": "Dynamic form builder — a design-time authoring layer (visual FormBuilder with drag-and-drop field palette, sections, per-field width/required/readonly/hidden controls, and a conditions editor reusing FilterPanel) plus a runtime renderer (DynamicForm, FormPreview) that merges a saved form definition onto the live collection schema and drives the existing CollectionForm/VForm runtime. Definitions are stored as items in an ordinary, consumer-owned collection (default fb_definitions); the schema is never mutated.",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-forms/src/FormBuilder.tsx",
+          "target": "components/ui/form-builder/form-builder.tsx",
+          "sourceSha256": "37f2fc480519a5ad2251ab1c6ccb6d438d73f7e5620de4ca7bc3bc5d965b669b"
+        },
+        {
+          "source": "ui-forms/src/FormBuilder.css",
+          "target": "components/ui/form-builder/form-builder.css",
+          "sourceSha256": "00ab18367929814236a1fc52ac9300f49e4c7c2b673593cab559625c7327f2e8"
+        },
+        {
+          "source": "ui-forms/src/FieldPalette.tsx",
+          "target": "components/ui/form-builder/field-palette.tsx",
+          "sourceSha256": "6b0f6238bca9487b51cf8410f468f66a5b87d8c11d1ad5005148feef507325ea"
+        },
+        {
+          "source": "ui-forms/src/AddFieldModal.tsx",
+          "target": "components/ui/form-builder/add-field-modal.tsx",
+          "sourceSha256": "8876da95271f941e5e234e52043dc2d8185b9dd549e94892a113aecb6c53c402"
+        },
+        {
+          "source": "ui-forms/src/BuilderCanvas.tsx",
+          "target": "components/ui/form-builder/builder-canvas.tsx",
+          "sourceSha256": "0c47a0055d9e04463f75e79d51305c9c342c7c9a8db2bfd5ab2f133285227810"
+        },
+        {
+          "source": "ui-forms/src/BuilderSection.tsx",
+          "target": "components/ui/form-builder/builder-section.tsx",
+          "sourceSha256": "7c319227f53c24d9d33ae329f26109ac663cc2169418f98bb37309e54c1cdd92"
+        },
+        {
+          "source": "ui-forms/src/BuilderFieldRow.tsx",
+          "target": "components/ui/form-builder/builder-field-row.tsx",
+          "sourceSha256": "6ee484e7ce73cbee784fac13c4855976deafe195e067c78e6d609d2bd493bd45"
+        },
+        {
+          "source": "ui-forms/src/FieldSettingsPanel.tsx",
+          "target": "components/ui/form-builder/field-settings-panel.tsx",
+          "sourceSha256": "4cd3e41dcc820e1862095764b22a81785c89158db7b1521b10a56d9bd141cfb3"
+        },
+        {
+          "source": "ui-forms/src/ConditionsEditor.tsx",
+          "target": "components/ui/form-builder/conditions-editor.tsx",
+          "sourceSha256": "acdd08a24022078c698105693c678c4b3265f69ec57f9a6295fe9f2b476bc8b4"
+        },
+        {
+          "source": "ui-forms/src/FormPreview.tsx",
+          "target": "components/ui/form-builder/form-preview.tsx",
+          "sourceSha256": "6727fd601ffbb1c9e0748a1376b1c30cac453c724509b881db7bf040203559f2"
+        },
+        {
+          "source": "ui-forms/src/DynamicForm.tsx",
+          "target": "components/ui/form-builder/dynamic-form.tsx",
+          "sourceSha256": "b9654c4037c89cf9b9b4ed10c2c0bfd46d70d576360ea2f758e98aa940b11ff4"
+        },
+        {
+          "source": "ui-forms/src/FormsEmptyState.tsx",
+          "target": "components/ui/form-builder/forms-empty-state.tsx",
+          "sourceSha256": "ac7aed361bb32594c6d0d37134d8365dc49b99596b34bfc4f7c6c09ef897e26a"
+        },
+        {
+          "source": "ui-forms/src/index.ts",
+          "target": "components/ui/form-builder/index.ts",
+          "sourceSha256": "521d4c6cc63add3cb7d0b1c1f81e8a32ba5a8763ad9cd3470b66d614877b2b38"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@dnd-kit/core",
+        "@dnd-kit/sortable",
+        "@dnd-kit/utilities",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services",
+        "utils"
+      ],
+      "registryDependencies": [
+        "collection-form",
+        "filter-panel"
+      ],
+      "sourcePackage": "@buildpad/ui-forms",
       "version": "1.5.0",
       "lastChangedIn": "1.5.0"
     }

@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@buildpad/types": "workspace:*"
+    "@buildpad/types": "workspace:*",
+    "@buildpad/utils": "workspace:*"
   },
   "peerDependencies": {
     "@supabase/supabase-js": "^2",

@@ -8,6 +8,14 @@
 export { CollectionForm } from './CollectionForm';
 export type { CollectionFormProps, FormPermissionState } from './CollectionForm';
 
+export {
+  EXTRAS_COLUMN,
+  flattenExtras,
+  extractExtras,
+  mergeExtras,
+  missingExtrasColumnMessage,
+} from './extras-storage';
+
 export { CollectionList } from './CollectionList';
 export type { CollectionListProps, BulkAction, ArchiveFilter, ListPermissionState } from './CollectionList';
 

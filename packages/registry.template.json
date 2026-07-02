@@ -112,6 +112,14 @@
           "target": "lib/buildpad/is-new-item.ts"
         },
         {
+          "source": "utils/src/build-fields-from-definition.ts",
+          "target": "lib/buildpad/build-fields-from-definition.ts"
+        },
+        {
+          "source": "utils/src/field-spec-mapper.ts",
+          "target": "lib/buildpad/field-spec-mapper.ts"
+        },
+        {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts"
         },
@@ -143,6 +151,14 @@
         {
           "source": "types/src/relations.ts",
           "target": "lib/buildpad/types/relations.ts"
+        },
+        {
+          "source": "types/src/form-definition.ts",
+          "target": "lib/buildpad/types/form-definition.ts"
+        },
+        {
+          "source": "types/src/field-spec.ts",
+          "target": "lib/buildpad/types/field-spec.ts"
         },
         {
           "source": "cli/templates/lib/types/index.ts",
@@ -200,7 +216,8 @@
         }
       ],
       "internalDependencies": [
-        "types"
+        "types",
+        "utils"
       ]
     },
     "hooks": {
@@ -312,6 +329,10 @@
           "target": "lib/buildpad/hooks/useDaaSContext.tsx"
         },
         {
+          "source": "hooks/src/useFormDefinitions.ts",
+          "target": "lib/buildpad/hooks/useFormDefinitions.ts"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts"
         }
@@ -352,6 +373,18 @@
         {
           "source": "cli/templates/api/daas-fields-route.ts",
           "target": "app/api/fields/[collection]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-fields-id-route.ts",
+          "target": "app/api/fields/[collection]/[field]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-collections-route.ts",
+          "target": "app/api/collections/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-collections-id-route.ts",
+          "target": "app/api/collections/[collection]/route.ts"
         },
         {
           "source": "cli/templates/api/daas-items-collection-route.ts",
@@ -456,6 +489,35 @@
       ],
       "registryDependencies": [
         "file-manager"
+      ]
+    },
+    "forms-routes": {
+      "name": "forms-routes",
+      "description": "Dynamic form builder module pages — /forms (list of form definitions), /forms/new (create a definition), /forms/[id] (visual FormBuilder editor), and /forms/[id]/fill (render the definition with DynamicForm to create a real item). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the form-builder component.",
+      "files": [
+        {
+          "source": "cli/templates/app/forms/page.tsx",
+          "target": "app/(authenticated)/forms/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/forms/new/page.tsx",
+          "target": "app/(authenticated)/forms/new/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/forms/[id]/page.tsx",
+          "target": "app/(authenticated)/forms/[id]/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/forms/[id]/fill/page.tsx",
+          "target": "app/(authenticated)/forms/[id]/fill/page.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "form-builder"
       ]
     },
     "supabase-auth": {
@@ -2065,6 +2127,10 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx"
+        },
+        {
+          "source": "ui-collections/src/extras-storage.ts",
+          "target": "components/ui/extras-storage.ts"
         }
       ],
       "dependencies": [
@@ -2073,7 +2139,8 @@
       ],
       "internalDependencies": [
         "types",
-        "services"
+        "services",
+        "utils"
       ],
       "registryDependencies": [
         "vform",
@@ -2447,6 +2514,85 @@
       ],
       "registryDependencies": [
         "upload"
+      ]
+    },
+    {
+      "name": "form-builder",
+      "title": "FormBuilder",
+      "description": "Dynamic form builder — a design-time authoring layer (visual FormBuilder with drag-and-drop field palette, sections, per-field width/required/readonly/hidden controls, and a conditions editor reusing FilterPanel) plus a runtime renderer (DynamicForm, FormPreview) that merges a saved form definition onto the live collection schema and drives the existing CollectionForm/VForm runtime. Definitions are stored as items in an ordinary, consumer-owned collection (default fb_definitions); the schema is never mutated.",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-forms/src/FormBuilder.tsx",
+          "target": "components/ui/form-builder/form-builder.tsx"
+        },
+        {
+          "source": "ui-forms/src/FormBuilder.css",
+          "target": "components/ui/form-builder/form-builder.css"
+        },
+        {
+          "source": "ui-forms/src/FieldPalette.tsx",
+          "target": "components/ui/form-builder/field-palette.tsx"
+        },
+        {
+          "source": "ui-forms/src/AddFieldModal.tsx",
+          "target": "components/ui/form-builder/add-field-modal.tsx"
+        },
+        {
+          "source": "ui-forms/src/BuilderCanvas.tsx",
+          "target": "components/ui/form-builder/builder-canvas.tsx"
+        },
+        {
+          "source": "ui-forms/src/BuilderSection.tsx",
+          "target": "components/ui/form-builder/builder-section.tsx"
+        },
+        {
+          "source": "ui-forms/src/BuilderFieldRow.tsx",
+          "target": "components/ui/form-builder/builder-field-row.tsx"
+        },
+        {
+          "source": "ui-forms/src/FieldSettingsPanel.tsx",
+          "target": "components/ui/form-builder/field-settings-panel.tsx"
+        },
+        {
+          "source": "ui-forms/src/ConditionsEditor.tsx",
+          "target": "components/ui/form-builder/conditions-editor.tsx"
+        },
+        {
+          "source": "ui-forms/src/FormPreview.tsx",
+          "target": "components/ui/form-builder/form-preview.tsx"
+        },
+        {
+          "source": "ui-forms/src/DynamicForm.tsx",
+          "target": "components/ui/form-builder/dynamic-form.tsx"
+        },
+        {
+          "source": "ui-forms/src/FormsEmptyState.tsx",
+          "target": "components/ui/form-builder/forms-empty-state.tsx"
+        },
+        {
+          "source": "ui-forms/src/index.ts",
+          "target": "components/ui/form-builder/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@dnd-kit/core",
+        "@dnd-kit/sortable",
+        "@dnd-kit/utilities",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services",
+        "utils"
+      ],
+      "registryDependencies": [
+        "collection-form",
+        "filter-panel"
       ]
     }
   ],

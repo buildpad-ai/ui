@@ -8,3 +8,5 @@
 export * from './core';
 export * from './file';
 export * from './relations';
+export * from './form-definition';
+export * from './field-spec';
