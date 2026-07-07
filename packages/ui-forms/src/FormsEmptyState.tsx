@@ -68,7 +68,7 @@ export function FormsEmptyState({
     try {
       await new CollectionsService().createCollection({
         collection: formsCollection,
-        note: 'Form builder screen definitions',
+        note: 'Form builder form definitions',
         fields: definitionsFields(),
       });
       onCreated?.();
@@ -90,7 +90,7 @@ export function FormsEmptyState({
     >
       <Stack gap="xs">
         <Text size="sm">
-          The form builder stores screens as items in a collection named{' '}
+          The form builder stores form definitions as items in a collection named{' '}
           <Code>{formsCollection}</Code>, which doesn&apos;t exist yet.
           {canCreateCollection
             ? ' Create it in one click below, or set it up manually with these fields:'
@@ -101,14 +101,14 @@ export function FormsEmptyState({
             <Code>id</Code> — uuid (primary key)
           </List.Item>
           <List.Item>
-            <Code>name</Code> — string (screen name)
+            <Code>name</Code> — string (form name)
           </List.Item>
           <List.Item>
-            <Code>target_collection</Code> — string (collection the screen
+            <Code>target_collection</Code> — string (collection the form
             targets)
           </List.Item>
           <List.Item>
-            <Code>key</Code> — string, nullable (optional screen discriminator)
+            <Code>key</Code> — string, nullable (optional form discriminator)
           </List.Item>
           <List.Item>
             <Code>definition</Code> — json (the form definition body)

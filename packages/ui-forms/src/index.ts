@@ -75,9 +75,13 @@ export {
 } from '@buildpad/hooks';
 
 // Shared types
+// NOTE: `FieldCondition` is intentionally NOT re-exported here — the form runtime
+// (`vform`, via `apply-conditions`) is its canonical component-layer re-export.
+// Re-exporting it here too collides in the generated `components/ui/index.ts`
+// (`export * from './vform'` + `export * from './form-builder'` → TS2308).
+// Import it from `@buildpad/types` (or `@/lib/buildpad/types`) when needed.
 export type {
   FormDefinition,
   FormSection,
   FormFieldConfig,
-  FieldCondition,
 } from '@buildpad/types';

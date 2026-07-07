@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-forms",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Dynamic form builder (design-time authoring + runtime renderer) for Buildpad projects",
   "type": "module",
   "main": "./dist/index.js",
@@ -76,34 +76,90 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "peerDependenciesMeta": {
-    "@mantine/tiptap": { "optional": true },
-    "@tiptap/react": { "optional": true },
-    "@tiptap/pm": { "optional": true },
-    "@tiptap/starter-kit": { "optional": true },
-    "@tiptap/extension-code-block-lowlight": { "optional": true },
-    "@tiptap/extension-color": { "optional": true },
-    "@tiptap/extension-highlight": { "optional": true },
-    "@tiptap/extension-placeholder": { "optional": true },
-    "@tiptap/extension-subscript": { "optional": true },
-    "@tiptap/extension-superscript": { "optional": true },
-    "@tiptap/extension-text-align": { "optional": true },
-    "@tiptap/extension-text-style": { "optional": true },
-    "@tiptap/extension-underline": { "optional": true },
-    "highlight.js": { "optional": true },
-    "lowlight": { "optional": true },
-    "@editorjs/editorjs": { "optional": true },
-    "@editorjs/header": { "optional": true },
-    "@editorjs/nested-list": { "optional": true },
-    "@editorjs/paragraph": { "optional": true },
-    "@editorjs/code": { "optional": true },
-    "@editorjs/quote": { "optional": true },
-    "@editorjs/checklist": { "optional": true },
-    "@editorjs/delimiter": { "optional": true },
-    "@editorjs/table": { "optional": true },
-    "@editorjs/underline": { "optional": true },
-    "@editorjs/inline-code": { "optional": true },
-    "maplibre-gl": { "optional": true },
-    "@mapbox/mapbox-gl-draw": { "optional": true }
+    "@mantine/tiptap": {
+      "optional": true
+    },
+    "@tiptap/react": {
+      "optional": true
+    },
+    "@tiptap/pm": {
+      "optional": true
+    },
+    "@tiptap/starter-kit": {
+      "optional": true
+    },
+    "@tiptap/extension-code-block-lowlight": {
+      "optional": true
+    },
+    "@tiptap/extension-color": {
+      "optional": true
+    },
+    "@tiptap/extension-highlight": {
+      "optional": true
+    },
+    "@tiptap/extension-placeholder": {
+      "optional": true
+    },
+    "@tiptap/extension-subscript": {
+      "optional": true
+    },
+    "@tiptap/extension-superscript": {
+      "optional": true
+    },
+    "@tiptap/extension-text-align": {
+      "optional": true
+    },
+    "@tiptap/extension-text-style": {
+      "optional": true
+    },
+    "@tiptap/extension-underline": {
+      "optional": true
+    },
+    "highlight.js": {
+      "optional": true
+    },
+    "lowlight": {
+      "optional": true
+    },
+    "@editorjs/editorjs": {
+      "optional": true
+    },
+    "@editorjs/header": {
+      "optional": true
+    },
+    "@editorjs/nested-list": {
+      "optional": true
+    },
+    "@editorjs/paragraph": {
+      "optional": true
+    },
+    "@editorjs/code": {
+      "optional": true
+    },
+    "@editorjs/quote": {
+      "optional": true
+    },
+    "@editorjs/checklist": {
+      "optional": true
+    },
+    "@editorjs/delimiter": {
+      "optional": true
+    },
+    "@editorjs/table": {
+      "optional": true
+    },
+    "@editorjs/underline": {
+      "optional": true
+    },
+    "@editorjs/inline-code": {
+      "optional": true
+    },
+    "maplibre-gl": {
+      "optional": true
+    },
+    "@mapbox/mapbox-gl-draw": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@mantine/core": "^8.0.0",

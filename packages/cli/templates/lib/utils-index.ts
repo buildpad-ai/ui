@@ -23,6 +23,16 @@ export {
   type DaaSFieldPayload,
 } from '../field-spec-mapper';
 
+// Provisionable interface catalog (type-aware picker for the form builder)
+export {
+  PROVISIONABLE_INTERFACES,
+  provisionableInterfacesForType,
+  CHOICE_INTERFACES,
+  interfaceRequiresChoices,
+  type ProvisionableInterface,
+  type ProvisionableInterfaceGroup,
+} from '../interface-catalog';
+
 // Field interface mapping (from @buildpad/utils)
 export { 
   getFieldInterface,

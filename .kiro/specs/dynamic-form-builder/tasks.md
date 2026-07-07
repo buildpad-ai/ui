@@ -336,10 +336,52 @@ schema fields remain draggable.
     name/key uniqueness + `interfaceRequiresChoices`.
   - _Requirements: 6a, 10.7, 11.1_
 
-## Phase 7 — release
+## Phase 7 — release (CI via Changesets)
 
-- [ ] 38. Release
-  - Add a changeset (lockstep). Touched packages: `@buildpad/ui-forms` (new), `@buildpad/ui-collections`,
-    `@buildpad/hooks`, `@buildpad/types`, `@buildpad/utils`, `@buildpad/services`, `@buildpad/cli`. Run
-    `.claude/skills/release`.
+Ship `@buildpad/ui-forms` so consumers can `npx @buildpad/cli add form-builder forms-routes`. Lockstep
+release of all 10 `@buildpad/*` packages; a release is live for consumers the moment `registry.json` +
+sources land on `main` (CLI fetches from raw.githubusercontent.com/microbuild-ui/ui/main/...),
+independent of npm (only `cli`+`mcp` publish to npm). Authoritative reference: `.claude/skills/release`
+and `docs/PUBLISHING.md`. The module is already wired (registry.json has `form-builder` + `forms-routes`,
+`package.json` matches `ui-files`, `build-registry.mjs` mapping + `cli/templates/app/forms/*` exist).
+
+- [X] 38.1 Add `@buildpad/ui-forms` to the `fixed` lockstep group
+  - Add `"@buildpad/ui-forms"` to the `fixed[0]` array in `.changeset/config.json` (after
+    `@buildpad/ui-files`). It is currently missing — without it `changeset version` won't bump ui-forms
+    in lockstep with the other 9 packages.
   - _Requirements: 7.1_
+- [X] 38.2 Pre-flight build/typecheck/tests (targeted)
+  - `pnpm --filter @buildpad/ui-forms build`, `pnpm --filter @buildpad/ui-forms typecheck`,
+    `pnpm --filter @buildpad/ui-forms test`, `pnpm --filter @buildpad/utils test` — all clean.
+  - Run targeted suites only (the full `ui-interfaces` jest suite has known stale-import failures).
+- [X] 38.3 Regenerate + verify the registry
+  - `pnpm build:registry && pnpm registry:check` — regenerates `packages/registry.json` with no
+    unexpected diff and the CI sync guard passes (hashes/versions on disk match the sources).
+- [ ] 38.4 Add the lockstep changeset
+  - `pnpm changeset` → **minor** bump (new feature module; the fixed group bumps all 10 packages to
+    the next minor, expected 1.6.0). Summary names the module. Touched: `ui-forms` (new),
+    `ui-collections`, `hooks`, `types`, `utils`, `services`, `cli`, `ui-form`.
+- [ ] 38.5 PR to `main` and merge
+  - Open `feat/form-builder` → `main` with the config fix + changeset. Ensure CI (`registry:check`,
+    `pnpm build`) is green, then merge. The changesets action opens a "Version Packages" PR.
+- [ ] 38.6 Finish the Version Packages PR before merging
+  - Bump the top-level `"version"` in `packages/registry.template.json` to the new version
+    (`changeset version` does NOT touch it). Re-run `pnpm build:registry` and commit the regenerated
+    `packages/registry.json`. Verify all 10 `package.json`s show the SAME version.
+  - Guard against the peerDep major cascade: if the bump inflated to a major (e.g. 2.0.0) due to
+    `workspace:*` peerDeps, rewrite it down to the intended minor across all 10 package.jsons +
+    registry.template.json before merging.
+- [ ] 38.7 Merge the Version Packages PR (publish + tags)
+  - CI publishes `@buildpad/cli` + `@buildpad/mcp` to npm and creates per-package git tags (incl.
+    private packages). Confirm the CI `NPM_TOKEN` is write-scoped (the repo's was previously read-only)
+    — the module is CDN-installable either way, but npm publish needs write access.
+- [ ] 38.8 Verify end-to-end
+  - Registry live on main: `git show main:packages/registry.json` has `form-builder` + `forms-routes`
+    at the new version; top-level `version` matches.
+  - CLI smoke test in a scratch app: `npx @buildpad/cli@latest add form-builder forms-routes` copies
+    `ui-forms/src/*` → `components/ui/form-builder/*`, scaffolds `app/(authenticated)/forms/*`, pulls
+    `collection-form`/`filter-panel`/`types`/`hooks`/`services`/`utils`. (Name `form-builder`
+    explicitly — the CLI does not auto-install a lib module's `registryDependencies`.)
+  - Version sanity: `npx @buildpad/cli@latest --version` prints the new version; registry `version`
+    and `packages['@buildpad/ui-forms'].version` match. MCP `list_components` shows `form-builder`.
+  - _Requirements: 7.1, 8.1_

@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
   "license": "MIT",
@@ -118,6 +118,10 @@
         {
           "source": "utils/src/field-spec-mapper.ts",
           "target": "lib/buildpad/field-spec-mapper.ts"
+        },
+        {
+          "source": "utils/src/interface-catalog.ts",
+          "target": "lib/buildpad/interface-catalog.ts"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
@@ -1417,6 +1421,9 @@
         "types",
         "hooks"
       ],
+      "registryDependencies": [
+        "upload"
+      ],
       "interface": {
         "id": "files",
         "name": "Files",
@@ -1599,7 +1606,9 @@
         "supported": true,
         "recommended": true,
         "hasOptions": true,
-        "aliases": ["list-m2o"]
+        "aliases": [
+          "list-m2o"
+        ]
       }
     },
     {
@@ -2433,6 +2442,7 @@
     {
       "name": "file-manager",
       "title": "FileManager",
+      "excludeFromAll": true,
       "description": "Full files-management UI — list surface (drag-and-drop upload, import-from-URL, folders, grid/list views, search, bulk delete) and a file detail view (metadata edit + preview for image/video/audio/pdf). Composes the upload interface and the useFiles/useFolders hooks.",
       "category": "media",
       "files": [
@@ -2519,6 +2529,7 @@
     {
       "name": "form-builder",
       "title": "FormBuilder",
+      "excludeFromAll": true,
       "description": "Dynamic form builder — a design-time authoring layer (visual FormBuilder with drag-and-drop field palette, sections, per-field width/required/readonly/hidden controls, and a conditions editor reusing FilterPanel) plus a runtime renderer (DynamicForm, FormPreview) that merges a saved form definition onto the live collection schema and drives the existing CollectionForm/VForm runtime. Definitions are stored as items in an ordinary, consumer-owned collection (default fb_definitions); the schema is never mutated.",
       "category": "collection",
       "files": [
@@ -2537,6 +2548,18 @@
         {
           "source": "ui-forms/src/AddFieldModal.tsx",
           "target": "components/ui/form-builder/add-field-modal.tsx"
+        },
+        {
+          "source": "ui-forms/src/NameFieldModal.tsx",
+          "target": "components/ui/form-builder/name-field-modal.tsx"
+        },
+        {
+          "source": "ui-forms/src/ChoicesInput.tsx",
+          "target": "components/ui/form-builder/choices-input.tsx"
+        },
+        {
+          "source": "ui-forms/src/field-name.ts",
+          "target": "components/ui/form-builder/field-name.ts"
         },
         {
           "source": "ui-forms/src/BuilderCanvas.tsx",

@@ -24,6 +24,7 @@ const meta: MetaRecord = {
   components: 'Component Map',
   'app-shell': 'App Shell Recipe',
   files: 'Files Module Recipe',
+  forms: 'Forms Module Recipe',
   testing: 'Testing Guide',
 };
 

@@ -1,0 +1,293 @@
+---
+title: Forms Module Recipe
+description: Drop a visual form builder into your app — arrange fields into sections, set widths/required, author conditional logic, and render the result as live create/edit forms — with one CLI command.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Forms Module Recipe
+
+The Forms module is a ready-made `/forms` experience — a **visual form builder**
+plus a **runtime renderer** on top of the schema-driven
+[`CollectionForm`](/components#high-level-components). An admin arranges a
+collection's fields into ordered sections, sets width / required / readonly /
+hidden, and authors conditional logic, then saves the result as a reusable, named
+**form definition**. Definitions are stored as items in an ordinary
+collection and merged onto the live schema at render time via
+`buildFieldsFromDefinition` — **the schema is never mutated**.
+
+It gives you four routes:
+
+- **`/forms`** — the list of saved forms, each linking to the builder (edit)
+  and the fill-out page.
+- **`/forms/new`** — create a form: **Start from scratch** (auto-create a
+  new `fb_`-prefixed collection on save) or **Use an existing collection** (bind
+  to one you already have).
+- **`/forms/[id]`** — the visual `FormBuilder` editor (palette / canvas / settings, with a live **Preview** tab).
+- **`/forms/[id]/fill`** — renders the form with `DynamicForm` to create a
+  real item in the target collection.
+
+![The /forms list — saved forms, each with a Fill out and Edit action, and a New form button](/forms-list.png)
+
+## The pieces
+
+| Piece | Package | Role |
+|---|---|---|
+| `FormBuilder` | `@buildpad/ui-forms` | Three-pane authoring UI (palette / canvas / settings) with a live **Preview** tab; loads/saves definitions |
+| `DynamicForm` | `@buildpad/ui-forms` | Runtime renderer — loads a definition by id and renders it as a create/edit form |
+| `FormPreview` | `@buildpad/ui-forms` | Live preview of an in-memory (unsaved) definition |
+| `ConditionsEditor` | `@buildpad/ui-forms` | Authors `FieldCondition[]`, reusing `FilterPanel` for the rule builder |
+| `FormsEmptyState` | `@buildpad/ui-forms` | Prerequisite-collection hint (+ one-click **Create collection** with schema rights) |
+| `useFormDefinitions` | `@buildpad/hooks` | `list` / `get` / `create` / `update` / `remove` over the definitions collection, plus `resolveScreen` (the API keeps the legacy *screen* name for a resolved definition) |
+
+<Callout type="info">
+This recipe is **opt-in** — it is *not* part of `bootstrap`. Scaffold it with
+`buildpad add form-builder forms-routes`; the `forms-routes` module drops the
+`/forms` pages and the `form-builder` component copies the builder + renderer into
+`components/ui/form-builder/` (pulling the `collection-form` and `filter-panel`
+components and the `types` / `hooks` / `services` / `utils` lib modules). The code
+below is that generated module. In a generated app the imports point at your local
+copies (`@/components/ui/form-builder`, `@/lib/buildpad/hooks`); when consuming the
+packages directly, import from `@buildpad/ui-forms` and `@buildpad/hooks` instead.
+</Callout>
+
+## Prerequisite: the definitions collection
+
+Form definitions are persisted as items in a single collection (default
+**`fb_definitions`**). It is an ordinary user collection — **not** a
+`daas_`-prefixed system collection — and must exist before the builder can save:
+
+| field | type | notes |
+|---|---|---|
+| `id` | uuid (PK) | auto |
+| `name` | string | form name |
+| `target_collection` | string | collection the form targets |
+| `key` | string (nullable) | optional discriminator for forms that share a collection (e.g. per issue type) |
+| `definition` | json | the `FormDefinition` body |
+
+If the collection is missing, the list and builder render a `FormsEmptyState`
+hint describing exactly this instead of failing. With DaaS **schema rights** that
+hint also offers a one-click **Create collection** action, so you never have to
+leave the app.
+
+<Callout type="info">
+Authoring (arranging existing fields) needs only item `create`/`update`/`read` on
+the definitions collection plus `read` on the target collection's schema — **not**
+admin/DDL rights. Only *provisioning* — creating the definitions or target
+collection, or a new real column — needs schema rights.
+</Callout>
+
+## Install
+
+<Steps>
+
+### Add the module
+
+```bash copy
+buildpad add form-builder forms-routes
+```
+
+This copies the builder + renderer into `components/ui/form-builder/`, the
+`/forms` page shells into `app/forms/`, and the `useFormDefinitions` hook into
+`lib/buildpad/hooks/`.
+
+### Add the API routes
+
+The module talks to your DaaS through proxy routes. If you haven't already added
+them, run:
+
+```bash copy
+buildpad add api-routes
+```
+
+This includes the `/api/items/*` routes the definitions and fill flows use. In
+**proxy** mode, provisioning also uses the DDL write proxies from this module —
+`POST /api/fields/[collection]`, `POST`/`DELETE /api/collections[/…]` — which
+require DaaS schema rights. On the default **direct** deployment the browser calls
+DaaS directly, so no extra routes are needed.
+
+</Steps>
+
+## The routes
+
+Four files give you the whole module:
+
+```
+app/forms/
+├── page.tsx            # /forms          — list of saved definitions
+├── new/page.tsx        # /forms/new      — create (auto-create or bind existing)
+├── [id]/page.tsx       # /forms/[id]     — the FormBuilder editor
+└── [id]/fill/page.tsx  # /forms/[id]/fill — render with DynamicForm to create an item
+```
+
+<Steps>
+
+### The list view
+
+`app/forms/page.tsx` loads definitions with `useFormDefinitions().list()` and, if
+the collection is missing, renders `FormsEmptyState`. Each row links to the builder
+and the fill page.
+
+```tsx filename="app/forms/page.tsx" copy
+"use client";
+
+import { useEffect, useState } from 'react';
+import { FormsEmptyState, type FormDefinition } from '@/components/ui/form-builder';
+import { useFormDefinitions } from '@/lib/buildpad/hooks';
+
+export default function FormsListPage() {
+  const { list } = useFormDefinitions();
+  const [definitions, setDefinitions] = useState<FormDefinition[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    list()
+      .then(setDefinitions)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load forms'));
+  }, []);
+
+  if (error) return <FormsEmptyState error={error} />;
+  // …render one row per definition, linking to `/forms/${def.id}` and `/forms/${def.id}/fill`
+}
+```
+
+### Create a form
+
+`app/forms/new/page.tsx` picks how the target collection comes to be, then hands
+off to `FormBuilder`. **Start from scratch** passes no `targetCollection` (the builder
+auto-creates a full `fb_` collection on save); **Use an existing collection** binds to
+one you already have. Non-admins (no schema rights) only see the *existing collection*
+path.
+
+![/forms/new — two storage choices as selectable cards: Start from scratch, and Use an existing collection](/forms-new.png)
+
+```tsx filename="app/forms/new/page.tsx" copy
+import { FormBuilder } from '@/components/ui/form-builder';
+
+// auto-create on save (needs schema rights):
+<FormBuilder onSaved={(def) => router.push(`/forms/${def.id}`)} />
+
+// bind to an existing collection (hybrid storage):
+<FormBuilder targetCollection="issues" onSaved={(def) => router.push(`/forms/${def.id}`)} />
+```
+
+### The builder (edit)
+
+`app/forms/[id]/page.tsx` loads a saved definition into `FormBuilder` by id — the
+target collection comes from the definition. The **Build** tab is a three-pane
+workspace — a field-type palette (plus **Add extra field** and any existing
+collection fields) on the left, the section canvas in the middle, and a
+per-field settings panel (width / required / hidden / conditions) on the right —
+and a **Preview** tab renders the in-progress form live.
+
+![FormBuilder — Form name and Key inputs, a Build/Preview tab bar, and the three-pane palette / canvas / settings workspace](/forms-builder.png)
+
+```tsx filename="app/forms/[id]/page.tsx" copy
+"use client";
+
+import { use } from 'react';
+import { FormBuilder } from '@/components/ui/form-builder';
+
+export default function EditFormPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  return <FormBuilder definitionId={id} />;
+}
+```
+
+### The fill view
+
+`app/forms/[id]/fill/page.tsx` renders the saved definition as a live create form
+with `DynamicForm`. Submitting creates a real item in the target collection. Pass
+`itemId` to edit an existing item instead.
+
+```tsx filename="app/forms/[id]/fill/page.tsx" copy
+"use client";
+
+import { use } from 'react';
+import { useRouter } from 'next/navigation';
+import { DynamicForm } from '@/components/ui/form-builder';
+
+export default function FillFormPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
+  return (
+    <DynamicForm
+      definitionId={id}
+      onSuccess={() => router.push('/forms')}
+      onCancel={() => router.push('/forms')}
+    />
+  );
+}
+```
+
+</Steps>
+
+## Conditions
+
+`ConditionsEditor` authors the exact `FieldCondition[]` shape the runtime already
+consumes (`apply-conditions.ts`), so conditions evaluate without translation. Rules
+are built with `FilterPanel`, producing DaaS-compatible filter JSON (`_eq`, `_neq`,
+`_in`, `_and`, `_or`, …). When multiple conditions match, the **last** one wins
+(DaaS convention).
+
+## Data storage & searchability
+
+The form **definition** (the overlay JSON) is config; the form **data** (the
+answers users submit) is what you later search and report on. This module stores
+answers as **real, typed DaaS columns by default** — natively searchable, sortable,
+aggregatable, relatable, and field-level-permissioned through the Items API — with
+a single opt-in **`extras` jsonb** column as the escape hatch for the rare
+non-searchable tail. 
+
+Two strategies, derived from the target collection's schema:
+
+| Strategy | When | Storage |
+|---|---|---|
+| **Hybrid** | *Use an existing collection* | Real columns for provisioned fields + one opt-in `extras` jsonb tail |
+| **Full** | *Start from scratch* (needs schema rights) | Standard audit system fields + every field a real column, **no** `extras` |
+
+The builder derives the strategy (a collection is *full* iff it has no `extras`
+column) — nothing extra is persisted on the definition. Every field carries
+`store: 'column' | 'extras'` (default `'column'`); the **Add field** flow lets you
+choose, and tick **Index this column** for fields you'll filter or sort on.
+
+<Callout type="warning">
+**Rule of thumb:** if you'll ever search / filter / sort / aggregate on a field,
+keep it a **real column**. `extras` values are *not* server-searchable, -sortable,
+or -aggregatable, and are not individually field-permissioned — reach for them only
+for the display-only tail that never needs querying.
+</Callout>
+
+Because real-column answers are ordinary DaaS columns, the existing Items API *is*
+the search layer — `ItemsService.readByQuery(...)` already speaks `filter` (20+
+operators incl. relational dot-notation), `sort`, `search`, `aggregate`, and
+`groupBy`. Model a Project → Issue hierarchy with **real relations** (an M2O
+`parent` + a `type` discriminator) and a per-`type` form (definition `key`), and
+query across it natively (e.g. `filter[project][_eq]=…&filter[issue_type][_eq]=bug`).
+
+## Multi-tenancy / scopes
+
+- Data requests reuse the existing `DaaSProvider` header injection, so scoped
+  reads/writes partition by `X-Resource-Uri` automatically on the direct deployment.
+- For a scope-enabled **target** collection, `DynamicForm` passes the active scope
+  URI as a create-time default unless DaaS permission presets already inject it.
+- **Definitions** follow a *global-baseline + optional per-tenant-override* model:
+  by default `fb_definitions` is unscoped (one form for all tenants); scope-enable
+  it and `resolveScreen` picks the nearest-ancestor-or-self definition per scope.
+
+## Prerequisites
+
+- The module must live under your authenticated layout so `DaaSProvider` is above
+  it — `buildpad init` generates this as `app/(authenticated)/` with a
+  `DaaSProviderWrapper`. The hooks call your `/api/items/*` (and, when provisioning
+  in proxy mode, `/api/fields/*` and `/api/collections/*`) proxy routes.
+- No extra styling is needed: the components consume the design tokens through the
+  Mantine theme. See the [Styleguide](/styleguide) for the token reference.
+
+## See the components live
+
+Every state of the builder and renderer is in the Forms Storybook — `FormBuilder`,
+`DynamicForm`, `FormPreview`, `ConditionsEditor`, and the supporting pieces. Run it
+locally with `pnpm --filter @buildpad/ui-forms storybook` (port 6010). The
+`FormBuilder (DaaS)` story connects to a real DaaS instance through the
+storybook-host proxy.

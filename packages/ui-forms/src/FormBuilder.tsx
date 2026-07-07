@@ -848,7 +848,7 @@ export function FormBuilder({
   const draft = useMemo<FormDefinition>(
     () => ({
       id: savedId != null ? String(savedId) : undefined,
-      name: name.trim() || 'Untitled screen',
+      name: name.trim() || 'Untitled form',
       target_collection: collection,
       key: screenKey.trim() || null,
       sections,
@@ -899,7 +899,7 @@ export function FormBuilder({
       if (autoCreate) {
         if (!canProvisionSchema) {
           throw new Error(
-            'No target collection is set, and you lack the schema rights to create one. Bind this screen to an existing collection instead.',
+            'No target collection is set, and you lack the schema rights to create one. Bind this form to an existing collection instead.',
           );
         }
         const screenName = name.trim();
@@ -908,7 +908,7 @@ export function FormBuilder({
             color: 'red',
             title: 'Name required',
             message:
-              'Enter a screen name first — the new collection is named after it.',
+              'Enter a form name first — the new collection is named after it.',
           });
           return;
         }
@@ -960,7 +960,7 @@ export function FormBuilder({
 
       const payload: FormDefinition = {
         id: savedId != null ? String(savedId) : undefined,
-        name: name.trim() || 'Untitled screen',
+        name: name.trim() || 'Untitled form',
         target_collection: resolvedCollection,
         key: screenKey.trim() || null,
         sections,
@@ -1100,8 +1100,8 @@ export function FormBuilder({
       <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
         <Group gap="sm" align="flex-end" style={{ flex: 1 }}>
           <TextInput
-            label="Screen name"
-            placeholder="e.g. Bug create screen"
+            label="Form name"
+            placeholder="e.g. Bug report form"
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
             style={{ flex: 1, minWidth: 200 }}
@@ -1109,7 +1109,7 @@ export function FormBuilder({
           />
           <TextInput
             label="Key (optional)"
-            description="Screen discriminator"
+            description="Distinguishes forms that share a collection"
             placeholder="e.g. bug"
             value={screenKey}
             onChange={(e) => setScreenKey(e.currentTarget.value)}
@@ -1134,8 +1134,8 @@ export function FormBuilder({
         ) : (
           <>
             A new <strong>fb_</strong>-prefixed collection will be created from
-            the screen name (full storage — every field a real column) when you
-            save.
+            the form name when you save — every field becomes a real,
+            searchable column.
           </>
         )}
       </Text>

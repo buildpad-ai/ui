@@ -453,7 +453,20 @@ export function transformRelativeImports(
   _componentsAlias: string
 ): string {
   let result = content;
-  
+
+  // Cross-component side-effect CSS imports flatten to a sibling kebab-case file.
+  // Components are flattened into components/ui/<kebab>.tsx with their CSS beside
+  // them as components/ui/<kebab>.css, so a reference into another component's
+  // folder must collapse to a sibling import.
+  //   import '../upload/Upload.css'  →  import './upload.css'
+  // Only matches `../<folder>/<Name>.css` (two segments); same-folder imports
+  // like `import './InputBlockEditor.css'` and single-segment `../shared.css`
+  // are left untouched.
+  result = result.replace(
+    /import\s+(['"])\.\.\/([a-zA-Z][-a-zA-Z0-9]*)\/[A-Za-z][A-Za-z0-9]*\.css\1/g,
+    (_match, quote, folder) => `import ${quote}./${toKebabCase(folder)}.css${quote}`
+  );
+
   // Apply known mappings
   for (const [from, to] of Object.entries(RELATIVE_IMPORT_MAPPINGS)) {
     // Match import statements with this relative path

@@ -24,6 +24,13 @@ import type { AnyItem, FormDefinition } from '@buildpad/types';
 /** Default definitions collection name. */
 export const DEFAULT_FORMS_COLLECTION = 'fb_definitions';
 
+/**
+ * Upper bound for "fetch all" definition queries. This DaaS treats `limit: -1`
+ * literally (returns zero rows) rather than as Directus-style "unlimited", so we
+ * pass a large finite cap instead. Screens per collection are few in practice.
+ */
+const MAX_DEFINITIONS_LIMIT = 10000;
+
 /** Params for listing definitions. */
 export interface ListFormDefinitionsParams {
   /** Filter to a single target collection. */
@@ -150,7 +157,7 @@ export function useFormDefinitions(
         const resp = await service.readByQuery({
           filter: Object.keys(filter).length ? filter : undefined,
           sort: ['name'],
-          limit: -1,
+          limit: MAX_DEFINITIONS_LIMIT,
         });
         return resp.data.map(rowToDefinition);
       }, 'Failed to list form definitions'),
@@ -200,7 +207,7 @@ export function useFormDefinitions(
         const resp = await service.readByQuery({
           filter: Object.keys(filter).length ? filter : undefined,
           sort: ['name'],
-          limit: -1,
+          limit: MAX_DEFINITIONS_LIMIT,
         });
         const rows = resp.data;
         if (rows.length === 0) return null;
