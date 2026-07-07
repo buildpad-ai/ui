@@ -1,0 +1,19 @@
+/**
+ * FormBuilder layout styles.
+ *
+ * The three-pane layout itself is driven by Mantine's responsive Grid; these
+ * rules cover affordances Grid can't express (sticky settings pane, drag
+ * cursor) and keep the builder visually contained.
+ */
+
+.bp-form-builder {
+  width: 100%;
+}
+
+/* Keep the settings pane visible while scrolling the canvas on wide screens. */
+@media (min-width: 62em) {
+  .bp-form-builder [data-builder-settings] {
+    position: sticky;
+    top: 1rem;
+  }
+}

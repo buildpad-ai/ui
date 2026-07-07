@@ -147,6 +147,16 @@ export {
     type UseFieldMetadataReturn,
 } from './useFieldMetadata';
 
+// Form definitions hook (Dynamic Form Builder)
+export {
+    useFormDefinitions,
+    DEFAULT_FORMS_COLLECTION,
+    type ListFormDefinitionsParams,
+    type ResolveScreenParams,
+    type UseFormDefinitionsOptions,
+    type UseFormDefinitionsReturn,
+} from './useFormDefinitions';
+
 // API helpers
 export { api, daasAPI, createDaaSAPI, type DaaSAPIConfig, type QueryParams } from './api';
 

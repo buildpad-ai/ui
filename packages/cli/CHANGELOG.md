@@ -1,5 +1,11 @@
 # @buildpad/cli
 
+## 1.6.0
+
+### Minor Changes
+
+- Add the `form-builder` component and `forms-routes` module scaffolds for the new Dynamic Form Builder (`/forms`, `/forms/new`, `/forms/[id]`, `/forms/[id]/fill`), standardized on "form" terminology with breadcrumbs and improved empty/creation UX. The `AuthenticatedShell` header now derives a breadcrumb from the route for pages not in the sidebar nav.
+
 ## 1.5.0
 
 ### Minor Changes

@@ -112,6 +112,12 @@ export interface FieldMeta {
   group?: string | null;
   validation?: Record<string, unknown> | null;
   validation_message?: string | null;
+  /**
+   * Storage routing for a form-builder field, set by `buildFieldsFromDefinition`.
+   * `'extras'` marks a value bound to the target collection's `extras` jsonb
+   * column rather than a real schema column. Absent/`'column'` → a real column.
+   */
+  store?: 'column' | 'extras';
 }
 
 /**

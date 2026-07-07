@@ -10,6 +10,7 @@ import {
   Text as Text2
 } from "@mantine/core";
 import { FieldsService, ItemsService, PermissionsService, apiRequest } from "@buildpad/services";
+import { buildFieldsFromDefinition } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import { IconAlertCircle, IconCheck as IconCheck2, IconTrash, IconX } from "@tabler/icons-react";
 import {
@@ -115,6 +116,39 @@ var SaveOptions = ({
   ] });
 };
 
+// src/extras-storage.ts
+var EXTRAS_COLUMN = "extras";
+function isPlainObject(value) {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+function flattenExtras(values, extrasColumn = EXTRAS_COLUMN) {
+  const raw = values[extrasColumn];
+  if (isPlainObject(raw)) {
+    return { ...values, ...raw };
+  }
+  return { ...values };
+}
+function extractExtras(values, extrasFieldNames, extrasColumn = EXTRAS_COLUMN) {
+  const rest = {};
+  const extras = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (key === extrasColumn) continue;
+    if (extrasFieldNames.has(key)) {
+      extras[key] = value;
+    } else {
+      rest[key] = value;
+    }
+  }
+  return { rest, extras };
+}
+function mergeExtras(prev, changed) {
+  const base = isPlainObject(prev) ? prev : {};
+  return { ...base, ...changed };
+}
+function missingExtrasColumnMessage(collection) {
+  return `This screen has "extras" fields, but the "${collection}" collection has no "${EXTRAS_COLUMN}" (json) column to store them. Add a "${EXTRAS_COLUMN}" json column to "${collection}" (or switch those fields to real columns).`;
+}
+
 // src/CollectionForm.tsx
 import { Fragment, jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
 var SYSTEM_FIELDS = [
@@ -149,8 +183,14 @@ var CollectionForm = ({
   excludeFields,
   includeFields,
   showSaveOptions = false,
-  showDelete
+  showDelete,
+  definition,
+  persist = true
 }) => {
+  const definitionSignature = useMemo(
+    () => definition ? JSON.stringify(definition) : "",
+    [definition]
+  );
   const stableDefaultValues = useMemo(
     () => defaultValues || EMPTY_OBJECT,
     [defaultValues]
@@ -173,13 +213,14 @@ var CollectionForm = ({
   const [deleteAllowed, setDeleteAllowed] = useState(false);
   const [readableFieldNames, setReadableFieldNames] = useState(null);
   const [writableFieldNames, setWritableFieldNames] = useState(null);
+  const [hasExtrasColumn, setHasExtrasColumn] = useState(true);
   const [m2mJunctionMap, setM2mJunctionMap] = useState({});
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const dataLoadedRef = useRef(false);
   const lastLoadKey = useRef("");
   useEffect(() => {
-    const loadKey = `${collection}-${id}-${mode}`;
+    const loadKey = `${collection}-${id}-${mode}-${definitionSignature}`;
     if (dataLoadedRef.current && lastLoadKey.current === loadKey) {
       return;
     }
@@ -193,6 +234,7 @@ var CollectionForm = ({
           fieldsService.readAll(collection),
           PermissionsService.getMyCollectionAccess().catch(() => ({}))
         ]);
+        setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
         const access = collectionAccess?.[collection] || {};
         const readAccess = access.read;
         const createAccess = access.create;
@@ -255,6 +297,9 @@ var CollectionForm = ({
             return f;
           });
         }
+        if (definition) {
+          editableFields = buildFieldsFromDefinition(editableFields, definition);
+        }
         setFields(editableFields);
         const m2mAliasFields = editableFields.filter(
           (f) => f.type === "alias" && f.meta?.special?.includes?.("m2m")
@@ -292,6 +337,7 @@ var CollectionForm = ({
           const item = await itemsService.readOne(id);
           initialData = { ...initialData, ...item };
         }
+        initialData = flattenExtras(initialData, EXTRAS_COLUMN);
         setFormData(initialData);
         setInitialFormData(initialData);
         dataLoadedRef.current = true;
@@ -312,7 +358,9 @@ var CollectionForm = ({
     mode,
     stableDefaultValues,
     stableExcludeFields,
-    stableIncludeFields
+    stableIncludeFields,
+    definition,
+    definitionSignature
   ]);
   const hasEdits = useMemo(() => {
     const keys = /* @__PURE__ */ new Set([
@@ -332,6 +380,12 @@ var CollectionForm = ({
   const isSavable = useMemo(() => {
     return saveAllowed && (mode === "create" || hasEdits);
   }, [saveAllowed, mode, hasEdits]);
+  const extrasFieldNames = useMemo(
+    () => new Set(
+      fields.filter((f) => f.meta?.store === "extras").map((f) => f.field)
+    ),
+    [fields]
+  );
   const disabledSaveOptions = useMemo(() => {
     const disabled = [];
     if (!isSavable) {
@@ -399,6 +453,11 @@ var CollectionForm = ({
     setError(null);
     setSuccess(false);
     setFieldErrors({});
+    if (!persist) {
+      setSuccess(true);
+      setSaving(false);
+      return;
+    }
     try {
       const dataToSave = { ...formData };
       READ_ONLY_FIELDS.forEach((f) => {
@@ -408,9 +467,14 @@ var CollectionForm = ({
       });
       const itemsService = new ItemsService(collection);
       const splitData = (source) => {
+        const { rest, extras } = extractExtras(
+          source,
+          extrasFieldNames,
+          EXTRAS_COLUMN
+        );
         const scalar = {};
         const m2m = [];
-        for (const [key, value] of Object.entries(source)) {
+        for (const [key, value] of Object.entries(rest)) {
           const ji = m2mJunctionMap[key];
           if (ji && isM2MChangesItem(value)) {
             m2m.push({ junctionInfo: ji, changes: value });
@@ -418,7 +482,7 @@ var CollectionForm = ({
             scalar[key] = value;
           }
         }
-        return { scalar, m2m };
+        return { scalar, m2m, extras };
       };
       if (mode === "edit" && id) {
         const selfPersistingInterfaces = /* @__PURE__ */ new Set(["files"]);
@@ -431,7 +495,18 @@ var CollectionForm = ({
           }
           allChanged[key] = value;
         }
-        const { scalar: changedData, m2m: m2mEntries } = splitData(allChanged);
+        const {
+          scalar: changedData,
+          m2m: m2mEntries,
+          extras: changedExtras
+        } = splitData(allChanged);
+        if (Object.keys(changedExtras).length > 0) {
+          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          changedData[EXTRAS_COLUMN] = mergeExtras(
+            initialFormData[EXTRAS_COLUMN],
+            changedExtras
+          );
+        }
         if (Object.keys(changedData).length > 0) {
           await itemsService.updateOne(id, changedData);
         }
@@ -441,6 +516,9 @@ var CollectionForm = ({
           for (const [k, v] of Object.entries(m2mJunctionMap)) {
             if (v === ji) delete clearedFormData[k];
           }
+        }
+        if (changedData[EXTRAS_COLUMN] !== void 0) {
+          clearedFormData[EXTRAS_COLUMN] = changedData[EXTRAS_COLUMN];
         }
         setSuccess(true);
         setFormData(clearedFormData);
@@ -467,7 +545,15 @@ var CollectionForm = ({
           }
           cleanedDataToSave[key] = value;
         }
-        const { scalar: scalarData, m2m: m2mEntries } = splitData(cleanedDataToSave);
+        const {
+          scalar: scalarData,
+          m2m: m2mEntries,
+          extras: createdExtras
+        } = splitData(cleanedDataToSave);
+        if (Object.keys(createdExtras).length > 0) {
+          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          scalarData[EXTRAS_COLUMN] = createdExtras;
+        }
         const result = await itemsService.createOne(scalarData);
         const newId = result?.id;
         if (newId != null && m2mEntries.length > 0) {
@@ -543,7 +629,7 @@ var CollectionForm = ({
         color: "green",
         mb: "md",
         "data-testid": "form-success",
-        children: mode === "create" ? "Item created successfully!" : "Item updated successfully!"
+        children: !persist ? "Looks valid \u2014 preview only, no record was created." : mode === "create" ? "Item created successfully!" : "Item updated successfully!"
       }
     ),
     /* @__PURE__ */ jsx2("form", { onSubmit: handleSubmit, children: /* @__PURE__ */ jsxs2(Stack, { gap: "md", children: [
@@ -2596,6 +2682,11 @@ export {
   CollectionList,
   ContentLayout,
   ContentNavigation,
+  EXTRAS_COLUMN,
   FilterPanel,
-  SaveOptions
+  SaveOptions,
+  extractExtras,
+  flattenExtras,
+  mergeExtras,
+  missingExtrasColumnMessage
 };

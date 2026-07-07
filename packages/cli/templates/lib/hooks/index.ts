@@ -144,6 +144,16 @@ export {
   type UseFieldMetadataReturn,
 } from './useFieldMetadata';
 
+// Form definitions hook (Dynamic Form Builder)
+export {
+  useFormDefinitions,
+  DEFAULT_FORMS_COLLECTION,
+  type ListFormDefinitionsParams,
+  type ResolveScreenParams,
+  type UseFormDefinitionsOptions,
+  type UseFormDefinitionsReturn,
+} from './useFormDefinitions';
+
 // Collection navigation hooks
 export {
   useCollections,

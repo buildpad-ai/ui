@@ -1,5 +1,13 @@
 # @buildpad/ui-table
 
+## 1.6.0
+
+### Patch Changes
+
+- @buildpad/hooks@1.6.0
+- @buildpad/services@1.6.0
+- @buildpad/types@1.6.0
+
 ## 1.5.0
 
 ### Patch Changes

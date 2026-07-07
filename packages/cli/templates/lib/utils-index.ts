@@ -12,6 +12,27 @@ export { cn, formatFileSize, getFileCategory, getAssetUrl, slugify, slugify as g
 // New item detection
 export { isNewItem, isExistingItem } from '../is-new-item';
 
+// Form definition overlay merge (drives the dynamic form builder runtime)
+export { buildFieldsFromDefinition } from '../build-fields-from-definition';
+
+// Field/Collection provisioning spec → DaaS payload mapper (DDL)
+export {
+  fieldSpecToDaaSField,
+  dataTypeForFieldType,
+  interfaceForFieldType,
+  type DaaSFieldPayload,
+} from '../field-spec-mapper';
+
+// Provisionable interface catalog (type-aware picker for the form builder)
+export {
+  PROVISIONABLE_INTERFACES,
+  provisionableInterfacesForType,
+  CHOICE_INTERFACES,
+  interfaceRequiresChoices,
+  type ProvisionableInterface,
+  type ProvisionableInterfaceGroup,
+} from '../interface-catalog';
+
 // Field interface mapping (from @buildpad/utils)
 export { 
   getFieldInterface,

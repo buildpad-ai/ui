@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-06-25T09:16:29.909Z",
-  "version": "1.5.0",
+  "generatedAt": "2026-07-07T04:24:50.830Z",
+  "version": "1.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
   "license": "MIT",
@@ -86,39 +86,43 @@
   },
   "packages": {
     "@buildpad/ui-interfaces": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "ui-interfaces/CHANGELOG.md"
     },
     "@buildpad/ui-form": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "ui-form/CHANGELOG.md"
     },
     "@buildpad/ui-table": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "ui-table/CHANGELOG.md"
     },
     "@buildpad/ui-collections": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "ui-collections/CHANGELOG.md"
     },
     "@buildpad/ui-files": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "ui-files/CHANGELOG.md"
     },
+    "@buildpad/ui-forms": {
+      "version": "1.6.0",
+      "changelogUrl": "ui-forms/CHANGELOG.md"
+    },
     "@buildpad/hooks": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "hooks/CHANGELOG.md"
     },
     "@buildpad/services": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "services/CHANGELOG.md"
     },
     "@buildpad/types": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "types/CHANGELOG.md"
     },
     "@buildpad/utils": {
-      "version": "1.5.0",
+      "version": "1.6.0",
       "changelogUrl": "utils/CHANGELOG.md"
     }
   },
@@ -158,9 +162,24 @@
           "sourceSha256": "0574e3cc85110d9fc229974fc00ce5b5e27637e7c2ff06f215caa05c9e5e667c"
         },
         {
+          "source": "utils/src/build-fields-from-definition.ts",
+          "target": "lib/buildpad/build-fields-from-definition.ts",
+          "sourceSha256": "c09e507e2fafa4c941f681f37724d5defd35e0dd9e53b4933eec9e9f02360e85"
+        },
+        {
+          "source": "utils/src/field-spec-mapper.ts",
+          "target": "lib/buildpad/field-spec-mapper.ts",
+          "sourceSha256": "8dd0bf9be2ee76147bce6a0eeecbd3573497190d344cf7e5d3f7c32dd541f512"
+        },
+        {
+          "source": "utils/src/interface-catalog.ts",
+          "target": "lib/buildpad/interface-catalog.ts",
+          "sourceSha256": "32d32e50e478106b03730ce54c2838ec1794c77d635983fe98364c461e87b18f"
+        },
+        {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "b2ac0fb330c5772219134a1852613d0652249b89ad093635efcb5a121a8e1646"
+          "sourceSha256": "1f5ef1bdfeeccf19ba75cdd43a4936c8ca97e024cde40fa03af3b74ec986c4b8"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -177,8 +196,8 @@
         "types"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "types": {
       "name": "types",
@@ -187,7 +206,7 @@
         {
           "source": "types/src/core.ts",
           "target": "lib/buildpad/types/core.ts",
-          "sourceSha256": "c8cf860d7dffb5fdf1d0b52d57f55fc98892ada8d1f762874fa953b8632d06eb"
+          "sourceSha256": "c98eee2f04e87fde3d2379d072a4c0449ca88d7fec49e6e2628c08631eaedcc5"
         },
         {
           "source": "types/src/file.ts",
@@ -200,14 +219,24 @@
           "sourceSha256": "838d987553cbe09d57cd5560bdde689ba0849f9de4303ea663cc66627bff2362"
         },
         {
+          "source": "types/src/form-definition.ts",
+          "target": "lib/buildpad/types/form-definition.ts",
+          "sourceSha256": "76fb865ab75e5d584063b2b46b5f1cac0a56a5eb46f52c629e71cddb719f0946"
+        },
+        {
+          "source": "types/src/field-spec.ts",
+          "target": "lib/buildpad/types/field-spec.ts",
+          "sourceSha256": "3632753aa9591f82873699df8e35661b79d97982e5d64403e2ff35a648600998"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts",
-          "sourceSha256": "0daf1d486099da5d5afb8f654a90c1e869128aa1feef7b67a22f6c7d428f0480"
+          "sourceSha256": "ba5cd007bd46206dfc5e95a6599310b998103af8959c63d2d1a5fd2d87325141"
         }
       ],
       "sourcePackage": "@buildpad/types",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "services": {
       "name": "services",
@@ -221,12 +250,12 @@
         {
           "source": "services/src/fields.ts",
           "target": "lib/buildpad/services/fields.ts",
-          "sourceSha256": "7e73b8194d2a815b73a0ae930df7bb1d74b44f50e59ea55429bb32512e3e81e0"
+          "sourceSha256": "12eccf78eb5aff3974fa4b74f3a62bb2e580b233147f81b24a3d2939b0779958"
         },
         {
           "source": "services/src/collections.ts",
           "target": "lib/buildpad/services/collections.ts",
-          "sourceSha256": "2d5d6d51fbad485c10e49394b6b3c3ab488797a5c79725eb63cf83c7c71dc664"
+          "sourceSha256": "a05b4db33971e8da22e8719a6445bdbfa9a266fd304a093439a67aa29d2d94a6"
         },
         {
           "source": "services/src/items.ts",
@@ -266,15 +295,16 @@
         {
           "source": "cli/templates/lib/services/index.ts",
           "target": "lib/buildpad/services/index.ts",
-          "sourceSha256": "d2582ad2fcdae078186dc28db670512060af9739d98bfc3b9a0a7629e54ad9d2"
+          "sourceSha256": "fd1872d3a69b59f0a89b69b9ab0970ebcbf35bf8df568be7daacd1b09191f397"
         }
       ],
       "internalDependencies": [
-        "types"
+        "types",
+        "utils"
       ],
       "sourcePackage": "@buildpad/services",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "hooks": {
       "name": "hooks",
@@ -403,7 +433,7 @@
         {
           "source": "hooks/src/usePermissions.ts",
           "target": "lib/buildpad/hooks/usePermissions.ts",
-          "sourceSha256": "d6431a6fb14bce44947d0ea4f346154811b5313bc760d450702db61f2b9302e2"
+          "sourceSha256": "b75eddb0b07edabb8a5bb43e8b301e7f2dbb878f4cebd7e71cd2db8b3a7fca34"
         },
         {
           "source": "hooks/src/useDaaSContext.tsx",
@@ -411,9 +441,14 @@
           "sourceSha256": "8cb0cd2a8582534c2009a3c3e99d6aa236dcae57c1c4b98b9848b39b6efb6114"
         },
         {
+          "source": "hooks/src/useFormDefinitions.ts",
+          "target": "lib/buildpad/hooks/useFormDefinitions.ts",
+          "sourceSha256": "576062f3171a714d9403cd49086fa5768b6c34bd17e368c1d0c9509853169d42"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "5125e5a2a9e478f26a2ee89d294086c0f0562502f925f1e6a907eb8ca8bb4be1"
+          "sourceSha256": "44083826dd7012092aef74347ee41989031ce72767a1e2439984c1abe8b595c3"
         }
       ],
       "internalDependencies": [
@@ -421,8 +456,8 @@
         "services"
       ],
       "sourcePackage": "@buildpad/hooks",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "api-routes": {
       "name": "api-routes",
@@ -461,7 +496,22 @@
         {
           "source": "cli/templates/api/daas-fields-route.ts",
           "target": "app/api/fields/[collection]/route.ts",
-          "sourceSha256": "3e80287d63999110835e67f8443ab5eb78e467f800f62856d45220edb1c320fc"
+          "sourceSha256": "6796c7c5a508b421b9bb72a04410a06bc0e7d39c226adff6b4c9cac888858466"
+        },
+        {
+          "source": "cli/templates/api/daas-fields-id-route.ts",
+          "target": "app/api/fields/[collection]/[field]/route.ts",
+          "sourceSha256": "8ca89b5e2bd77aaaf76ec5d1fae294743f31a306860003bd733e6bf678e09cc0"
+        },
+        {
+          "source": "cli/templates/api/daas-collections-route.ts",
+          "target": "app/api/collections/route.ts",
+          "sourceSha256": "e60d9effd50e62920848b56cb84dfd5b842bda309a1297b64a6fe3b35ff84026"
+        },
+        {
+          "source": "cli/templates/api/daas-collections-id-route.ts",
+          "target": "app/api/collections/[collection]/route.ts",
+          "sourceSha256": "25a1e4d344506773c8f2bcec2c8455a9eca7bbd2747b70c2f1f2b5600ea91f04"
         },
         {
           "source": "cli/templates/api/daas-items-collection-route.ts",
@@ -534,8 +584,8 @@
         "design-system"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "content-routes": {
       "name": "content-routes",
@@ -567,8 +617,8 @@
         "hooks"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "files-routes": {
       "name": "files-routes",
@@ -593,8 +643,44 @@
         "file-manager"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
+    },
+    "forms-routes": {
+      "name": "forms-routes",
+      "description": "Dynamic form builder module pages — /forms (list of form definitions), /forms/new (create a definition), /forms/[id] (visual FormBuilder editor), and /forms/[id]/fill (render the definition with DynamicForm to create a real item). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the form-builder component.",
+      "files": [
+        {
+          "source": "cli/templates/app/forms/page.tsx",
+          "target": "app/(authenticated)/forms/page.tsx",
+          "sourceSha256": "95a50a2fe1889ac83f9ca672f869d349700a0abba8b52141be0d2b8403bbe1a5"
+        },
+        {
+          "source": "cli/templates/app/forms/new/page.tsx",
+          "target": "app/(authenticated)/forms/new/page.tsx",
+          "sourceSha256": "ba9ed55d022686daf54f1824acc58113fbaffbd37d165f347d7fc8151eb90db1"
+        },
+        {
+          "source": "cli/templates/app/forms/[id]/page.tsx",
+          "target": "app/(authenticated)/forms/[id]/page.tsx",
+          "sourceSha256": "812f5b589ddc8ba9779b465af0fa24c7d775461b3cd255ef5763b4b8b1b6fb91"
+        },
+        {
+          "source": "cli/templates/app/forms/[id]/fill/page.tsx",
+          "target": "app/(authenticated)/forms/[id]/fill/page.tsx",
+          "sourceSha256": "0f1b4ee8d968c4b174484d8fa4d277f7ac3f5eaad56f1ec1a9467b743b1f2153"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "form-builder"
+      ],
+      "sourcePackage": "@buildpad/cli",
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "supabase-auth": {
       "name": "supabase-auth",
@@ -631,8 +717,8 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "external-oauth": {
       "name": "external-oauth",
@@ -682,8 +768,8 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "scope-routes": {
       "name": "scope-routes",
@@ -719,8 +805,8 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     "design-system": {
       "name": "design-system",
@@ -749,12 +835,12 @@
         {
           "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
           "target": "components/layout/AuthenticatedShell.tsx",
-          "sourceSha256": "4224a0789eee4b0c480868fcfcb716182573d87a97815db4bd77ac4ee779160a"
+          "sourceSha256": "e8b8fc3e2d6520245969c6bfee646527a36d436863ba25aa92742cc606944627"
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     }
   },
   "components": [
@@ -798,8 +884,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "textarea",
@@ -834,8 +920,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "input-code",
@@ -872,8 +958,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "input-hash",
@@ -913,8 +999,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "system-token",
@@ -957,8 +1043,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "system-permissions",
@@ -1000,8 +1086,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "input-block-editor",
@@ -1057,8 +1143,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "tags",
@@ -1094,8 +1180,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "select-dropdown",
@@ -1134,8 +1220,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "select-radio",
@@ -1170,8 +1256,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "select-multiple-checkbox",
@@ -1206,8 +1292,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "select-multiple-checkbox-tree",
@@ -1244,8 +1330,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "select-multiple-dropdown",
@@ -1281,8 +1367,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "select-icon",
@@ -1317,8 +1403,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "autocomplete-api",
@@ -1354,8 +1440,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "collection-item-dropdown",
@@ -1398,8 +1484,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "datetime",
@@ -1439,8 +1525,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "boolean",
@@ -1475,8 +1561,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "toggle",
@@ -1511,8 +1597,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "file",
@@ -1553,8 +1639,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "file-image",
@@ -1594,8 +1680,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "files",
@@ -1617,6 +1703,9 @@
         "types",
         "hooks"
       ],
+      "registryDependencies": [
+        "upload"
+      ],
       "interface": {
         "id": "files",
         "name": "Files",
@@ -1633,8 +1722,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "upload",
@@ -1674,8 +1763,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "color",
@@ -1709,8 +1798,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "list-m2m",
@@ -1766,8 +1855,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "select-dropdown-m2o",
@@ -1824,8 +1913,8 @@
         ]
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "list-o2m",
@@ -1871,8 +1960,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "list-m2a",
@@ -1926,8 +2015,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "divider",
@@ -1962,8 +2051,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "notice",
@@ -1998,8 +2087,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "group-detail",
@@ -2035,8 +2124,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "group-accordion",
@@ -2071,8 +2160,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "group-raw",
@@ -2106,8 +2195,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "slider",
@@ -2144,8 +2233,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "rich-text-html",
@@ -2197,8 +2286,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "rich-text-markdown",
@@ -2252,8 +2341,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "vform",
@@ -2264,7 +2353,7 @@
         {
           "source": "ui-form/src/VForm.tsx",
           "target": "components/ui/vform/VForm.tsx",
-          "sourceSha256": "26409c6b8b935708525daa7024dae6e44e80b79ffc0290ff119a82676c93f942"
+          "sourceSha256": "875e91bd25516ee283cb665bd81ffbbbadc2bb304333d4baf963371413d18727"
         },
         {
           "source": "ui-form/src/VForm.css",
@@ -2294,7 +2383,7 @@
         {
           "source": "ui-form/src/components/FormGroupField.tsx",
           "target": "components/ui/vform/components/FormGroupField.tsx",
-          "sourceSha256": "5a78bfb2c9ca2d178e57c032a3c7bbfa737e3c1cd4fea79dc6e3cf35ed3f5529"
+          "sourceSha256": "82ef98d5d284457614362994753ddc48ea4c4f0e375816374a71c5bb14dfa7bf"
         },
         {
           "source": "ui-form/src/components/InterfaceErrorBoundary.tsx",
@@ -2329,7 +2418,7 @@
         {
           "source": "ui-form/src/utils/apply-conditions.ts",
           "target": "components/ui/vform/utils/apply-conditions.ts",
-          "sourceSha256": "0eb0ae52bf66b21e719de5bef0b19db9aa1ec807bb0b408355ad5f99e23537d4"
+          "sourceSha256": "b790cfc96ac61b67dabe11d015cb89390c90554434d26ba1fea3ee3cd5423f63"
         },
         {
           "source": "ui-form/src/utils/push-group-options-down.ts",
@@ -2406,8 +2495,8 @@
         "workflow-button"
       ],
       "sourcePackage": "@buildpad/ui-form",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "collection-form",
@@ -2418,7 +2507,12 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "272bda8795971d789e2a874a3a17602b8babdd3b437ba8074de059dcb8d4ce93"
+          "sourceSha256": "fadd20169a1563b5bbfb7a20a22fc5d23c99001f991921f95afdbe34e41f9904"
+        },
+        {
+          "source": "ui-collections/src/extras-storage.ts",
+          "target": "components/ui/extras-storage.ts",
+          "sourceSha256": "bad12008c9d16281452c103555ba6f64ba6567a1bbdac821b9c44ab43489a3be"
         }
       ],
       "dependencies": [
@@ -2427,15 +2521,16 @@
       ],
       "internalDependencies": [
         "types",
-        "services"
+        "services",
+        "utils"
       ],
       "registryDependencies": [
         "vform",
         "save-options"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "vtable",
@@ -2489,8 +2584,8 @@
       ],
       "internalDependencies": [],
       "sourcePackage": "@buildpad/ui-table",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "collection-list",
@@ -2542,8 +2637,8 @@
         "filter-panel"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "filter-panel",
@@ -2565,8 +2660,8 @@
         "types"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "content-navigation",
@@ -2590,8 +2685,8 @@
         "hooks"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "content-layout",
@@ -2615,8 +2710,8 @@
         "content-navigation"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "save-options",
@@ -2636,8 +2731,8 @@
       ],
       "internalDependencies": [],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "map",
@@ -2674,8 +2769,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "map-with-real-map",
@@ -2714,8 +2809,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "workflow-button",
@@ -2767,12 +2862,13 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     },
     {
       "name": "file-manager",
       "title": "FileManager",
+      "excludeFromAll": true,
       "description": "Full files-management UI — list surface (drag-and-drop upload, import-from-URL, folders, grid/list views, search, bulk delete) and a file detail view (metadata edit + preview for image/video/audio/pdf). Composes the upload interface and the useFiles/useFolders hooks.",
       "category": "media",
       "files": [
@@ -2872,8 +2968,119 @@
         "upload"
       ],
       "sourcePackage": "@buildpad/ui-files",
-      "version": "1.5.0",
-      "lastChangedIn": "1.5.0"
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
+    },
+    {
+      "name": "form-builder",
+      "title": "FormBuilder",
+      "excludeFromAll": true,
+      "description": "Dynamic form builder — a design-time authoring layer (visual FormBuilder with drag-and-drop field palette, sections, per-field width/required/readonly/hidden controls, and a conditions editor reusing FilterPanel) plus a runtime renderer (DynamicForm, FormPreview) that merges a saved form definition onto the live collection schema and drives the existing CollectionForm/VForm runtime. Definitions are stored as items in an ordinary, consumer-owned collection (default fb_definitions); the schema is never mutated.",
+      "category": "collection",
+      "files": [
+        {
+          "source": "ui-forms/src/FormBuilder.tsx",
+          "target": "components/ui/form-builder/form-builder.tsx",
+          "sourceSha256": "2b8426f760c9ed7820a7f99f77792a3be4bbed841029967ba8cf07b89f5650ef"
+        },
+        {
+          "source": "ui-forms/src/FormBuilder.css",
+          "target": "components/ui/form-builder/form-builder.css",
+          "sourceSha256": "00ab18367929814236a1fc52ac9300f49e4c7c2b673593cab559625c7327f2e8"
+        },
+        {
+          "source": "ui-forms/src/FieldPalette.tsx",
+          "target": "components/ui/form-builder/field-palette.tsx",
+          "sourceSha256": "b842e2c73de34cbb80849601fb7592f83bc377eabfea367e7025044f9f3d0f07"
+        },
+        {
+          "source": "ui-forms/src/AddFieldModal.tsx",
+          "target": "components/ui/form-builder/add-field-modal.tsx",
+          "sourceSha256": "1d1f5848b54a6760f03084f8c5a613a0840657c27f1eef1530a913b2a9b8eec4"
+        },
+        {
+          "source": "ui-forms/src/NameFieldModal.tsx",
+          "target": "components/ui/form-builder/name-field-modal.tsx",
+          "sourceSha256": "01b749c60f563c1d602db0da5f43ab8bbf004d6b29577646d82d54be182beecc"
+        },
+        {
+          "source": "ui-forms/src/ChoicesInput.tsx",
+          "target": "components/ui/form-builder/choices-input.tsx",
+          "sourceSha256": "e74372bd9fbe655f9dfc88a360fafbd7cb4394c978b7b826ad1fb5ee7f77757f"
+        },
+        {
+          "source": "ui-forms/src/field-name.ts",
+          "target": "components/ui/form-builder/field-name.ts",
+          "sourceSha256": "b8edefdfa33b94bb1b380586856522927540ec48a47c95370db589ec3c0d15bd"
+        },
+        {
+          "source": "ui-forms/src/BuilderCanvas.tsx",
+          "target": "components/ui/form-builder/builder-canvas.tsx",
+          "sourceSha256": "0c47a0055d9e04463f75e79d51305c9c342c7c9a8db2bfd5ab2f133285227810"
+        },
+        {
+          "source": "ui-forms/src/BuilderSection.tsx",
+          "target": "components/ui/form-builder/builder-section.tsx",
+          "sourceSha256": "7c319227f53c24d9d33ae329f26109ac663cc2169418f98bb37309e54c1cdd92"
+        },
+        {
+          "source": "ui-forms/src/BuilderFieldRow.tsx",
+          "target": "components/ui/form-builder/builder-field-row.tsx",
+          "sourceSha256": "6ee484e7ce73cbee784fac13c4855976deafe195e067c78e6d609d2bd493bd45"
+        },
+        {
+          "source": "ui-forms/src/FieldSettingsPanel.tsx",
+          "target": "components/ui/form-builder/field-settings-panel.tsx",
+          "sourceSha256": "4f60f7ba59e42b16e1f29336fb896049313f6601b4cf3783f36eaf4ef3cf4bf7"
+        },
+        {
+          "source": "ui-forms/src/ConditionsEditor.tsx",
+          "target": "components/ui/form-builder/conditions-editor.tsx",
+          "sourceSha256": "acdd08a24022078c698105693c678c4b3265f69ec57f9a6295fe9f2b476bc8b4"
+        },
+        {
+          "source": "ui-forms/src/FormPreview.tsx",
+          "target": "components/ui/form-builder/form-preview.tsx",
+          "sourceSha256": "ef1fc522cdcef57f3e80339bdc9842dffc424149c749680181c4e4e5f6fa4d1d"
+        },
+        {
+          "source": "ui-forms/src/DynamicForm.tsx",
+          "target": "components/ui/form-builder/dynamic-form.tsx",
+          "sourceSha256": "b9654c4037c89cf9b9b4ed10c2c0bfd46d70d576360ea2f758e98aa940b11ff4"
+        },
+        {
+          "source": "ui-forms/src/FormsEmptyState.tsx",
+          "target": "components/ui/form-builder/forms-empty-state.tsx",
+          "sourceSha256": "1496c757dc7bb888d4b612f7de88e120637abe61c03dbe7de4dcacb3d8cbf5bb"
+        },
+        {
+          "source": "ui-forms/src/index.ts",
+          "target": "components/ui/form-builder/index.ts",
+          "sourceSha256": "3a6992fc5771d5ca43501f128b55b01fdc9253d38c970b81ebf7ca58a4665b92"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@dnd-kit/core",
+        "@dnd-kit/sortable",
+        "@dnd-kit/utilities",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services",
+        "utils"
+      ],
+      "registryDependencies": [
+        "collection-form",
+        "filter-panel"
+      ],
+      "sourcePackage": "@buildpad/ui-forms",
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
     }
   ],
   "categories": [

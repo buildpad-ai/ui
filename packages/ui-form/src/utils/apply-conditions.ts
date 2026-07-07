@@ -10,27 +10,11 @@
  * matches takes precedence (DaaS convention).
  */
 
-import type { Field } from '@buildpad/types';
+import type { Field, FieldCondition } from '@buildpad/types';
 
-/**
- * A single condition entry stored in field.meta.conditions
- */
-export interface FieldCondition {
-  /** Display name of the condition (for admin UI) */
-  name?: string;
-  /** Filter rule — a JSON filter object with exactly one key */
-  rule?: Record<string, unknown>;
-  /** Override: set field readonly */
-  readonly?: boolean;
-  /** Override: set field hidden */
-  hidden?: boolean;
-  /** Override: set field required */
-  required?: boolean;
-  /** Override: replace field options */
-  options?: Record<string, unknown>;
-  /** Override: clear value on save when hidden */
-  clear_hidden_value_on_save?: boolean;
-}
+// `FieldCondition` is now defined in `@buildpad/types` (single source of truth)
+// and re-exported here for backward compatibility with existing imports.
+export type { FieldCondition };
 
 /**
  * Simple filter rule evaluation.

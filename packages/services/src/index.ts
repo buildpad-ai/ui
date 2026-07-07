@@ -7,7 +7,13 @@
  */
 
 export { apiRequest, type ApiRequestOptions } from "./api-request";
-export { CollectionsService, createCollectionsService } from "./collections";
+export {
+  CollectionsService,
+  createCollectionsService,
+  FORM_BUILDER_COLLECTION_PREFIX,
+  normalizeCollectionName,
+  fullBaselineFields,
+} from "./collections";
 export { FieldsService, createFieldsService } from "./fields";
 export {
   ItemsService,

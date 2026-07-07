@@ -125,6 +125,12 @@ export interface ComponentEntry {
   dependencies: string[];
   internalDependencies: string[];
   registryDependencies?: string[];
+  /**
+   * When true, the component is skipped by bulk installs (`add --all`,
+   * bootstrap). It remains installable by explicit name (`add form-builder`)
+   * or by category. Used for opt-in feature modules (form-builder, file-manager).
+   */
+  excludeFromAll?: boolean;
   /** v2: owning source package, e.g. "@buildpad/ui-interfaces". */
   sourcePackage?: string;
   /** v2: semver of the source package at registry generation time. */

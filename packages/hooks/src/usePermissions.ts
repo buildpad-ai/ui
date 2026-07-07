@@ -168,19 +168,27 @@ export function usePermissions(options: UsePermissionsOptions = {}): UsePermissi
     return cleanPath;
   }, [isDirectMode, daasUrl]);
   
-  // Get headers helper
+  // Get headers helper.
+  // Prefer the explicit static `token` option (Storybook/testing). Otherwise
+  // defer to the provider's getHeaders(), which resolves the *dynamic* token
+  // (config.getToken(), e.g. the live Supabase session JWT) into an
+  // Authorization header. Reading `daasContext.config.token` directly is wrong
+  // here — that field is only set when the provider is configured with a
+  // static token, which getToken-based apps never populate, so every request
+  // went out with no Authorization header and permanently 401ed.
+  // Depend on the context's getHeaders FUNCTION, not the whole context object
+  // (see the buildUrl note above): its identity changes exactly when the
+  // stored token changes, which is precisely when a re-fetch is warranted.
+  const contextGetHeaders = daasContext?.getHeaders;
   const getHeaders = useCallback((): Record<string, string> => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    
-    const effectiveToken = token ?? daasContext?.config?.token;
-    if (effectiveToken) {
-      headers['Authorization'] = `Bearer ${effectiveToken}`;
+    if (token) {
+      return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
     }
-    
-    return headers;
-  }, [token, daasContext?.config?.token]);
+    return contextGetHeaders?.() ?? { 'Content-Type': 'application/json' };
+  }, [token, contextGetHeaders]);
   
   // Fetch global permissions (/api/permissions/me)
   const fetchGlobalPermissions = useCallback(async (): Promise<UserPermissions | null> => {
@@ -353,11 +361,25 @@ export function usePermissions(options: UsePermissionsOptions = {}): UsePermissi
   // becomes ['junction', 'related'] once it resolves. Without this dep,
   // non-admin users with valid permissions would never have their collection
   // permissions fetched, leaving allowSelect/allowCreate permanently false.
+  // When the app authenticates with a Bearer token, the provider resolves
+  // `getToken()` asynchronously — on first render the token is usually not
+  // there yet. Fetching without it is a guaranteed 401 (console noise, and
+  // `isAdmin` briefly wrong). Wait for the token instead: `hasToken` flips
+  // when the provider's getHeaders identity changes, so the effect re-fires
+  // the moment it resolves. Only gate when a token is actually expected
+  // (static `token` or `getToken` configured) — cookie-based setups have no
+  // token to wait for and must fetch immediately.
+  const expectsToken = Boolean(
+    token ?? daasContext?.config?.token ?? daasContext?.config?.getToken
+  );
+  const hasToken =
+    Boolean(token) ||
+    Boolean(contextGetHeaders && 'Authorization' in contextGetHeaders());
   useEffect(() => {
-    if (autoFetch) {
-      refresh();
-    }
-  }, [autoFetch, refresh]);
+    if (!autoFetch) return;
+    if (expectsToken && !hasToken) return;
+    refresh();
+  }, [autoFetch, refresh, expectsToken, hasToken]);
   
   return {
     // State

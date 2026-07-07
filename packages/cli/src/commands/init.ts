@@ -212,6 +212,12 @@ export async function init(options: { yes?: boolean; cwd: string }) {
         '@mantine/dates': '^8.0.0',
         'dayjs': '^1.11.0',
         '@tabler/icons-react': '^3.0.0',
+        // Drag-and-drop: required by core components always installed via `add --all`
+        // (list-m2m, list-m2a, vtable) and the form-builder module. Without these,
+        // `fix` would otherwise stub them as `declare module` (→ TS2709 namespace errors).
+        '@dnd-kit/core': '^6.0.0',
+        '@dnd-kit/sortable': '^9.0.0',
+        '@dnd-kit/utilities': '^3.0.0',
         // Auth layer scaffolded by `add --with-api` (always run during bootstrap):
         // supabase/middleware.ts is loaded on every request, lib/oauth uses jose.
         '@supabase/ssr': '^0.5',

@@ -1,5 +1,14 @@
 # @buildpad/ui-form
 
+## 1.6.0
+
+### Patch Changes
+
+- @buildpad/services@1.6.0
+- @buildpad/types@1.6.0
+- @buildpad/ui-interfaces@1.6.0
+- @buildpad/utils@1.6.0
+
 ## 1.5.0
 
 ### Patch Changes

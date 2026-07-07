@@ -273,6 +273,7 @@ export const WithIncludeFields: Story = {
  * The last triggered callback is displayed above the form.
  */
 export const WithCallbacks: Story = {
+  args: { collection: "posts" },
   render: () => {
     const [lastCallback, setLastCallback] = useState<string>("");
 
@@ -975,6 +976,7 @@ const withDeleteApi: Decorator = (Story) => {
  * Demonstrates the full CRUD lifecycle: load → edit → save or delete.
  */
 export const WithDelete: Story = {
+  args: { collection: "posts" },
   decorators: [withDeleteApi],
   render: () => {
     const [lastAction, setLastAction] = useState<string>("");
@@ -1007,6 +1009,7 @@ export const WithDelete: Story = {
  * Full CRUD form: create mode with callbacks for all actions.
  */
 export const FullCrud: Story = {
+  args: { collection: "posts" },
   decorators: [withDeleteApi],
   render: () => {
     const [log, setLog] = useState<string[]>([]);

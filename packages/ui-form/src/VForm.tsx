@@ -522,7 +522,13 @@ export const VForm: React.FC<VFormProps> = ({
               <FormGroupField
                 key={field.field}
                 field={field}
-                allFields={fields}
+                // Pass the PROCESSED fields (conditions/readonly/width/permission
+                // pipeline already applied), not the raw `fields` prop. Group
+                // children are re-derived inside FormGroupField via getChildFields;
+                // using raw fields there bypasses applyConditions, so condition
+                // rules (e.g. "show severity only when issue_type=bug") never take
+                // effect for any field placed inside a section/group.
+                allFields={formFields}
                 values={allValues}
                 initialValues={stableInitialValues}
                 validationErrors={stableValidationErrors}

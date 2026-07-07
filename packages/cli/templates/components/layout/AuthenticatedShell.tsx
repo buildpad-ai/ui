@@ -166,7 +166,14 @@ export function AuthenticatedShell({
       (item) =>
         pathname === item.href || pathname.startsWith(`${item.href}/`)
     );
-    return active?.label ?? brand.name;
+    if (active) return active.label;
+    // Routes that aren't in the sidebar (e.g. /forms from the forms module)
+    // still get a meaningful crumb from the first path segment, instead of
+    // repeating the brand name.
+    const segment = pathname.split("/").filter(Boolean)[0];
+    if (!segment) return brand.name;
+    const words = segment.replace(/[-_]+/g, " ");
+    return words.charAt(0).toUpperCase() + words.slice(1);
   }, [pathname, navItems, brand.name]);
 
   const displayName =

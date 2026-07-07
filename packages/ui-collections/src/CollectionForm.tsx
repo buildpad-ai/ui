@@ -33,7 +33,8 @@ import {
 } from "@mantine/core";
 import { FieldsService, ItemsService, PermissionsService, apiRequest } from "@buildpad/services";
 import type { CollectionActionAccess, CollectionAccess } from "@buildpad/services";
-import type { Field } from "@buildpad/types";
+import type { Field, FormDefinition } from "@buildpad/types";
+import { buildFieldsFromDefinition } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import { IconAlertCircle, IconCheck, IconTrash, IconX } from "@tabler/icons-react";
 import React, {
@@ -44,6 +45,13 @@ import React, {
   useState,
 } from "react";
 import { SaveOptions, type SaveAction } from "./SaveOptions";
+import {
+  EXTRAS_COLUMN,
+  extractExtras,
+  flattenExtras,
+  mergeExtras,
+  missingExtrasColumnMessage,
+} from "./extras-storage";
 
 export interface CollectionFormProps {
   /** Collection name */
@@ -70,6 +78,21 @@ export interface CollectionFormProps {
   showSaveOptions?: boolean;
   /** Whether to show the delete button in edit mode (default: true when id is set) */
   showDelete?: boolean;
+  /**
+   * Optional form definition (Dynamic Form Builder). When set, the loaded
+   * schema fields are overlaid via `buildFieldsFromDefinition` before rendering
+   * — applying the definition's order, width, sections, per-field overrides,
+   * and conditions. All permission, M2M, save, and validation logic is
+   * unchanged. Fields absent from the definition are omitted.
+   */
+  definition?: FormDefinition;
+  /**
+   * When `false`, the form renders and evaluates conditions but **never writes**
+   * to DaaS on submit — used by the builder's live preview so "Create"/"Save"
+   * is a no-op that shows a preview-success message instead of persisting.
+   * Default `true`.
+   */
+  persist?: boolean;
 }
 
 /** Permission state exposed to parent components */
@@ -147,7 +170,16 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   includeFields,
   showSaveOptions = false,
   showDelete,
+  definition,
+  persist = true,
 }) => {
+  // Stable signature so the load effect re-runs when the definition changes
+  // (e.g. live preview in the builder) without depending on object identity.
+  const definitionSignature = useMemo(
+    () => (definition ? JSON.stringify(definition) : ""),
+    [definition],
+  );
+
   // Use stable references for optional props
   const stableDefaultValues = useMemo(
     () => defaultValues || EMPTY_OBJECT,
@@ -176,6 +208,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const [deleteAllowed, setDeleteAllowed] = useState(false);
   const [readableFieldNames, setReadableFieldNames] = useState<string[] | null>(null);
   const [writableFieldNames, setWritableFieldNames] = useState<string[] | null>(null);
+  // Whether the target collection actually has the `extras` jsonb column that
+  // `store: 'extras'` fields write into (guards a cryptic DaaS 500 when absent).
+  const [hasExtrasColumn, setHasExtrasColumn] = useState(true);
 
   // ----- M2M junction map (fieldName → junction metadata) -----
   const [m2mJunctionMap, setM2mJunctionMap] = useState<Record<string, M2MJunctionInfo>>({});
@@ -192,7 +227,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   // Permission-aware field + item loading
   // =========================================================================
   useEffect(() => {
-    const loadKey = `${collection}-${id}-${mode}`;
+    const loadKey = `${collection}-${id}-${mode}-${definitionSignature}`;
     if (dataLoadedRef.current && lastLoadKey.current === loadKey) {
       return;
     }
@@ -209,6 +244,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           fieldsService.readAll(collection),
           PermissionsService.getMyCollectionAccess().catch(() => ({} as CollectionAccess)),
         ]);
+
+        // Does the target collection expose the `extras` jsonb tail column?
+        setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
 
         const access = collectionAccess?.[collection] || {};
         const readAccess: CollectionActionAccess | undefined = access.read;
@@ -299,6 +337,13 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           });
         }
 
+        // Overlay the form definition (order, width, sections, per-field
+        // overrides, conditions) onto the permission-filtered schema fields.
+        // Applied last so it cannot bypass read/write permission filtering.
+        if (definition) {
+          editableFields = buildFieldsFromDefinition(editableFields, definition);
+        }
+
         setFields(editableFields);
 
         // Resolve junction metadata for M2M alias fields so handleSave can
@@ -363,6 +408,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           initialData = { ...initialData, ...item };
         }
 
+        // Flatten the `extras` jsonb tail back into flat form values so extra
+        // fields hydrate. The raw `extras` object is retained in state to serve
+        // as the merge base on save (see splitData/handleSave below).
+        initialData = flattenExtras(initialData, EXTRAS_COLUMN);
+
         setFormData(initialData);
         setInitialFormData(initialData);
 
@@ -387,6 +437,8 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     stableDefaultValues,
     stableExcludeFields,
     stableIncludeFields,
+    definition,
+    definitionSignature,
   ]);
 
   // =========================================================================
@@ -413,6 +465,16 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const isSavable = useMemo(() => {
     return saveAllowed && (mode === "create" || hasEdits);
   }, [saveAllowed, mode, hasEdits]);
+
+  // Field names whose values are stored in the `extras` jsonb tail rather than a
+  // real column (set by `buildFieldsFromDefinition` via `meta.store`).
+  const extrasFieldNames = useMemo(
+    () =>
+      new Set(
+        fields.filter((f) => f.meta?.store === "extras").map((f) => f.field),
+      ),
+    [fields],
+  );
 
   // =========================================================================
   // Compute disabledOptions for SaveOptions
@@ -533,6 +595,13 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     setSuccess(false);
     setFieldErrors({});
 
+    // Preview mode: never write to DaaS — just acknowledge the submit.
+    if (!persist) {
+      setSuccess(true);
+      setSaving(false);
+      return;
+    }
+
     try {
       // Remove read-only fields from data
       const dataToSave = { ...formData };
@@ -544,11 +613,18 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
       const itemsService = new ItemsService(collection);
 
-      // Helper: split dataToSave into scalar fields and M2M changes.
+      // Helper: split dataToSave into scalar fields, M2M changes, and `extras`.
       // M2M changes ({create, update, delete}) are flushed via the junction
       // collection API rather than embedded in the parent PATCH body, because
-      // DaaS does not reliably process nested M2M payloads.
+      // DaaS does not reliably process nested M2M payloads. `extras` values
+      // (store==='extras') are peeled off here and merged into the item's single
+      // `extras` jsonb column by the caller.
       const splitData = (source: Record<string, unknown>) => {
+        const { rest, extras } = extractExtras(
+          source,
+          extrasFieldNames,
+          EXTRAS_COLUMN,
+        );
         const scalar: Record<string, unknown> = {};
         const m2m: Array<{
           junctionInfo: M2MJunctionInfo;
@@ -558,7 +634,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             delete: (string | number)[];
           };
         }> = [];
-        for (const [key, value] of Object.entries(source)) {
+        for (const [key, value] of Object.entries(rest)) {
           const ji = m2mJunctionMap[key];
           if (ji && isM2MChangesItem(value)) {
             m2m.push({ junctionInfo: ji, changes: value });
@@ -566,7 +642,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             scalar[key] = value;
           }
         }
-        return { scalar, m2m };
+        return { scalar, m2m, extras };
       };
 
       if (mode === "edit" && id) {
@@ -583,7 +659,21 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           allChanged[key] = value;
         }
 
-        const { scalar: changedData, m2m: m2mEntries } = splitData(allChanged);
+        const {
+          scalar: changedData,
+          m2m: m2mEntries,
+          extras: changedExtras,
+        } = splitData(allChanged);
+
+        // Merge changed extra values onto the item's existing `extras` jsonb so
+        // unchanged extras survive the partial update.
+        if (Object.keys(changedExtras).length > 0) {
+          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          changedData[EXTRAS_COLUMN] = mergeExtras(
+            initialFormData[EXTRAS_COLUMN],
+            changedExtras,
+          );
+        }
 
         // Skip the PATCH when nothing scalar changed — avoids an unnecessary
         // round-trip (the backend skips the DB write and returns 200, but
@@ -606,6 +696,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           }
         }
 
+        // Persist the merged `extras` object into form state so the next edit
+        // merges against the just-saved value, not the stale baseline.
+        if (changedData[EXTRAS_COLUMN] !== undefined) {
+          clearedFormData[EXTRAS_COLUMN] = changedData[EXTRAS_COLUMN];
+        }
 
         setSuccess(true);
         setFormData(clearedFormData);
@@ -638,7 +733,17 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           }
           cleanedDataToSave[key] = value;
         }
-        const { scalar: scalarData, m2m: m2mEntries } = splitData(cleanedDataToSave);
+        const {
+          scalar: scalarData,
+          m2m: m2mEntries,
+          extras: createdExtras,
+        } = splitData(cleanedDataToSave);
+
+        // Merge all extra answers into the item's single `extras` jsonb column.
+        if (Object.keys(createdExtras).length > 0) {
+          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          scalarData[EXTRAS_COLUMN] = createdExtras;
+        }
 
         const result = await itemsService.createOne(scalarData);
         const newId = result?.id as string | number | undefined;
@@ -741,7 +846,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           mb="md"
           data-testid="form-success"
         >
-          {mode === "create"
+          {!persist
+            ? "Looks valid — preview only, no record was created."
+            : mode === "create"
             ? "Item created successfully!"
             : "Item updated successfully!"}
         </Alert>

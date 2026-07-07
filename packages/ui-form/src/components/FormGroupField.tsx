@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { Box, Stack } from '@mantine/core';
+import { Box } from '@mantine/core';
 import type { Field } from '@buildpad/types';
 import { GroupDetail, GroupAccordion, GroupRaw } from '@buildpad/ui-interfaces';
 import { getFieldInterface, getFieldDisplayName } from '@buildpad/utils';
@@ -96,8 +96,12 @@ function ChildFieldsRenderer({
   nonEditableFields?: Set<string>;
   locale?: string;
 }) {
+  // Lay children out in the same two-column `.form-grid` the top-level VForm
+  // uses, so each child's `field-width-*` class (which controls `grid-column`)
+  // actually takes effect. A flex column here would make every child full-width
+  // regardless of its configured width — breaking half/full inside sections.
   return (
-    <Stack gap="md">
+    <div className="form-grid">
       {childFields.map((child) => {
         // Check if this child is itself a group (nested groups)
         const isChildGroup = child.meta?.special?.includes?.('group');
@@ -142,7 +146,7 @@ function ChildFieldsRenderer({
           />
         );
       })}
-    </Stack>
+    </div>
   );
 }
 
