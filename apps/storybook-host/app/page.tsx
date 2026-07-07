@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 
 interface ConnectionStatus {
   connected: boolean;
@@ -113,6 +113,14 @@ export default function HomePage() {
   // Connecting is optional (stories run on mock data), so the form stays
   // collapsed behind a compact status bar until the user opts in.
   const [showConnect, setShowConnect] = useState(false);
+  const urlInputRef = useRef<HTMLInputElement>(null);
+
+  // When the form is revealed (via the bar button or the hero CTA), focus the
+  // first field. `preventScroll` keeps the #connect anchor's scroll from
+  // fighting the focus-induced scroll.
+  useEffect(() => {
+    if (showConnect) urlInputRef.current?.focus({ preventScroll: true });
+  }, [showConnect]);
 
   useEffect(() => {
     setIsDev(window.location.hostname === "localhost");
@@ -204,7 +212,11 @@ export default function HomePage() {
             <a className="btn btn-ghost" href="#storybooks">
               Explore Storybooks
             </a>
-            <a className="btn btn-ghost" href="#connect">
+            <a
+              className="btn btn-ghost"
+              href="#connect"
+              onClick={() => setShowConnect(true)}
+            >
               Connect DaaS
             </a>
           </div>
@@ -316,6 +328,7 @@ npx @buildpad/cli@latest bootstrap`}</pre>
                     <label htmlFor="daas-url">DaaS URL</label>
                     <input
                       id="daas-url"
+                      ref={urlInputRef}
                       type="url"
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
