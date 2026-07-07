@@ -16,42 +16,89 @@ interface ConnectionStatus {
   error?: string;
 }
 
-const storybooks = [
+interface CatalogItem {
+  emoji: string;
+  name: string;
+  path: string;
+  port: number;
+  blurb: string;
+}
+
+interface CatalogTier {
+  tier: string;
+  caption: string;
+  items: CatalogItem[];
+}
+
+// Single source of truth for the catalog, grouped by altitude so the two
+// form-related entries (VForm the renderer vs. the Form Builder authoring
+// module) read as distinct things. Mirrors the layers in /docs/architecture.
+const catalog: CatalogTier[] = [
   {
-    name: "🎨 Interfaces",
-    path: "/storybook/interfaces",
-    port: 6005,
-    description: "40+ field interface components",
+    tier: "Field Interfaces",
+    caption: "Schema-mapped primitives",
+    items: [
+      {
+        emoji: "🎨",
+        name: "Interfaces",
+        path: "/storybook/interfaces",
+        port: 6005,
+        blurb: "40+ field components: inputs, selects, relations, files, maps.",
+      },
+    ],
   },
   {
-    name: "📝 Form",
-    path: "/storybook/form",
-    port: 6006,
-    description: "VForm dynamic form builder",
+    tier: "Renderers",
+    caption: "Schema → UI",
+    items: [
+      {
+        emoji: "📝",
+        name: "VForm",
+        path: "/storybook/form",
+        port: 6006,
+        blurb: "Schema-driven form renderer — validation, permissions, layout.",
+      },
+      {
+        emoji: "📊",
+        name: "VTable",
+        path: "/storybook/table",
+        port: 6007,
+        blurb: "Dynamic data table — sorting, selection, drag-ordering.",
+      },
+    ],
   },
   {
-    name: "🧩 Form Builder",
-    path: "/storybook/forms",
-    port: 6010,
-    description: "Visual form builder + DynamicForm renderer",
+    tier: "Composition",
+    caption: "Data + UI",
+    items: [
+      {
+        emoji: "📦",
+        name: "Collections",
+        path: "/storybook/collections",
+        port: 6008,
+        blurb: "CollectionForm + CollectionList — production-ready CRUD.",
+      },
+    ],
   },
   {
-    name: "📊 Table",
-    path: "/storybook/table",
-    port: 6007,
-    description: "VTable dynamic data table",
-  },
-  {
-    name: "📦 Collections",
-    path: "/storybook/collections",
-    port: 6008,
-    description: "CollectionForm & CollectionList",
-  },
-  {
-    name: "📁 Files",
-    path: "/storybook/files",
-    port: 6009,
-    description: "File upload & management components",
+    tier: "App Modules",
+    caption: "Full features with docs recipes",
+    items: [
+      {
+        emoji: "📁",
+        name: "Files",
+        path: "/storybook/files",
+        port: 6009,
+        blurb: "FileManager + FileDetail — upload, folders, preview, bulk actions.",
+      },
+      {
+        emoji: "🧩",
+        name: "Form Builder",
+        path: "/storybook/forms",
+        port: 6010,
+        blurb: "Design forms visually; render them live with DynamicForm.",
+      },
+    ],
   },
 ];
 
@@ -184,48 +231,12 @@ npx @buildpad/cli@latest bootstrap`}</pre>
         </div>
       </section>
 
-      <section className="feature-grid">
-        <div className="feature-card">
-          <h2>Interfaces</h2>
-          <p>
-            40+ Buildpad-style field components: inputs, selects, relations,
-            files, maps, and workflow-aware UI.
-          </p>
-        </div>
-        <div className="feature-card">
-          <h2>VForm</h2>
-          <p>
-            Dynamic form builder with validation, permissions, and layout
-            grouping. Built for real collections.
-          </p>
-        </div>
-        <div className="feature-card">
-          <h2>VTable</h2>
-          <p>
-            Sortable, resizable data grids with selection, drag ordering, and
-            custom cell rendering.
-          </p>
-        </div>
-        <div className="feature-card">
-          <h2>Collections</h2>
-          <p>
-            CollectionForm + CollectionList compose data fetching and UI into
-            production-ready CRUD.
-          </p>
-        </div>
-        <div className="feature-card">
-          <h2>Files</h2>
-          <p>
-            FileManager + FileDetail with upload, folders, search, bulk actions,
-            metadata editing, and DaaS RBAC gating.
-          </p>
-        </div>
-      </section>
-
       <section className="card" id="storybooks">
         <div className="card-header">
           <h2>Storybooks</h2>
-          <span className="badge badge-gray">Live component docs</span>
+          <a className="badge badge-gray" href="/docs">
+            Live component docs
+          </a>
         </div>
 
         {!status?.connected && (
@@ -234,21 +245,31 @@ npx @buildpad/cli@latest bootstrap`}</pre>
           </div>
         )}
 
-        <div className="storybook-grid">
-          {storybooks.map((sb) => (
-            <a
-              key={sb.name}
-              href={isDev ? `http://localhost:${sb.port}` : sb.path}
-              target={isDev ? "_blank" : undefined}
-              rel={isDev ? "noopener noreferrer" : undefined}
-              className="storybook-card"
-            >
-              <h3>{sb.name}</h3>
-              <p>{sb.description}</p>
-              <small>{isDev ? `localhost:${sb.port}` : sb.path}</small>
-            </a>
-          ))}
-        </div>
+        {catalog.map((group) => (
+          <div key={group.tier} className="tier">
+            <div className="tier-head">
+              <h3 className="tier-label">{group.tier}</h3>
+              <span className="tier-caption">{group.caption}</span>
+            </div>
+            <div className="storybook-grid">
+              {group.items.map((sb) => (
+                <a
+                  key={sb.name}
+                  href={isDev ? `http://localhost:${sb.port}` : sb.path}
+                  target={isDev ? "_blank" : undefined}
+                  rel={isDev ? "noopener noreferrer" : undefined}
+                  className="storybook-card"
+                >
+                  <h3>
+                    {sb.emoji} {sb.name}
+                  </h3>
+                  <p>{sb.blurb}</p>
+                  <small>{isDev ? `localhost:${sb.port}` : sb.path}</small>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
 
         {isDev && (
           <div className="dev-note">

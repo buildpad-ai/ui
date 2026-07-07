@@ -31,6 +31,22 @@ The source layer contains all the packages in the monorepo:
 | `@buildpad/ui-files` | FileManager + FileDetail — upload, folders, preview, bulk actions ([recipe](/files)) |
 | `@buildpad/ui-forms` | Visual FormBuilder + DynamicForm runtime — the Dynamic Form Builder module ([recipe](/forms)) |
 
+### UI layers
+
+The UI packages stack by altitude — each tier builds on the one below. The same
+grouping organizes the Storybook landing page:
+
+| Tier | Packages | Role |
+|---|---|---|
+| **Field Interfaces** | `ui-interfaces` | Schema-mapped primitives — one component per field type |
+| **Renderers** | `ui-form` (VForm), `ui-table` (VTable) | Turn a collection schema into a form or table |
+| **Composition** | `ui-collections` | CollectionForm + CollectionList — data fetching + renderers into CRUD |
+| **App Modules** | `ui-files`, `ui-forms` | Full, recipe-backed features (file manager; visual form builder) |
+
+Note the distinction inside the form family: **VForm** (`ui-form`) *renders* a form
+from a schema, while the **Form Builder** (`ui-forms`) is an authoring module that
+*designs* reusable form definitions and renders them at runtime with `DynamicForm`.
+
 ## Dependency Flow
 
 ```
