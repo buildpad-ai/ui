@@ -24,10 +24,28 @@ The source layer contains all the packages in the monorepo:
 | `@buildpad/services` | Services (FieldsService, CollectionsService) + DaaS API config |
 | `@buildpad/hooks` | React hooks for auth, permissions, relations, selection, presets |
 | `@buildpad/utils` | Field interface mapper, validation, formatting utilities |
-| `@buildpad/ui-interfaces` | 32 field interface components built with Mantine v8 |
+| `@buildpad/ui-interfaces` | 40+ field interface components built with Mantine v8 |
 | `@buildpad/ui-form` | VForm dynamic form component with permission enforcement |
 | `@buildpad/ui-table` | VTable dynamic data table with sorting, selection, drag-drop |
 | `@buildpad/ui-collections` | CollectionForm (CRUD wrapper) + CollectionList (paginated table) |
+| `@buildpad/ui-files` | FileManager + FileDetail — upload, folders, preview, bulk actions ([recipe](/files)) |
+| `@buildpad/ui-forms` | Visual FormBuilder + DynamicForm runtime — the Dynamic Form Builder module ([recipe](/forms)) |
+
+### UI layers
+
+The UI packages stack by altitude — each tier builds on the one below. The same
+grouping organizes the Storybook landing page:
+
+| Tier | Packages | Role |
+|---|---|---|
+| **Field Interfaces** | `ui-interfaces` | Schema-mapped primitives — one component per field type |
+| **Renderers** | `ui-form` (VForm), `ui-table` (VTable) | Turn a collection schema into a form or table |
+| **Composition** | `ui-collections` | CollectionForm + CollectionList — data fetching + renderers into CRUD |
+| **App Modules** | `ui-files`, `ui-forms` | Full, recipe-backed features (file manager; visual form builder) |
+
+Note the distinction inside the form family: **VForm** (`ui-form`) *renders* a form
+from a schema, while the **Form Builder** (`ui-forms`) is an authoring module that
+*designs* reusable form definitions and renders them at runtime with `DynamicForm`.
 
 ## Dependency Flow
 
@@ -37,12 +55,14 @@ types (base)
   ├─ services (CRUD + DaaS)
   └─ hooks (auth + relations)
        ↓  (all feed into)
-  ui-interfaces (32 components)
+  ui-interfaces (40+ components)
             ↓
   ui-form (VForm)    ui-table (VTable)
        └──────┬──────────┘
               ↓
   ui-collections (CollectionForm, CollectionList)
+       ├─ ui-files  (FileManager — files module)
+       └─ ui-forms  (FormBuilder + DynamicForm — form builder module)
 ```
 
 ## Consumer Layer

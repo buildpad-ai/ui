@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 
 interface ConnectionStatus {
   connected: boolean;
@@ -16,36 +16,89 @@ interface ConnectionStatus {
   error?: string;
 }
 
-const storybooks = [
+interface CatalogItem {
+  emoji: string;
+  name: string;
+  path: string;
+  port: number;
+  blurb: string;
+}
+
+interface CatalogTier {
+  tier: string;
+  caption: string;
+  items: CatalogItem[];
+}
+
+// Single source of truth for the catalog, grouped by altitude so the two
+// form-related entries (VForm the renderer vs. the Form Builder authoring
+// module) read as distinct things. Mirrors the layers in /docs/architecture.
+const catalog: CatalogTier[] = [
   {
-    name: "🎨 Interfaces",
-    path: "/storybook/interfaces",
-    port: 6005,
-    description: "40+ field interface components",
+    tier: "Field Interfaces",
+    caption: "Schema-mapped primitives",
+    items: [
+      {
+        emoji: "🎨",
+        name: "Interfaces",
+        path: "/storybook/interfaces",
+        port: 6005,
+        blurb: "40+ field components: inputs, selects, relations, files, maps.",
+      },
+    ],
   },
   {
-    name: "📝 Form",
-    path: "/storybook/form",
-    port: 6006,
-    description: "VForm dynamic form builder",
+    tier: "Renderers",
+    caption: "Schema → UI",
+    items: [
+      {
+        emoji: "📝",
+        name: "VForm",
+        path: "/storybook/form",
+        port: 6006,
+        blurb: "Schema-driven form renderer — validation, permissions, layout.",
+      },
+      {
+        emoji: "📊",
+        name: "VTable",
+        path: "/storybook/table",
+        port: 6007,
+        blurb: "Dynamic data table — sorting, selection, drag-ordering.",
+      },
+    ],
   },
   {
-    name: "📊 Table",
-    path: "/storybook/table",
-    port: 6007,
-    description: "VTable dynamic data table",
+    tier: "Composition",
+    caption: "Data + UI",
+    items: [
+      {
+        emoji: "📦",
+        name: "Collections",
+        path: "/storybook/collections",
+        port: 6008,
+        blurb: "CollectionForm + CollectionList — production-ready CRUD.",
+      },
+    ],
   },
   {
-    name: "📦 Collections",
-    path: "/storybook/collections",
-    port: 6008,
-    description: "CollectionForm & CollectionList",
-  },
-  {
-    name: "📁 Files",
-    path: "/storybook/files",
-    port: 6009,
-    description: "File upload & management components",
+    tier: "App Modules",
+    caption: "Full features with docs recipes",
+    items: [
+      {
+        emoji: "📁",
+        name: "Files",
+        path: "/storybook/files",
+        port: 6009,
+        blurb: "FileManager + FileDetail — upload, folders, preview, bulk actions.",
+      },
+      {
+        emoji: "🧩",
+        name: "Form Builder",
+        path: "/storybook/forms",
+        port: 6010,
+        blurb: "Design forms visually; render them live with DynamicForm.",
+      },
+    ],
   },
 ];
 
@@ -57,6 +110,17 @@ export default function HomePage() {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDev, setIsDev] = useState(false);
+  // Connecting is optional (stories run on mock data), so the form stays
+  // collapsed behind a compact status bar until the user opts in.
+  const [showConnect, setShowConnect] = useState(false);
+  const urlInputRef = useRef<HTMLInputElement>(null);
+
+  // When the form is revealed (via the bar button or the hero CTA), focus the
+  // first field. `preventScroll` keeps the #connect anchor's scroll from
+  // fighting the focus-induced scroll.
+  useEffect(() => {
+    if (showConnect) urlInputRef.current?.focus({ preventScroll: true });
+  }, [showConnect]);
 
   useEffect(() => {
     setIsDev(window.location.hostname === "localhost");
@@ -100,6 +164,7 @@ export default function HomePage() {
 
       await checkStatus();
       setToken(""); // Clear token from UI after successful connect
+      setShowConnect(false); // Collapse the form back to the compact bar
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection failed");
     } finally {
@@ -147,7 +212,11 @@ export default function HomePage() {
             <a className="btn btn-ghost" href="#storybooks">
               Explore Storybooks
             </a>
-            <a className="btn btn-ghost" href="#connect">
+            <a
+              className="btn btn-ghost"
+              href="#connect"
+              onClick={() => setShowConnect(true)}
+            >
               Connect DaaS
             </a>
           </div>
@@ -178,71 +247,161 @@ npx @buildpad/cli@latest bootstrap`}</pre>
         </div>
       </section>
 
-      <section className="feature-grid">
-        <div className="feature-card">
-          <h2>Interfaces</h2>
-          <p>
-            40+ Buildpad-style field components: inputs, selects, relations,
-            files, maps, and workflow-aware UI.
-          </p>
-        </div>
-        <div className="feature-card">
-          <h2>VForm</h2>
-          <p>
-            Dynamic form builder with validation, permissions, and layout
-            grouping. Built for real collections.
-          </p>
-        </div>
-        <div className="feature-card">
-          <h2>VTable</h2>
-          <p>
-            Sortable, resizable data grids with selection, drag ordering, and
-            custom cell rendering.
-          </p>
-        </div>
-        <div className="feature-card">
-          <h2>Collections</h2>
-          <p>
-            CollectionForm + CollectionList compose data fetching and UI into
-            production-ready CRUD.
-          </p>
-        </div>
-        <div className="feature-card">
-          <h2>Files</h2>
-          <p>
-            FileManager + FileDetail with upload, folders, search, bulk actions,
-            metadata editing, and DaaS RBAC gating.
-          </p>
-        </div>
+      <section className="connect-card" id="connect">
+        {status?.connected && status.user ? (
+          // Compact connected bar — no heavy panel.
+          <div className="connect-bar">
+            <div className="connect-bar-status">
+              <span className="status-dot is-on" aria-hidden />
+              <div className="connect-bar-text">
+                <strong>
+                  Connected as {status.user.first_name} {status.user.last_name}
+                  {status.user.admin_access && (
+                    <span className="badge badge-admin connect-admin">
+                      Admin
+                    </span>
+                  )}
+                </strong>
+                <span>{status.url}</span>
+              </div>
+            </div>
+            <div className="connect-actions">
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={checkStatus}
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={handleDisconnect}
+              >
+                Disconnect
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Compact optional prompt — the form is revealed only on demand.
+          <>
+            <div className="connect-bar">
+              <div className="connect-bar-status">
+                <span className="status-dot" aria-hidden />
+                <div className="connect-bar-text">
+                  <strong>Live data is optional</strong>
+                  <span>
+                    Stories run on mock data. Connect a DaaS instance to use
+                    real data.
+                  </span>
+                </div>
+              </div>
+              <div className="connect-actions">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${
+                    showConnect ? "btn-outline" : "btn-primary"
+                  }`}
+                  onClick={() => setShowConnect((v) => !v)}
+                  aria-expanded={showConnect ? "true" : "false"}
+                >
+                  {showConnect ? "Cancel" : "Connect DaaS"}
+                </button>
+              </div>
+            </div>
+
+            {showConnect && (
+              <div className="connect-form-wrap">
+                <div className="alert alert-info alert-mt">
+                  The host app acts as an authentication proxy so Storybooks can
+                  use real DaaS data without CORS issues.
+                </div>
+
+                {status?.connected && status.error && (
+                  <div className="alert alert-warning">
+                    Connected but auth error: {status.error}
+                  </div>
+                )}
+
+                <form onSubmit={handleConnect}>
+                  <div className="form-group">
+                    <label htmlFor="daas-url">DaaS URL</label>
+                    <input
+                      id="daas-url"
+                      ref={urlInputRef}
+                      type="url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://xxx.buildpad-daas.xtremax.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="daas-token">Static Token</label>
+                    <input
+                      id="daas-token"
+                      type="password"
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      placeholder="Your DaaS static token"
+                      required
+                    />
+                    <small>
+                      Generate from DaaS → Users → Edit User → Token → Generate
+                      Token
+                    </small>
+                  </div>
+
+                  {error && <div className="alert alert-error">{error}</div>}
+
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={connecting || !url || !token}
+                  >
+                    {connecting ? "Connecting…" : "Connect"}
+                  </button>
+                </form>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       <section className="card" id="storybooks">
         <div className="card-header">
           <h2>Storybooks</h2>
-          <span className="badge badge-gray">Live component docs</span>
+          <a className="badge badge-gray" href="/docs">
+            Live component docs
+          </a>
         </div>
 
-        {!status?.connected && (
-          <div className="alert alert-info alert-mt">
-            Connect to DaaS below to enable live data in Storybook stories.
+        {catalog.map((group) => (
+          <div key={group.tier} className="tier">
+            <div className="tier-head">
+              <h3 className="tier-label">{group.tier}</h3>
+              <span className="tier-caption">{group.caption}</span>
+            </div>
+            <div className="storybook-grid">
+              {group.items.map((sb) => (
+                <a
+                  key={sb.name}
+                  href={isDev ? `http://localhost:${sb.port}` : sb.path}
+                  target={isDev ? "_blank" : undefined}
+                  rel={isDev ? "noopener noreferrer" : undefined}
+                  className="storybook-card"
+                >
+                  <h3>
+                    {sb.emoji} {sb.name}
+                  </h3>
+                  <p>{sb.blurb}</p>
+                  <small>{isDev ? `localhost:${sb.port}` : sb.path}</small>
+                </a>
+              ))}
+            </div>
           </div>
-        )}
-
-        <div className="storybook-grid">
-          {storybooks.map((sb) => (
-            <a
-              key={sb.name}
-              href={isDev ? `http://localhost:${sb.port}` : sb.path}
-              target={isDev ? "_blank" : undefined}
-              rel={isDev ? "noopener noreferrer" : undefined}
-              className="storybook-card"
-            >
-              <h3>{sb.name}</h3>
-              <p>{sb.description}</p>
-              <small>{isDev ? `localhost:${sb.port}` : sb.path}</small>
-            </a>
-          ))}
-        </div>
+        ))}
 
         {isDev && (
           <div className="dev-note">
@@ -254,6 +413,7 @@ npx @buildpad/cli@latest bootstrap`}</pre>
             <pre>{`pnpm dev:host               # Start this proxy (port 3000)
 pnpm storybook:interfaces   # Port 6005
 pnpm storybook:form         # Port 6006
+pnpm storybook:forms        # Port 6010 (form builder)
 pnpm storybook:table        # Port 6007
 pnpm storybook:collections  # Port 6008
 pnpm storybook:files        # Port 6009`}</pre>
@@ -261,99 +421,6 @@ pnpm storybook:files        # Port 6009`}</pre>
         )}
       </section>
 
-      <section className="card" id="connect">
-        <div className="card-header">
-          <h2>DaaS Connection</h2>
-          <span
-            className={`badge ${
-              status?.connected ? "badge-green" : "badge-gray"
-            }`}
-          >
-            {status?.connected ? "● Connected" : "○ Not Connected"}
-          </span>
-        </div>
-
-        <div className="alert alert-info alert-mt">
-          The host app acts as an authentication proxy so Storybooks can use
-          real DaaS data without CORS issues.
-        </div>
-
-        {status?.connected && status.user ? (
-          <div className="user-info">
-            <div className="user-row">
-              <span className="user-name">
-                {status.user.first_name} {status.user.last_name}
-              </span>
-              {status.user.admin_access && (
-                <span className="badge badge-admin">Admin</span>
-              )}
-            </div>
-            <span className="user-email">{status.user.email}</span>
-            <span className="user-url">{status.url}</span>
-            <div className="btn-group">
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={handleDisconnect}
-              >
-                Disconnect
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={checkStatus}
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form onSubmit={handleConnect}>
-            {status?.connected && status.error && (
-              <div className="alert alert-warning">
-                Connected but auth error: {status.error}
-              </div>
-            )}
-
-            <div className="form-group">
-              <label htmlFor="daas-url">DaaS URL</label>
-              <input
-                id="daas-url"
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://xxx.buildpad-daas.xtremax.com"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="daas-token">Static Token</label>
-              <input
-                id="daas-token"
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Your DaaS static token"
-                required
-              />
-              <small>
-                Generate from DaaS → Users → Edit User → Token → Generate Token
-              </small>
-            </div>
-
-            {error && <div className="alert alert-error">{error}</div>}
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={connecting || !url || !token}
-            >
-              {connecting ? "Connecting…" : "Connect"}
-            </button>
-          </form>
-        )}
-      </section>
     </main>
   );
 }

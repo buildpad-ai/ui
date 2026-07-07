@@ -167,31 +167,6 @@ a {
   color: var(--text-muted);
 }
 
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 3rem;
-}
-
-.feature-card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 1.25rem 1.35rem;
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-}
-
-.feature-card h2 {
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-}
-
-.feature-card p {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -223,6 +198,16 @@ a {
   border-radius: 99px;
   white-space: nowrap;
   border: 1px solid transparent;
+}
+
+a.badge {
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+a.badge:hover {
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 .badge-green {
@@ -348,6 +333,88 @@ a {
   flex-wrap: wrap;
 }
 
+.btn-sm {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.82rem;
+}
+
+/* Compact, collapsed-by-default DaaS connection bar */
+.connect-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.25rem;
+  margin-bottom: 1.75rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+.connect-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.connect-bar-status {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.status-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+
+.status-dot.is-on {
+  background: var(--green);
+  opacity: 1;
+  box-shadow: 0 0 0 3px var(--green-bg);
+}
+
+.connect-bar-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.connect-bar-text strong {
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.connect-bar-text span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connect-admin {
+  font-size: 0.62rem;
+}
+
+.connect-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: none;
+}
+
+.connect-form-wrap {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
 .alert {
   padding: 0.75rem 1rem;
   border-radius: 10px;
@@ -377,34 +444,33 @@ a {
   margin-top: 0.75rem;
 }
 
-.user-info {
+.tier {
+  margin-top: 1.5rem;
+}
+
+.tier:first-of-type {
+  margin-top: 1rem;
+}
+
+.tier-head {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
 }
 
-.user-info .user-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.tier-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
 }
 
-.user-info .user-name {
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.user-info .user-email {
+.tier-caption {
+  font-size: 0.75rem;
   color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.user-info .user-url {
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-family: var(--mono);
-  margin-top: 0.5rem;
-  word-break: break-all;
 }
 
 .storybook-grid {

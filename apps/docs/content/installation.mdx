@@ -90,6 +90,8 @@ After adding components, your project will look like this:
 ```
 your-project/
 ├── app/
+│   ├── (authenticated)/
+│   │   └── layout.tsx     # Renders AuthenticatedShell around authenticated pages
 │   ├── api/
 │   │   ├── auth/          # Auth proxy routes
 │   │   ├── fields/        # Fields proxy
@@ -97,14 +99,13 @@ your-project/
 │   │   ├── relations/     # Relations proxy
 │   │   └── files/         # Files proxy
 │   └── login/page.tsx     # Login page
-├── src/
-│   ├── components/
-│   │   └── ui/            # UI components (copied source)
-│   └── lib/
-│       └── buildpad/      # Lib modules (auto-resolved)
-│           ├── types/
-│           ├── services/
-│           ├── hooks/
-│           └── utils/
+├── components/
+│   └── ui/                # UI components (copied source)
+├── lib/
+│   └── buildpad/          # Lib modules (auto-resolved)
+│       ├── types/
+│       ├── services/
+│       ├── hooks/
+│       └── utils/
 └── buildpad.json          # Configuration
 ```
