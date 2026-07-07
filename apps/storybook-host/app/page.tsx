@@ -110,6 +110,9 @@ export default function HomePage() {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDev, setIsDev] = useState(false);
+  // Connecting is optional (stories run on mock data), so the form stays
+  // collapsed behind a compact status bar until the user opts in.
+  const [showConnect, setShowConnect] = useState(false);
 
   useEffect(() => {
     setIsDev(window.location.hostname === "localhost");
@@ -153,6 +156,7 @@ export default function HomePage() {
 
       await checkStatus();
       setToken(""); // Clear token from UI after successful connect
+      setShowConnect(false); // Collapse the form back to the compact bar
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection failed");
     } finally {
@@ -231,97 +235,124 @@ npx @buildpad/cli@latest bootstrap`}</pre>
         </div>
       </section>
 
-      <section className="card" id="connect">
-        <div className="card-header">
-          <h2>DaaS Connection</h2>
-          <span
-            className={`badge ${
-              status?.connected ? "badge-green" : "badge-gray"
-            }`}
-          >
-            {status?.connected ? "● Connected" : "○ Not Connected"}
-          </span>
-        </div>
-
-        <div className="alert alert-info alert-mt">
-          The host app acts as an authentication proxy so Storybooks can use
-          real DaaS data without CORS issues.
-        </div>
-
+      <section className="connect-card" id="connect">
         {status?.connected && status.user ? (
-          <div className="user-info">
-            <div className="user-row">
-              <span className="user-name">
-                {status.user.first_name} {status.user.last_name}
-              </span>
-              {status.user.admin_access && (
-                <span className="badge badge-admin">Admin</span>
-              )}
+          // Compact connected bar — no heavy panel.
+          <div className="connect-bar">
+            <div className="connect-bar-status">
+              <span className="status-dot is-on" aria-hidden />
+              <div className="connect-bar-text">
+                <strong>
+                  Connected as {status.user.first_name} {status.user.last_name}
+                  {status.user.admin_access && (
+                    <span className="badge badge-admin connect-admin">
+                      Admin
+                    </span>
+                  )}
+                </strong>
+                <span>{status.url}</span>
+              </div>
             </div>
-            <span className="user-email">{status.user.email}</span>
-            <span className="user-url">{status.url}</span>
-            <div className="btn-group">
+            <div className="connect-actions">
               <button
                 type="button"
-                className="btn btn-danger"
-                onClick={handleDisconnect}
-              >
-                Disconnect
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline"
+                className="btn btn-outline btn-sm"
                 onClick={checkStatus}
               >
                 Refresh
               </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={handleDisconnect}
+              >
+                Disconnect
+              </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleConnect}>
-            {status?.connected && status.error && (
-              <div className="alert alert-warning">
-                Connected but auth error: {status.error}
+          // Compact optional prompt — the form is revealed only on demand.
+          <>
+            <div className="connect-bar">
+              <div className="connect-bar-status">
+                <span className="status-dot" aria-hidden />
+                <div className="connect-bar-text">
+                  <strong>Live data is optional</strong>
+                  <span>
+                    Stories run on mock data. Connect a DaaS instance to use
+                    real data.
+                  </span>
+                </div>
+              </div>
+              <div className="connect-actions">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${
+                    showConnect ? "btn-outline" : "btn-primary"
+                  }`}
+                  onClick={() => setShowConnect((v) => !v)}
+                  aria-expanded={showConnect ? "true" : "false"}
+                >
+                  {showConnect ? "Cancel" : "Connect DaaS"}
+                </button>
+              </div>
+            </div>
+
+            {showConnect && (
+              <div className="connect-form-wrap">
+                <div className="alert alert-info alert-mt">
+                  The host app acts as an authentication proxy so Storybooks can
+                  use real DaaS data without CORS issues.
+                </div>
+
+                {status?.connected && status.error && (
+                  <div className="alert alert-warning">
+                    Connected but auth error: {status.error}
+                  </div>
+                )}
+
+                <form onSubmit={handleConnect}>
+                  <div className="form-group">
+                    <label htmlFor="daas-url">DaaS URL</label>
+                    <input
+                      id="daas-url"
+                      type="url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://xxx.buildpad-daas.xtremax.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="daas-token">Static Token</label>
+                    <input
+                      id="daas-token"
+                      type="password"
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      placeholder="Your DaaS static token"
+                      required
+                    />
+                    <small>
+                      Generate from DaaS → Users → Edit User → Token → Generate
+                      Token
+                    </small>
+                  </div>
+
+                  {error && <div className="alert alert-error">{error}</div>}
+
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={connecting || !url || !token}
+                  >
+                    {connecting ? "Connecting…" : "Connect"}
+                  </button>
+                </form>
               </div>
             )}
-
-            <div className="form-group">
-              <label htmlFor="daas-url">DaaS URL</label>
-              <input
-                id="daas-url"
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://xxx.buildpad-daas.xtremax.com"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="daas-token">Static Token</label>
-              <input
-                id="daas-token"
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Your DaaS static token"
-                required
-              />
-              <small>
-                Generate from DaaS → Users → Edit User → Token → Generate Token
-              </small>
-            </div>
-
-            {error && <div className="alert alert-error">{error}</div>}
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={connecting || !url || !token}
-            >
-              {connecting ? "Connecting…" : "Connect"}
-            </button>
-          </form>
+          </>
         )}
       </section>
 
@@ -332,12 +363,6 @@ npx @buildpad/cli@latest bootstrap`}</pre>
             Live component docs
           </a>
         </div>
-
-        {!status?.connected && (
-          <div className="alert alert-info alert-mt">
-            Connect to DaaS above to enable live data in Storybook stories.
-          </div>
-        )}
 
         {catalog.map((group) => (
           <div key={group.tier} className="tier">
