@@ -231,64 +231,6 @@ npx @buildpad/cli@latest bootstrap`}</pre>
         </div>
       </section>
 
-      <section className="card" id="storybooks">
-        <div className="card-header">
-          <h2>Storybooks</h2>
-          <a className="badge badge-gray" href="/docs">
-            Live component docs
-          </a>
-        </div>
-
-        {!status?.connected && (
-          <div className="alert alert-info alert-mt">
-            Connect to DaaS below to enable live data in Storybook stories.
-          </div>
-        )}
-
-        {catalog.map((group) => (
-          <div key={group.tier} className="tier">
-            <div className="tier-head">
-              <h3 className="tier-label">{group.tier}</h3>
-              <span className="tier-caption">{group.caption}</span>
-            </div>
-            <div className="storybook-grid">
-              {group.items.map((sb) => (
-                <a
-                  key={sb.name}
-                  href={isDev ? `http://localhost:${sb.port}` : sb.path}
-                  target={isDev ? "_blank" : undefined}
-                  rel={isDev ? "noopener noreferrer" : undefined}
-                  className="storybook-card"
-                >
-                  <h3>
-                    {sb.emoji} {sb.name}
-                  </h3>
-                  <p>{sb.blurb}</p>
-                  <small>{isDev ? `localhost:${sb.port}` : sb.path}</small>
-                </a>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {isDev && (
-          <div className="dev-note">
-            <strong>Local Development</strong>
-            <p className="dev-note-text">
-              Start the host app first, then run Storybooks. They proxy{" "}
-              <code>/api/*</code> to this app automatically.
-            </p>
-            <pre>{`pnpm dev:host               # Start this proxy (port 3000)
-pnpm storybook:interfaces   # Port 6005
-pnpm storybook:form         # Port 6006
-pnpm storybook:forms        # Port 6010 (form builder)
-pnpm storybook:table        # Port 6007
-pnpm storybook:collections  # Port 6008
-pnpm storybook:files        # Port 6009`}</pre>
-          </div>
-        )}
-      </section>
-
       <section className="card" id="connect">
         <div className="card-header">
           <h2>DaaS Connection</h2>
@@ -382,6 +324,65 @@ pnpm storybook:files        # Port 6009`}</pre>
           </form>
         )}
       </section>
+
+      <section className="card" id="storybooks">
+        <div className="card-header">
+          <h2>Storybooks</h2>
+          <a className="badge badge-gray" href="/docs">
+            Live component docs
+          </a>
+        </div>
+
+        {!status?.connected && (
+          <div className="alert alert-info alert-mt">
+            Connect to DaaS above to enable live data in Storybook stories.
+          </div>
+        )}
+
+        {catalog.map((group) => (
+          <div key={group.tier} className="tier">
+            <div className="tier-head">
+              <h3 className="tier-label">{group.tier}</h3>
+              <span className="tier-caption">{group.caption}</span>
+            </div>
+            <div className="storybook-grid">
+              {group.items.map((sb) => (
+                <a
+                  key={sb.name}
+                  href={isDev ? `http://localhost:${sb.port}` : sb.path}
+                  target={isDev ? "_blank" : undefined}
+                  rel={isDev ? "noopener noreferrer" : undefined}
+                  className="storybook-card"
+                >
+                  <h3>
+                    {sb.emoji} {sb.name}
+                  </h3>
+                  <p>{sb.blurb}</p>
+                  <small>{isDev ? `localhost:${sb.port}` : sb.path}</small>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {isDev && (
+          <div className="dev-note">
+            <strong>Local Development</strong>
+            <p className="dev-note-text">
+              Start the host app first, then run Storybooks. They proxy{" "}
+              <code>/api/*</code> to this app automatically.
+            </p>
+            <pre>{`pnpm dev:host               # Start this proxy (port 3000)
+pnpm storybook:interfaces   # Port 6005
+pnpm storybook:form         # Port 6006
+pnpm storybook:forms        # Port 6010 (form builder)
+pnpm storybook:table        # Port 6007
+pnpm storybook:collections  # Port 6008
+pnpm storybook:files        # Port 6009`}</pre>
+          </div>
+        )}
+      </section>
+
     </main>
   );
 }
