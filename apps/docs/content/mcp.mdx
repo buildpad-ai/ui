@@ -58,6 +58,11 @@ The MCP acts as a bridge between your AI assistant, the component registry, and 
 | `get_copy_own_info` | Get detailed information about the Copy & Own distribution model |
 | `get_rbac_pattern` | Get RBAC setup patterns (own_items, role_hierarchy, public_read, multi_tenant, etc.) |
 | `list_lib_modules` | List available CLI lib modules (e.g. external-oauth, supabase-auth, api-routes) |
+| `list_outdated` | List installed components/lib modules that have newer registry versions |
+| `get_package_versions` | Get the current registry version for each `@buildpad/*` package |
+| `get_component_changelog` | Get the changelog for a component between the installed and latest version |
+| `get_upgrade_plan` | Preview what an upgrade would change before applying it |
+| `apply_upgrade` | Apply an upgrade to installed components (honours the modification-safe strategy) |
 
 ## Configuration
 
@@ -96,9 +101,9 @@ The MCP acts as a bridge between your AI assistant, the component registry, and 
     Reload VS Code window (`Cmd+Shift+P` → "Developer: Reload Window").
   </Tabs.Tab>
   <Tabs.Tab>
-    Add to your project's `.Kiro/mcp.json`:
+    Add to your project's `.kiro/mcp.json`:
 
-    ```json filename=".Kiro/mcp.json"
+    ```json filename=".kiro/mcp.json"
     {
       "mcpServers": {
         "buildpad": {

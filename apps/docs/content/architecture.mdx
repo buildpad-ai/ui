@@ -24,10 +24,12 @@ The source layer contains all the packages in the monorepo:
 | `@buildpad/services` | Services (FieldsService, CollectionsService) + DaaS API config |
 | `@buildpad/hooks` | React hooks for auth, permissions, relations, selection, presets |
 | `@buildpad/utils` | Field interface mapper, validation, formatting utilities |
-| `@buildpad/ui-interfaces` | 32 field interface components built with Mantine v8 |
+| `@buildpad/ui-interfaces` | 40+ field interface components built with Mantine v8 |
 | `@buildpad/ui-form` | VForm dynamic form component with permission enforcement |
 | `@buildpad/ui-table` | VTable dynamic data table with sorting, selection, drag-drop |
 | `@buildpad/ui-collections` | CollectionForm (CRUD wrapper) + CollectionList (paginated table) |
+| `@buildpad/ui-files` | FileManager + FileDetail — upload, folders, preview, bulk actions ([recipe](/files)) |
+| `@buildpad/ui-forms` | Visual FormBuilder + DynamicForm runtime — the Dynamic Form Builder module ([recipe](/forms)) |
 
 ## Dependency Flow
 
@@ -37,12 +39,14 @@ types (base)
   ├─ services (CRUD + DaaS)
   └─ hooks (auth + relations)
        ↓  (all feed into)
-  ui-interfaces (32 components)
+  ui-interfaces (40+ components)
             ↓
   ui-form (VForm)    ui-table (VTable)
        └──────┬──────────┘
               ↓
   ui-collections (CollectionForm, CollectionList)
+       ├─ ui-files  (FileManager — files module)
+       └─ ui-forms  (FormBuilder + DynamicForm — form builder module)
 ```
 
 ## Consumer Layer
