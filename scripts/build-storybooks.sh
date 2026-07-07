@@ -3,9 +3,10 @@
 #
 # Output structure:
 #   storybook-dist/
-#   ├── index.html          ← Landing page with links to all 5
+#   ├── index.html          ← Landing page with links to all 6
 #   ├── interfaces/         ← ui-interfaces Storybook
 #   ├── form/               ← ui-form Storybook
+#   ├── forms/              ← ui-forms Storybook (form builder)
 #   ├── table/              ← ui-table Storybook
 #   ├── collections/        ← ui-collections Storybook
 #   └── files/              ← ui-files Storybook
@@ -27,7 +28,7 @@ rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
 
 # Build ui-interfaces Storybook
-echo "📦 [1/5] Building ui-interfaces Storybook..."
+echo "📦 [1/6] Building ui-interfaces Storybook..."
 cd "${ROOT_DIR}/packages/ui-interfaces"
 npx storybook build -o "${OUTPUT_DIR}/interfaces" 2>&1 || {
   echo "❌ ui-interfaces Storybook build failed"
@@ -36,7 +37,7 @@ npx storybook build -o "${OUTPUT_DIR}/interfaces" 2>&1 || {
 echo "   ✅ ui-interfaces done"
 
 # Build ui-form Storybook
-echo "📦 [2/5] Building ui-form Storybook..."
+echo "📦 [2/6] Building ui-form Storybook..."
 cd "${ROOT_DIR}/packages/ui-form"
 npx storybook build -o "${OUTPUT_DIR}/form" 2>&1 || {
   echo "❌ ui-form Storybook build failed"
@@ -44,8 +45,17 @@ npx storybook build -o "${OUTPUT_DIR}/form" 2>&1 || {
 }
 echo "   ✅ ui-form done"
 
+# Build ui-forms Storybook (form builder)
+echo "📦 [3/6] Building ui-forms Storybook..."
+cd "${ROOT_DIR}/packages/ui-forms"
+npx storybook build -o "${OUTPUT_DIR}/forms" 2>&1 || {
+  echo "❌ ui-forms Storybook build failed"
+  exit 1
+}
+echo "   ✅ ui-forms done"
+
 # Build ui-table Storybook
-echo "📦 [3/5] Building ui-table Storybook..."
+echo "📦 [4/6] Building ui-table Storybook..."
 cd "${ROOT_DIR}/packages/ui-table"
 npx storybook build -o "${OUTPUT_DIR}/table" 2>&1 || {
   echo "❌ ui-table Storybook build failed"
@@ -54,7 +64,7 @@ npx storybook build -o "${OUTPUT_DIR}/table" 2>&1 || {
 echo "   ✅ ui-table done"
 
 # Build ui-collections Storybook
-echo "📦 [4/5] Building ui-collections Storybook..."
+echo "📦 [5/6] Building ui-collections Storybook..."
 cd "${ROOT_DIR}/packages/ui-collections"
 npx storybook build -o "${OUTPUT_DIR}/collections" 2>&1 || {
   echo "❌ ui-collections Storybook build failed"
@@ -63,7 +73,7 @@ npx storybook build -o "${OUTPUT_DIR}/collections" 2>&1 || {
 echo "   ✅ ui-collections done"
 
 # Build ui-files Storybook
-echo "📦 [5/5] Building ui-files Storybook..."
+echo "📦 [6/6] Building ui-files Storybook..."
 cd "${ROOT_DIR}/packages/ui-files"
 npx storybook build -o "${OUTPUT_DIR}/files" 2>&1 || {
   echo "❌ ui-files Storybook build failed"
@@ -78,6 +88,7 @@ echo "🎉 All Storybooks built successfully!"
 echo "   📁 ${OUTPUT_DIR}/"
 echo "   ├── interfaces/      (40+ field components)"
 echo "   ├── form/            (VForm dynamic form)"
+echo "   ├── forms/           (form builder)"
 echo "   ├── table/           (VTable dynamic table)"
 echo "   ├── collections/     (CollectionForm & CollectionList)"
 echo "   └── files/           (file manager components)"

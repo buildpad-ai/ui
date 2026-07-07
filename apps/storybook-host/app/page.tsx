@@ -30,6 +30,12 @@ const storybooks = [
     description: "VForm dynamic form builder",
   },
   {
+    name: "🧩 Form Builder",
+    path: "/storybook/forms",
+    port: 6010,
+    description: "Visual form builder + DynamicForm renderer",
+  },
+  {
     name: "📊 Table",
     path: "/storybook/table",
     port: 6007,
@@ -254,6 +260,7 @@ npx @buildpad/cli@latest bootstrap`}</pre>
             <pre>{`pnpm dev:host               # Start this proxy (port 3000)
 pnpm storybook:interfaces   # Port 6005
 pnpm storybook:form         # Port 6006
+pnpm storybook:forms        # Port 6010 (form builder)
 pnpm storybook:table        # Port 6007
 pnpm storybook:collections  # Port 6008
 pnpm storybook:files        # Port 6009`}</pre>
