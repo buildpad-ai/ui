@@ -36,13 +36,13 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   IconBell,
   IconChevronDown,
-  IconHome,
   IconLogout,
   IconSearch,
   IconSettings,
   IconUser,
   type IconProps,
 } from "@tabler/icons-react";
+import { NAV_ITEMS } from "./navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -65,6 +65,12 @@ export interface NavItem {
   label: string;
   href: string;
   icon: ComponentType<IconProps>;
+  /**
+   * Sidebar group this entry belongs to (e.g. "Administration"). Entries
+   * without a section render under "Main Menu"; groups appear in the order
+   * their first entry appears in the nav list.
+   */
+  section?: string;
 }
 
 export interface ShellBrand {
@@ -76,7 +82,11 @@ export interface ShellBrand {
 
 interface AuthenticatedShellProps {
   children: ReactNode;
-  /** Primary sidebar navigation. Defaults to a single "Home" entry. */
+  /**
+   * Primary sidebar navigation. Defaults to NAV_ITEMS from
+   * `./navigation` — the file the CLI extends when you install route
+   * modules (e.g. `buildpad add users-routes`).
+   */
   navItems?: NavItem[];
   /** Brand mark + name. Defaults to NEXT_PUBLIC_APP_NAME (or "Buildpad"). */
   brand?: ShellBrand;
@@ -86,9 +96,9 @@ interface AuthenticatedShellProps {
   showNotifications?: boolean;
 }
 
-const DEFAULT_NAV_ITEMS: NavItem[] = [
-  { label: "Home", href: "/", icon: IconHome },
-];
+// Default nav lives in ./navigation — the CLI appends route-module entries
+// there on install, so new modules appear in the sidebar automatically.
+const DEFAULT_NAV_ITEMS: NavItem[] = NAV_ITEMS;
 
 function defaultBrand(): ShellBrand {
   const name = process.env.NEXT_PUBLIC_APP_NAME ?? "Buildpad";
@@ -160,6 +170,22 @@ export function AuthenticatedShell({
       isMounted = false;
     };
   }, []);
+
+  // Group nav entries by section (default "Main Menu"), preserving the order
+  // in which each section first appears.
+  const navGroups = useMemo(() => {
+    const groups: Array<{ section: string; items: NavItem[] }> = [];
+    for (const item of navItems) {
+      const section = item.section ?? "Main Menu";
+      let group = groups.find((g) => g.section === section);
+      if (!group) {
+        group = { section, items: [] };
+        groups.push(group);
+      }
+      group.items.push(item);
+    }
+    return groups;
+  }, [navItems]);
 
   const pageTitle = useMemo(() => {
     const active = navItems.find(
@@ -262,35 +288,43 @@ export function AuthenticatedShell({
             </Stack>
           </div>
 
-          <Text
-            size="xs"
-            fw={700}
-            c="dimmed"
-            px="xs"
-            mb={4}
-            style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
-          >
-            Main Menu
-          </Text>
-
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`bp-nav-link ${
-                  isActive ? "bp-nav-link-active" : ""
-                }`}
-                onClick={closeMobile}
+          {navGroups.map((group, groupIndex) => (
+            <div key={group.section}>
+              <Text
+                size="xs"
+                fw={700}
+                c="dimmed"
+                px="xs"
+                mb={4}
+                mt={groupIndex > 0 ? "md" : 0}
+                style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
               >
-                <Icon size={18} stroke={1.8} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+                {group.section}
+              </Text>
+
+              <Stack gap={4}>
+                {group.items.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`bp-nav-link ${
+                        isActive ? "bp-nav-link-active" : ""
+                      }`}
+                      onClick={closeMobile}
+                    >
+                      <Icon size={18} stroke={1.8} />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </Stack>
+            </div>
+          ))}
         </Stack>
 
         {/* User profile section at the bottom */}

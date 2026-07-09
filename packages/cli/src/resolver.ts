@@ -108,6 +108,15 @@ export interface LibModule {
   target?: string;
   dependencies?: string[];
   internalDependencies?: string[];
+  /** Components this module requires (e.g. files-routes → file-manager). */
+  registryDependencies?: string[];
+  /**
+   * Sidebar entries this module contributes. On install, the CLI appends
+   * them to `components/layout/navigation.ts` (matched by href, idempotent).
+   * `icon` is a @tabler/icons-react export name; `section` groups entries
+   * under a labelled sidebar heading (default "Main Menu").
+   */
+  navItems?: Array<{ label: string; href: string; icon: string; section?: string }>;
   /** v2: owning source package, e.g. "@buildpad/cli". */
   sourcePackage?: string;
   /** v2: semver of the source package at registry generation time. */

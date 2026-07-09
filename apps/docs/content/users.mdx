@@ -1,0 +1,236 @@
+---
+title: Users Module Recipe
+description: Drop a complete users, roles, and policies administration into your app — RBAC management with role hierarchy, scope rules, and a per-collection permissions matrix — with one CLI command.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Users Module Recipe
+
+The Users module is a ready-made admin surface for the three interdependent
+access-control domains of your DaaS backend — **users**, **roles**, and
+**policies**. Instead of hand-building user tables, role assignment, policy
+attachment, and a permissions matrix, you scaffold the whole thing with one
+command and own the code.
+
+It gives you six screens:
+
+- **`UsersManager`** — the `/users` list: search, role/status filters,
+  pagination, status badges, and permission-gated create/edit/delete.
+- **`UserDetail`** — the `/users/[id]` page: profile fields, password rules,
+  role assignment (M2M), status, a static API token field, plus a **Policies**
+  tab for direct policy attachment.
+- **`RolesManager`** — the `/roles` list with member counts.
+- **`RoleDetail`** — the `/roles/[id]` page: icon, parent role (hierarchy),
+  scope-assignment rules (regex allow-list), plus **Users** (membership
+  management, move/remove in bulk) and **Policies** tabs.
+- **`PoliciesManager`** — the `/policies` list with user/role attachment counts.
+- **`PolicyDetail`** — the `/policies/[id]` page: access flags (`app_access`,
+  `admin_access`, `delegate_access`) and the per-collection **permissions
+  matrix** (create/read/update/delete/share), powered by the
+  `system-permissions` interface.
+
+## The pieces
+
+| Piece | Package | Role |
+|---|---|---|
+| `UsersManager` / `UserDetail` | `@buildpad/ui-users` | User list + create/edit with role assignment and policy attachment |
+| `RolesManager` / `RoleDetail` | `@buildpad/ui-users` | Role list + create/edit with hierarchy, scope rules, membership, and policies |
+| `PoliciesManager` / `PolicyDetail` | `@buildpad/ui-users` | Policy list + create/edit with access flags and the permissions matrix |
+| `SystemPermissions` | `@buildpad/ui-interfaces` | The per-collection CRUD-S permissions matrix (reused inside `PolicyDetail`) |
+| `SelectIcon` | `@buildpad/ui-interfaces` | Icon picker for roles and policies |
+| `useUsers` / `useRoles` / `usePolicies` / `useAccess` | `@buildpad/hooks` | CRUD, bulk role membership, and policy attach/detach against `/api/users`, `/api/roles`, `/api/policies`, `/api/access` |
+
+<Callout type="info">
+This recipe is **opt-in** — it is *not* part of `bootstrap`. Generate the
+module with `buildpad add users-routes`; it pulls in the `users-management`
+component (which in turn pulls the `system-permissions` and `select-icon`
+components and the `types` / `hooks` / `services` lib modules). In a generated
+app the imports point at your local copies (`@/components/ui/users-management`,
+`@/lib/buildpad/hooks`); when consuming the packages directly, import from
+`@buildpad/ui-users` and `@buildpad/hooks` instead.
+</Callout>
+
+## Install
+
+<Steps>
+
+### Add the module
+
+```bash copy
+buildpad add users-routes
+```
+
+This copies six page shells into `app/users/`, `app/roles/`, and
+`app/policies/`, the components into `components/ui/users-management/`, the
+`system-permissions` and `select-icon` interfaces into `components/ui/`, and the
+`useUsers` / `useRoles` / `usePolicies` / `useAccess` hooks into
+`lib/buildpad/hooks/`. It also adds **Users**, **Roles**, and **Policies** to
+the sidebar under an **Administration** group
+(`components/layout/navigation.ts` — see
+[App Shell](/app-shell#customizing-the-navigation--brand)); entries are matched
+by href, so re-runs never duplicate and your edits are preserved.
+
+### Add the API routes
+
+The module talks to your DaaS through proxy routes. If you haven't already added
+them, run:
+
+```bash copy
+buildpad add api-routes
+```
+
+The module uses `app/api/users/*` (including `/api/users/bulk-update` and
+`/api/users/[id]/policies`), `app/api/roles/*`, `app/api/policies/*`,
+`app/api/permissions/*`, and `app/api/collections/*` (the matrix lists your
+collections).
+
+</Steps>
+
+## The routes
+
+Six files give you the whole module:
+
+```
+app/users/
+├── page.tsx            # /users          — the UsersManager list
+└── [id]/page.tsx       # /users/[id]     — UserDetail (use /users/new to create)
+app/roles/
+├── page.tsx            # /roles          — the RolesManager list
+└── [id]/page.tsx       # /roles/[id]     — RoleDetail (use /roles/new to create)
+app/policies/
+├── page.tsx            # /policies       — the PoliciesManager list
+└── [id]/page.tsx       # /policies/[id]  — PolicyDetail (use /policies/new to create)
+```
+
+<Steps>
+
+### The list views
+
+Each list page renders its manager wired to the router. Clicking a row opens
+the detail page; "Add" navigates to the `new` sentinel route.
+
+```tsx filename="app/users/page.tsx" copy
+"use client";
+
+import { useRouter } from 'next/navigation';
+import { UsersManager } from '@/components/ui/users-management';
+
+export default function UsersPage() {
+  const router = useRouter();
+
+  return (
+    <UsersManager
+      onUserClick={(user) => router.push(`/users/${user.id}`)}
+      onCreateUser={() => router.push('/users/new')}
+    />
+  );
+}
+```
+
+All three managers take the same shape of props: a row-click callback, a create
+callback, `pageSize` (default `25`), and an overridable RBAC collection name
+(`usersCollection` / `rolesCollection` / `policiesCollection`).
+
+### The detail views
+
+Detail pages read the route param (with `'new'` meaning create) and hand
+navigation back to the router. `RoleDetail`'s Save menu reports which action
+the admin chose:
+
+```tsx filename="app/roles/[id]/page.tsx" copy
+"use client";
+
+import { use } from 'react';
+import { useRouter } from 'next/navigation';
+import { RoleDetail } from '@/components/ui/users-management';
+
+export default function RoleDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const router = useRouter();
+
+  return (
+    <RoleDetail
+      id={id}
+      onBack={() => router.push('/roles')}
+      onDeleted={() => router.push('/roles')}
+      onSaved={(role, action) => {
+        if (action === 'quit') router.push('/roles');
+        else if (action === 'addNew') router.push('/roles/new');
+        else if (id === 'new') router.push(`/roles/${role.id}`);
+      }}
+      onUserClick={(user) => router.push(`/users/${user.id}`)}
+      onPolicyClick={(policy) => router.push(`/policies/${policy.id}`)}
+    />
+  );
+}
+```
+
+</Steps>
+
+## The data layer
+
+All screens are thin — the work lives in hooks you can reuse anywhere.
+
+`useUsers` returns `fetchUsers` (page/search/role/status filters), `getUser`,
+`getMe`, `createUser`, `updateUser`, `updateMe`, `deleteUser`,
+`bulkUpdateUsers` (role membership across many users), and the policy
+attachment trio `fetchUserPolicies` / `attachUserPolicy` / `detachUserPolicy`:
+
+```tsx
+const { fetchUsers, bulkUpdateUsers } = useUsers();
+
+const { users, total } = await fetchUsers({ role: roleId, status: 'active' });
+await bulkUpdateUsers(users.map(u => u.id), { addRoles: [editorRoleId] });
+```
+
+`useRoles` mirrors it for roles (`fetchRoles` with `includeUsers` counts,
+`getRole` with `includePolicies`, `getMyRoles`, CRUD, and
+`fetchRolePolicies` / `attachRolePolicy` / `detachRolePolicy`). `usePolicies`
+covers policy CRUD (list rows include `userCount` / `roleCount`), and
+`useAccess` exposes the raw `daas_access` junction for advanced flows.
+
+<Callout type="warning">
+**`admin_access` on users and roles is computed, never written.** Whether a
+user is an admin is derived from the policies reachable through their roles and
+direct attachments. To grant admin, attach a policy with `admin_access: true`
+— don't try to PATCH the field (the hooks strip it defensively; the API rejects
+it). The same applies to `app_access` on roles.
+</Callout>
+
+## RBAC behaviour
+
+- Every action is gated with `usePermissions().canPerform(collection, action)`
+  (admins bypass): the Add buttons, row menus, and Save/Delete buttons hide
+  when the current user lacks the corresponding permission on `daas_users`,
+  `daas_roles`, or `daas_policies`.
+- The module is admin-oriented — gate your navigation links with
+  `usePermissions` too, so non-admins never see `/users`.
+- A user's `roles` come back scope-filtered: in multi-tenant setups the
+  `daas_user_roles` junction is tagged with a `resource_uri`, and role
+  assignments cascade to child scopes.
+- **Invitations** are modelled with `status: 'invited'` — there is no separate
+  invite endpoint. Create the user with the `invited` status (password can be
+  set via the reset flow later).
+
+## Prerequisites
+
+- The module must live under your authenticated layout so `DaaSProvider` is
+  above it — `buildpad init` generates this as `app/(authenticated)/` with a
+  `DaaSProviderWrapper`.
+- Deleting a user also deletes their auth account; the confirm modals make
+  destructive actions explicit.
+- No extra styling is needed: the components consume the design tokens through
+  the Mantine theme. See the [Styleguide](/styleguide) for the token reference.
+
+## See the components live
+
+Every surface of the Users module is in the Users Storybook. Run it locally
+with `pnpm --filter @buildpad/ui-users storybook` (port 6011). The
+`UsersManager (DaaS)`, `RolesManager (DaaS)`, and `PoliciesManager (DaaS)`
+playgrounds connect to a real DaaS instance through the storybook-host proxy
+and include in-story list ↔ detail navigation.

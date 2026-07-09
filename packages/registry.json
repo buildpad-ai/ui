@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-07T04:24:50.830Z",
+  "generatedAt": "2026-07-08T14:57:52.466Z",
   "version": "1.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -108,6 +108,10 @@
     "@buildpad/ui-forms": {
       "version": "1.6.0",
       "changelogUrl": "ui-forms/CHANGELOG.md"
+    },
+    "@buildpad/ui-users": {
+      "version": "1.6.0",
+      "changelogUrl": "ui-users/CHANGELOG.md"
     },
     "@buildpad/hooks": {
       "version": "1.6.0",
@@ -229,9 +233,14 @@
           "sourceSha256": "3632753aa9591f82873699df8e35661b79d97982e5d64403e2ff35a648600998"
         },
         {
+          "source": "types/src/users.ts",
+          "target": "lib/buildpad/types/users.ts",
+          "sourceSha256": "9869e42f99e7418b8a738722ff22ab42dd1d7f5663d1360e53d06873b0c2399c"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts",
-          "sourceSha256": "ba5cd007bd46206dfc5e95a6599310b998103af8959c63d2d1a5fd2d87325141"
+          "sourceSha256": "ea58945d91f22ac17d04cf31b725b89dcee01e54e20adad62e9ef2ee66f62551"
         }
       ],
       "sourcePackage": "@buildpad/types",
@@ -446,9 +455,34 @@
           "sourceSha256": "576062f3171a714d9403cd49086fa5768b6c34bd17e368c1d0c9509853169d42"
         },
         {
+          "source": "hooks/src/parseDaaSError.ts",
+          "target": "lib/buildpad/hooks/parseDaaSError.ts",
+          "sourceSha256": "d70487150da5a8cbde736eb0aa41035a5585cedca078823d00ab858103a82ae7"
+        },
+        {
+          "source": "hooks/src/useUsers.ts",
+          "target": "lib/buildpad/hooks/useUsers.ts",
+          "sourceSha256": "36a7da57ef4ba86ac82a792dba0276d507d7ceb43e7ec0c99ff4afb3bdedb88d"
+        },
+        {
+          "source": "hooks/src/useRoles.ts",
+          "target": "lib/buildpad/hooks/useRoles.ts",
+          "sourceSha256": "24da6768b0417ad5184175ec6e8b837f9e3d722eec136b1856929fb547b3d356"
+        },
+        {
+          "source": "hooks/src/usePolicies.ts",
+          "target": "lib/buildpad/hooks/usePolicies.ts",
+          "sourceSha256": "c1e0481c2db49e4bb37a368c586b0feeb123b4ad75f7d51a5c10cb78099412dd"
+        },
+        {
+          "source": "hooks/src/useAccess.ts",
+          "target": "lib/buildpad/hooks/useAccess.ts",
+          "sourceSha256": "c939e575f1b7212a627b751e082dd346d195d682623171b9f5d3a31f65bfbc5e"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "44083826dd7012092aef74347ee41989031ce72767a1e2439984c1abe8b595c3"
+          "sourceSha256": "3df971302825e6db62a457f574a96095f563f58566f06a568e0fbb16516d93ef"
         }
       ],
       "internalDependencies": [
@@ -642,6 +676,79 @@
       "registryDependencies": [
         "file-manager"
       ],
+      "navItems": [
+        {
+          "label": "Files",
+          "href": "/files",
+          "icon": "IconFolders"
+        }
+      ],
+      "sourcePackage": "@buildpad/cli",
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
+    },
+    "users-routes": {
+      "name": "users-routes",
+      "description": "Users/roles/policies admin module pages — /users, /users/[id], /roles, /roles/[id], /policies, /policies/[id] (list + create/edit for each access-control domain). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the users-management component.",
+      "files": [
+        {
+          "source": "cli/templates/app/users/page.tsx",
+          "target": "app/(authenticated)/users/page.tsx",
+          "sourceSha256": "2c9dd8b1b6fd69fdd7e1b2520e9f887871bdd4da0bb1bed63511db530d39000d"
+        },
+        {
+          "source": "cli/templates/app/users/[id]/page.tsx",
+          "target": "app/(authenticated)/users/[id]/page.tsx",
+          "sourceSha256": "ca1979db1a18fc9b67eec2e1f6919e5d7c8388e384ae0032a37abbcd82961406"
+        },
+        {
+          "source": "cli/templates/app/roles/page.tsx",
+          "target": "app/(authenticated)/roles/page.tsx",
+          "sourceSha256": "1e159e931d3fcb9b4bd261461dd3f18d7c4bf246795750e2c79da5bbfa944cc9"
+        },
+        {
+          "source": "cli/templates/app/roles/[id]/page.tsx",
+          "target": "app/(authenticated)/roles/[id]/page.tsx",
+          "sourceSha256": "0b1f39c252bed06b729ea9b026e6651e2b431ef8016a26aefb921dc9825eb264"
+        },
+        {
+          "source": "cli/templates/app/policies/page.tsx",
+          "target": "app/(authenticated)/policies/page.tsx",
+          "sourceSha256": "dca5a5a685f44507330344f116c604a5c242b55cca3997c18c92b436c494b062"
+        },
+        {
+          "source": "cli/templates/app/policies/[id]/page.tsx",
+          "target": "app/(authenticated)/policies/[id]/page.tsx",
+          "sourceSha256": "0c5367719efd8918c26d0ee7ad143bee6a369d14315efdeca0b6799326376017"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "users-management"
+      ],
+      "navItems": [
+        {
+          "label": "Users",
+          "href": "/users",
+          "icon": "IconUsers",
+          "section": "Administration"
+        },
+        {
+          "label": "Roles",
+          "href": "/roles",
+          "icon": "IconUsersGroup",
+          "section": "Administration"
+        },
+        {
+          "label": "Policies",
+          "href": "/policies",
+          "icon": "IconShieldLock",
+          "section": "Administration"
+        }
+      ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.6.0",
       "lastChangedIn": "1.6.0"
@@ -677,6 +784,13 @@
       ],
       "registryDependencies": [
         "form-builder"
+      ],
+      "navItems": [
+        {
+          "label": "Forms",
+          "href": "/forms",
+          "icon": "IconForms"
+        }
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.6.0",
@@ -833,9 +947,14 @@
           "sourceSha256": "927cd205a4e4a6fe2b4adb4e9b3f74be993e38a3c368786860f97970bf8a7a00"
         },
         {
+          "source": "cli/templates/components/layout/navigation.ts",
+          "target": "components/layout/navigation.ts",
+          "sourceSha256": "1100e9609012fc3a0ca7b95d3a2ab5c1384e258153d7e69bbe2e385f054e18d0"
+        },
+        {
           "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
           "target": "components/layout/AuthenticatedShell.tsx",
-          "sourceSha256": "e8b8fc3e2d6520245969c6bfee646527a36d436863ba25aa92742cc606944627"
+          "sourceSha256": "24cbeafe514b9ac89b0c8f82d1fce5b212bf579a3aa0b3111792f820f8c72d74"
         }
       ],
       "sourcePackage": "@buildpad/cli",
@@ -2972,6 +3091,133 @@
       "lastChangedIn": "1.6.0"
     },
     {
+      "name": "users-management",
+      "title": "UsersManagement",
+      "excludeFromAll": true,
+      "description": "Users, roles, and policies administration (RBAC management) — user list/detail with role assignment (M2M) and direct policy attachment, role list/detail with member management, hierarchy, and scope-assignment rules, policy list/detail with access flags and a per-collection permissions matrix (via system-permissions). Composes the useUsers/useRoles/usePolicies hooks.",
+      "category": "admin",
+      "files": [
+        {
+          "source": "ui-users/src/UsersManager.tsx",
+          "target": "components/ui/users-management/users-manager.tsx",
+          "sourceSha256": "d9f1c415f9a906f7aabdc980a66884943338f6b4f6a0297eda8041354bdaf6e0"
+        },
+        {
+          "source": "ui-users/src/UsersManager.css",
+          "target": "components/ui/users-management/users-manager.css",
+          "sourceSha256": "ec68d89c6a1cd3e7d8a55d76b67e04d392ed7441ef40b9507f2a15b550590599"
+        },
+        {
+          "source": "ui-users/src/UserDetail.tsx",
+          "target": "components/ui/users-management/user-detail.tsx",
+          "sourceSha256": "eaf33ceba6b5599988f168740d6268855ecfc36b8305159ab55517b34cdf7be4"
+        },
+        {
+          "source": "ui-users/src/UserPoliciesManager.tsx",
+          "target": "components/ui/users-management/user-policies-manager.tsx",
+          "sourceSha256": "a267a0b6815d918e430a2bd8e2e37e742b11ea75eb6c26b31c37506a95b44297"
+        },
+        {
+          "source": "ui-users/src/RolesManager.tsx",
+          "target": "components/ui/users-management/roles-manager.tsx",
+          "sourceSha256": "3daf43963dcbbca18bef4c96d8676fbb18b8e79f6086d2ac6e13c89e54e12413"
+        },
+        {
+          "source": "ui-users/src/RoleDetail.tsx",
+          "target": "components/ui/users-management/role-detail.tsx",
+          "sourceSha256": "ccb02624b297cf61f35fc61a0f77fe67f2e173d21799408aa2a998299d304e4b"
+        },
+        {
+          "source": "ui-users/src/RoleUsersManager.tsx",
+          "target": "components/ui/users-management/role-users-manager.tsx",
+          "sourceSha256": "4c74d949ee11e4cc411e797492af65ed76d1b8e59b5fcdfde119aa1ca88a63f9"
+        },
+        {
+          "source": "ui-users/src/RolePoliciesManager.tsx",
+          "target": "components/ui/users-management/role-policies-manager.tsx",
+          "sourceSha256": "bb031aba33321f42f66293e5b5d249fdad2038fbfb36d23af3dcea1dd11d5813"
+        },
+        {
+          "source": "ui-users/src/PoliciesManager.tsx",
+          "target": "components/ui/users-management/policies-manager.tsx",
+          "sourceSha256": "57784914e5f908e96b62768a80df0f9f53b921d7dd0b39d6f0941c4e30d08d45"
+        },
+        {
+          "source": "ui-users/src/PolicyDetail.tsx",
+          "target": "components/ui/users-management/policy-detail.tsx",
+          "sourceSha256": "198388df52ad7df90ac02c3739dc2e98030a139a5f8600c49cb3442c2894f689"
+        },
+        {
+          "source": "ui-users/src/PolicyAttachmentManager.tsx",
+          "target": "components/ui/users-management/policy-attachment-manager.tsx",
+          "sourceSha256": "fc7e596c5f17f6124fdda2e5b5a0e3962a087feb5bb7107d6b77d30f8fc6b9c0"
+        },
+        {
+          "source": "ui-users/src/PolicyPickerModal.tsx",
+          "target": "components/ui/users-management/policy-picker-modal.tsx",
+          "sourceSha256": "201384df9eb54e34d7c80e15a477abeb6b82ad08f2bbcb60535791fd69da07b4"
+        },
+        {
+          "source": "ui-users/src/UserStatusBadge.tsx",
+          "target": "components/ui/users-management/user-status-badge.tsx",
+          "sourceSha256": "9f3461f0106f7e5e9946c1faf895faaefd3e944ad1893de33ef2ca98b5d7d2e7"
+        },
+        {
+          "source": "ui-users/src/UserAvatar.tsx",
+          "target": "components/ui/users-management/user-avatar.tsx",
+          "sourceSha256": "5f1174569cd1a9b9091d6fa2028d82286d5c1dfc82c581f6c90af9095761c11c"
+        },
+        {
+          "source": "ui-users/src/InfoPanel.tsx",
+          "target": "components/ui/users-management/info-panel.tsx",
+          "sourceSha256": "797c8b0e04d12728d4f23f99bb76032c198fa2730fcf4edc6963765e17b57e77"
+        },
+        {
+          "source": "ui-users/src/DeleteConfirmModal.tsx",
+          "target": "components/ui/users-management/delete-confirm-modal.tsx",
+          "sourceSha256": "e4c619b2da962993221a152b3c7b5152e3556e8de1ca3b0cbc5f121f4f9a6da7"
+        },
+        {
+          "source": "ui-users/src/IconDisplay.tsx",
+          "target": "components/ui/users-management/icon-display.tsx",
+          "sourceSha256": "dca4bbf90c361231c6d9777253ec08de7ed014653b34bfd6d20d41c6309527ba"
+        },
+        {
+          "source": "ui-users/src/userDisplay.ts",
+          "target": "components/ui/users-management/user-display.ts",
+          "sourceSha256": "1e98194c3f84fb515d08088e6ef400a522240d219753be65823da74eb3b86ab5"
+        },
+        {
+          "source": "ui-users/src/accessUtils.ts",
+          "target": "components/ui/users-management/access-utils.ts",
+          "sourceSha256": "50c774897933c9c7a6ce4abd6ad9f2d88b7b65b2af9c17463ea51dad754ee0cc"
+        },
+        {
+          "source": "ui-users/src/index.ts",
+          "target": "components/ui/users-management/index.ts",
+          "sourceSha256": "08e00b0a5e2160f589ac807d8e55c63511ab67af1ff93dfae0309c9c1977a932"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services"
+      ],
+      "registryDependencies": [
+        "system-permissions",
+        "select-icon"
+      ],
+      "sourcePackage": "@buildpad/ui-users",
+      "version": "1.6.0",
+      "lastChangedIn": "1.6.0"
+    },
+    {
       "name": "form-builder",
       "title": "FormBuilder",
       "excludeFromAll": true,
@@ -3133,6 +3379,11 @@
       "name": "workflow",
       "title": "Workflow",
       "description": "Workflow state and transition components"
+    },
+    {
+      "name": "admin",
+      "title": "Administration",
+      "description": "Users, roles, and policies administration components"
     }
   ]
 }

@@ -17,6 +17,7 @@ pnpm storybook:table        # VTable on port 6007
 pnpm storybook:collections  # Collections on port 6008
 pnpm storybook:files        # Files on port 6009
 pnpm storybook:forms        # Form Builder on port 6010
+pnpm storybook:users        # Users/Roles/Policies on port 6011
 
 # Terminal 2: Run tests
 pnpm test:storybook:form         # Run VForm Storybook tests
@@ -41,6 +42,34 @@ pnpm test:e2e
 # Interactive UI mode
 pnpm test:e2e:ui
 ```
+
+## Module E2E Suites
+
+The Files and Users modules ship their own Playwright configs with a shared
+two-project layout: an **API tier** (direct REST calls with static tokens — no
+browser) and a **Storybook tier** (drives the module's DaaS playground stories
+in Chromium; the config boots the module Storybook and the storybook-host
+proxy automatically).
+
+```bash
+# Files module (playwright.files.config.ts, tests/ui-files/)
+pnpm test:files:e2e         # both tiers
+pnpm test:files:api         # API tier only
+pnpm test:files:storybook   # Storybook tier only
+
+# Users module (playwright.users.config.ts, tests/ui-users/)
+pnpm test:users:e2e         # both tiers
+pnpm test:users:api         # API tier only
+pnpm test:users:storybook   # Storybook tier only
+```
+
+Both suites provision their RBAC fixtures (roles, policies, users with static
+tokens) in a global setup and sweep them in a global teardown — setup and
+teardown are idempotent and can also be run standalone via
+`test:files:setup`/`test:files:teardown` and `test:users:setup`/
+`test:users:teardown`. Credentials come from `.env.local`: `FILES_DAAS_URL`
+(or `USERS_DAAS_URL` to point the users suite elsewhere) and
+`E2E_DAAS_ADMIN_TOKEN`.
 
 ## DaaS Playground
 
@@ -70,7 +99,11 @@ tests/
 │   └── vform.spec.ts           # Full E2E workflow tests
 ├── ui-table/
 │   └── vtable-storybook.spec.ts # VTable tests (22 tests)
-└── ui-collections/             # CollectionForm / CollectionList tests
+├── ui-collections/             # CollectionForm / CollectionList tests
+├── ui-files/                   # Files module suite (API + Storybook tiers, RBAC setup/teardown)
+└── ui-users/                   # Users module suite (API + Storybook tiers, RBAC setup/teardown)
 
 playwright.config.ts            # 6 projects: setup, chromium, storybook-form, storybook-table, storybook-interfaces, storybook-collections
+playwright.files.config.ts      # files-api + files-storybook projects
+playwright.users.config.ts      # users-api + users-storybook projects
 ```

@@ -30,6 +30,7 @@
     "storybook:table": "pnpm --filter @buildpad/ui-table storybook",
     "storybook:files": "pnpm --filter @buildpad/ui-files storybook",
     "storybook:forms": "pnpm --filter @buildpad/ui-forms storybook",
+    "storybook:users": "pnpm --filter @buildpad/ui-users storybook",
     "test": "pnpm -r test",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:ui": "playwright test --ui",
@@ -42,6 +43,11 @@
     "test:files:api": "playwright test -c playwright.files.config.ts --project=files-api",
     "test:files:storybook": "playwright test -c playwright.files.config.ts --project=files-storybook",
     "test:files:teardown": "tsx tests/ui-files/helpers/files-rbac-teardown.ts",
+    "test:users:setup": "tsx tests/ui-users/helpers/users-rbac-setup.ts",
+    "test:users:e2e": "playwright test -c playwright.users.config.ts",
+    "test:users:api": "playwright test -c playwright.users.config.ts --project=users-api",
+    "test:users:storybook": "playwright test -c playwright.users.config.ts --project=users-storybook",
+    "test:users:teardown": "tsx tests/ui-users/helpers/users-rbac-teardown.ts",
     "version-packages": "changeset version"
   },
   "devDependencies": {

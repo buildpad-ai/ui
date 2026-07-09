@@ -79,6 +79,15 @@ export function getImportMappings(config: Config): ImportMapping[] {
       from: /from ['"]@buildpad\/ui-files\/([^'"]+)['"]/g,
       to: `from '${componentsAlias}/file-manager/$1'`,
     },
+    // UI Users (users/roles/policies administration components)
+    {
+      from: /from ['"]@buildpad\/ui-users['"]/g,
+      to: `from '${componentsAlias}/users-management'`,
+    },
+    {
+      from: /from ['"]@buildpad\/ui-users\/([^'"]+)['"]/g,
+      to: `from '${componentsAlias}/users-management/$1'`,
+    },
     // Utils
     {
       from: /from ['"]@buildpad\/utils['"]/g,

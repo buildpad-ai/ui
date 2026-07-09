@@ -25,6 +25,7 @@ const meta: MetaRecord = {
   'app-shell': 'App Shell Recipe',
   files: 'Files Module Recipe',
   forms: 'Forms Module Recipe',
+  users: 'Users Module Recipe',
   testing: 'Testing Guide',
 };
 

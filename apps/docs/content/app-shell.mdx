@@ -236,10 +236,39 @@ export default function AuthenticatedLayout({
 
 ### Customizing the navigation & brand
 
-To set your own `navItems`/`brand`, you can't pass them straight from the layout:
-it's a Server Component and Tabler icons are components, which can't cross the
-server/client boundary. Put the config in a small `"use client"` wrapper and
-render that from the layout instead:
+The sidebar entries live in `components/layout/navigation.ts` (part of the
+design-system module) — the shell uses its `NAV_ITEMS` export as the default.
+Edit it freely: add, remove, or reorder entries; the active entry also drives
+the header breadcrumb label.
+
+Entries can carry an optional `section` — the sidebar groups them under
+labelled headings (entries without a section render under **Main Menu**;
+groups appear in the order their first entry appears):
+
+```ts filename="components/layout/navigation.ts"
+export const NAV_ITEMS: NavItem[] = [
+  { label: "Home", href: "/", icon: IconHome },
+  { label: "Users", href: "/users", icon: IconUsers, section: "Administration" },
+  { label: "Roles", href: "/roles", icon: IconUsersGroup, section: "Administration" },
+  // buildpad:nav-insert — installed route modules add entries above this line. Do not remove.
+];
+```
+
+When you install a route module (`buildpad add users-routes`, `files-routes`,
+`forms-routes`), the CLI appends that module's entries above the
+`buildpad:nav-insert` marker — matched by `href`, so re-runs never duplicate
+and your ordering/edits are preserved. If the marker is missing (older
+design-system copies, custom shells), the CLI prints the entries for you to
+add manually; `buildpad upgrade --design` brings in the managed file **and
+seeds it with the entries of route modules you already have installed**.
+The file is adopt-once: upgrades create it when missing but never overwrite
+it, so removals and reordering are always respected.
+
+To set a custom `brand` (or replace the nav wholesale via the `navItems`
+prop), you can't pass them straight from the layout: it's a Server Component
+and Tabler icons are components, which can't cross the server/client
+boundary. Put the config in a small `"use client"` wrapper and render that
+from the layout instead:
 
 ```tsx filename="components/PortalShell.tsx" copy
 "use client";
@@ -279,7 +308,8 @@ export default function AuthenticatedLayout({
 }
 ```
 
-Props: `navItems` (sidebar links, defaults to a single `Home` entry),
+Props: `navItems` (sidebar links, defaults to `NAV_ITEMS` from
+`components/layout/navigation.ts`),
 `brand` (mark + name, defaults to `NEXT_PUBLIC_APP_NAME`), and
 `showSearch` / `showNotifications` (presentational header affordances, both
 default `true` — wire them to your own features when ready).

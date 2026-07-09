@@ -30,6 +30,7 @@ import {
   sourceFileExists,
   type Registry,
   type ComponentEntry,
+  type LibModule,
 } from '../resolver.js';
 
 /**
@@ -294,12 +295,12 @@ export async function copyLibModule(
     if (allExist) return true;
   }
 
-  // First, install dependencies
+  // First, install dependencies. Always recurse — copyLibModule self-skips
+  // when the module is installed AND complete, but re-copies when the
+  // registry has since gained files (e.g. hooks gaining useUsers.ts).
   if (libModule.internalDependencies) {
     for (const dep of libModule.internalDependencies) {
-      if (!config.installedLib.includes(dep)) {
-        await copyLibModule(dep, registry, config, cwd, spinner, overwrite, opts);
-      }
+      await copyLibModule(dep, registry, config, cwd, spinner, false, opts);
     }
   }
 
@@ -337,6 +338,17 @@ export async function copyLibModule(
         config.srcDir ? path.join(cwd, 'src') : cwd,
         file.target
       );
+
+      // The nav config is adopt-once: it accumulates user edits and
+      // CLI-inserted route-module entries, so overwrites would lose them.
+      if (
+        file.target.endsWith('components/layout/navigation.ts') &&
+        fs.existsSync(targetPath)
+      ) {
+        const existing = await fs.readFile(targetPath, 'utf-8');
+        writtenFiles.push({ target: file.target, sha256: hashTransformed(existing) });
+        continue;
+      }
 
       if (await checkSource(file.source)) {
         const sourcePackage = inferSourcePackage(file.source);
@@ -377,6 +389,94 @@ export async function copyLibModule(
 
   spinner.succeed(`Installed lib: ${moduleName}`);
   return true;
+}
+
+const NAV_INSERT_MARKER = 'buildpad:nav-insert';
+
+/**
+ * Append a route module's sidebar entries to components/layout/navigation.ts
+ * (part of the design-system module). Idempotent — entries are matched by
+ * href, so re-runs and user edits/reordering are preserved. Degrades to a
+ * copy-paste hint when the file or its insert marker is missing (older
+ * design-system copies, custom shells).
+ */
+export async function applyNavItems(
+  libModule: LibModule,
+  config: Config,
+  cwd: string,
+  spinner: Ora
+): Promise<void> {
+  const items = libModule.navItems ?? [];
+  if (items.length === 0) return;
+
+  const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
+  const navPath = path.join(srcDir, 'components/layout/navigation.ts');
+
+  const entryLine = (i: NonNullable<LibModule['navItems']>[number], indent = '  ') =>
+    `${indent}{ label: "${i.label}", href: "${i.href}", icon: ${i.icon}` +
+    (i.section ? `, section: "${i.section}"` : '') +
+    ` },`;
+
+  const manualHint = () => {
+    const lines = items.map(i => entryLine(i)).join('\n');
+    spinner.warn(
+      `Could not update the sidebar automatically. Add these entries to your nav (see https://buildpad.dev/app-shell):\n` +
+      chalk.dim(lines) +
+      chalk.dim(`\n  (run "buildpad upgrade --design" to get the CLI-managed components/layout/navigation.ts)`)
+    );
+  };
+
+  if (!fs.existsSync(navPath)) {
+    manualHint();
+    return;
+  }
+
+  let content = await fs.readFile(navPath, 'utf-8');
+  if (!content.includes(NAV_INSERT_MARKER)) {
+    manualHint();
+    return;
+  }
+
+  const missing = items.filter(
+    i => !content.includes(`href: "${i.href}"`) && !content.includes(`href: '${i.href}'`)
+  );
+  if (missing.length === 0) return;
+
+  // Ensure the needed @tabler/icons-react imports exist (single or multi-line form)
+  const importMatch = content.match(
+    /import\s*\{([^}]*)\}\s*from\s*["']@tabler\/icons-react["']/
+  );
+  if (importMatch) {
+    const existing = importMatch[1].split(',').map(s => s.trim()).filter(Boolean);
+    const toAdd = [...new Set(missing.map(i => i.icon))].filter(icon => !existing.includes(icon));
+    if (toAdd.length > 0) {
+      const updated = importMatch[0].replace(
+        importMatch[1],
+        ` ${[...existing, ...toAdd].join(', ')} `
+      );
+      content = content.replace(importMatch[0], updated);
+    }
+  }
+
+  // Insert entries above the marker line, preserving its indentation
+  const markerLine = content.split('\n').find(l => l.includes(NAV_INSERT_MARKER))!;
+  const indent = markerLine.match(/^\s*/)?.[0] ?? '  ';
+  const entries = missing.map(i => entryLine(i, indent)).join('\n');
+  content = content.replace(markerLine, `${entries}\n${markerLine}`);
+
+  await fs.writeFile(navPath, content);
+
+  // Keep the v2 manifest checksum in sync so status/diff see the file as clean.
+  for (const record of Object.values(config.lib ?? {})) {
+    const entry = record.files?.find(f =>
+      f.target.endsWith('components/layout/navigation.ts')
+    );
+    if (entry) entry.sha256 = hashTransformed(content);
+  }
+
+  spinner.succeed(
+    `Added ${missing.map(i => i.label).join(', ')} to the sidebar (components/layout/navigation.ts)`
+  );
 }
 
 /**
@@ -444,13 +544,14 @@ async function copyComponent(
     libDependencies: component.internalDependencies ?? [],
   };
 
-  // Install internal dependencies first (types, services, hooks)
+  // Install internal dependencies first (types, services, hooks).
+  // Always call — copyLibModule self-skips when installed AND complete,
+  // but re-copies when the registry has since gained files (e.g. hooks
+  // gaining useUsers.ts), so stale modules self-heal.
   for (const dep of (component.internalDependencies ?? [])) {
-    if (!config.installedLib.includes(dep)) {
-      spinner.text = `Installing dependency: ${dep}...`;
-      if (!dryRun) {
-        await copyLibModule(dep, registry, config, cwd, spinner);
-      }
+    spinner.text = `Installing dependency: ${dep}...`;
+    if (!dryRun) {
+      await copyLibModule(dep, registry, config, cwd, spinner);
     }
   }
 
@@ -642,11 +743,16 @@ async function generateComponentsIndex(
     
     const targetPath = mainFile.target;
     let exportPath: string;
-    
-    // Check if component is in a subfolder (e.g., vform/VForm.tsx) or flat (e.g., input.tsx)
-    if (targetPath.includes('/vform/')) {
-      // VForm is in a subfolder - export from index
-      exportPath = './vform';
+
+    // Check if component is in a subfolder (e.g., vform/VForm.tsx,
+    // users-management/users-manager.tsx) or flat (e.g., input.tsx).
+    // Foldered components ship their own index.ts barrel — export the folder.
+    const relToComponents = targetPath.replace(/^components\/ui\//, '');
+    const folderName = relToComponents.includes('/')
+      ? relToComponents.split('/')[0]
+      : null;
+    if (folderName) {
+      exportPath = `./${folderName}`;
     } else {
       // Flat structure - export from kebab-case file
       const fileName = path.basename(targetPath, path.extname(targetPath));
@@ -800,6 +906,15 @@ export async function add(
       // "Component not found" for valid lib module names like api-routes, supabase-auth.
       if (registry.lib[name]) {
         libModulesToInstall.push(name);
+        // Route modules can require components (e.g. users-routes →
+        // users-management, files-routes → file-manager) — queue them so a
+        // single `add <module>-routes` installs the whole feature.
+        for (const depName of registry.lib[name].registryDependencies ?? []) {
+          const depComponent = registry.components.find(c => c.name === depName);
+          if (depComponent && !componentsToAdd.some(c => c.name === depComponent.name)) {
+            componentsToAdd.push(depComponent);
+          }
+        }
         continue;
       }
       const component = findComponentWithSuggestions(name, registry);
@@ -909,6 +1024,8 @@ export async function add(
     for (const libName of libModulesToInstall) {
       spinner.text = `Installing lib module: ${libName}...`;
       await copyLibModule(libName, registry, config, cwd, spinner, true);
+      // Route modules can contribute sidebar entries (users-routes → Users/Roles/Policies)
+      await applyNavItems(registry.lib[libName], config, cwd, spinner);
     }
 
     for (const component of componentsToAdd) {
