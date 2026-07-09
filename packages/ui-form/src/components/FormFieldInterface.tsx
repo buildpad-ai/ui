@@ -240,7 +240,7 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   const isEffectivelyReadonly = readonly || nonEditable;
 
   // DaaS omits hash field values (e.g. password) from API responses for security.
-  // Directus uses a server-side 'conceal' transformer to return '**********' instead.
+  // DaaS uses a server-side 'conceal' transformer to return '**********' instead.
   // Synthesize the same indicator so InputHash can detect an existing hashed value.
   const effectiveValue = useMemo(() => {
     if (value !== undefined && value !== null) return value;

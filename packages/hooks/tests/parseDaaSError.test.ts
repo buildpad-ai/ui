@@ -25,7 +25,7 @@ describe('parseDaaSError', () => {
     });
   });
 
-  describe('Directus shape: { errors: [{ message, extensions }] }', () => {
+  describe('DaaS shape: { errors: [{ message, extensions }] }', () => {
     it('extracts the first error message from an apiRequest-style Error', () => {
       const err = new Error(
         'API error: 404 - {"errors":[{"message":"User not found","extensions":{"code":"NOT_FOUND"}}]}'

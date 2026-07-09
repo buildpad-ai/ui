@@ -9,7 +9,7 @@
 - [x] 2. Implement data hooks in @buildpad/hooks
 - [x] 2.1 Create shared error parser
 
-  - Add `parseDaaSError(err: unknown): string` handling both `{ error }` and Directus `{ errors: [{ message, extensions: { code } }] }` shapes embedded in `apiRequest` error text, with raw-message fallback
+  - Add `parseDaaSError(err: unknown): string` handling both `{ error }` and DaaS `{ errors: [{ message, extensions: { code } }] }` shapes embedded in `apiRequest` error text, with raw-message fallback
   - Unit-test both shapes plus fallback
   - _Requirements: 2.8_
 - [x] 2.2 Implement `useUsers` hook
@@ -51,7 +51,7 @@
 - [x] 5.2 Implement `UserDetail` view
 
   - Port `buildpad-daas/app/users/[id]/page.tsx` → `UserDetail.tsx` with explicit Mantine fields (email, password create-only min 6, first/last name, title, description, location, TagsInput, language/theme/status Selects, masked token field, roles MultiSelect normalized to ID array)
-  - Edits-only PATCH (Directus pattern), dirty tracking disabling Save, Policies tab with count hosting `UserPoliciesManager`, `InfoPanel` (id, last access, created, updated, policies), delete with confirm, notifications, `onBack`/`onDeleted`/`onSaved` props
+  - Edits-only PATCH (DaaS pattern), dirty tracking disabling Save, Policies tab with count hosting `UserPoliciesManager`, `InfoPanel` (id, last access, created, updated, policies), delete with confirm, notifications, `onBack`/`onDeleted`/`onSaved` props
   - Never render/submit excluded fields (`admin_access`, `avatar`, `auth_data`, `provider`, `external_identifier`, `last_page`, `tfa_secret`)
   - Evaluate `system-token` interface for the token field; fallback masked TextInput + regenerate
   - _Requirements: 4.1–4.9, 8.1, 9.1_

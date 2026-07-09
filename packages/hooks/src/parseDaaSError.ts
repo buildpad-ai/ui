@@ -7,7 +7,7 @@
  * the DaaS backend:
  *
  *   - Custom DaaS routes:  `{ error: string }`
- *   - Directus-compatible: `{ errors: [{ message: string, extensions?: { code?: string } }] }`
+ *   - DaaS-compatible: `{ errors: [{ message: string, extensions?: { code?: string } }] }`
  *
  * This helper extracts a clean, human-readable message from either shape —
  * whether embedded in an `apiRequest`-style Error, passed as a raw JSON
@@ -22,7 +22,7 @@ export function parseDaaSError(err: unknown): string {
   if (jsonBody) {
     const parsed = tryParseJson(jsonBody);
     if (parsed && typeof parsed === 'object') {
-      // Directus shape: { errors: [{ message, extensions: { code } }] }
+      // DaaS shape: { errors: [{ message, extensions: { code } }] }
       const errors = (parsed as { errors?: unknown }).errors;
       if (Array.isArray(errors) && errors.length > 0) {
         const first = errors[0] as { message?: unknown } | undefined;

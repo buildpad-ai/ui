@@ -15,7 +15,7 @@ export interface FetchAccessParams {
   limit?: number;
   /** Sort spec, comma-separated, prefix with `-` for descending. */
   sort?: string;
-  /** Directus-style filter object, e.g. `{ role: { _eq: roleId } }`. */
+  /** DaaS-style filter object, e.g. `{ role: { _eq: roleId } }`. */
   filter?: Record<string, unknown>;
 }
 

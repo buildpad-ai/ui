@@ -2,7 +2,7 @@
  * New Item Detection Utility
  *
  * Centralizes the "+" sentinel pattern used across Buildpad to distinguish
- * new (unsaved) items from existing ones. Mirrors the Directus pattern where
+ * new (unsaved) items from existing ones. Mirrors the DaaS pattern where
  * routes navigate to `/content/{collection}/+` for item creation.
  *
  * Handles URL-encoded "+" (%2B) which occurs when the "+" character is
@@ -18,7 +18,7 @@ const NEW_ITEM_SENTINELS = new Set(["+", "%2B", "new"]);
  * Check if a primary key / route ID represents a new (unsaved) item.
  *
  * Returns `true` for:
- * - `"+"` — primary sentinel (Directus convention, used in routes like `/content/articles/+`)
+ * - `"+"` — primary sentinel (DaaS convention, used in routes like `/content/articles/+`)
  * - `"%2B"` — URL-encoded `+` (Next.js may percent-encode the `+` in `[id]` segments)
  * - `"new"` — alternative human-readable sentinel
  * - `null`, `undefined`, `""` — no ID means new item

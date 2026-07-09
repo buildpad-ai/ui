@@ -35,7 +35,7 @@ Parity boundary (verified against the daas source): the daas user form excludes 
 5. WHEN `useRoles` is used THEN it SHALL expose `fetchRoles` (supporting `includeUsers=true`), `getRole` (supporting `includePolicies=true`), `getMyRoles`, `createRole`, `updateRole`, `deleteRole`, `fetchRolePolicies`, `attachRolePolicy`, and `detachRolePolicy`.
 6. WHEN `usePolicies` is used THEN it SHALL expose `fetchPolicies` (returning `userCount`/`roleCount` enrichment), `getPolicy`, `getMyPolicies`, `createPolicy`, `updatePolicy`, and `deletePolicy`.
 7. WHEN `useAccess` is used THEN it SHALL expose thin CRUD over `/api/access` (`fetchAccess`, `createAccess`, `updateAccess`, `deleteAccess`).
-8. WHEN the backend returns an error in either supported shape (`{ error }` or Directus `{ errors: [{ message, extensions: { code } }] }`) THEN a shared `parseDaaSError` helper SHALL extract a human-readable message, falling back to the raw error text.
+8. WHEN the backend returns an error in either supported shape (`{ error }` or DaaS `{ errors: [{ message, extensions: { code } }] }`) THEN a shared `parseDaaSError` helper SHALL extract a human-readable message, falling back to the raw error text.
 9. WHEN any hook operation is in flight THEN the hook SHALL expose `loading` and `error` state following the `useFiles.ts` conventions.
 10. WHEN `@buildpad/hooks` is built THEN all four hooks and their param/result types SHALL be exported from `packages/hooks/src/index.ts`.
 
@@ -62,7 +62,7 @@ Parity boundary (verified against the daas source): the daas user form excludes 
 1. WHEN `UserDetail` renders in create mode THEN it SHALL show explicit Mantine fields for: email, password, first name, last name, title, description, location, tags, language, theme, status, token (masked), and roles (multi-select fed by `useRoles`).
 2. WHEN a new user is saved without a password THEN the component SHALL block the save and show a validation error.
 3. WHEN a password shorter than 6 characters is provided THEN the component SHALL block the save and show a validation error.
-4. WHEN an existing user is saved THEN the component SHALL PATCH only the changed fields (edits-only, Directus pattern), never the full form payload.
+4. WHEN an existing user is saved THEN the component SHALL PATCH only the changed fields (edits-only, DaaS pattern), never the full form payload.
 5. WHEN the user record loads THEN M2M `roles` entries (objects or IDs) SHALL be normalized to an array of role IDs for the multi-select.
 6. WHEN there are no unsaved changes in edit mode THEN the Save button SHALL be disabled.
 7. WHEN `UserDetail` renders an existing user THEN it SHALL show a Policies tab (with attached-policy count) hosting the user↔policy manager, and an info panel with user ID, last access, created, updated, and policy count.

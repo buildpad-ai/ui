@@ -491,7 +491,7 @@ const meta = {
         component:
           "A data-connected list that composes VTable for sorting, resize, reorder, and selection. " +
           "Features an integrated FilterPanel, action toolbar with create button, " +
-          "and Directus-style pagination. Right-click column headers for sort, align, and hide options. " +
+          "and DaaS-style pagination. Right-click column headers for sort, align, and hide options. " +
           "These stories use mock data. For live DaaS data, use the **Playground** story.",
       },
     },
@@ -739,7 +739,7 @@ export const WithCreateButton: Story = {
 };
 
 /**
- * Full-featured list matching the Directus content module layout:
+ * Full-featured list matching the DaaS content module layout:
  * search, filter panel, selection with bulk actions, create button,
  * archive filter, and column management.
  */
@@ -780,7 +780,7 @@ export const FullFeatured: Story = {
 
 /**
  * No create permission — create button is rendered but disabled
- * with a "Not allowed" tooltip. Demonstrates Directus-style permission gating.
+ * with a "Not allowed" tooltip. Demonstrates DaaS-style permission gating.
  */
 export const NoCreatePermission: Story = {
   decorators: [withNoCreatePermission],

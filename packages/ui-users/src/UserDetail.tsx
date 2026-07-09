@@ -118,7 +118,7 @@ function toFormValues(user: User): UserFormValues {
 
 /**
  * Diff form values against the loaded record, producing the edits-only PATCH
- * payload (Directus pattern: only changed fields are sent). `password` is
+ * payload (DaaS pattern: only changed fields are sent). `password` is
  * included only when non-empty.
  */
 function diffFormValues(current: UserFormValues, initial: UserFormValues): Partial<User> {

@@ -113,7 +113,7 @@ describe('getFieldDisplayName', () => {
     expect(getFieldDisplayName(field, 'en-US')).toBe('Author Name');
   });
 
-  it('falls back to formatFieldTitle when locale does not match (matching Directus)', () => {
+  it('falls back to formatFieldTitle when locale does not match (matching DaaS)', () => {
     const field = makeField('author_name', [
       { language: 'en-US', translation: 'Author Name' },
     ]);

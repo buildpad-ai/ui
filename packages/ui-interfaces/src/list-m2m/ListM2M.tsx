@@ -656,7 +656,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     const [currentPage, setCurrentPage] = useState(1);
     const [currentLimit, setCurrentLimit] = useState(initialLimit);
     const [search, setSearch] = useState("");
-    // Incrementing this triggers a server re-fetch (mirrors Directus's
+    // Incrementing this triggers a server re-fetch (mirrors DaaS's
     // updateFetchedItems() call after the parent save clears staged changes)
     const [refreshKey, setRefreshKey] = useState(0);
 

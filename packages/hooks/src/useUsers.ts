@@ -17,13 +17,13 @@ export interface FetchUsersParams {
   search?: string;
   /** Sort spec, comma-separated, prefix with `-` for descending. */
   sort?: string;
-  /** Comma-separated field list (Directus-style, supports dot-notation). */
+  /** Comma-separated field list (DaaS-style, supports dot-notation). */
   fields?: string;
   /** Filter to users holding this role ID. */
   role?: string;
   /** Filter by account status. */
   status?: UserStatus;
-  /** Additional Directus-style filter object, merged server-side. */
+  /** Additional DaaS-style filter object, merged server-side. */
   filter?: Record<string, unknown>;
 }
 
@@ -47,7 +47,7 @@ export function useUsers() {
 
   /**
    * List users with pagination, search, role/status filters, and an
-   * optional Directus-style filter object.
+   * optional DaaS-style filter object.
    */
   const fetchUsers = useCallback(async (
     params: FetchUsersParams = {}

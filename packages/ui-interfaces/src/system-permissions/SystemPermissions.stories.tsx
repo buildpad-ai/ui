@@ -40,7 +40,7 @@ const meta: Meta<typeof SystemPermissions> = {
 - Bulk All/None shortcuts per collection row
 
 ## Based on
-Directus system-permissions interface — ported to React + Mantine v8.`,
+DaaS system-permissions interface — ported to React + Mantine v8.`,
       },
     },
   },

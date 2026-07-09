@@ -145,7 +145,7 @@ export interface DisplayTemplateRelationInfo {
 }
 
 /**
- * Resolve the effective display template using the Directus-style fallback chain:
+ * Resolve the effective display template using the DaaS-style fallback chain:
  *   1. Explicit `template` string (from field options)
  *   2. Collection's `display_template` meta (from relation info)
  *   3. `{{ primaryKeyField }}` fallback

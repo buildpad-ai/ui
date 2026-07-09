@@ -136,7 +136,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   } = useRelationM2O(collection, field);
 
   // ---------------------------------------------------------------------------
-  // Display template resolution (Directus-style fallback chain):
+  // Display template resolution (DaaS-style fallback chain):
   //   1. Explicit template prop (from field options)
   //   2. Collection's display_template meta (from relationInfo)
   //   3. `{{ primaryKeyField }}` fallback

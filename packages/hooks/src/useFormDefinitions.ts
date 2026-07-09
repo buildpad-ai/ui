@@ -26,7 +26,7 @@ export const DEFAULT_FORMS_COLLECTION = 'fb_definitions';
 
 /**
  * Upper bound for "fetch all" definition queries. This DaaS treats `limit: -1`
- * literally (returns zero rows) rather than as Directus-style "unlimited", so we
+ * literally (returns zero rows) rather than as DaaS-style "unlimited", so we
  * pass a large finite cap instead. Screens per collection are few in practice.
  */
 const MAX_DEFINITIONS_LIMIT = 10000;
