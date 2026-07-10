@@ -934,7 +934,7 @@
     {
       "name": "system-permissions",
       "title": "SystemPermissions",
-      "description": "Permissions management interface with collection-based CRUD permission toggles. Used for policy permission editing with full/custom/none access levels.",
+      "description": "Permissions management interface with collection-based CRUD permission toggles. Used for policy permission editing with full/custom/none access levels, plus a tabbed detail editor for custom per-permission rules (item filters, field access, validation, presets).",
       "category": "relational",
       "files": [
         {
@@ -944,6 +944,46 @@
         {
           "source": "ui-interfaces/src/system-permissions/SystemPermissions.css",
           "target": "components/ui/system-permissions.css"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionDetailModal.tsx",
+          "target": "components/ui/permission-detail-modal.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFieldsTab.tsx",
+          "target": "components/ui/permission-fields-tab.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterTab.tsx",
+          "target": "components/ui/permission-filter-tab.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionValidationTab.tsx",
+          "target": "components/ui/permission-validation-tab.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionPresetsTab.tsx",
+          "target": "components/ui/permission-presets-tab.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/FilterRuleBuilder.tsx",
+          "target": "components/ui/filter-rule-builder.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/FilterRuleNode.tsx",
+          "target": "components/ui/filter-rule-node.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterTypes.ts",
+          "target": "components/ui/permission-filter-types.ts"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterUtils.ts",
+          "target": "components/ui/permission-filter-utils.ts"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/permissionMetadata.ts",
+          "target": "components/ui/permission-metadata.ts"
         }
       ],
       "dependencies": [

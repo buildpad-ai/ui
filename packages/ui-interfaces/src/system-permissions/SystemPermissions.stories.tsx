@@ -240,3 +240,50 @@ export const WithError: Story = {
     'data-testid': 'sp',
   },
 };
+
+const MOCK_FIELDS_BY_COLLECTION = {
+  articles: [
+    { collection: 'articles', field: 'id', type: 'uuid', schema: { name: 'id', table: 'articles', data_type: 'uuid', is_nullable: false, is_unique: true, is_primary_key: true, has_auto_increment: false } },
+    { collection: 'articles', field: 'title', type: 'string' },
+    { collection: 'articles', field: 'body', type: 'text' },
+    { collection: 'articles', field: 'status', type: 'string' },
+    { collection: 'articles', field: 'publish_date', type: 'timestamp' },
+    { collection: 'articles', field: 'author', type: 'uuid' },
+  ],
+  products: [
+    { collection: 'products', field: 'id', type: 'uuid' },
+    { collection: 'products', field: 'name', type: 'string' },
+    { collection: 'products', field: 'price', type: 'decimal' },
+  ],
+};
+
+/**
+ * Custom permission editing playground: open any toggle menu and pick
+ * "Use Custom" to edit fields/filters/validation/presets in the detail
+ * modal. Field metadata is injected so no API is needed.
+ */
+export const CustomEditing: Story = {
+  render: () => {
+    const [value, setValue] = useState<PermissionAlterations | null>({
+      create: [
+        { collection: 'articles', action: 'create', fields: ['title', 'body', 'status'], permissions: null, validation: { title: { _nnull: true } } as any, presets: { status: 'draft' }, policy: 'test-policy-1' },
+        { collection: 'articles', action: 'read', fields: ['*'], permissions: { status: { _eq: 'published' } } as any, validation: null, presets: null, policy: 'test-policy-1' },
+        { collection: 'products', action: 'read', fields: ['*'], permissions: null, validation: null, presets: null, policy: 'test-policy-1' },
+      ],
+      update: [],
+      delete: [],
+    });
+    return (
+      <SystemPermissions
+        primaryKey="test-policy-1"
+        value={value}
+        onChange={setValue}
+        collections={MOCK_COLLECTIONS}
+        fieldsByCollection={MOCK_FIELDS_BY_COLLECTION as any}
+        label="Custom Permission Editing"
+        description='Open a toggle menu and choose "Use Custom" to edit the permission in detail'
+        data-testid="sp"
+      />
+    );
+  },
+};

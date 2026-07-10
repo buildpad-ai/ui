@@ -37,6 +37,18 @@ export function inferSourcePackage(source: string): string {
   return '@buildpad/cli';
 }
 
+/** Compare semver strings — returns true if a >= b. */
+export function semverGte(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const na = pa[i] ?? 0;
+    const nb = pb[i] ?? 0;
+    if (na !== nb) return na > nb;
+  }
+  return true; // equal
+}
+
 /**
  * Resolve a per-package version from a v2 registry, with sensible fallbacks.
  *

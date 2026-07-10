@@ -14,6 +14,7 @@
 import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig } from './init.js';
+import { semverGte } from '../utils/checksum.js';
 import {
   getRegistry as fetchRegistry,
   type Registry,
@@ -47,18 +48,6 @@ interface OutdatedResult {
   registryVersion: string;
   installedRegistryVersion?: string;
   packageVersions?: Record<string, string>;
-}
-
-/** Compare semver strings — returns true if a >= b (simple string lex is fine for semver). */
-function semverGte(a: string, b: string): boolean {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
-  for (let i = 0; i < 3; i++) {
-    const na = pa[i] ?? 0;
-    const nb = pb[i] ?? 0;
-    if (na !== nb) return na > nb;
-  }
-  return true; // equal
 }
 
 /**

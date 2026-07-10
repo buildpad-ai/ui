@@ -28,7 +28,9 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { apiRequest } from '@buildpad/services';
-import type { Permission, PermissionAction, Collection } from '@buildpad/types';
+import type { Field, Permission, PermissionAction, Collection } from '@buildpad/types';
+import { PermissionDetailModal } from './PermissionDetailModal';
+import type { RelationInfo } from './PermissionFilterTypes';
 import './SystemPermissions.css';
 
 /* ------------------------------------------------------------------ */
@@ -49,7 +51,7 @@ const DISABLED_ACTIONS: Record<string, PermissionAction[]> = {
   daas_extensions: ['create', 'delete'],
 };
 
-const APP_ACCESS_MINIMAL_PERMISSIONS: Partial<Permission>[] = [
+export const APP_ACCESS_MINIMAL_PERMISSIONS: Partial<Permission>[] = [
   { collection: 'daas_activity', action: 'read', fields: ['*'], permissions: {} },
   { collection: 'daas_collections', action: 'read', fields: ['*'], permissions: {} },
   { collection: 'daas_fields', action: 'read', fields: ['*'], permissions: {} },
@@ -100,6 +102,10 @@ export interface SystemPermissionsProps {
   appAccess?: boolean;
   adminAccess?: boolean;
   collections?: Collection[];
+  /** Inject field metadata per collection for the detail modal (tests/stories). */
+  fieldsByCollection?: Record<string, Field[]>;
+  /** Inject relation metadata for the detail modal (tests/stories). */
+  relations?: RelationInfo[];
   label?: string;
   description?: string;
   error?: string;
@@ -115,7 +121,8 @@ function getPermissionLevel(permission?: DisplayPermission | null): PermissionLe
   const hasAllFields = permission.fields?.includes('*');
   const hasNoPermissions = !permission.permissions || Object.keys(permission.permissions).length === 0;
   const hasNoValidation = !permission.validation || Object.keys(permission.validation).length === 0;
-  if (hasAllFields && hasNoPermissions && hasNoValidation) return 'all';
+  const hasNoPresets = !permission.presets || Object.keys(permission.presets).length === 0;
+  if (hasAllFields && hasNoPermissions && hasNoValidation && hasNoPresets) return 'all';
   return 'custom';
 }
 
@@ -348,6 +355,8 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
   appAccess = false,
   adminAccess = false,
   collections: externalCollections,
+  fieldsByCollection,
+  relations,
   label,
   description,
   error,
@@ -700,9 +709,40 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
     setCollectionSearch('');
   }, [setFullAccess]);
 
-  const editItem = useCallback((_collection: string, _action: PermissionAction) => {
-    // Permission detail editing — will be implemented as PermissionDetailModal
+  // --- Permission detail editing ("Use Custom") ---
+  const [editing, setEditing] = useState<{ collection: string; action: PermissionAction } | null>(null);
+
+  const editItem = useCallback((collection: string, action: PermissionAction) => {
+    setEditing({ collection, action });
   }, []);
+
+  const editingPermission = useMemo(() => {
+    if (!editing) return null;
+    return displayItems.find(
+      (p) => p.collection === editing.collection && p.action === editing.action,
+    ) ?? null;
+  }, [editing, displayItems]);
+
+  const handleDetailSave = useCallback((edited: Partial<Permission>) => {
+    if (editingPermission) {
+      updatePermission({ ...editingPermission, ...edited });
+    } else if (editing) {
+      createPermission({
+        policy: primaryKey ?? undefined,
+        collection: editing.collection,
+        action: editing.action,
+        ...edited,
+      });
+    }
+    setEditing(null);
+  }, [editingPermission, editing, updatePermission, createPermission, primaryKey]);
+
+  const handleDetailDelete = useCallback(() => {
+    if (editingPermission) {
+      removePermission(editingPermission);
+    }
+    setEditing(null);
+  }, [editingPermission, removePermission]);
 
   // --- Reset system permissions ---
   const resetSystemPermissions = useCallback((useRecommended: boolean) => {
@@ -758,7 +798,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
       <Paper withBorder pos="relative">
         <LoadingOverlay visible={loading && permissionGroups.length === 0} />
         <ScrollArea type="auto">
-          <Table striped highlightOnHover style={{ minWidth: '600px' }}>
+          <Table striped highlightOnHover withTableBorder={false} style={{ minWidth: '600px' }}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th style={{ minWidth: '200px' }}>Collection</Table.Th>
@@ -981,6 +1021,29 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
           </Button>
         </Group>
       </Modal>
+
+      {/* Permission detail editor ("Use Custom") */}
+      {editing && (
+        <PermissionDetailModal
+          opened
+          onClose={() => setEditing(null)}
+          permission={editingPermission}
+          collection={editing.collection}
+          action={editing.action}
+          appMinimal={
+            appAccess
+              ? APP_ACCESS_MINIMAL_PERMISSIONS.find(
+                  (p) => p.collection === editing.collection && p.action === editing.action,
+                )
+              : undefined
+          }
+          fields={fieldsByCollection?.[editing.collection]}
+          relations={relations}
+          onSave={handleDetailSave}
+          onDelete={editingPermission ? handleDetailDelete : undefined}
+          data-testid={testId ? `${testId}-detail` : undefined}
+        />
+      )}
     </div>
   );
 });

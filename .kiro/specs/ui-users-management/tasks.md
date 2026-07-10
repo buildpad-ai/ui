@@ -131,3 +131,56 @@
   - `playwright.users.config.ts` mirroring `playwright.files.config.ts` with `users-api` project (create role → policy → attach → user → assign role → cleanup) and `users-storybook` project; `tests/ui-users/helpers/` RBAC setup/teardown; root `test:users:*` scripts
   - _Requirements: 12.3_
   - ✅ Done and green: `tests/ui-users/` (users-rbac.api.spec 23 tests, users-feature.storybook.spec 7 tests, helpers with idempotent RBAC setup/teardown sweeping `e2e_users_*`/`e2e-users-*`), `playwright.users.config.ts` (auto-boots storybook :6011 + host :3000), root `test:users:{setup,e2e,api,storybook,teardown}` scripts, `.users-rbac.json` gitignored. Demo seed data (Content Manager/Editor hierarchy, scoped Support Agent, Auditor + 3 linked policies) created on the live instance via the daas MCP.
+- [x] 15. Custom permission editor — Phase 1, JSON-first (parity gap closure, in ui-interfaces)
+- [x] 15.1 Port filter types and utils
+
+  - `packages/ui-interfaces/src/system-permissions/PermissionFilterTypes.ts` from daas `lib/filter/types.ts` (`FilterOperator`, `FilterNode`, `OperatorInfo`, `RelationInfo`, `DYNAMIC_VALUES`, `getOperatorsForType`, `getOperatorsForRelation`; cast boundary vs `@buildpad/types.Filter`)
+  - `PermissionFilterUtils.ts` from daas `lib/filter/utils.ts` verbatim + `hasRelationalFilterKeys` lifted from `FilterRuleBuilder.tsx`
+  - Jest `__tests__/PermissionFilterUtils.test.ts`: `parseFilterToNodes`/`nodesToFilter` roundtrips (root `_and`, nested `_or`, single condition), node CRUD, `hasRelationalFilterKeys`, operator sets per type
+  - _Requirements: 13.4_
+  - ✅ Ported verbatim (pure TS); 30 jest tests green
+- [x] 15.2 Metadata fetchers
+
+  - `permissionMetadata.ts`: `fetchCollectionFields` (GET `/api/fields/{collection}`), `fetchCollectionRelations` (one cached flat `GET /api/relations?limit=-1` + daas `PermissionsFilter.tsx` meta-mapping: junction_field→m2m, one_collection→o2m, many_collection→m2o), `clearPermissionMetadataCache`; module-level promise caches over `apiRequest`
+  - _Requirements: 13.9_
+- [x] 15.3 Tab components
+
+  - `PermissionFieldsTab.tsx` (daas `PermissionsFields.tsx`: checkboxes, all/none, `['*']`, PK/Alias badges, app-minimal locking), `PermissionFilterTab.tsx` (Phase-1 JSON textarea + dynamic-vars help + relational warning + create-action notice), `PermissionValidationTab.tsx`, `PermissionPresetsTab.tsx` (JSON editors, Clear, examples; presets UUID-array warning)
+  - _Requirements: 13.3, 13.4, 13.5_
+  - ✅ Tabs are presentational (metadata centralized in the modal, unlike daas's per-tab fetches); JSON errors surface inline instead of console
+- [x] 15.4 PermissionDetailModal
+
+  - Port daas `PermissionsDetailModal.tsx`: Modal size xl, action-dependent tabs defaulting to first available, per-tab value dot badges, Delete with inline confirm (SystemPermissions reset-dialog pattern; no ui-users import), local draft, `onSave` emitting only `{fields, permissions, validation, presets}`
+  - Jest `__tests__/PermissionDetailModal.test.tsx` (tab visibility per action incl. share/create, badges, `['*']` semantics, invalid JSON blocks draft, save payload has no `$` keys, delete confirm); `PermissionDetailModal.stories.tsx` (one story per action, injected `fields`/`relations`)
+  - _Requirements: 13.1, 13.2, 13.3, 13.5, 13.6, 13.7, 13.9_
+  - ✅ 26 jest tests green; 6 stories (per action + app-minimal)
+- [x] 15.5 SystemPermissions wiring
+
+  - Replace the `editItem` no-op stub with modal state; `handleDetailSave` → `updatePermission({...existing, ...edited})` or `createPermission({policy: primaryKey, ...editing, ...edited})`; `handleDetailDelete` → `removePermission`
+  - Export `APP_ACCESS_MINIMAL_PERMISSIONS`; pass matched entry as `appMinimal`; add `fieldsByCollection`/`relations` injection props; fix `getPermissionLevel` to treat presets-only rows as `custom`
+  - Extend `__tests__/SystemPermissions.test.tsx` ("Use Custom" opens modal; save on pristine row → `update[]` with id; on `$type:'created'` row → `create[$index]` replaced; no existing row → `create[]` with policy/collection/action; modal delete → `delete[]`; level fix); `CustomEditing` story with injected metadata
+  - _Requirements: 13.1, 13.6, 13.7, 13.8, 13.9_
+  - ✅ 56 jest tests green (49 pre-existing + 7 new); no new merge logic needed — existing `$type`/`$index` branching covered all three row provenances
+- [x] 15.6 Registry, exports, docs, changeset (Phase-1 shippable checkpoint)
+
+  - `registry.template.json` `system-permissions` entry: add each new file → `components/ui/<kebab>.tsx|ts`, update description, keep `internalDependencies: ["services"]`; `pnpm build:registry && pnpm registry:check`
+  - `src/system-permissions/index.ts` (or package barrel): export `PermissionDetailModal` + filter types/utils; `apps/docs/content/users.mdx` "Custom permission rules" subsection; changeset `'@buildpad/ui-interfaces': minor`
+  - Targeted jest green: `pnpm --filter @buildpad/ui-interfaces test -- --testPathPattern "SystemPermissions|PermissionDetailModal|PermissionFilterUtils"`
+  - _Requirements: 13.10_
+  - ✅ 10 new files in the `system-permissions` registry entry (flat kebab targets; `transformIntraComponentImports` maps camelCase `permissionMetadata` too); `pnpm build:registry && registry:check` green; docs "Custom permission rules" section added; changeset `system-permissions-custom-editor.md`
+- [x] 16. Custom permission editor — Phase 2, visual filter builder
+- [x] 16.1 Port `FilterRuleNode.tsx`
+
+  - From daas `FilterRuleNode.tsx`: field pill with lazy related-field sub-menus via `permissionMetadata` cache, per-type operator select, typed value inputs (`TagsInput` `_in`/`_nin`, between-pair, boolean/datetime/number, `$`-dynamic-var menu), relational-limitation tooltips; drop decorative drag handle
+  - _Requirements: 13.4_
+  - ✅ Also wired the (previously dead) field-menu search box to actually filter fields/relations
+- [x] 16.2 Port `FilterRuleBuilder.tsx` and swap into the filter tab
+
+  - Visual↔JSON toggle, Add Filter menu with Related Fields section, And/Or group pills; translate `--sgds-*` tokens to Mantine vars/`SystemPermissions.css`; `PermissionFilterTab` hosts the builder (Phase-1 JSON editor remains as JSON mode); builder stories + jest for visual↔JSON roundtrip
+  - _Requirements: 13.4_
+  - ✅ `PermissionFilterTab` reduced to a thin loading→builder wrapper (daas `PermissionsFilter` shape); modal fetches relations (flat `/api/relations`, module-cached, skipped for create); jest covers visual pills/remove/Add-Filter + JSON-mode roundtrips — 112 targeted tests green; `pnpm build` (monorepo) green
+- [x] 17. Playwright extension for the custom editor
+
+  - Extend `tests/ui-users/users-feature.storybook.spec.ts` policies flow: open policy detail → "Use Custom" on a read cell → assert modal + field checkboxes render from live `/api/fields` → Cancel (smoke-level; mutation paths stay jest-covered)
+  - _Requirements: 13.1, 13.3_
+  - ✅ Green against the live DaaS4 e2e instance (users-storybook 8/8 incl. the new spec). Targets `daas_users:update` — NOT `read`, which is app-minimal-locked (static cyan badge, no menu) since the fixture policy has `app_access: true`. Asserts custom-level toggle → "Use Custom" → dialog (role-based locator; the Mantine Modal-root testid element has a zero-size box) → live field checkboxes (`first_name` checked per fixture's update fields, `email` unchecked) → Cancel unmounts.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-08T14:57:52.466Z",
+  "generatedAt": "2026-07-10T08:14:41.029Z",
   "version": "1.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -163,7 +163,7 @@
         {
           "source": "utils/src/is-new-item.ts",
           "target": "lib/buildpad/is-new-item.ts",
-          "sourceSha256": "0574e3cc85110d9fc229974fc00ce5b5e27637e7c2ff06f215caa05c9e5e667c"
+          "sourceSha256": "852eda416e2fe0e3f41a64de2bc49078ddde3bf232a0cee1f96863f3d7830d44"
         },
         {
           "source": "utils/src/build-fields-from-definition.ts",
@@ -452,17 +452,17 @@
         {
           "source": "hooks/src/useFormDefinitions.ts",
           "target": "lib/buildpad/hooks/useFormDefinitions.ts",
-          "sourceSha256": "576062f3171a714d9403cd49086fa5768b6c34bd17e368c1d0c9509853169d42"
+          "sourceSha256": "85cbde9145d2692a34cc81b6fbf9fe9e393d492f9f1954daa5edb3f89a1cc6e5"
         },
         {
           "source": "hooks/src/parseDaaSError.ts",
           "target": "lib/buildpad/hooks/parseDaaSError.ts",
-          "sourceSha256": "d70487150da5a8cbde736eb0aa41035a5585cedca078823d00ab858103a82ae7"
+          "sourceSha256": "682bfe67db56f770606a7a1690fd96037adffa89fba694bcb4cedadfc57a056b"
         },
         {
           "source": "hooks/src/useUsers.ts",
           "target": "lib/buildpad/hooks/useUsers.ts",
-          "sourceSha256": "36a7da57ef4ba86ac82a792dba0276d507d7ceb43e7ec0c99ff4afb3bdedb88d"
+          "sourceSha256": "76710bc5538e2717e417cc04e142d26381ba634dfe34b9b909381dd8e274eae7"
         },
         {
           "source": "hooks/src/useRoles.ts",
@@ -477,7 +477,7 @@
         {
           "source": "hooks/src/useAccess.ts",
           "target": "lib/buildpad/hooks/useAccess.ts",
-          "sourceSha256": "c939e575f1b7212a627b751e082dd346d195d682623171b9f5d3a31f65bfbc5e"
+          "sourceSha256": "65e32c4d4f6ae544335c297948c6181511c3eaaa29e88f4791818f94fd9b558e"
         },
         {
           "source": "cli/templates/lib/hooks/index.ts",
@@ -1089,12 +1089,12 @@
         {
           "source": "ui-interfaces/src/input-hash/InputHash.tsx",
           "target": "components/ui/input-hash.tsx",
-          "sourceSha256": "8bca2cf14737f13d2140f838475afee0cf81f8a4b60bbe1262cb719e5ddf59f5"
+          "sourceSha256": "fc09dddb2e32d6fb91703536fcf0843af981e0604e3f70f8d6684f8b7b104bcd"
         },
         {
           "source": "ui-interfaces/src/input-hash/InputHash.css",
           "target": "components/ui/InputHash.css",
-          "sourceSha256": "6a1cd5a46e4e75ad609e834f42fc9233c08f22775f4c8e96b0f78488dcc5da53"
+          "sourceSha256": "00da180d01f2af399ae1b70d7cca31fec4d43be5edcc5e3ea447887de705292a"
         }
       ],
       "dependencies": [
@@ -1135,7 +1135,7 @@
         {
           "source": "ui-interfaces/src/system-token/SystemToken.css",
           "target": "components/ui/SystemToken.css",
-          "sourceSha256": "05c157fb6bf962b4d9065141ba6225b33a0a36309f321996747604e0663a693d"
+          "sourceSha256": "f1884a5f3be5990ea93eae385d2ba6f4cba39587c5d922a2add102c0085e976a"
         }
       ],
       "dependencies": [
@@ -1168,18 +1168,68 @@
     {
       "name": "system-permissions",
       "title": "SystemPermissions",
-      "description": "Permissions management interface with collection-based CRUD permission toggles. Used for policy permission editing with full/custom/none access levels.",
+      "description": "Permissions management interface with collection-based CRUD permission toggles. Used for policy permission editing with full/custom/none access levels, plus a tabbed detail editor for custom per-permission rules (item filters, field access, validation, presets).",
       "category": "relational",
       "files": [
         {
           "source": "ui-interfaces/src/system-permissions/SystemPermissions.tsx",
           "target": "components/ui/system-permissions.tsx",
-          "sourceSha256": "3062e896f3f45798fae661178032a0b3cf85abd8469d31f49c589783055a883c"
+          "sourceSha256": "4bb674c171b411b0aaef34605ab2e7cf67ee150f632d593a6d7d56f72936d113"
         },
         {
           "source": "ui-interfaces/src/system-permissions/SystemPermissions.css",
           "target": "components/ui/system-permissions.css",
           "sourceSha256": "d14f3faec281f3992e0b2d9b5547698cfe9d603e61bb3d1b9d3d485bd5cdfc33"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionDetailModal.tsx",
+          "target": "components/ui/permission-detail-modal.tsx",
+          "sourceSha256": "1f1ca3ec2c87be9a0a20db50d6cacbc0e0da85a380f4be63df87a69ea09db726"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFieldsTab.tsx",
+          "target": "components/ui/permission-fields-tab.tsx",
+          "sourceSha256": "186a1bf6e63be81df7947cf32f3fc7fe08164d4ccbbaf09de5904abb120f037f"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterTab.tsx",
+          "target": "components/ui/permission-filter-tab.tsx",
+          "sourceSha256": "daf4d888797f05942919e1be2d02b670292dcf85130fbaeabbf8a12471552be0"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionValidationTab.tsx",
+          "target": "components/ui/permission-validation-tab.tsx",
+          "sourceSha256": "386a62616fac5825785110b2b7ede10382ae5a486032c0eec380600ffb457bd4"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionPresetsTab.tsx",
+          "target": "components/ui/permission-presets-tab.tsx",
+          "sourceSha256": "1921a57506be0fb68c9c19c9240e5da8efe29700c1e4f987a4e92ba0428f8bf9"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/FilterRuleBuilder.tsx",
+          "target": "components/ui/filter-rule-builder.tsx",
+          "sourceSha256": "a454a59c91d63f65963f451037aa2ea5330ca9ddb0f32858ca175d8bece8cab7"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/FilterRuleNode.tsx",
+          "target": "components/ui/filter-rule-node.tsx",
+          "sourceSha256": "09176f1930e9102ea290d6f8869f068a133fd24e0c361973de8471f4b9947e5b"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterTypes.ts",
+          "target": "components/ui/permission-filter-types.ts",
+          "sourceSha256": "91d5735d70af70fe507725430d568c8ee9540450186e076f92d3f1fc042ee11b"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterUtils.ts",
+          "target": "components/ui/permission-filter-utils.ts",
+          "sourceSha256": "c185164cfb4b3e6be8f8b3bf53b67afa0793fd94620b5c769992466044275a70"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/permissionMetadata.ts",
+          "target": "components/ui/permission-metadata.ts",
+          "sourceSha256": "c0a6138c8326e262fc56ec4f537bc74a06f9495bcfbf63a0ed3a5c6af6006745"
         }
       ],
       "dependencies": [
@@ -1929,7 +1979,7 @@
         {
           "source": "ui-interfaces/src/list-m2m/ListM2M.tsx",
           "target": "components/ui/list-m2m.tsx",
-          "sourceSha256": "014de0f0875e5f6da9838b6d199025e3d3baab8a5e5fac38d8846fdef43a7fc8"
+          "sourceSha256": "26aba26b86fba1388a68da882be21453805c626a7dd136ca847504d6765077e1"
         },
         {
           "source": "ui-interfaces/src/list-m2m/ListM2MInterface.tsx",
@@ -1986,7 +2036,7 @@
         {
           "source": "ui-interfaces/src/select-dropdown-m2o/SelectDropdownM2O.tsx",
           "target": "components/ui/select-dropdown-m2o.tsx",
-          "sourceSha256": "a50a79667a71cd14c030f379660eabc40c18033ec365451c59e140a33b6c4613"
+          "sourceSha256": "5f547ba94280988caecd621c8e46026bb22d7c32a2befe5f285b8b9a91273cb1"
         },
         {
           "source": "ui-interfaces/src/select-dropdown-m2o/SelectDropdownM2OInterface.tsx",
@@ -2101,7 +2151,7 @@
         {
           "source": "ui-interfaces/src/list-m2a/render-template.ts",
           "target": "components/ui/list-m2a/render-template.ts",
-          "sourceSha256": "9c004bbf84b76cb0f44c1a5a1ca8a2441e20812788e5631482546b47e06a025b"
+          "sourceSha256": "3d1ddad6c28ec2b92a2093f998d0e1d01328744e7d47844b36f91cd6c5886763"
         }
       ],
       "dependencies": [
@@ -2497,7 +2547,7 @@
         {
           "source": "ui-form/src/components/FormFieldInterface.tsx",
           "target": "components/ui/vform/components/FormFieldInterface.tsx",
-          "sourceSha256": "3e61ea292021da5f5832813d663c6024786b96b60a88de4e192a6462e725e5eb"
+          "sourceSha256": "21cf083249c643deb8a490f8efff106d7ec9747f5dcb854d1910d0700a16e526"
         },
         {
           "source": "ui-form/src/components/FormGroupField.tsx",
@@ -3110,7 +3160,7 @@
         {
           "source": "ui-users/src/UserDetail.tsx",
           "target": "components/ui/users-management/user-detail.tsx",
-          "sourceSha256": "eaf33ceba6b5599988f168740d6268855ecfc36b8305159ab55517b34cdf7be4"
+          "sourceSha256": "ab84453519c2184a316ab4bb6d300fdbb230ced0b0fc7b040344f52282f430ca"
         },
         {
           "source": "ui-users/src/UserPoliciesManager.tsx",

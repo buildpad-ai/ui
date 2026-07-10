@@ -28,7 +28,9 @@ It gives you six screens:
 - **`PolicyDetail`** — the `/policies/[id]` page: access flags (`app_access`,
   `admin_access`, `delegate_access`) and the per-collection **permissions
   matrix** (create/read/update/delete/share), powered by the
-  `system-permissions` interface.
+  `system-permissions` interface — including a **custom permission editor**
+  (item filters, field access, validation, presets) behind each toggle's
+  "Use Custom" option.
 
 ## The pieces
 
@@ -38,6 +40,7 @@ It gives you six screens:
 | `RolesManager` / `RoleDetail` | `@buildpad/ui-users` | Role list + create/edit with hierarchy, scope rules, membership, and policies |
 | `PoliciesManager` / `PolicyDetail` | `@buildpad/ui-users` | Policy list + create/edit with access flags and the permissions matrix |
 | `SystemPermissions` | `@buildpad/ui-interfaces` | The per-collection CRUD-S permissions matrix (reused inside `PolicyDetail`) |
+| `PermissionDetailModal` | `@buildpad/ui-interfaces` | Tabbed custom-permission editor (item filters, field access, validation, presets) opened from the matrix |
 | `SelectIcon` | `@buildpad/ui-interfaces` | Icon picker for roles and policies |
 | `useUsers` / `useRoles` / `usePolicies` / `useAccess` | `@buildpad/hooks` | CRUD, bulk role membership, and policy attach/detach against `/api/users`, `/api/roles`, `/api/policies`, `/api/access` |
 
@@ -201,6 +204,40 @@ direct attachments. To grant admin, attach a policy with `admin_access: true`
 — don't try to PATCH the field (the hooks strip it defensively; the API rejects
 it). The same applies to `app_access` on roles.
 </Callout>
+
+## Custom permission rules
+
+Beyond the matrix's **All / None** toggles, each cell's menu has **Use Custom**,
+which opens a tabbed editor for that collection/action pair. The tabs depend on
+the action (matching Directus semantics):
+
+| Tab | Actions | Stores |
+|---|---|---|
+| **Item Permissions** | read / update / delete / share | A Directus filter limiting *which items* the action applies to (`permissions`) |
+| **Field Permissions** | create / read / update | Which fields are accessible — checkbox list, `['*']` means all (`fields`) |
+| **Field Validation** | create / update | Filter-syntax rules checked before the write is allowed (`validation`) |
+| **Field Presets** | create / update | Default values applied automatically on the write (`presets`) |
+
+Filter and validation rules use standard Directus filter syntax and support the
+dynamic variables `$CURRENT_USER`, `$CURRENT_ROLE`, `$CURRENT_ROLES`,
+`$CURRENT_POLICIES`, `$NOW`, and `$CURRENT_RESOURCE_URI`:
+
+```json
+{
+  "_and": [
+    { "status": { "_eq": "published" } },
+    { "user_created": { "_eq": "$CURRENT_USER" } }
+  ]
+}
+```
+
+Edits stay local to the matrix's dirty state — like the All/None toggles, they
+are applied to `/api/permissions` only when the admin hits **Save** on the
+policy. Filters using `_has`, dot-notation, or `_some`/`_none` show a warning:
+relational rules fall back to a two-step query on child mutations. Fields
+required by **App Access** minimal permissions render locked (cyan) and cannot
+be removed. The field lists come from `app/api/fields/*` and
+`app/api/relations` (included in `api-routes`).
 
 ## RBAC behaviour
 

@@ -22,7 +22,7 @@ import {
   addOriginHeader,
   hashTransformed
 } from './transformer.js';
-import { inferSourcePackage, resolvePackageVersion } from '../utils/checksum.js';
+import { inferSourcePackage, resolvePackageVersion, semverGte } from '../utils/checksum.js';
 import { validate } from './validate.js';
 import {
   getRegistry as fetchRegistry,
@@ -492,6 +492,88 @@ interface DryRunInfo {
 /**
  * Copy and transform a component
  */
+/**
+ * Staleness of an already-installed component vs the registry (Config v2 only).
+ * A component is stale when the version recorded at install time predates the
+ * last registry version that changed the component's files (`lastChangedIn`).
+ */
+export function getInstalledStaleness(
+  component: ComponentEntry,
+  registry: Registry,
+  config: Config
+): { stale: boolean; installedVersion?: string; lastChangedIn?: string } {
+  if ((config.schemaVersion ?? 1) < 2 || !registry.packages) return { stale: false };
+  const record = config.components?.[component.name];
+  if (!record?.version) return { stale: false }; // pre-tracking install — leave alone
+  const sourcePackage =
+    component.sourcePackage ?? inferSourcePackage(component.files[0]?.source ?? '');
+  const latest = resolvePackageVersion(registry, sourcePackage, registry.version);
+  const lastChangedIn = component.lastChangedIn ?? latest;
+  if (semverGte(record.version, lastChangedIn)) return { stale: false };
+  return { stale: true, installedVersion: record.version, lastChangedIn };
+}
+
+/**
+ * True when every file recorded for the installed component is either missing
+ * on disk or byte-identical (modulo origin header / line endings) to what the
+ * CLI originally wrote — i.e. re-copying cannot destroy any user edits.
+ */
+export function isInstallPristine(componentName: string, config: Config, cwd: string): boolean {
+  const record = config.components?.[componentName];
+  if (!record?.files?.length) return false; // no manifest — can't verify, don't touch
+  for (const file of record.files) {
+    const abs = path.join(cwd, file.target);
+    if (!fs.existsSync(abs)) continue; // missing → nothing to lose by re-copying
+    const content = fs.readFileSync(abs, 'utf-8');
+    if (hashTransformed(content) !== file.sha256) return false;
+  }
+  return true;
+}
+
+/**
+ * Walk a component's dependency tree (lib modules + registry components).
+ * Called both when a component installs and when it is skipped as already
+ * installed, so stale-but-unmodified dependencies self-heal no matter where
+ * they sit in the tree (e.g. `add users-routes` refreshing an outdated
+ * `system-permissions` two levels down).
+ */
+async function visitDependencies(
+  component: ComponentEntry,
+  registry: Registry,
+  config: Config,
+  cwd: string,
+  overwrite: boolean,
+  spinner: Ora,
+  installing: Set<string>,
+  dryRun: boolean,
+  dryRunInfo?: DryRunInfo[]
+): Promise<void> {
+  // Install internal dependencies first (types, services, hooks).
+  // Always call — copyLibModule self-skips when installed AND complete,
+  // but re-copies when the registry has since gained files (e.g. hooks
+  // gaining useUsers.ts), so stale modules self-heal.
+  for (const dep of (component.internalDependencies ?? [])) {
+    spinner.text = `Installing dependency: ${dep}...`;
+    if (!dryRun) {
+      await copyLibModule(dep, registry, config, cwd, spinner);
+    }
+  }
+
+  // Registry dependencies (other components). Recurse even into installed
+  // ones — copyComponent's guard returns cheaply when they are up to date
+  // and self-heals stale unmodified copies. Installed deps stay out of dry
+  // runs to keep `--dry-run` output focused on new files.
+  for (const depName of (component.registryDependencies ?? [])) {
+    if (installing.has(depName)) continue;
+    if (dryRun && config.installedComponents.includes(depName)) continue;
+    const depComponent = registry.components.find(c => c.name === depName);
+    if (depComponent) {
+      spinner.text = `Installing component dependency: ${depComponent.title}...`;
+      await copyComponent(depComponent, registry, config, cwd, overwrite, spinner, installing, dryRun, dryRunInfo);
+    }
+  }
+}
+
 async function copyComponent(
   component: ComponentEntry,
   registry: Registry,
@@ -507,30 +589,78 @@ async function copyComponent(
   if (installing.has(component.name)) {
     return true; // Already being installed in this call stack
   }
-  
+
   // Check if already installed
   if (config.installedComponents.includes(component.name) && !overwrite && !dryRun) {
-    // In non-interactive/batch mode (--all, bootstrap), or when installing as a
-    // transitive dependency of another component, silently skip already-installed components.
     // installing.size > 0 means we're in a recursive call from a parent copyComponent.
-    if (installing.has('__nonInteractive__') || installing.size > 0) {
+    const nonInteractive = installing.has('__nonInteractive__') || installing.size > 0;
+    const staleness = getInstalledStaleness(component, registry, config);
+    let reinstall = false;
+    let declined = false;
+
+    if (staleness.stale && isInstallPristine(component.name, config, cwd)) {
+      // Outdated but unmodified since install — re-copying cannot lose user
+      // edits, so self-heal instead of silently keeping stale code.
+      spinner.info(
+        `${component.title} ${staleness.installedVersion} is outdated (changed in ${staleness.lastChangedIn}) — refreshing unmodified copy`
+      );
+      spinner.start(`Adding ${component.title}...`);
+      reinstall = true;
+    } else if (staleness.stale) {
+      // Outdated AND locally modified — never clobber silently.
+      spinner.warn(
+        `${component.title} is outdated (${staleness.installedVersion} → ${staleness.lastChangedIn}) but has local edits — keeping yours. Merge updates with: npx buildpad upgrade ${component.name}`
+      );
+      if (!nonInteractive) {
+        spinner.stop();
+        const { shouldOverwrite } = await prompts({
+          type: 'confirm',
+          name: 'shouldOverwrite',
+          message: `${component.title} has local edits. Overwrite and DISCARD them? (choose No and run "buildpad upgrade ${component.name}" to merge instead)`,
+          initial: false,
+        });
+        if (shouldOverwrite) {
+          reinstall = true;
+          spinner.start(`Adding ${component.title}...`);
+        } else {
+          declined = true;
+        }
+      } else {
+        spinner.start();
+      }
+    } else {
+      // Up to date (or untracked) — original behavior: silently skip in
+      // non-interactive/batch mode (--all, bootstrap) and for transitive deps.
+      if (!nonInteractive) {
+        // Stop the spinner so the interactive prompt is visible to the user
+        spinner.stop();
+        const { shouldOverwrite } = await prompts({
+          type: 'confirm',
+          name: 'shouldOverwrite',
+          message: `${component.title} already installed. Overwrite?`,
+          initial: false,
+        });
+        if (shouldOverwrite) {
+          reinstall = true;
+          // Restart the spinner for the rest of the operation
+          spinner.start(`Adding ${component.title}...`);
+        } else {
+          declined = true;
+        }
+      }
+    }
+
+    if (!reinstall) {
+      // This component keeps its current files, but its dependency tree is
+      // still visited so outdated unmodified deps refresh themselves.
+      installing.add(component.name);
+      await visitDependencies(component, registry, config, cwd, overwrite, spinner, installing, dryRun, dryRunInfo);
+      if (declined) {
+        spinner.info(`Skipped ${component.title}`);
+        return false;
+      }
       return true;
     }
-    // Stop the spinner so the interactive prompt is visible to the user
-    spinner.stop();
-    const { shouldOverwrite } = await prompts({
-      type: 'confirm',
-      name: 'shouldOverwrite',
-      message: `${component.title} already installed. Overwrite?`,
-      initial: false,
-    });
-
-    if (!shouldOverwrite) {
-      spinner.info(`Skipped ${component.title}`);
-      return false;
-    }
-    // Restart the spinner for the rest of the operation
-    spinner.start(`Adding ${component.title}...`);
   }
 
   // Mark as being installed to prevent circular deps
@@ -544,29 +674,8 @@ async function copyComponent(
     libDependencies: component.internalDependencies ?? [],
   };
 
-  // Install internal dependencies first (types, services, hooks).
-  // Always call — copyLibModule self-skips when installed AND complete,
-  // but re-copies when the registry has since gained files (e.g. hooks
-  // gaining useUsers.ts), so stale modules self-heal.
-  for (const dep of (component.internalDependencies ?? [])) {
-    spinner.text = `Installing dependency: ${dep}...`;
-    if (!dryRun) {
-      await copyLibModule(dep, registry, config, cwd, spinner);
-    }
-  }
-
-  // Install registry dependencies (other components)
-  if (component.registryDependencies) {
-    for (const depName of component.registryDependencies) {
-      if (!config.installedComponents.includes(depName) && !installing.has(depName)) {
-        const depComponent = registry.components.find(c => c.name === depName);
-        if (depComponent) {
-          spinner.text = `Installing component dependency: ${depComponent.title}...`;
-          await copyComponent(depComponent, registry, config, cwd, overwrite, spinner, installing, dryRun, dryRunInfo);
-        }
-      }
-    }
-  }
+  // Install dependencies (lib modules + other components) first
+  await visitDependencies(component, registry, config, cwd, overwrite, spinner, installing, dryRun, dryRunInfo);
 
   // In dry run mode, just collect info and return
   if (dryRun) {

@@ -143,6 +143,106 @@ test.describe('Users Feature Smoke (admin)', () => {
     // The SystemPermissions matrix renders for an existing policy
     await expect(page.getByTestId('policy-detail-permissions')).toBeVisible({ timeout: 20_000 });
   });
+
+  test('matrix "Use Custom" opens the permission detail editor with live fields', async ({
+    page,
+  }) => {
+    await loadStory(page, POLICIES_STORY);
+    await expect(page.getByTestId('policies-manager')).toBeVisible({ timeout: 20_000 });
+
+    await page.getByTestId(`policies-manager-row-${fixtures.manager.policyId}`).click();
+    await expect(page.getByTestId('policy-detail-permissions')).toBeVisible({ timeout: 20_000 });
+
+    // daas_users:update is a custom-level cell (subset of fields) and NOT
+    // app-minimal (that's daas_users:read, which renders as a locked badge).
+    const toggle = page.getByTestId('policy-detail-permissions-toggle-daas_users-update');
+    await expect(toggle).toBeVisible({ timeout: 20_000 });
+    await expect(toggle).toHaveAttribute('data-level', 'custom');
+    await toggle.click();
+    await page.getByTestId('policy-detail-permissions-toggle-daas_users-update-custom').click();
+
+    // The tabbed editor opens with the update-action tab set.
+    // (The Modal-root testid element has no box of its own — assert the dialog role.)
+    const modal = page.getByRole('dialog', { name: /daas_users → UPDATE/ });
+    await expect(modal).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('policy-detail-permissions-detail-tab-permissions')).toBeVisible();
+    await expect(page.getByTestId('policy-detail-permissions-detail-tab-validation')).toBeVisible();
+    await expect(page.getByTestId('policy-detail-permissions-detail-tab-presets')).toBeVisible();
+
+    // Field Permissions tab lists checkboxes from the live /api/fields/daas_users
+    await page.getByTestId('policy-detail-permissions-detail-tab-fields').click();
+    const firstName = page.getByTestId('policy-detail-permissions-detail-fields-field-first_name');
+    await expect(firstName).toBeChecked({ timeout: 20_000 }); // in the fixture's update fields
+    const email = page.getByTestId('policy-detail-permissions-detail-fields-field-email');
+    await expect(email).toBeAttached();
+    await expect(email).not.toBeChecked(); // not granted for update
+
+    // Cancel — no mutation, editor closes (unmounts entirely)
+    await page.getByTestId('policy-detail-permissions-detail-cancel').click();
+    await expect(modal).toBeHidden();
+    await expect(page.getByTestId('policy-detail-permissions-detail')).not.toBeAttached();
+  });
+
+  test('custom permission edits persist only through the policy Save (live round-trip)', async ({
+    page,
+  }) => {
+    const permsUrl = `http://localhost:3000/api/permissions?policy=${fixtures.manager.policyId}&limit=100`;
+    const fetchDeletePerm = async () => {
+      const res = await page.request.get(permsUrl);
+      expect(res.ok()).toBeTruthy();
+      const body = await res.json();
+      return (body.data as Array<{ collection: string; action: string; permissions: unknown }>).find(
+        (p) => p.collection === 'daas_users' && p.action === 'delete',
+      );
+    };
+
+    await loadStory(page, POLICIES_STORY);
+    await expect(page.getByTestId('policies-manager')).toBeVisible({ timeout: 20_000 });
+    await page.getByTestId(`policies-manager-row-${fixtures.manager.policyId}`).click();
+    await expect(page.getByTestId('policy-detail-permissions')).toBeVisible({ timeout: 20_000 });
+
+    // Precondition: no daas_users:delete permission on the fixture policy
+    expect(await fetchDeletePerm()).toBeUndefined();
+    const cell = page.getByTestId('policy-detail-permissions-toggle-daas_users-delete');
+    await expect(cell).toHaveAttribute('data-level', 'none');
+
+    // Author a custom item filter (delete action → Item Permissions tab only)
+    await cell.click();
+    await page.getByTestId('policy-detail-permissions-toggle-daas_users-delete-custom').click();
+    await expect(page.getByRole('dialog', { name: /daas_users → DELETE/ })).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.getByTestId('policy-detail-permissions-detail-filter-mode-toggle').click();
+    await page
+      .getByTestId('policy-detail-permissions-detail-filter-json')
+      .fill('{"status": {"_eq": "suspended"}}');
+    await page.getByTestId('policy-detail-permissions-detail-save').click();
+
+    // The edit is LOCAL: cell flips to custom, form goes dirty, nothing on the server yet
+    await expect(cell).toHaveAttribute('data-level', 'custom');
+    await expect(page.getByText('Unsaved Changes')).toBeVisible();
+    expect(await fetchDeletePerm()).toBeUndefined();
+
+    // Host Save applies the alterations to /api/permissions
+    await page.getByTestId('policy-detail-save-btn').click();
+    await expect(page.getByText('Unsaved Changes')).toBeHidden({ timeout: 20_000 });
+    const saved = await fetchDeletePerm();
+    expect(saved?.permissions).toEqual({ status: { _eq: 'suspended' } });
+    // Matrix refetched clean from the server — still custom
+    await expect(
+      page.getByTestId('policy-detail-permissions-toggle-daas_users-delete'),
+    ).toHaveAttribute('data-level', 'custom', { timeout: 20_000 });
+
+    // Cleanup through the same flow: No Access + Save removes the row server-side
+    await page.getByTestId('policy-detail-permissions-toggle-daas_users-delete').click();
+    await page.getByTestId('policy-detail-permissions-toggle-daas_users-delete-none').click();
+    await page.getByTestId('policy-detail-save-btn').click();
+    await expect(page.getByText('Unsaved Changes')).toBeHidden({ timeout: 20_000 });
+    expect(await fetchDeletePerm()).toBeUndefined();
+    await expect(
+      page.getByTestId('policy-detail-permissions-toggle-daas_users-delete'),
+    ).toHaveAttribute('data-level', 'none');
+  });
 });
 
 // ---------------------------------------------------------------------------

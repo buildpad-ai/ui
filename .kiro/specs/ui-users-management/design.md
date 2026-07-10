@@ -241,3 +241,76 @@ Add `@buildpad/ui-users` to the `.changeset/config.json` `fixed` group; one mino
 - `packages/ui-interfaces/src/system-permissions/SystemPermissions.tsx` — reused permissions matrix
 - `packages/registry.template.json` (`file-manager` ~2443, `files-routes` ~477) and `scripts/build-registry.mjs` (~45, ~153)
 - buildpad-daas sources to port: `app/{users,roles,policies}/page.tsx` + `[id]/page.tsx`; `components/{UserPoliciesManager,RolePoliciesManager,RoleUsersManager,InfoSidebar,RoleInfoSidebar,DeleteConfirmModal}.tsx`
+
+## Custom permission editing (system-permissions addendum — Req 13)
+
+### Gap statement
+
+The 2026-07-09 parity audit against `buildpad-daas/app/policies` found the port at parity or better everywhere except one area: custom permission editing. The daas admin ships a seven-component editor family (`PermissionsDetailModal`, `PermissionsFilter`, `PermissionsFields`, `PermissionsValidation`, `PermissionsPresets`, `FilterRuleBuilder`, `FilterRuleNode` — ~2,300 lines, plus `lib/filter/{types,utils}.ts`), while the port's `SystemPermissions` has a no-op `editItem` stub behind the "Use Custom" menu item. The editor is added to the `system-permissions` family in `packages/ui-interfaces` so every consumer (including `PolicyDetail`) gains it through the existing `onChange(alterations)` contract — **no ui-users changes**.
+
+### Architectural constraint: alterations, not writes
+
+The daas editor persisted each permission immediately via the browser Supabase client (bypassing API validation/activity logging — an audit-trail hole the port already fixed). The ported editor must instead stay inside `SystemPermissions`' local-alterations model: the modal edits a draft and `onSave` emits only `{ fields, permissions, validation, presets }`; the host merges via the existing helpers (`updatePermission`/`createPermission`/`removePermission`), which already branch on `$type: 'created' | 'updated'` + `$index` and strip `$`-markers via `cleanItem`. Persistence remains on the host form's Save (`PolicyDetail.applyPermissionAlterations` → bulk `POST /api/permissions`, per-row `PATCH`/`DELETE`). No new merge logic is required — only wiring.
+
+### New files (`packages/ui-interfaces/src/system-permissions/`, flat PascalCase siblings)
+
+Flat because CLI `transformer.ts` rewrites PascalCase relative imports to kebab-case flat files; a `filter/` subfolder's lowercase imports would not be rewritten.
+
+| File | Phase | Responsibility (ported from buildpad-daas) |
+|---|---|---|
+| `PermissionFilterTypes.ts` | 1 | `lib/filter/types.ts`: `FilterOperator`, `FilterNode`, `OperatorInfo`, `RelationInfo`, `DYNAMIC_VALUES`, `getOperatorsForType`, `getOperatorsForRelation`. Owns the cast boundary against `@buildpad/types.Filter` (which declares only `_and`/`_or`) |
+| `PermissionFilterUtils.ts` | 1 | `lib/filter/utils.ts` verbatim (pure TS: `parseFilterToNodes`, `nodesToFilter`, node CRUD, validation) + `hasRelationalFilterKeys` lifted from `FilterRuleBuilder` |
+| `permissionMetadata.ts` | 1 | `fetchCollectionFields(collection)` → `GET /api/fields/{collection}`; `fetchCollectionRelations(collection)` → one cached flat `GET /api/relations?limit=-1` + client-side meta-mapping (junction_field→m2m, one_collection→o2m, many_collection→m2o, dedupe, m2o last); `clearPermissionMetadataCache()` for tests. Module-level promise caches over `apiRequest`. Deliberately not a `@buildpad/hooks` hook: the Phase-2 builder needs imperative cached fetches per related collection, and this keeps registry `internalDependencies: ["services"]` unchanged |
+| `PermissionDetailModal.tsx` | 1 | `components/PermissionsDetailModal.tsx`: Mantine `Modal size="xl"`, action-dependent tabs (see Req 13.2), per-tab value dot badges, Delete with inline confirm (reset-dialog pattern from `SystemPermissions.tsx`; do not import ui-users' `DeleteConfirmModal` — wrong dependency direction). Local draft state; no notifications (host dirty badge is the feedback) |
+| `PermissionFieldsTab.tsx` | 1 | `components/PermissionsFields.tsx`: checkbox field list, all/none, `['*']` semantics, PK/Alias badges, app-minimal locked fields |
+| `PermissionFilterTab.tsx` | 1→2 | Phase 1: monospace JSON `Textarea` + dynamic-vars help + relational-limitation warning + create-action notice. Phase 2: hosts `FilterRuleBuilder` (JSON editor survives as its JSON mode) |
+| `PermissionValidationTab.tsx` | 1 | `components/PermissionsValidation.tsx`: JSON textarea, Clear, worked examples, dynamic-vars alert |
+| `PermissionPresetsTab.tsx` | 1 | `components/PermissionsPresets.tsx`: JSON textarea, UUID-array relational warning, examples |
+| `FilterRuleNode.tsx` | 2 | `components/FilterRuleNode.tsx`: field pill with lazy related-field sub-menus (via `permissionMetadata` cache), per-type operator select, typed value inputs (`TagsInput` for `_in`/`_nin`, between-pair, boolean/datetime/number, `$`-dynamic-var menu), relational-limitation tooltips. Decorative drag handle dropped (no DnD behind it in the original) |
+| `FilterRuleBuilder.tsx` | 2 | `components/FilterRuleBuilder.tsx`: visual↔JSON toggle, Add Filter menu with Related Fields section, And/Or group pills. `--sgds-*` tokens translated to Mantine vars / `SystemPermissions.css` classes |
+
+### Modal contract
+
+```ts
+export interface PermissionDetailModalProps {
+  opened: boolean;
+  onClose: () => void;
+  permission: Partial<Permission> | null;   // display row (markers ok) or null = creating
+  collection: string;
+  action: PermissionAction;
+  policyName?: string;
+  appMinimal?: Partial<Permission>;          // matched APP_ACCESS_MINIMAL_PERMISSIONS entry
+  fields?: Field[];                          // test/story injection, like `collections`
+  relations?: RelationInfo[];
+  onSave: (edited: Partial<Permission>) => void;  // only { fields, permissions, validation, presets }
+  onDelete?: () => void;                     // present only when permission exists
+  'data-testid'?: string;
+}
+```
+
+### `SystemPermissions.tsx` wiring (replaces the stub)
+
+```ts
+const [editing, setEditing] = useState<{ collection: string; action: PermissionAction } | null>(null);
+const editItem = useCallback((collection, action) => setEditing({ collection, action }), []);
+const editingPermission = /* displayItems row for editing, or null */;
+const handleDetailSave = (edited) =>
+  editingPermission ? updatePermission({ ...editingPermission, ...edited })
+                    : createPermission({ policy: primaryKey ?? undefined, ...editing, ...edited });
+const handleDetailDelete = () => editingPermission && removePermission(editingPermission);
+```
+
+Plus: export `APP_ACCESS_MINIMAL_PERMISSIONS` (currently module-private) for the modal's locked-fields display; fix `getPermissionLevel` to treat presets-only rows as `custom` (Req 13.8); add `fieldsByCollection`/`relations` injection props; export the modal and filter types/utils from `index.ts`.
+
+### Phasing rationale
+
+Phase 1 (JSON-first) achieves 100% persistence parity — the daas builder's JSON mode produces identical output, and Fields/Validation/Presets tabs are full ports, not MVPs. The ~1,200-line Mantine-menu-heavy visual builder lands as Phase 2 atop a stable modal, keeping diffs reviewable. Known divergence kept from the port: app-minimal cells stay locked (static cyan badge, no "Use Custom"), whereas daas allowed extending beyond the minimum — revisit if requested.
+
+### Distribution & testing deltas
+
+- Registry: extend the `system-permissions` template entry with each new file → `components/ui/<kebab>.tsx|ts`; description updated; `internalDependencies: ["services"]` unchanged. Never hand-edit generated `packages/registry.json` / `cli/dist/registry.json`.
+- Docs: `apps/docs/content/users.mdx` — extend the SystemPermissions row + "Custom permission rules" subsection (tabs per action, dynamic variables, JSON syntax).
+- Changeset: `'@buildpad/ui-interfaces': minor`.
+- Jest (targeted; repo-wide suites on main are broken): `PermissionFilterUtils.test.ts` (parse/serialize roundtrips, node CRUD, operator sets), `PermissionDetailModal.test.tsx` (tab visibility per action, badges, `['*']` semantics, invalid-JSON blocking, save payload shape, delete confirm), extended `SystemPermissions.test.tsx` (open-modal wiring; save→`update[]` with id / `create[$index]` replace / new `create[]`; delete→`delete[]`; level fix).
+- Storybook (ui-interfaces): `CustomEditing` playground story with injected metadata; `PermissionDetailModal.stories.tsx` per action; Phase 2 builder stories.
+- Playwright: extend `tests/ui-users/users-feature.storybook.spec.ts` — open "Use Custom" on a read cell against live DaaS, assert modal + field checkboxes, Cancel (smoke; mutations stay jest-covered).
