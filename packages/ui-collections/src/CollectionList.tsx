@@ -111,7 +111,7 @@ export interface CollectionListProps {
   enableAddField?: boolean;
   /** Enable the create (+) action button */
   enableCreate?: boolean;
-  /** Primary key field name */
+  /** Primary key field name. If omitted, resolved from field metadata (schema.is_primary_key), falling back to "id". */
   primaryKeyField?: string;
   /** Row height in pixels */
   rowHeight?: number;
@@ -123,8 +123,8 @@ export interface CollectionListProps {
   archiveValue?: string;
   /** Value that indicates an item is not archived (default: "draft") */
   unarchiveValue?: string;
-  /** Callback when item row is clicked */
-  onItemClick?: (item: AnyItem) => void;
+  /** Callback when item row is clicked. Second argument is the item's primary key value. */
+  onItemClick?: (item: AnyItem, primaryKey?: string | number) => void;
   /** Callback when "Create" button is clicked */
   onCreate?: () => void;
   /** Callback when "Edit" (row click or edit action) is triggered */
@@ -183,7 +183,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   enableHeaderMenu = true,
   enableAddField = true,
   enableCreate = false,
-  primaryKeyField = "id",
+  primaryKeyField: primaryKeyFieldProp,
   rowHeight: rowHeightProp,
   tableSpacing = "cozy",
   archiveField,
@@ -202,6 +202,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 }) => {
   // ----- Data state -----
   const [allFields, setAllFields] = useState<Field[]>([]);
+  // PK column resolved from field metadata (schema.is_primary_key); null until fields load
+  const [resolvedPk, setResolvedPk] = useState<string | null>(null);
+  const primaryKeyField = primaryKeyFieldProp ?? resolvedPk ?? "id";
   const [visibleFieldKeys, setVisibleFieldKeys] = useState<string[]>([]);
   const [items, setItems] = useState<AnyItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -329,6 +332,14 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
         setAllFields(visible);
 
+        // Resolve the collection's real PK column from field metadata so
+        // non-`id` primary keys work (fields=, aggregate[count]=, row keys).
+        const schemaPk = fieldsResult.find(
+          (f: Field) => f.schema?.is_primary_key,
+        )?.field;
+        const pkField = primaryKeyFieldProp ?? schemaPk ?? "id";
+        setResolvedPk(schemaPk ?? "id");
+
         // Set initial visible columns (already permission-filtered)
         if (displayFields) {
           const keys = hasRestriction
@@ -343,10 +354,10 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           const initial = visible.slice(0, 5).map((f: Field) => f.field);
           // Always include PK if visible
           if (
-            !initial.includes(primaryKeyField) &&
-            visible.some((f) => f.field === primaryKeyField)
+            !initial.includes(pkField) &&
+            visible.some((f) => f.field === pkField)
           ) {
-            initial.unshift(primaryKeyField);
+            initial.unshift(pkField);
           }
           setVisibleFieldKeys(initial);
         }
@@ -371,7 +382,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [collection, displayFields, primaryKeyField]);
+  }, [collection, displayFields, primaryKeyFieldProp]);
 
   // =========================================================================
   // Merge external filter prop with internal FilterPanel filter
@@ -527,10 +538,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     }
   }, [loadItems, visibleFieldKeys.length]);
 
-  // Fetch total count when collection changes
+  // Fetch total count once the PK is known (prop or resolved from field metadata)
   useEffect(() => {
-    getTotalCount();
-  }, [getTotalCount]);
+    if (primaryKeyFieldProp || resolvedPk) {
+      getTotalCount();
+    }
+  }, [getTotalCount, primaryKeyFieldProp, resolvedPk]);
 
   // Reset page on search/filter change
   useEffect(() => {
@@ -1060,7 +1073,13 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         onSortChange={handleSortChange}
         onHeadersChange={handleHeadersChange}
         onRowClick={
-          onItemClick ? ({ item }) => onItemClick(item as AnyItem) : undefined
+          onItemClick
+            ? ({ item }) =>
+                onItemClick(
+                  item as AnyItem,
+                  (item as AnyItem)[primaryKeyField] as string | number,
+                )
+            : undefined
         }
         data-testid="collection-list-table"
       />

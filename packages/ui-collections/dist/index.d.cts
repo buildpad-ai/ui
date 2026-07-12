@@ -185,7 +185,7 @@ interface CollectionListProps {
     enableAddField?: boolean;
     /** Enable the create (+) action button */
     enableCreate?: boolean;
-    /** Primary key field name */
+    /** Primary key field name. If omitted, resolved from field metadata (schema.is_primary_key), falling back to "id". */
     primaryKeyField?: string;
     /** Row height in pixels */
     rowHeight?: number;
@@ -197,8 +197,8 @@ interface CollectionListProps {
     archiveValue?: string;
     /** Value that indicates an item is not archived (default: "draft") */
     unarchiveValue?: string;
-    /** Callback when item row is clicked */
-    onItemClick?: (item: AnyItem) => void;
+    /** Callback when item row is clicked. Second argument is the item's primary key value. */
+    onItemClick?: (item: AnyItem, primaryKey?: string | number) => void;
     /** Callback when "Create" button is clicked */
     onCreate?: () => void;
     /** Callback when "Edit" (row click or edit action) is triggered */

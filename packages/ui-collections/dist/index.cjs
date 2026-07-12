@@ -211,6 +211,7 @@ var CollectionForm = ({
   );
   const stableIncludeFields = (0, import_react.useMemo)(() => includeFields, [includeFields]);
   const [fields, setFields] = (0, import_react.useState)([]);
+  const [resolvedPk, setResolvedPk] = (0, import_react.useState)("id");
   const [formData, setFormData] = (0, import_react.useState)(stableDefaultValues);
   const [initialFormData, setInitialFormData] = (0, import_react.useState)(stableDefaultValues);
   const [loading, setLoading] = (0, import_react.useState)(true);
@@ -245,6 +246,8 @@ var CollectionForm = ({
           import_services.PermissionsService.getMyCollectionAccess().catch(() => ({}))
         ]);
         setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
+        const schemaPk = allFields.find((f) => f.schema?.is_primary_key)?.field;
+        setResolvedPk(schemaPk ?? "id");
         const access = collectionAccess?.[collection] || {};
         const readAccess = access.read;
         const createAccess = access.create;
@@ -535,9 +538,9 @@ var CollectionForm = ({
         setInitialFormData(clearedFormData);
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
-          delete copyData.id;
+          delete copyData[resolvedPk];
           const copyResult = await itemsService.createOne(copyData);
-          onSuccess?.({ ...copyData, id: copyResult?.id });
+          onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
           return;
         }
         if (afterSave === "add-new") {
@@ -565,7 +568,7 @@ var CollectionForm = ({
           scalarData[EXTRAS_COLUMN] = createdExtras;
         }
         const result = await itemsService.createOne(scalarData);
-        const newId = result?.id;
+        const newId = result?.[resolvedPk];
         if (newId != null && m2mEntries.length > 0) {
           await flushM2MChanges(newId, m2mEntries);
         }
@@ -699,7 +702,7 @@ var CollectionForm = ({
             children: "Cancel"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Group, { gap: 0, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Group, { gap: 0, style: { gap: 0 }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
             import_core2.Button,
             {
@@ -1510,7 +1513,7 @@ var CollectionList = ({
   enableHeaderMenu = true,
   enableAddField = true,
   enableCreate = false,
-  primaryKeyField = "id",
+  primaryKeyField: primaryKeyFieldProp,
   rowHeight: rowHeightProp,
   tableSpacing = "cozy",
   archiveField,
@@ -1528,6 +1531,8 @@ var CollectionList = ({
   renderCell: consumerRenderCell
 }) => {
   const [allFields, setAllFields] = (0, import_react3.useState)([]);
+  const [resolvedPk, setResolvedPk] = (0, import_react3.useState)(null);
+  const primaryKeyField = primaryKeyFieldProp ?? resolvedPk ?? "id";
   const [visibleFieldKeys, setVisibleFieldKeys] = (0, import_react3.useState)([]);
   const [items, setItems] = (0, import_react3.useState)([]);
   const [totalCount, setTotalCount] = (0, import_react3.useState)(0);
@@ -1610,6 +1615,11 @@ var CollectionList = ({
           visible = visible.filter((f) => accessibleSet.has(f.field));
         }
         setAllFields(visible);
+        const schemaPk = fieldsResult.find(
+          (f) => f.schema?.is_primary_key
+        )?.field;
+        const pkField = primaryKeyFieldProp ?? schemaPk ?? "id";
+        setResolvedPk(schemaPk ?? "id");
         if (displayFields) {
           const keys = hasRestriction ? displayFields.filter((k) => new Set(permFields).has(k)) : displayFields;
           setVisibleFieldKeys(
@@ -1617,8 +1627,8 @@ var CollectionList = ({
           );
         } else {
           const initial = visible.slice(0, 5).map((f) => f.field);
-          if (!initial.includes(primaryKeyField) && visible.some((f) => f.field === primaryKeyField)) {
-            initial.unshift(primaryKeyField);
+          if (!initial.includes(pkField) && visible.some((f) => f.field === pkField)) {
+            initial.unshift(pkField);
           }
           setVisibleFieldKeys(initial);
         }
@@ -1640,7 +1650,7 @@ var CollectionList = ({
     return () => {
       cancelled = true;
     };
-  }, [collection, displayFields, primaryKeyField]);
+  }, [collection, displayFields, primaryKeyFieldProp]);
   const mergedFilter = (0, import_react3.useMemo)(() => {
     const filters = [];
     if (filter && Object.keys(filter).length > 0) filters.push(filter);
@@ -1756,8 +1766,10 @@ var CollectionList = ({
     }
   }, [loadItems, visibleFieldKeys.length]);
   (0, import_react3.useEffect)(() => {
-    getTotalCount();
-  }, [getTotalCount]);
+    if (primaryKeyFieldProp || resolvedPk) {
+      getTotalCount();
+    }
+  }, [getTotalCount, primaryKeyFieldProp, resolvedPk]);
   (0, import_react3.useEffect)(() => {
     setPage(1);
   }, [search, filter, internalFilter]);
@@ -2136,7 +2148,10 @@ var CollectionList = ({
         onUpdate: setSelectedItems,
         onSortChange: handleSortChange,
         onHeadersChange: handleHeadersChange,
-        onRowClick: onItemClick ? ({ item }) => onItemClick(item) : void 0,
+        onRowClick: onItemClick ? ({ item }) => onItemClick(
+          item,
+          item[primaryKeyField]
+        ) : void 0,
         "data-testid": "collection-list-table"
       }
     ),
