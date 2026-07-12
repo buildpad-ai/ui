@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-10T08:14:41.029Z",
+  "generatedAt": "2026-07-11T16:29:31.444Z",
   "version": "1.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -235,7 +235,7 @@
         {
           "source": "types/src/users.ts",
           "target": "lib/buildpad/types/users.ts",
-          "sourceSha256": "9869e42f99e7418b8a738722ff22ab42dd1d7f5663d1360e53d06873b0c2399c"
+          "sourceSha256": "501b1d5e671f5bbd57dfbe381e28d04e53d623769d4d30d8f521c0b7cc0ebae4"
         },
         {
           "source": "cli/templates/lib/types/index.ts",
@@ -709,7 +709,7 @@
         {
           "source": "cli/templates/app/roles/[id]/page.tsx",
           "target": "app/(authenticated)/roles/[id]/page.tsx",
-          "sourceSha256": "0b1f39c252bed06b729ea9b026e6651e2b431ef8016a26aefb921dc9825eb264"
+          "sourceSha256": "218a2fb150450b364c264f5f5c1c6f4e0c1dc1e212f6b5f7b6e620f72f4a29f7"
         },
         {
           "source": "cli/templates/app/policies/page.tsx",
@@ -1174,7 +1174,7 @@
         {
           "source": "ui-interfaces/src/system-permissions/SystemPermissions.tsx",
           "target": "components/ui/system-permissions.tsx",
-          "sourceSha256": "4bb674c171b411b0aaef34605ab2e7cf67ee150f632d593a6d7d56f72936d113"
+          "sourceSha256": "c52b3d291c713cc6d6ea8f7ff06c4b8a76345744040ba6939743af642429c6d1"
         },
         {
           "source": "ui-interfaces/src/system-permissions/SystemPermissions.css",
@@ -3150,7 +3150,7 @@
         {
           "source": "ui-users/src/UsersManager.tsx",
           "target": "components/ui/users-management/users-manager.tsx",
-          "sourceSha256": "d9f1c415f9a906f7aabdc980a66884943338f6b4f6a0297eda8041354bdaf6e0"
+          "sourceSha256": "06d5730d40910322abfafbda9b0fa9cdee9574e30fb1873b3eac1d9a992dcb6f"
         },
         {
           "source": "ui-users/src/UsersManager.css",
@@ -3160,7 +3160,7 @@
         {
           "source": "ui-users/src/UserDetail.tsx",
           "target": "components/ui/users-management/user-detail.tsx",
-          "sourceSha256": "ab84453519c2184a316ab4bb6d300fdbb230ced0b0fc7b040344f52282f430ca"
+          "sourceSha256": "cac983d1fadc6a45cc6b3b13ce279c272f6916408dff81160fb1837715e3a40a"
         },
         {
           "source": "ui-users/src/UserPoliciesManager.tsx",
@@ -3170,12 +3170,12 @@
         {
           "source": "ui-users/src/RolesManager.tsx",
           "target": "components/ui/users-management/roles-manager.tsx",
-          "sourceSha256": "3daf43963dcbbca18bef4c96d8676fbb18b8e79f6086d2ac6e13c89e54e12413"
+          "sourceSha256": "f05cedbbf79f086d1918f8cf215f9c96343f0c664c92cb55e949f606f77da651"
         },
         {
           "source": "ui-users/src/RoleDetail.tsx",
           "target": "components/ui/users-management/role-detail.tsx",
-          "sourceSha256": "ccb02624b297cf61f35fc61a0f77fe67f2e173d21799408aa2a998299d304e4b"
+          "sourceSha256": "fe5fa026c026e8a4243b002421e9e921c7f9bdd0ad5ea58a5bd152eb4b74a59e"
         },
         {
           "source": "ui-users/src/RoleUsersManager.tsx",
@@ -3190,7 +3190,7 @@
         {
           "source": "ui-users/src/PoliciesManager.tsx",
           "target": "components/ui/users-management/policies-manager.tsx",
-          "sourceSha256": "57784914e5f908e96b62768a80df0f9f53b921d7dd0b39d6f0941c4e30d08d45"
+          "sourceSha256": "07860bf7eb87405a285362bb1052c0c20d9a48e0a0e2ee341af90b6a5a52034a"
         },
         {
           "source": "ui-users/src/PolicyDetail.tsx",
@@ -3215,7 +3215,7 @@
         {
           "source": "ui-users/src/UserAvatar.tsx",
           "target": "components/ui/users-management/user-avatar.tsx",
-          "sourceSha256": "5f1174569cd1a9b9091d6fa2028d82286d5c1dfc82c581f6c90af9095761c11c"
+          "sourceSha256": "d102e57353ee032369cbfbcbe0c22ee9002de10a3c0c8cfdf332cbf89948d07e"
         },
         {
           "source": "ui-users/src/InfoPanel.tsx",
@@ -3233,19 +3233,29 @@
           "sourceSha256": "dca4bbf90c361231c6d9777253ec08de7ed014653b34bfd6d20d41c6309527ba"
         },
         {
+          "source": "ui-users/src/SortableTh.tsx",
+          "target": "components/ui/users-management/sortable-th.tsx",
+          "sourceSha256": "4f187f0e9f26849348078fedcfc5380d8213bcb75733906baa0a0fa810d283d1"
+        },
+        {
+          "source": "ui-users/src/TokenInput.tsx",
+          "target": "components/ui/users-management/token-input.tsx",
+          "sourceSha256": "fc804510e96446b656713ce051c7be4ddb2d344c60818e8c0ae502645ed4d347"
+        },
+        {
           "source": "ui-users/src/userDisplay.ts",
           "target": "components/ui/users-management/user-display.ts",
-          "sourceSha256": "1e98194c3f84fb515d08088e6ef400a522240d219753be65823da74eb3b86ab5"
+          "sourceSha256": "92248657e5cb534a047a595a30147835181b5a82ec8b39483eb8ebd115834673"
         },
         {
           "source": "ui-users/src/accessUtils.ts",
           "target": "components/ui/users-management/access-utils.ts",
-          "sourceSha256": "50c774897933c9c7a6ce4abd6ad9f2d88b7b65b2af9c17463ea51dad754ee0cc"
+          "sourceSha256": "bbcfe8a279dbeb162be0061d21538b030a112a67f4c1c0cd18166902f9013536"
         },
         {
           "source": "ui-users/src/index.ts",
           "target": "components/ui/users-management/index.ts",
-          "sourceSha256": "08e00b0a5e2160f589ac807d8e55c63511ab67af1ff93dfae0309c9c1977a932"
+          "sourceSha256": "093811146b4f84b38247e23c565f72152904c1a51b28034bf178d1149f850684"
         }
       ],
       "dependencies": [

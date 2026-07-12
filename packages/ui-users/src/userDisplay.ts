@@ -5,8 +5,8 @@
  */
 import type { User } from '@buildpad/types';
 
-/** The subset of `User` needed to derive initials/display name. */
-export type UserDisplayFields = Pick<User, 'first_name' | 'last_name' | 'email'>;
+/** The subset of `User` needed to derive initials/display name/avatar. */
+export type UserDisplayFields = Pick<User, 'first_name' | 'last_name' | 'email' | 'avatar'>;
 
 /**
  * Derive avatar initials for a user: first+last initial when both names are

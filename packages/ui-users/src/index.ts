@@ -63,13 +63,22 @@ export type { PolicyPickerModalProps } from './PolicyPickerModal';
 export { IconDisplay } from './IconDisplay';
 export type { IconDisplayProps } from './IconDisplay';
 
+export { SortableTh } from './SortableTh';
+export type { SortableThProps } from './SortableTh';
+
+export { TokenInput } from './TokenInput';
+export type { TokenInputProps } from './TokenInput';
+
 // Pure display helpers
 export { getUserInitials, getUserDisplayName } from './userDisplay';
 export type { UserDisplayFields } from './userDisplay';
 
 export {
+  childRolesOf,
   generateToken,
+  isConcealedToken,
   isValidRegex,
   normalizeRoleIds,
   parentRoleOptions,
+  toggleSort,
 } from './accessUtils';

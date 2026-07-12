@@ -34,3 +34,9 @@ class ResizeObserverStub {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).ResizeObserver = ResizeObserverStub;
+
+// jsdom does not implement scrollIntoView — Mantine's Combobox calls it on
+// the active option when a Select/MultiSelect dropdown opens.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}

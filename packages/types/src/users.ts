@@ -53,6 +53,13 @@ export interface User {
   /** UI theme preference */
   theme?: string | null;
 
+  /**
+   * Avatar image source, rendered verbatim as the `<img src>` (no asset-URL
+   * construction). Display-only pass-through — this module never writes it
+   * (the user form excludes `avatar`; upload is out of scope).
+   */
+  avatar?: string | null;
+
   /** Account status */
   status: UserStatus;
 

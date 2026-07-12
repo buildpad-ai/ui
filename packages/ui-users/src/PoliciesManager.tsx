@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -11,6 +11,7 @@ import {
   Menu,
   Pagination,
   Paper,
+  Select,
   Stack,
   Table,
   Text,
@@ -31,28 +32,42 @@ import { usePermissions, usePolicies } from '@buildpad/hooks';
 import type { Policy } from '@buildpad/types';
 import { IconDisplay } from './IconDisplay';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { SortableTh } from './SortableTh';
+import { toggleSort } from './accessUtils';
+
+const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export interface PoliciesManagerProps {
   /** Called when a policy row is clicked (and the current user may update policies). */
   onPolicyClick?: (policy: Policy) => void;
   /** Called when the "Add Policy" button is clicked. */
   onCreatePolicy?: () => void;
-  /** Items per page. Default: 25. */
+  /** Initial items per page (changeable via the footer selector). Default: 25. */
   pageSize?: number;
+  /** Choices offered by the footer page-size selector. Default: [10, 25, 50, 100]. */
+  pageSizeOptions?: number[];
+  /** Hide the built-in heading + subtitle for embedded surfaces; the Add Policy button stays. Default: false. */
+  hideHeader?: boolean;
   /** DaaS collection used for RBAC checks. Default: 'daas_policies'. */
   policiesCollection?: string;
 }
 
 /**
- * Policies list surface: search, user/role attachment counts, pagination,
- * and a row menu for edit/delete. Ported from the buildpad-daas reference
+ * Policies list surface: search, user/role attachment counts, sortable Name
+ * column, pagination with a page-size selector, and a row menu for
+ * edit/delete. Ported from the buildpad-daas reference
  * `app/policies/page.tsx` to `usePolicies` + `usePermissions` and
  * routing-agnostic navigation via `onPolicyClick`/`onCreatePolicy` props.
+ *
+ * Only `name` is sortable: `userCount`/`roleCount` are computed after the
+ * query server-side and cannot be sorted on.
  */
 export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
   onPolicyClick,
   onCreatePolicy,
   pageSize = 25,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
+  hideHeader = false,
   policiesCollection = 'daas_policies',
 }) => {
   const { fetchPolicies, deletePolicy } = usePolicies();
@@ -67,11 +82,14 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 300);
+  // Server-side sort (`name` / `-name`); computed count columns are not sortable.
+  const [sort, setSort] = useState<string | null>(null);
 
   const [deleteModal, setDeleteModal] = useState<{ opened: boolean; id: string }>({
     opened: false,
@@ -79,13 +97,18 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
   });
   const [deleting, setDeleting] = useState(false);
 
+  const sizeOptions = useMemo(() => {
+    return Array.from(new Set([...pageSizeOptions, pageSize])).sort((a, b) => a - b);
+  }, [pageSizeOptions, pageSize]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await fetchPolicies({
         page,
-        limit: pageSize,
+        limit,
         search: debouncedSearch || undefined,
+        sort: sort || undefined,
       });
       setPolicies(result.policies);
       setTotalCount(result.total);
@@ -95,7 +118,7 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [fetchPolicies, page, pageSize, debouncedSearch]);
+  }, [fetchPolicies, page, limit, debouncedSearch, sort]);
 
   useEffect(() => {
     void load();
@@ -103,7 +126,11 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, sort, limit]);
+
+  const handleSort = useCallback((field: string) => {
+    setSort((current) => toggleSort(current, field));
+  }, []);
 
   const confirmDelete = useCallback(async () => {
     setDeleting(true);
@@ -116,23 +143,30 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
     }
   }, [deletePolicy, deleteModal.id, load]);
 
+  const addButton =
+    createAllowed && onCreatePolicy ? (
+      <Button leftSection={<IconPlus size={16} />} onClick={onCreatePolicy} data-testid="policies-manager-add-btn">
+        Add Policy
+      </Button>
+    ) : null;
+
   return (
     <Stack gap="md" data-testid="policies-manager">
-      <Group justify="space-between" align="flex-start">
-        <Box>
-          <Title order={2} mb={4}>
-            Policies
-          </Title>
-          <Text size="sm" c="dimmed">
-            Define policies that grant access and permissions to users and roles
-          </Text>
-        </Box>
-        {createAllowed && onCreatePolicy && (
-          <Button leftSection={<IconPlus size={16} />} onClick={onCreatePolicy} data-testid="policies-manager-add-btn">
-            Add Policy
-          </Button>
-        )}
-      </Group>
+      {(!hideHeader || addButton) && (
+        <Group justify={hideHeader ? 'flex-end' : 'space-between'} align="flex-start">
+          {!hideHeader && (
+            <Box>
+              <Title order={2} mb={4}>
+                Policies
+              </Title>
+              <Text size="sm" c="dimmed">
+                Define policies that grant access and permissions to users and roles
+              </Text>
+            </Box>
+          )}
+          {addButton}
+        </Group>
+      )}
 
       <Paper p="sm" radius="md" withBorder>
         <Group>
@@ -168,7 +202,7 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th style={{ width: 48 }} />
-                <Table.Th>Name</Table.Th>
+                <SortableTh label="Name" field="name" sort={sort} onSort={handleSort} data-testid="policies-manager-sort-name" />
                 <Table.Th>Users</Table.Th>
                 <Table.Th>Roles</Table.Th>
                 <Table.Th>Description</Table.Th>
@@ -282,12 +316,25 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
           </Table>
         </Box>
 
-        {totalPages > 1 && (
+        {totalCount > 0 && (
           <Group justify="space-between" px="md" py="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
-            <Text size="xs" c="dimmed">
-              Showing {policies.length} of {totalCount} policies
-            </Text>
-            <Pagination value={page} onChange={setPage} total={totalPages} />
+            <Group gap="sm">
+              <Text size="xs" c="dimmed">
+                Showing {policies.length} of {totalCount} policies
+              </Text>
+              <Select
+                size="xs"
+                w={110}
+                value={String(limit)}
+                onChange={(value) => {
+                  if (value) setLimit(Number(value));
+                }}
+                data={sizeOptions.map((n) => ({ value: String(n), label: `${n} / page` }))}
+                aria-label="Items per page"
+                data-testid="policies-manager-page-size"
+              />
+            </Group>
+            {totalPages > 1 && <Pagination value={page} onChange={setPage} total={totalPages} />}
           </Group>
         )}
       </Paper>

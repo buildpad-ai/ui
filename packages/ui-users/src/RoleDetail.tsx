@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActionIcon,
+  Anchor,
   Badge,
   Button,
   Code,
@@ -30,7 +31,7 @@ import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { InfoPanel } from './InfoPanel';
 import { RolePoliciesManager } from './RolePoliciesManager';
 import { RoleUsersManager } from './RoleUsersManager';
-import { isValidRegex, parentRoleOptions } from './accessUtils';
+import { childRolesOf, isValidRegex, parentRoleOptions } from './accessUtils';
 
 /** The editable subset of `Role` this form manages. */
 interface RoleFormValues {
@@ -72,6 +73,12 @@ export interface RoleDetailProps {
   onAddUser?: () => void;
   /** Called when a policy row's "open" action is clicked in the Policies tab. */
   onPolicyClick?: (policy: Policy) => void;
+  /**
+   * Called when a parent/child role link in the sidebar is clicked (after
+   * passing the unsaved-changes guard). When omitted the hierarchy renders as
+   * plain text.
+   */
+  onRoleClick?: (role: Role) => void;
   /** DaaS collection used for RBAC checks. Default: 'daas_roles'. */
   rolesCollection?: string;
 }
@@ -91,6 +98,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   onUserClick,
   onAddUser,
   onPolicyClick,
+  onRoleClick,
   rolesCollection = 'daas_roles',
 }) => {
   const isNew = id === 'new' || id === '+';
@@ -112,7 +120,8 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   const [userCount, setUserCount] = useState(0);
   const [policyCount, setPolicyCount] = useState(0);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  /** Navigation deferred behind the unsaved-changes dialog; null = closed. */
+  const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
 
   const [initialValues, setInitialValues] = useState<RoleFormValues>(EMPTY_FORM);
   const [values, setValues] = useState<RoleFormValues>(EMPTY_FORM);
@@ -158,6 +167,12 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Same-route hierarchy navigation swaps `id` without a remount — land on
+  // the Basic tab instead of a stale Users/Policies tab.
+  useEffect(() => {
+    setActiveTab('basic');
+  }, [id]);
 
   useEffect(() => {
     fetchRoles({ limit: 1000 })
@@ -229,10 +244,18 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
     setValues(initialValues);
   }, [initialValues]);
 
+  /** Run `nav` immediately, or park it behind the unsaved-changes dialog when dirty. */
+  const requestNav = useCallback(
+    (nav: () => void) => {
+      if (isDirty) setPendingNav(() => nav);
+      else nav();
+    },
+    [isDirty]
+  );
+
   const handleCancel = useCallback(() => {
-    if (isDirty) setShowUnsavedDialog(true);
-    else onBack?.();
-  }, [isDirty, onBack]);
+    requestNav(() => onBack?.());
+  }, [requestNav, onBack]);
 
   const confirmDelete = useCallback(async () => {
     try {
@@ -254,6 +277,39 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   }, [deleteRole, id, onDeleted]);
 
   const scopePatterns = values.scope_config?.allowed_scopes ?? [];
+
+  // Hierarchy is derived client-side: the API exposes no children relation,
+  // and allRoles is already fetched for the parent-role select (Req 14).
+  const parentRole = useMemo(
+    () => (role?.parent ? allRoles.find((r) => r.id === role.parent) ?? null : null),
+    [allRoles, role]
+  );
+  const childRoles = useMemo(
+    () => (isNew ? [] : childRolesOf(allRoles, id)),
+    [allRoles, id, isNew]
+  );
+
+  /** Parent/child link, or plain text when the host provides no `onRoleClick`. */
+  const roleLink = useCallback(
+    (target: Role, testId: string) =>
+      onRoleClick ? (
+        <Anchor
+          component="button"
+          type="button"
+          size="sm"
+          onClick={() => requestNav(() => onRoleClick(target))}
+          data-testid={testId}
+        >
+          {target.name}
+        </Anchor>
+      ) : (
+        // component="span" so the fallback nests validly inside InfoPanel's <Text> rows
+        <Text component="span" size="sm" data-testid={testId}>
+          {target.name}
+        </Text>
+      ),
+    [onRoleClick, requestNav]
+  );
 
   return (
     <Stack gap="md" data-testid="role-detail">
@@ -471,45 +527,67 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
         <Grid.Col span={{ base: 12, md: 4 }}>
           {!isNew && role && (
-            <InfoPanel
-              items={[
-                { label: 'Role ID', value: role.id },
-                { label: 'Users', value: `${userCount} ${userCount === 1 ? 'user' : 'users'}` },
-                {
-                  label: 'Policies',
-                  value: `${policyCount} ${policyCount === 1 ? 'policy' : 'policies'}`,
-                },
-                {
-                  label: 'Created',
-                  value: role.created_at ? new Date(role.created_at).toLocaleString() : '—',
-                },
-                {
-                  label: 'Updated',
-                  value: role.updated_at ? new Date(role.updated_at).toLocaleString() : '—',
-                },
-              ]}
-              description="Role information and assignments"
-            />
+            <Stack gap="md">
+              <InfoPanel
+                items={[
+                  { label: 'Role ID', value: role.id },
+                  ...(role.parent
+                    ? [
+                        {
+                          label: 'Parent Role',
+                          value: parentRole
+                            ? roleLink(parentRole, 'role-detail-parent-link')
+                            : role.parent,
+                        },
+                      ]
+                    : []),
+                  { label: 'Users', value: `${userCount} ${userCount === 1 ? 'user' : 'users'}` },
+                  {
+                    label: 'Policies',
+                    value: `${policyCount} ${policyCount === 1 ? 'policy' : 'policies'}`,
+                  },
+                  {
+                    label: 'Created',
+                    value: role.created_at ? new Date(role.created_at).toLocaleString() : '—',
+                  },
+                  {
+                    label: 'Updated',
+                    value: role.updated_at ? new Date(role.updated_at).toLocaleString() : '—',
+                  },
+                ]}
+                description="Role information and assignments"
+              />
+
+              {childRoles.length > 0 && (
+                <Paper shadow="xs" p="md" withBorder data-testid="role-detail-children">
+                  <Text fw={600} mb="sm">
+                    Child Roles
+                  </Text>
+                  <Stack gap="xs">
+                    {childRoles.map((child) => (
+                      <div key={child.id}>{roleLink(child, `role-detail-child-${child.id}`)}</div>
+                    ))}
+                  </Stack>
+                </Paper>
+              )}
+            </Stack>
           )}
         </Grid.Col>
       </Grid>
 
-      <Modal
-        opened={showUnsavedDialog}
-        onClose={() => setShowUnsavedDialog(false)}
-        title="Unsaved Changes"
-      >
+      <Modal opened={pendingNav !== null} onClose={() => setPendingNav(null)} title="Unsaved Changes">
         <Stack gap="md">
           <Text size="sm">You have unsaved changes. Are you sure you want to leave?</Text>
           <Group justify="flex-end">
-            <Button variant="default" onClick={() => setShowUnsavedDialog(false)}>
+            <Button variant="default" onClick={() => setPendingNav(null)}>
               Keep Editing
             </Button>
             <Button
               color="red"
               onClick={() => {
-                setShowUnsavedDialog(false);
-                onBack?.();
+                setValues(initialValues);
+                setPendingNav(null);
+                pendingNav?.();
               }}
             >
               Discard Changes

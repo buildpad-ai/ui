@@ -66,3 +66,17 @@ const UsersPlayground: React.FC = () => {
 export const Playground: StoryObj<typeof UsersManager> = {
   render: () => <UsersPlayground />,
 };
+
+/**
+ * Headerless (embedded) mode — `hideHeader` suppresses the built-in heading
+ * for surfaces that already have their own; the Add User button stays.
+ */
+export const Headerless: StoryObj<typeof UsersManager> = {
+  render: () => (
+    <DaaSConnectionGate>
+      <Paper p="md" withBorder>
+        <UsersManager hideHeader onUserClick={() => undefined} onCreateUser={() => undefined} />
+      </Paper>
+    </DaaSConnectionGate>
+  ),
+};

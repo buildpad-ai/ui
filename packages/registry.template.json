@@ -2741,6 +2741,14 @@
           "target": "components/ui/users-management/icon-display.tsx"
         },
         {
+          "source": "ui-users/src/SortableTh.tsx",
+          "target": "components/ui/users-management/sortable-th.tsx"
+        },
+        {
+          "source": "ui-users/src/TokenInput.tsx",
+          "target": "components/ui/users-management/token-input.tsx"
+        },
+        {
           "source": "ui-users/src/userDisplay.ts",
           "target": "components/ui/users-management/user-display.ts"
         },

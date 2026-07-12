@@ -169,18 +169,51 @@ function PermissionsToggle({
   const level = getPermissionLevel(permission);
 
   if (appMinimal) {
+    // App-access minimal cell: the enforced minimum is irrevocable (no "No
+    // Access"), but it can be extended — All Access materializes an explicit
+    // row, Use Custom opens the detail editor with minimal fields locked.
+    // With no explicit row the minimum already grants fields:['*'] → 'all'.
+    const minimalLevel = permission ? level : 'all';
     return (
-      <Badge
-        color="cyan"
-        variant="filled"
-        size="sm"
-        title="Required for app access"
-        data-testid={testId}
-        data-level="all"
-        data-action={action}
-      >
-        {PERMISSION_LABELS[action]}
-      </Badge>
+      <Menu position="bottom" withArrow>
+        <Menu.Target>
+          <Badge
+            color="cyan"
+            variant="filled"
+            size="sm"
+            style={{ cursor: disabled ? 'default' : 'pointer' }}
+            title="Required for app access"
+            data-testid={testId}
+            data-level={minimalLevel}
+            data-action={action}
+            data-app-minimal="true"
+            role="button"
+            tabIndex={disabled ? -1 : 0}
+          >
+            {PERMISSION_LABELS[action]}
+          </Badge>
+        </Menu.Target>
+        {!disabled && (
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<IconCheck size={14} />}
+              disabled={minimalLevel === 'all'}
+              onClick={onSetFullAccess}
+              data-testid={testId ? `${testId}-full` : undefined}
+            >
+              All Access
+            </Menu.Item>
+            <Menu.Divider />
+            <Menu.Item
+              leftSection={<IconSettings size={14} />}
+              onClick={onEdit}
+              data-testid={testId ? `${testId}-custom` : undefined}
+            >
+              Use Custom
+            </Menu.Item>
+          </Menu.Dropdown>
+        )}
+      </Menu>
     );
   }
 

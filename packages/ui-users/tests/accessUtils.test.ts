@@ -1,14 +1,18 @@
 /**
  * Pure helper unit tests: M2M roles normalization, scope-pattern regex
- * validation, parent-role option exclusion, and token generation.
+ * validation, parent-role option exclusion, role hierarchy derivation,
+ * token generation/concealment, and sort cycling.
  */
 import { describe, it, expect } from 'vitest';
 import type { Role } from '@buildpad/types';
 import {
+  childRolesOf,
   generateToken,
+  isConcealedToken,
   isValidRegex,
   normalizeRoleIds,
   parentRoleOptions,
+  toggleSort,
 } from '../src/accessUtils';
 
 describe('normalizeRoleIds', () => {
@@ -87,6 +91,42 @@ describe('parentRoleOptions', () => {
   });
 });
 
+describe('childRolesOf', () => {
+  const roles: Role[] = [
+    { id: 'role-a', name: 'Content Manager' },
+    { id: 'role-b', name: 'Editor', parent: 'role-a' },
+    { id: 'role-c', name: 'Reviewer', parent: 'role-a' },
+    { id: 'role-d', name: 'Viewer', parent: 'role-b' },
+  ];
+
+  it('returns only roles whose parent is the given role', () => {
+    expect(childRolesOf(roles, 'role-a').map((r) => r.id)).toEqual(['role-b', 'role-c']);
+  });
+
+  it('returns an empty array for a leaf role', () => {
+    expect(childRolesOf(roles, 'role-d')).toEqual([]);
+  });
+
+  it('returns an empty array when the role ID is null (create mode)', () => {
+    expect(childRolesOf(roles, null)).toEqual([]);
+  });
+});
+
+describe('isConcealedToken', () => {
+  it('detects the backend all-asterisks masking', () => {
+    expect(isConcealedToken('**********')).toBe(true);
+    expect(isConcealedToken('*')).toBe(true);
+  });
+
+  it('rejects plaintext, empty, and nullish values', () => {
+    expect(isConcealedToken('abc123')).toBe(false);
+    expect(isConcealedToken('**abc**')).toBe(false);
+    expect(isConcealedToken('')).toBe(false);
+    expect(isConcealedToken(null)).toBe(false);
+    expect(isConcealedToken(undefined)).toBe(false);
+  });
+});
+
 describe('generateToken', () => {
   it('produces a hex string of 2 chars per byte', () => {
     const token = generateToken(32);
@@ -95,5 +135,18 @@ describe('generateToken', () => {
 
   it('produces distinct values across calls', () => {
     expect(generateToken()).not.toBe(generateToken());
+  });
+});
+
+describe('toggleSort', () => {
+  it('cycles unsorted → asc → desc → unsorted on the same field', () => {
+    expect(toggleSort(null, 'email')).toBe('email');
+    expect(toggleSort('email', 'email')).toBe('-email');
+    expect(toggleSort('-email', 'email')).toBeNull();
+  });
+
+  it('switching to a different field starts at ascending', () => {
+    expect(toggleSort('email', 'status')).toBe('status');
+    expect(toggleSort('-email', 'status')).toBe('status');
   });
 });

@@ -80,6 +80,124 @@ test.describe('Users Feature Smoke (admin)', () => {
     await expect(page.getByText(fixtures.noperm.email)).toBeHidden();
   });
 
+  test('email column sorting flips the row order (Req 20)', async ({ page }) => {
+    await loadStory(page, USERS_STORY);
+    await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
+
+    // Scope to the four deterministic fixture users before asserting order.
+    await page.getByTestId('users-manager-search').fill('e2e-users');
+    await expect(page.getByText(fixtures.admin.email)).toBeVisible({ timeout: 20_000 });
+
+    const firstRow = page.locator('[data-testid^="users-manager-row-"]').first();
+
+    // asc: e2e-users-admin@… sorts first
+    await page.getByTestId('users-manager-sort-email').click();
+    await expect(firstRow).toContainText(fixtures.admin.email, { timeout: 20_000 });
+
+    // desc: e2e-users-viewer@… sorts first
+    await page.getByTestId('users-manager-sort-email').click();
+    await expect(firstRow).toContainText(fixtures.viewer.email, { timeout: 20_000 });
+  });
+
+  test('bulk role update round-trips through one bulk-update call (Req 21)', async ({ page }) => {
+    await loadStory(page, USERS_STORY);
+    await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
+
+    await page.getByTestId('users-manager-search').fill(fixtures.noperm.email);
+    const row = page.getByTestId(`users-manager-row-${fixtures.noperm.userId}`);
+    await expect(row).toBeVisible({ timeout: 20_000 });
+
+    // The MultiSelect dropdown stays open after picking (multi-select) and
+    // overlays the Apply button — click the modal copy to dismiss it first.
+    const dismissDropdown = () => page.getByText(/Add and\/or remove roles/).click();
+
+    // Add e2e_users_viewer to the noperm fixture…
+    await page.getByTestId(`users-manager-select-${fixtures.noperm.userId}`).check();
+    await expect(page.getByTestId('users-manager-bulk-toolbar')).toBeVisible();
+    await page.getByTestId('users-manager-bulk-roles').click();
+    await page.getByTestId('users-manager-bulk-roles-add').fill('e2e_users_viewer');
+    await page.getByRole('option', { name: 'e2e_users_viewer', exact: true }).click();
+    await dismissDropdown();
+    await page.getByTestId('users-manager-bulk-roles-apply').click();
+    await expect(row.getByText('e2e_users_viewer')).toBeVisible({ timeout: 20_000 });
+
+    // …then remove it again (self-restoring)
+    await page.getByTestId(`users-manager-select-${fixtures.noperm.userId}`).check();
+    await page.getByTestId('users-manager-bulk-roles').click();
+    await page.getByTestId('users-manager-bulk-roles-remove').fill('e2e_users_viewer');
+    await page.getByRole('option', { name: 'e2e_users_viewer', exact: true }).click();
+    await dismissDropdown();
+    await page.getByTestId('users-manager-bulk-roles-apply').click();
+    await expect(row.getByText('e2e_users_viewer')).toBeHidden({ timeout: 20_000 });
+  });
+
+  test('bulk status suspends and restores selected users (Req 21)', async ({ page }) => {
+    await loadStory(page, USERS_STORY);
+    await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
+
+    await page.getByTestId('users-manager-search').fill(fixtures.noperm.email);
+    const row = page.getByTestId(`users-manager-row-${fixtures.noperm.userId}`);
+    await expect(row).toBeVisible({ timeout: 20_000 });
+
+    await page.getByTestId(`users-manager-select-${fixtures.noperm.userId}`).check();
+    await page.getByTestId('users-manager-bulk-status').click();
+    await page.getByTestId('users-manager-bulk-status-suspended').click();
+    await expect(row.getByText('Suspended')).toBeVisible({ timeout: 20_000 });
+
+    // Restore (selection cleared after the action — reselect)
+    await page.getByTestId(`users-manager-select-${fixtures.noperm.userId}`).check();
+    await page.getByTestId('users-manager-bulk-status').click();
+    await page.getByTestId('users-manager-bulk-status-active').click();
+    await expect(row.getByText('Active')).toBeVisible({ timeout: 20_000 });
+  });
+
+  test('bulk delete removes selected users after a counted confirm (Req 21)', async ({ page }) => {
+    // Self-provisioned throwaway user; cleaned up in finally if the flow breaks.
+    const email = 'e2e-users-bulk-delete@buildpad.test';
+    const createRes = await page.request.post('http://localhost:3000/api/users', {
+      data: { email, password: 'e2e-bulk-delete-pass', status: 'active' },
+    });
+    expect(createRes.ok()).toBeTruthy();
+    const createBody = await createRes.json();
+    const userId: string = (createBody.data ?? createBody).id;
+
+    try {
+      await loadStory(page, USERS_STORY);
+      await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
+
+      await page.getByTestId('users-manager-search').fill(email);
+      const row = page.getByTestId(`users-manager-row-${userId}`);
+      await expect(row).toBeVisible({ timeout: 20_000 });
+
+      await page.getByTestId(`users-manager-select-${userId}`).check();
+      await page.getByTestId('users-manager-bulk-delete').click();
+      await expect(page.getByText(/delete 1 user\?/)).toBeVisible({ timeout: 20_000 });
+      await page.getByTestId('users-delete-confirm-btn').click();
+
+      await expect(row).toBeHidden({ timeout: 20_000 });
+    } finally {
+      await page.request.delete(`http://localhost:3000/api/users/${userId}`);
+    }
+  });
+
+  test('page-size selector caps the rendered rows (Req 22)', async ({ page }) => {
+    await loadStory(page, USERS_STORY);
+    await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('[data-testid^="users-manager-row-"]').first()).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await page.getByTestId('users-manager-page-size').click();
+    await page.getByRole('option', { name: '10 / page' }).click();
+    await expect(page.getByTestId('users-manager-page-size')).toHaveValue('10 / page');
+
+    await expect
+      .poll(async () => page.locator('[data-testid^="users-manager-row-"]').count(), {
+        timeout: 20_000,
+      })
+      .toBeLessThanOrEqual(10);
+  });
+
   test('clicking a user row opens the user detail with a Policies tab', async ({ page }) => {
     await loadStory(page, USERS_STORY);
     await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
@@ -126,6 +244,67 @@ test.describe('Users Feature Smoke (admin)', () => {
     await expect(page.getByText(fixtures.manager.email)).toBeVisible({ timeout: 20_000 });
   });
 
+  test('role hierarchy sidebar links navigate child ↔ parent (Req 14)', async ({ page }) => {
+    // Children are derived client-side (no children relation in the API) —
+    // create a temporary child of the fixture role, then walk both directions.
+    const childName = 'e2e_users_child_hierarchy';
+    const createRes = await page.request.post('http://localhost:3000/api/roles', {
+      data: { name: childName, parent: fixtures.manager.roleId },
+    });
+    expect(createRes.ok()).toBeTruthy();
+    const createBody = await createRes.json();
+    const childId: string = (createBody.data ?? createBody).id;
+
+    try {
+      await loadStory(page, ROLES_STORY);
+      await expect(page.getByTestId('roles-manager')).toBeVisible({ timeout: 20_000 });
+      await page.getByTestId(`roles-manager-row-${fixtures.manager.roleId}`).click();
+      await expect(page.getByTestId('role-detail')).toBeVisible({ timeout: 20_000 });
+
+      // Child Roles card lists the child as a link; clicking swaps the detail id
+      await expect(page.getByTestId('role-detail-children')).toBeVisible({ timeout: 20_000 });
+      await page.getByTestId(`role-detail-child-${childId}`).click();
+      await expect(page.getByTestId('role-detail-name')).toHaveValue(childName, {
+        timeout: 20_000,
+      });
+
+      // The child's sidebar shows the parent as a link; clicking navigates back up
+      const parentLink = page.getByTestId('role-detail-parent-link');
+      await expect(parentLink).toHaveText('e2e_users_manager', { timeout: 20_000 });
+      await parentLink.click();
+      await expect(page.getByTestId('role-detail-name')).toHaveValue('e2e_users_manager', {
+        timeout: 20_000,
+      });
+    } finally {
+      await page.request.delete(`http://localhost:3000/api/roles/${childId}`);
+    }
+  });
+
+  // ── UserDetail token field ───────────────────────────────────────────────
+
+  test('token field generates a copyable plaintext token with a security notice (Req 16)', async ({
+    page,
+  }) => {
+    await loadStory(page, USERS_STORY);
+    await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
+
+    await page.getByTestId('users-manager-search').fill(fixtures.viewer.email);
+    await page.getByTestId(`users-manager-row-${fixtures.viewer.userId}`).click();
+    await expect(page.getByTestId('user-detail')).toBeVisible({ timeout: 20_000 });
+
+    const tokenInput = page.getByTestId('user-detail-token');
+    await expect(tokenInput).toBeVisible({ timeout: 20_000 });
+    // Read-only: tokens are generated, never typed
+    await expect(tokenInput).toHaveAttribute('readonly', '');
+
+    // Generate → plaintext shown once with Copy + can't-view-again notice.
+    // NOT saved — the value stays local to the form.
+    await page.getByTestId('user-detail-token-generate').click();
+    await expect(tokenInput).toHaveValue(/^[0-9a-f]{64}$/);
+    await expect(page.getByTestId('user-detail-token-copy')).toBeVisible();
+    await expect(page.getByTestId('user-detail-token-notice')).toBeVisible();
+  });
+
   // ── PoliciesManager ──────────────────────────────────────────────────────
 
   test('policies-manager renders and opens policy detail with access switches + matrix', async ({
@@ -154,7 +333,8 @@ test.describe('Users Feature Smoke (admin)', () => {
     await expect(page.getByTestId('policy-detail-permissions')).toBeVisible({ timeout: 20_000 });
 
     // daas_users:update is a custom-level cell (subset of fields) and NOT
-    // app-minimal (that's daas_users:read, which renders as a locked badge).
+    // app-minimal (that's daas_users:read, which renders cyan and offers
+    // All Access / Use Custom but never No Access — covered below).
     const toggle = page.getByTestId('policy-detail-permissions-toggle-daas_users-update');
     await expect(toggle).toBeVisible({ timeout: 20_000 });
     await expect(toggle).toHaveAttribute('data-level', 'custom');
@@ -180,6 +360,41 @@ test.describe('Users Feature Smoke (admin)', () => {
     // Cancel — no mutation, editor closes (unmounts entirely)
     await page.getByTestId('policy-detail-permissions-detail-cancel').click();
     await expect(modal).toBeHidden();
+    await expect(page.getByTestId('policy-detail-permissions-detail')).not.toBeAttached();
+  });
+
+  test('app-minimal cell offers Use Custom but never No Access (Req 15)', async ({ page }) => {
+    await loadStory(page, POLICIES_STORY);
+    await expect(page.getByTestId('policies-manager')).toBeVisible({ timeout: 20_000 });
+
+    // The fixture manager policy has app_access → daas_users:read is app-minimal
+    await page.getByTestId(`policies-manager-row-${fixtures.manager.policyId}`).click();
+    await expect(page.getByTestId('policy-detail-permissions')).toBeVisible({ timeout: 20_000 });
+
+    const toggle = page.getByTestId('policy-detail-permissions-toggle-daas_users-read');
+    await expect(toggle).toBeVisible({ timeout: 20_000 });
+    await expect(toggle).toHaveAttribute('data-app-minimal', 'true');
+
+    // Menu: Use Custom present, No Access withheld (the minimum is irrevocable)
+    await toggle.click();
+    const useCustom = page.getByTestId('policy-detail-permissions-toggle-daas_users-read-custom');
+    await expect(useCustom).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.getByTestId('policy-detail-permissions-toggle-daas_users-read-none'),
+    ).not.toBeAttached();
+
+    // Use Custom opens the editor; minimal fields (['*'] → all) are locked on
+    await useCustom.click();
+    await expect(page.getByRole('dialog', { name: /daas_users → READ/ })).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.getByTestId('policy-detail-permissions-detail-tab-fields').click();
+    const firstName = page.getByTestId('policy-detail-permissions-detail-fields-field-first_name');
+    await expect(firstName).toBeChecked({ timeout: 20_000 });
+    await expect(firstName).toBeDisabled();
+
+    // Cancel — smoke only; mutation paths are jest-covered
+    await page.getByTestId('policy-detail-permissions-detail-cancel').click();
     await expect(page.getByTestId('policy-detail-permissions-detail')).not.toBeAttached();
   });
 
@@ -271,5 +486,26 @@ test.describe('Users RBAC gating (viewer)', () => {
     await page.getByTestId('users-manager-search').fill(fixtures.admin.email);
     await expect(page.getByText(fixtures.admin.email)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId('users-manager-add-btn')).toBeHidden();
+  });
+
+  test('viewer gets no bulk checkboxes but sorting still works (Reqs 20/21)', async ({ page }) => {
+    await loadStory(page, USERS_STORY);
+    await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
+
+    await page.getByTestId('users-manager-search').fill('e2e-users');
+    await expect(page.getByText(fixtures.admin.email)).toBeVisible({ timeout: 20_000 });
+
+    // No update/delete → no selection column, no toolbar
+    await expect(page.getByTestId('users-manager-select-all')).not.toBeAttached();
+    await expect(
+      page.getByTestId(`users-manager-select-${fixtures.admin.userId}`),
+    ).not.toBeAttached();
+
+    // Sorting is read functionality — available and functional for the viewer
+    await page.getByTestId('users-manager-sort-email').click();
+    await expect(page.locator('[data-testid^="users-manager-row-"]').first()).toContainText(
+      fixtures.admin.email,
+      { timeout: 20_000 },
+    );
   });
 });

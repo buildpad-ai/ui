@@ -184,3 +184,103 @@
   - Extend `tests/ui-users/users-feature.storybook.spec.ts` policies flow: open policy detail → "Use Custom" on a read cell → assert modal + field checkboxes render from live `/api/fields` → Cancel (smoke-level; mutation paths stay jest-covered)
   - _Requirements: 13.1, 13.3_
   - ✅ Green against the live DaaS4 e2e instance (users-storybook 8/8 incl. the new spec). Targets `daas_users:update` — NOT `read`, which is app-minimal-locked (static cyan badge, no menu) since the fixture policy has `app_access: true`. Asserts custom-level toggle → "Use Custom" → dialog (role-based locator; the Mantine Modal-root testid element has a zero-size box) → live field checkboxes (`first_name` checked per fixture's update fields, `email` unchecked) → Cancel unmounts.
+- [x] 18. Role hierarchy sidebar (Req 14)
+- [x] 18.1 Hierarchy helpers + RoleDetail sidebar
+
+  - Add `childRolesOf(roles, roleId)` pure helper to `accessUtils.ts`; unit tests beside `parentRoleOptions`
+  - `RoleDetail`: new `onRoleClick?: (role: Role) => void` prop; "Parent Role" InfoPanel row (`Anchor` when `onRoleClick`, plain text otherwise); "Child Roles" card below the InfoPanel (`data-testid="role-detail-children"`, hidden when empty/new); hierarchy navigation routes through the unsaved-changes guard (generalize the pending action from always-`onBack` to a stored callback); reset `activeTab` to Basic on `id` change
+  - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
+- [x] 18.2 Template, stories, e2e
+
+  - `templates/app/roles/[id]/page.tsx`: `onRoleClick={(r) => router.push(\`/roles/${r.id}\`)}`
+  - `RolesManager.daas.stories.tsx` playground: swap the open detail id on `onRoleClick`; extend the `users-feature.storybook.spec.ts` roles flow using the task-14 seed hierarchy (Content Manager → Editor)
+  - _Requirements: 14.6, 12.1_
+  - ✅ The e2e test provisions its own temporary child (`e2e_users_child_hierarchy` under the fixture manager role) via `POST /api/roles` instead of relying on the demo seed, walks child ↔ parent through the sidebar links, and deletes it in a `finally` — self-contained against any instance
+- [x] 19. App-minimal permission cell unlock (Req 15)
+- [x] 19.1 PermissionsToggle menu variant in SystemPermissions.tsx
+
+  - Replace the `appMinimal` early return with a cyan-badge `Menu`: All Access (disabled when level already `all`; no row counts as `all`) + Use Custom, no No Access item; no menu when `disabled`; `data-app-minimal="true"` + `data-level` from the underlying row (fallback `all`); keep `-full`/`-custom` testid suffixes
+  - _Requirements: 15.1, 15.2, 15.4, 15.5_
+- [x] 19.2 Jest + stories
+
+  - Extend `__tests__/SystemPermissions.test.tsx`: minimal-cell menu contents (no "No Access"), Use Custom → modal with `appMinimal`, save with no row → `create[]` with policy/collection/action, save on persisted row → `update[]`, delete reverts to implicit minimal, `disabled` → no menu
+  - Extend the `appAccess` story with injected `fieldsByCollection` so the unlocked minimal cell is drivable
+  - _Requirements: 15.1, 15.2, 15.3, 15.6_
+- [x] 19.3 Playwright + docs + design-note closure
+
+  - `users-feature.storybook.spec.ts`: new test on `daas_users:read` (menu without No Access → modal → locked field checkboxes → Cancel); fix the stale locked-cell comment in the task-17 spec; `users.mdx` custom-permission section notes app-minimal extension
+  - _Requirements: 15.1, 15.2, 12.4_
+- [x] 20. Token UX parity (Req 16)
+- [x] 20.1 TokenInput component
+
+  - `packages/ui-users/src/TokenInput.tsx` ported from daas `SystemToken.tsx` with client-side `generateToken()`; `isConcealedToken()` helper in `accessUtils.ts`; vitest `tests/TokenInput.test.tsx` + `accessUtils.test.ts` additions; `TokenInput.stories.tsx` fixture story
+  - _Requirements: 16.1, 16.2, 16.3, 16.4_
+- [x] 20.2 UserDetail integration
+
+  - Replace the token `PasswordInput` block with `TokenInput` (keep `user-detail-token`/`user-detail-generate-token` testids; add copy/clear testids); diff semantics unchanged: untouched concealed value never PATCHed, clear → `token: null`
+  - _Requirements: 16.5, 16.6_
+  - ✅ Testids follow the `TokenInput` scheme (`user-detail-token-{generate,copy,clear,notice}`); the old `user-detail-generate-token` id had no test references, so it was not preserved
+- [x] 20.3 Registry, barrel, docs
+
+  - `registry.template.json` `users-management` entry + `token-input.tsx` target; `src/index.ts` export; `users.mdx` token paragraph
+  - _Requirements: 16.7, 12.4_
+- [x] 21. Round-2 verification + changeset
+
+  - `pnpm build`, targeted vitest/jest suites (ui-interfaces repo-wide suites are pre-broken on main — targeted only), `pnpm build:registry && pnpm registry:check`, `test:users:e2e` against live DaaS (users-api unchanged, users-storybook extended)
+  - Single lockstep minor changeset (`@buildpad/ui-users` + `@buildpad/ui-interfaces`, fixed group); watch the peerDep major cascade
+  - _Requirements: 14.*, 15.*, 16.*, 12.5_
+  - ✅ Verified 2026-07-10: ui-users vitest 58/58 (incl. 7 new TokenInput + childRolesOf/isConcealedToken), ui-interfaces jest SystemPermissions 63/63 (7 new app-minimal tests), both package builds + typechecks green, `build:registry`/`registry:check` green (51 components incl. `token-input`), live e2e users-api 23/23 and users-storybook 12/12 (10 + 2 rerun after an environment-caused worker kill; the three new Req 14/15/16 specs green first try — note: a stale dev server squatting port 3000 makes every storybook spec fail on `connectAs` 404, free the port first). Changeset `users-parity-round-2.md`
+- [x] 22. Avatar image display (Req 17)
+
+  - `packages/types/src/users.ts`: `User.avatar?: string | null` (display-only pass-through doc comment); `userDisplay.ts`: `UserDisplayFields` gains `avatar`; `UserAvatar.tsx`: `src={user.avatar ?? undefined}` + `alt={getUserDisplayName(user)}` before the props spread (explicit `src` wins); no call-site changes
+  - Vitest `UserAvatar.test.tsx` +2 (img src+alt when avatar set; initials when absent); stories: WithImage (inline SVG data-URI) + BrokenSrc→initials fallback
+  - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
+- [x] 23. Headerless list mode (Req 18)
+
+  - `hideHeader?: boolean` (default false) on `UsersManager`/`RolesManager`/`PoliciesManager`: Title+subtitle wrapped, Add button kept, header Group skipped entirely when nothing renders
+  - Vitest: UsersManager hideHeader hides Title but keeps Add; new minimal `RolesManager.test.tsx` + `PoliciesManager.test.tsx` cover their flags
+  - _Requirements: 18.1, 18.2, 18.3, 18.4_
+- [x] 24. Password-manager suppression (Req 19)
+
+  - `data-lpignore="true"` + `data-1p-ignore="true"` on `UserDetail`'s PasswordInput and `TokenInput`'s TextInput; attribute assertion added to `TokenInput.test.tsx`
+  - _Requirements: 19.1, 19.2_
+- [x] 25. Page-size selector (Req 22 — lands before sorting/bulk so their tests see the final footer)
+
+  - All three managers: `limit` state initialized from `pageSize`, `pageSizeOptions` prop (default `[10,25,50,100]`, initial injected if missing), footer Select (`<manager>-page-size` testid), footer condition `totalCount > 0`, Pagination still `totalPages > 1`; size change → fetch new limit + page 1
+  - Vitest per manager: size change → fetch called with new limit and page 1
+  - _Requirements: 22.1, 22.2, 22.3_
+- [x] 26. Column sorting (Req 20)
+- [x] 26.1 `toggleSort` helper + `SortableTh` component
+
+  - Pure `toggleSort(current, field)` in `accessUtils.ts` (`null→field→-field→null`, field switch → asc) + vitest; new `SortableTh.tsx` (UnstyledButton header, chevron up/down active, `IconSelector` inactive, `aria-sort`; aria pattern per ui-table's TableHeader — pattern only, no import) + `SortableTh.test.tsx`; barrel export; registry entry `sortable-th.tsx`
+  - _Requirements: 20.3, 20.7_
+- [x] 26.2 Manager integration
+
+  - `UsersManager`: sort state → `fetchUsers({ sort })`, whitelisted headers User/`first_name`, Email/`email`, Status/`status`, Last Access/`last_access`; `PoliciesManager`: Name/`name` → `fetchPolicies({ sort })`; page reset on sort change; RolesManager untouched (server hardcodes name-asc)
+  - Vitest: sort cycle fetch args + page reset; RolesManager asserts NO sortable headers
+  - _Requirements: 20.1, 20.2, 20.4, 20.5, 20.6_
+- [x] 27. Users-list bulk actions (Req 21)
+- [x] 27.1 Selection + toolbar
+
+  - `useSelection<string>` from `@buildpad/hooks`; checkbox column only when `updateAllowed || deleteAllowed` (header select-all-on-page checked/indeterminate, cell stopPropagation); toolbar Paper at selection>0: "N selected", Clear, Update roles… + Set status (update-gated), Delete (delete-gated); selection persists across pages, clears on search/filter change
+  - _Requirements: 21.1, 21.2, 21.6, 21.7_
+- [x] 27.2 Bulk flows
+
+  - Local `BulkRolesModal` (two MultiSelects from fetched roles) → ONE `bulkUpdateUsers(ids, { addRoles?, removeRoles? })`; Set status → per-user `updateUser(id, { status })` via `Promise.allSettled`; Delete → `DeleteConfirmModal` with count → per-user `deleteUser` via `Promise.allSettled`; outcome-count notifications; clear selection + reload after each action
+  - _Requirements: 21.3, 21.4, 21.5, 21.6_
+- [x] 27.3 Vitest suite
+
+  - `UsersManager.test.tsx`: checkboxes hidden without update+delete; toolbar count; bulk roles issues exactly one `bulkUpdateUsers` call; status/delete fan-outs; selection cleared + reload
+  - _Requirements: 21.1–21.7_
+- [x] 27.4 Playwright e2e
+
+  - Admin: email-sort first-row flip over search-scoped `e2e-users` fixtures; bulk-roles round-trip on the noperm fixture (add→remove, self-restoring); bulk-status round-trip (suspend→active); bulk-delete on a throwaway API-created user with `finally` cleanup; page-size 10 → ≤10 rows. Viewer: rows render but no checkbox column/toolbar; sort headers still work
+  - _Requirements: 20.1, 21.3, 21.4, 21.5, 22.2, 12.1_
+  - ✅ The bulk-roles e2e exposed a pre-existing live-data parity bug: `UsersManager` fetched without the daas reference projection (`fields=*,roles.*,roles.role_id.name`), so the API returned bare junction IDs and the Role column never rendered badges against live data (fixture-based unit tests masked it — they use flattened role objects). Fixed by passing the projection in `load()`. Two Playwright/Mantine gotchas: MultiSelect dropdowns stay open after picking (overlaying Apply — dismissed by clicking the modal copy), and jsdom needs an `Element.prototype.scrollIntoView` stub + `hidden: true` role queries for combobox options (dropdown stays `display:none` without transitions)
+- [x] 28. Round-3 verification + docs + changeset
+
+  - `users.mdx`: list-views section (`hideHeader`, `pageSize` now initial, `pageSizeOptions`, avatar sentence), new "Sorting and bulk actions" subsection (per-list sortable columns, roles unsortable server-side, bulk roles single-call vs status/delete fan-out), RBAC section (checkbox/toolbar gating)
+  - `pnpm --filter @buildpad/types typecheck`, ui-users typecheck/test/build, `pnpm build:registry && pnpm registry:check`, live e2e (free port 3000 first): users-api unchanged 23/23, users-storybook 12 existing + new specs
+  - Single lockstep minor changeset `users-parity-round-3.md` (`@buildpad/ui-users` + `@buildpad/types`); watch the peerDep major cascade — rewrite versions down after `changeset version`
+  - _Requirements: 17.*–22.*, 12.4, 12.5_
+  - ✅ Verified 2026-07-11: ui-users vitest 87/87 (26 new across UsersManager/RolesManager/PoliciesManager/SortableTh/UserAvatar/accessUtils/TokenInput), types + ui-users typecheck/build green, `build:registry`/`registry:check` green (`sortable-th` registered), live e2e users-api 23/23 unchanged and users-storybook 18/18 (12 existing + 6 new Req 20–22 specs, all green after the Role-badge projection fix). Port-3000 squatter (an unrelated `rudy-project-management-sub-agents-starter` Next dev server, up 29h) had to be killed before `dev:host` could bind

@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActionIcon,
   Badge,
   Box,
   Button,
@@ -23,13 +22,14 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconRefresh, IconTrash } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 import { usePermissions, useRoles, useUsers } from '@buildpad/hooks';
 import type { User, UserStatus } from '@buildpad/types';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { InfoPanel } from './InfoPanel';
+import { TokenInput } from './TokenInput';
 import { UserPoliciesManager } from './UserPoliciesManager';
-import { generateToken, normalizeRoleIds } from './accessUtils';
+import { normalizeRoleIds } from './accessUtils';
 import type { Policy } from '@buildpad/types';
 
 const STATUS_OPTIONS: Array<{ value: UserStatus; label: string }> = [
@@ -423,6 +423,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                     onChange={(e) => setField('password', e.currentTarget.value)}
                     error={fieldErrors.password}
                     autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     data-testid="user-detail-password"
                   />
 
@@ -497,25 +499,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                     />
                   </Group>
 
-                  <PasswordInput
+                  <TokenInput
                     label="Static API Token"
                     description="Token for API access without a session. Generate a new value to rotate it; clear it to revoke."
-                    placeholder="No token set"
-                    value={values.token}
-                    onChange={(e) => setField('token', e.currentTarget.value)}
-                    rightSectionWidth={36}
-                    rightSection={
-                      <Tooltip label="Generate token">
-                        <ActionIcon
-                          variant="subtle"
-                          onClick={() => setField('token', generateToken())}
-                          aria-label="Generate token"
-                          data-testid="user-detail-generate-token"
-                        >
-                          <IconRefresh size={16} />
-                        </ActionIcon>
-                    </Tooltip>
-                    }
+                    value={values.token || null}
+                    onChange={(token) => setField('token', token ?? '')}
                     data-testid="user-detail-token"
                   />
                 </Stack>

@@ -35,6 +35,7 @@ export default function RoleDetailPage({
       onUserClick={(user) => router.push(`/users/${user.id}`)}
       onAddUser={() => router.push('/users/new')}
       onPolicyClick={(policy) => router.push(`/policies/${policy.id}`)}
+      onRoleClick={(role) => router.push(`/roles/${role.id}`)}
     />
   );
 }

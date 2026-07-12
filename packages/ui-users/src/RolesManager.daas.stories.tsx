@@ -51,6 +51,7 @@ const RolesPlayground: React.FC = () => {
               else if (action === 'addNew') setSelectedId('new');
               else setSelectedId(role.id);
             }}
+            onRoleClick={(role) => setSelectedId(role.id)}
           />
         ) : (
           <RolesManager

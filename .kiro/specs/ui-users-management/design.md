@@ -112,9 +112,9 @@ useAccess(): { fetchAccess(params?): Promise<Access[]>; createAccess(data): Prom
 | Component | Ported from (buildpad-daas) | Design notes |
 |---|---|---|
 | `UsersManager` (+`.css`) | `app/users/page.tsx` | Mantine `Table`; debounced search; role filter (fed by `useRoles`); status filter; pagination; `UserAvatar` initials; role `Badge`s; `UserStatusBadge`; row menu (edit/delete). Props: `onUserClick?`, `onCreateUser?`, `pageSize?`, `usersCollection?='daas_users'` |
-| `UserDetail` | `app/users/[id]/page.tsx` | Tabs Basic/Policies. Explicit Mantine fields (not schema-driven DynamicForm — self-contained after CLI copy): email, password (create-only, min 6), first/last name, title, description, location, `TagsInput`, language/theme/status `Select`s, masked token field, roles `MultiSelect` (M2M normalized to ID array). Edits-only PATCH; dirty tracking disables Save; `InfoPanel` sidebar. Props: `id`, `onBack?`, `onDeleted?`, `onSaved?`, `usersCollection?` |
+| `UserDetail` | `app/users/[id]/page.tsx` | Tabs Basic/Policies. Explicit Mantine fields (not schema-driven DynamicForm — self-contained after CLI copy): email, password (create-only, min 6), first/last name, title, description, location, `TagsInput`, language/theme/status `Select`s, token via **`TokenInput`** (Req 16), roles `MultiSelect` (M2M normalized to ID array). Edits-only PATCH; dirty tracking disables Save; `InfoPanel` sidebar. Props: `id`, `onBack?`, `onDeleted?`, `onSaved?`, `usersCollection?` |
 | `RolesManager` | `app/roles/page.tsx` | Search, icon, user count (`includeUsers=true` → `users[0].count`), description, row menu. Props: `onRoleClick?`, `onCreateRole?`, `pageSize?`, `rolesCollection?` |
-| `RoleDetail` | `app/roles/[id]/page.tsx` | Tabs Basic/Users/Policies (Users+Policies hidden when new). Basic: name, `SelectIcon`, description, parent-role `Select` (excludes self), **scope_config editor** (enable `Switch` → regex pattern rows with live `new RegExp` validity check + add/remove + validation-message input; disable → `null`). Save `Menu` (Stay/Quit/Add New/Discard); unsaved-changes navigation guard `Modal`; `InfoPanel` |
+| `RoleDetail` | `app/roles/[id]/page.tsx` | Tabs Basic/Users/Policies (Users+Policies hidden when new). Basic: name, `SelectIcon`, description, parent-role `Select` (excludes self), **scope_config editor** (enable `Switch` → regex pattern rows with live `new RegExp` validity check + add/remove + validation-message input; disable → `null`). Save `Menu` (Stay/Quit/Add New/Discard); unsaved-changes navigation guard `Modal`; `InfoPanel` + hierarchy links (parent row + Child Roles card via `onRoleClick`, Req 14) |
 | `PoliciesManager` | `app/policies/page.tsx` | Search, icon, name, description, userCount, roleCount, row menu. Props: `onPolicyClick?`, `onCreatePolicy?`, `pageSize?`, `policiesCollection?` |
 | `PolicyDetail` | `app/policies/[id]/page.tsx` | Basic info + Access Control `Switch`es (`app_access`, `admin_access`, `delegate_access`) + permissions matrix via **`SystemPermissions`** (`@buildpad/ui-interfaces/system-permissions`; alterations batched, applied to `/api/permissions` on Save). Combined dirty tracking (form + matrix) drives "Unsaved Changes" badge + Save enablement; `InfoPanel` |
 | `UserPoliciesManager` | `components/UserPoliciesManager.tsx` | Attached-policy list + attach/detach via `useUsers`; `onUpdate` callback refreshes parent counts |
@@ -125,6 +125,7 @@ useAccess(): { fetchAccess(params?): Promise<Access[]>; createAccess(data): Prom
 | `UserAvatar` | extracted | Initials from first/last name, fallback email prefix |
 | `InfoPanel` | merge of `InfoSidebar`/`RoleInfoSidebar` | Generic label/value rows + description |
 | `DeleteConfirmModal` | local copy | Per-package convention (ui-files ships its own too) |
+| `TokenInput` | `app/components/interfaces/system-token/SystemToken.tsx` | Read-only monospace token field: generate (client-side `generateToken()`), plaintext-once + Copy, "Value Securely Saved" concealed state (`/^\*+$/`), Clear → `null` (Req 16) |
 | `_fixtures.ts`, `index.ts`, `css.d.ts` | new | Story fixtures; pure export barrel; CSS module shim |
 
 **Reused instead of ported:** `SystemPermissions` (replaces the daas `PermissionsTable` + Row/Toggle/Fields/Filter/Presets/Validation/DetailModal family), `SelectIcon` (replaces `IconPicker`/`IconDisplay`), inline `TextInput`+`IconSearch` (replaces `SearchInput`). The `system-token` interface is evaluated for the token field; fallback is a masked `TextInput` with a regenerate action.
@@ -304,7 +305,7 @@ Plus: export `APP_ACCESS_MINIMAL_PERMISSIONS` (currently module-private) for the
 
 ### Phasing rationale
 
-Phase 1 (JSON-first) achieves 100% persistence parity — the daas builder's JSON mode produces identical output, and Fields/Validation/Presets tabs are full ports, not MVPs. The ~1,200-line Mantine-menu-heavy visual builder lands as Phase 2 atop a stable modal, keeping diffs reviewable. Known divergence kept from the port: app-minimal cells stay locked (static cyan badge, no "Use Custom"), whereas daas allowed extending beyond the minimum — revisit if requested.
+Phase 1 (JSON-first) achieves 100% persistence parity — the daas builder's JSON mode produces identical output, and Fields/Validation/Presets tabs are full ports, not MVPs. The ~1,200-line Mantine-menu-heavy visual builder lands as Phase 2 atop a stable modal, keeping diffs reviewable. Known divergence kept from the port: app-minimal cells stay locked (static cyan badge, no "Use Custom"), whereas daas allowed extending beyond the minimum — *closed by Req 15 (see the round-2 addendum below)*.
 
 ### Distribution & testing deltas
 
@@ -314,3 +315,74 @@ Phase 1 (JSON-first) achieves 100% persistence parity — the daas builder's JSO
 - Jest (targeted; repo-wide suites on main are broken): `PermissionFilterUtils.test.ts` (parse/serialize roundtrips, node CRUD, operator sets), `PermissionDetailModal.test.tsx` (tab visibility per action, badges, `['*']` semantics, invalid-JSON blocking, save payload shape, delete confirm), extended `SystemPermissions.test.tsx` (open-modal wiring; save→`update[]` with id / `create[$index]` replace / new `create[]`; delete→`delete[]`; level fix).
 - Storybook (ui-interfaces): `CustomEditing` playground story with injected metadata; `PermissionDetailModal.stories.tsx` per action; Phase 2 builder stories.
 - Playwright: extend `tests/ui-users/users-feature.storybook.spec.ts` — open "Use Custom" on a read cell against live DaaS, assert modal + field checkboxes, Cancel (smoke; mutations stay jest-covered).
+
+## Parity gap closures round 2 (Reqs 14–16, 2026-07-10 audit)
+
+A second feature-parity audit against `buildpad-daas/app/{roles,users,policies}` confirmed near-full parity and identified three remaining gaps, closed here. Explicitly re-confirmed out of scope: `email_notifications` (deferred), plus everything absent in both codebases (invite email, 2FA UI, avatar upload, password-reset button) — future work only.
+
+### Req 14 — Role hierarchy navigation (`RoleDetail`)
+
+Audit finding: daas `RoleInfoSidebar` renders a "View Parent" link and a Child Roles card, but the daas API (`app/api/roles/[id]/route.ts`) never populates `role.children` — the card is dead at daas runtime. There is no reverse-relation endpoint; the port derives children client-side.
+
+- New optional `RoleDetailProps.onRoleClick?: (role: Role) => void`, same signature as `RolesManager`. Omitted → hierarchy renders as plain text (backward compatible).
+- Derivations from the `allRoles` state already fetched for the parent select (`fetchRoles({ limit: 1000 })` — hierarchies beyond that ceiling would miss children; pre-existing constraint): `parentRole` by ID lookup, `childRolesOf(allRoles, id)` pure helper in `accessUtils.ts`.
+- Sidebar: "Parent Role" `InfoPanel` row (`InfoPanelItem.value` is already `ReactNode`, so an `Anchor` needs no `InfoPanel` change) + a sibling "Child Roles" `Paper` card (`data-testid="role-detail-children"`), hidden when empty or in create mode.
+- All hierarchy navigation routes through the unsaved-changes guard: the guard modal's pending action is generalized from "always `onBack`" to a stored callback.
+- `RoleDetail` resets `activeTab` to Basic and refetches when `id` changes (`load` already depends on `id`), so same-route navigation works without remount. Template `templates/app/roles/[id]/page.tsx` wires `onRoleClick={(r) => router.push(...)}`.
+
+### Req 15 — App-minimal cell unlock (`SystemPermissions`)
+
+Audit finding: shipped daas `PermissionsToggle` has the same `if (appMinimal) return <Badge/>` early return as the port; its dead menu guard (`{!appMinimal && <No Access/>}`) plus live modal/fields plumbing encode the intended design. This is **intent-parity, not runtime-parity** with shipped daas.
+
+- Only `PermissionsToggle` in `SystemPermissions.tsx` changes: the early return becomes a menu-wrapped cyan badge — "All Access" (disabled when level is already `all`; absence of a row counts as `all` since the minimum grants `fields: ['*']`) and "Use Custom"; never "No Access"; no menu when `disabled`. Markers: `data-app-minimal="true"`, `data-level` from the underlying row (fallback `all`).
+- Everything downstream already works unchanged: `editItem` → modal receives `appMinimal`; `PermissionFieldsTab` locks/excludes minimal fields; `handleDetailSave` covers all three row provenances; delete flows through `removePermission`.
+- Accepted quirks (safe because the backend enforcer always applies the minimum): current minimal entries are all `fields: ['*']`, so the Fields tab renders fully locked — "extending" a minimal cell in practice means item filters/validation/presets; "Select none" in the modal can emit an inert `fields: null` row.
+- No registry change (no new files); consumers pick this up by re-copying `system-permissions`.
+
+### Req 16 — `TokenInput` (ui-users)
+
+Port of daas `system-token/SystemToken.tsx` with two deltas: generation stays client-side (`generateToken()` from `accessUtils.ts`; no `/api/utils/random/string` dependency) and no fetch/loading state.
+
+- Contract: `TokenInputProps { value: string | null; onChange(value: string | null); label?; description?; disabled?; error?; 'data-testid'? }`. States: empty → placeholder + plus-icon Generate; generated → plaintext (monospace, read-only) + `CopyButton` + persistent can't-view-again notice; concealed (`isConcealedToken()` = `/^\*+$/` in `accessUtils.ts`, matching the backend conceal contract in daas `lib/services/sensitive-fields.ts`) → "Value Securely Saved" + Regenerate icon. Clear → `onChange(null)`.
+- `UserDetail` integration keeps `UserFormValues.token: string` so `toFormValues`/`diffFormValues` stay untouched: the concealed value loads as the initial value and, being read-only, is only ever replaced (regenerate → plaintext diff) or cleared (existing `'' → null` diff = revoke); untouched concealed values never diff, so they are never PATCHed.
+- Registry: `TokenInput.tsx` added to the `users-management` entry (`components/ui/users-management/token-input.tsx`); barrel export from `src/index.ts`.
+
+## Round 3 — parity polish + beyond-parity UX (Reqs 17–22, 2026-07-11 audit)
+
+A third three-way audit (spec ↔ `packages/ui-users` ↔ `buildpad-daas/app/{users,roles,policies}`) confirmed the module at near-full parity and closes the last three gaps (Reqs 17–19). At the user's direction this round also adds three **deliberate beyond-parity** features (Reqs 20–22).
+
+### Audit-confirmed parity (no changes)
+
+- "Showing N of M" list footers are byte-identical in wording and share the `totalPages > 1` gate (both codebases); row menus, filters, empty states, and count badges all at parity.
+- The password field is functionally equivalent to daas `input-hash` (create/edit placeholders, `autoComplete="new-password"`, blank-keeps-current, null-revoke via diff); only the `data-lpignore`/`data-1p-ignore` attributes were missing (Req 19).
+- `SystemPermissions` has per-row remove-collection, matching daas `PermissionsRow`.
+- `UserDetail`'s avatar exclusion matches the daas `excludeFields` list.
+
+### Deliberate divergences (cumulative)
+
+Earlier rounds: alterations-model permission persistence (daas wrote live via the browser Supabase client — an audit-trail hole the port fixed), client-side `generateToken()`, hand-written form instead of `DynamicForm`, `tags` field shown (daas hides it), 10 language options vs 3, no npm publish. New this round:
+
+- Prop-based `hideHeader` instead of daas's `EmbeddedContext` (a library has no app context; hiding is all daas does, so no title-override props).
+- Initials fallback beneath an avatar `src` (superset of daas, which falls back to a generic placeholder).
+- `RolesManager` remains unsortable: `app/api/roles/route.ts` ignores the `sort` param (hardcodes name-asc). Needs a daas-side change first; recorded as an API limitation, not a port gap.
+- Bulk status and bulk delete fan out per-user (`Promise.allSettled` of `updateUser`/`deleteUser`): `PATCH /api/users/bulk-update` accepts only `{ userIds, addRoles?, removeRoles?, role? }`.
+
+### Beyond-parity features (deliberate — future audits MUST NOT flag)
+
+Reqs 20 (column sorting), 21 (users-list bulk actions), and 22 (page-size selector) are absent in buildpad-daas by design of this round. Parity audits compare daas → port for Reqs 1–19 only; these three are port-only enhancements and their absence in daas is expected.
+
+### Per-req design notes
+
+- **Req 17 (avatar):** `User` gains `avatar?: string | null` in `packages/types/src/users.ts`; `UserDisplayFields` picks it up in `userDisplay.ts`; `UserAvatar` sets `src={user.avatar ?? undefined}` + `alt={getUserDisplayName(user)}` **before** the props spread so an explicit `src` wins. Mantine 8 `Avatar` falls back to children (the initials) when `src` is absent or fails — verified via a broken-src story. No call-site changes; no fetch changes (users GET already returns `*` fields).
+- **Req 18 (hideHeader):** each manager wraps its `Title`+`Text` block in `!hideHeader`; the header `Group` renders only when the heading or the Add button does.
+- **Req 20 (sorting):** new `SortableTh.tsx` (flat, registry-listed) renders a `Table.Th` with an `UnstyledButton`, chevron up/down when active, `IconSelector` when inactive, and `aria-sort` (pattern reference: `packages/ui-table/src/components/TableHeader.tsx` — pattern only, ui-users must NOT import ui-table). Pure `toggleSort(current, field)` in `accessUtils.ts`: `null → field → -field → null`; switching fields resets to ascending. Sort state is component-local and passed straight to the existing `fetchUsers`/`fetchPolicies` `sort` param (already supported — zero hooks changes). Sortable fields are hard whitelists (invalid columns 500 server-side): users `first_name`/`email`/`status`/`last_access`, policies `name`.
+- **Req 21 (bulk actions):** selection via the existing `useSelection<string>` from `@buildpad/hooks`; checkbox column rendered only when `updateAllowed || deleteAllowed`; toolbar `Paper` appears at selection > 0 with count, Clear, "Update roles…" (local non-exported `BulkRolesModal` in `UsersManager.tsx` — two MultiSelects fed by the already-fetched roles list → one `bulkUpdateUsers` call), "Set status" menu (reuses the local status options), and Delete (existing `DeleteConfirmModal` with count in the description). Fan-outs use `Promise.allSettled` + a success/failure-count notification; selection clears and the list reloads after any action; selection also clears on search/filter change; checkbox cells `stopPropagation` so row navigation never fires.
+- **Req 22 (page-size):** `pageSize` becomes the *initial* size (state `limit`), `pageSizeOptions` default `[10, 25, 50, 100]` (initial value injected if missing); footer condition changes from `totalPages > 1` to `totalCount > 0` so the selector is reachable at any size, while the `Pagination` control itself stays gated on `totalPages > 1` (preserves the round-1 wording parity finding).
+
+### Distribution & testing deltas
+
+- Registry: `SortableTh.tsx` → `components/ui/users-management/sortable-th.tsx` in the `users-management` entry; no dependency changes. `@buildpad/types` change rides the existing `types` lib module.
+- Vitest: `toggleSort` cycle; `SortableTh` aria-sort/click contract; `UserAvatar` img src+alt vs initials; per-manager hideHeader/page-size; UsersManager sort args, RBAC-gated checkbox column, bulk roles single-call, status/delete fan-out, selection clear+reload. New minimal `RolesManager.test.tsx` (asserts NO sortable headers) and `PoliciesManager.test.tsx`.
+- Playwright (`tests/ui-users/users-feature.storybook.spec.ts`): admin — email-sort first-row flip over search-scoped `e2e-users` fixtures; bulk-roles and bulk-status round-trips (self-restoring); bulk-delete on a throwaway API-created user with `finally` cleanup; page-size 10. Viewer — no checkbox column/toolbar; sort headers still work.
+- Storybook: `UserAvatar` "WithImage" (inline SVG data-URI) + "BrokenSrc" stories; optional Headerless variant in the UsersManager daas story.
+- Changeset: one file, `'@buildpad/ui-users': minor` + `'@buildpad/types': minor`; body separates parity closures (17–19) from beyond-parity UX (20–22). Watch the fixed-group/peerDep major-cascade: rewrite versions down to the intended minor after `changeset version`.

@@ -56,6 +56,37 @@ export function parentRoleOptions(
     .map((role) => ({ value: role.id, label: role.name }));
 }
 
+/**
+ * Roles whose `parent` is the given role. The DaaS API exposes no reverse
+ * relation for `role.children`, so the hierarchy is derived client-side from
+ * the same roles list the parent-role select already fetches.
+ */
+export function childRolesOf(roles: Role[], roleId: string | null): Role[] {
+  if (!roleId) return [];
+  return roles.filter((role) => role.parent === roleId);
+}
+
+/**
+ * True when `value` is a backend-concealed token: the DaaS API masks
+ * `daas_users.token` as all-asterisks (`**********`) in every read response,
+ * so an asterisks-only value means "a token is securely saved" and its
+ * plaintext can never be shown again.
+ */
+export function isConcealedToken(value: string | null | undefined): boolean {
+  return !!value && /^\*+$/.test(value);
+}
+
+/**
+ * Cycle a Directus-style list sort through a column's states:
+ * unsorted → `field` (asc) → `-field` (desc) → unsorted. Clicking a
+ * different column always starts back at ascending on that column.
+ */
+export function toggleSort(current: string | null, field: string): string | null {
+  if (current === field) return `-${field}`;
+  if (current === `-${field}`) return null;
+  return field;
+}
+
 /** Generate a random static API token (hex, default 32 bytes → 64 chars). */
 export function generateToken(bytes = 32): string {
   const buffer = new Uint8Array(bytes);

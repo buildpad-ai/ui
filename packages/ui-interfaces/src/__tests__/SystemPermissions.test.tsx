@@ -820,4 +820,161 @@ describe('SystemPermissions', () => {
       expect(screen.getByTestId('sp-toggle-articles-create')).toHaveAttribute('data-level', 'custom');
     });
   });
+
+  // ───────────────────────────────────────────────────────────
+  // App-Minimal Cell Unlock (Req 15)
+  // ───────────────────────────────────────────────────────────
+  describe('App-Minimal Cell Unlock', () => {
+    const MOCK_USER_FIELDS = [
+      { collection: 'daas_users', field: 'id', type: 'uuid' },
+      { collection: 'daas_users', field: 'first_name', type: 'string' },
+      { collection: 'daas_users', field: 'email', type: 'string' },
+    ];
+
+    // daas_users:update row makes the collection row render; the read cell is
+    // then the app-minimal cell (daas_users:read ∈ APP_ACCESS_MINIMAL_PERMISSIONS)
+    // with no explicit permission row behind it.
+    const minimalValue: PermissionAlterations = {
+      create: [
+        { collection: 'daas_users', action: 'update', fields: ['*'], permissions: null, validation: null, presets: null },
+      ],
+      update: [],
+      delete: [],
+    };
+
+    const minimalProps = {
+      ...defaultProps,
+      appAccess: true,
+      fieldsByCollection: { daas_users: MOCK_USER_FIELDS },
+    };
+
+    it('marks the minimal cell and defaults its level to all when no row exists', async () => {
+      await renderWithProvider(<SystemPermissions {...minimalProps} value={minimalValue} />);
+      const toggle = screen.getByTestId('sp-toggle-daas_users-read');
+      expect(toggle).toHaveAttribute('data-app-minimal', 'true');
+      expect(toggle).toHaveAttribute('data-level', 'all');
+    });
+
+    it('opens a menu offering All Access and Use Custom but never No Access', async () => {
+      await renderWithProvider(<SystemPermissions {...minimalProps} value={minimalValue} />);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-toggle-daas_users-read'));
+      });
+      expect(await screen.findByTestId('sp-toggle-daas_users-read-custom')).toBeInTheDocument();
+      expect(screen.getByTestId('sp-toggle-daas_users-read-full')).toBeInTheDocument();
+      expect(screen.queryByTestId('sp-toggle-daas_users-read-none')).not.toBeInTheDocument();
+    });
+
+    it('disables All Access while the implicit minimum already grants all', async () => {
+      await renderWithProvider(<SystemPermissions {...minimalProps} value={minimalValue} />);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-toggle-daas_users-read'));
+      });
+      const fullItem = await screen.findByTestId('sp-toggle-daas_users-read-full');
+      expect(fullItem).toBeDisabled();
+    });
+
+    it('reports custom level (still cyan-marked) when an explicit custom row exists', async () => {
+      const value: PermissionAlterations = {
+        create: [
+          { collection: 'daas_users', action: 'read', fields: ['*'], permissions: { id: { _eq: '$CURRENT_USER' } }, validation: null, presets: null },
+        ],
+        update: [],
+        delete: [],
+      };
+      await renderWithProvider(<SystemPermissions {...minimalProps} value={value} />);
+      const toggle = screen.getByTestId('sp-toggle-daas_users-read');
+      expect(toggle).toHaveAttribute('data-app-minimal', 'true');
+      expect(toggle).toHaveAttribute('data-level', 'custom');
+    });
+
+    it('"Use Custom" on a rowless minimal cell saves into create[] with policy/collection/action', async () => {
+      const onChange = jest.fn();
+      await renderWithProvider(
+        <SystemPermissions {...minimalProps} value={minimalValue} onChange={onChange} />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-toggle-daas_users-read'));
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByTestId('sp-toggle-daas_users-read-custom'));
+      });
+      expect(screen.getByTestId('sp-detail')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-detail-filter-mode-toggle'));
+      });
+      fireEvent.change(screen.getByTestId('sp-detail-filter-json'), {
+        target: { value: '{"id": {"_eq": "$CURRENT_USER"}}' },
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-detail-save'));
+      });
+
+      const emitted = onChange.mock.calls[0][0] as PermissionAlterations;
+      expect(emitted.create).toHaveLength(2);
+      expect(emitted.create[1]).toMatchObject({
+        policy: 'test-policy-1',
+        collection: 'daas_users',
+        action: 'read',
+        permissions: { id: { _eq: '$CURRENT_USER' } },
+      });
+    });
+
+    it('modal Delete on an explicit minimal-cell row emits delete[] (reverts to implicit minimum)', async () => {
+      const onChange = jest.fn();
+      mockedApiRequest.mockImplementation((url: string) => {
+        if (typeof url === 'string' && url.includes('/api/permissions')) {
+          return Promise.resolve({
+            data: [
+              { id: 'perm-min-1', policy: 'test-policy-1', collection: 'daas_users', action: 'read', fields: ['*'], permissions: { id: { _eq: '$CURRENT_USER' } }, validation: null, presets: null },
+              // second action keeps the collection row rendered after the read row is deleted
+              { id: 'perm-min-2', policy: 'test-policy-1', collection: 'daas_users', action: 'update', fields: ['*'], permissions: null, validation: null, presets: null },
+            ],
+          });
+        }
+        return Promise.resolve({ data: [] });
+      });
+
+      const view = await renderWithProvider(<SystemPermissions {...minimalProps} onChange={onChange} />);
+      await waitFor(() => expect(screen.getByTestId('sp-row-daas_users')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-toggle-daas_users-read'));
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByTestId('sp-toggle-daas_users-read-custom'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-detail-delete'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-detail-delete-confirm'));
+      });
+
+      const emitted = onChange.mock.calls[0][0] as PermissionAlterations;
+      expect(emitted.delete).toEqual(['perm-min-1']);
+
+      // The matrix is controlled: feeding the emitted alterations back in
+      // reverts the cell to the implicit minimum (cyan, level all).
+      await act(async () => {
+        view.rerender(
+          <MantineProvider>
+            <SystemPermissions {...minimalProps} onChange={onChange} value={emitted} />
+          </MantineProvider>
+        );
+      });
+      expect(screen.getByTestId('sp-toggle-daas_users-read')).toHaveAttribute('data-level', 'all');
+    });
+
+    it('renders the minimal cell without a menu when disabled', async () => {
+      await renderWithProvider(<SystemPermissions {...minimalProps} value={minimalValue} disabled />);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('sp-toggle-daas_users-read'));
+      });
+      expect(screen.queryByTestId('sp-toggle-daas_users-read-custom')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('sp-toggle-daas_users-read-full')).not.toBeInTheDocument();
+    });
+  });
 });

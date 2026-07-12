@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -11,6 +11,7 @@ import {
   Menu,
   Pagination,
   Paper,
+  Select,
   Stack,
   Table,
   Text,
@@ -36,27 +37,39 @@ function getUserCount(role: Role): number {
   return role.users?.[0]?.count ?? 0;
 }
 
+const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
 export interface RolesManagerProps {
   /** Called when a role row is clicked (and the current user may update roles). */
   onRoleClick?: (role: Role) => void;
   /** Called when the "Add Role" button is clicked. */
   onCreateRole?: () => void;
-  /** Items per page. Default: 25. */
+  /** Initial items per page (changeable via the footer selector). Default: 25. */
   pageSize?: number;
+  /** Choices offered by the footer page-size selector. Default: [10, 25, 50, 100]. */
+  pageSizeOptions?: number[];
+  /** Hide the built-in heading + subtitle for embedded surfaces; the Add Role button stays. Default: false. */
+  hideHeader?: boolean;
   /** DaaS collection used for RBAC checks. Default: 'daas_roles'. */
   rolesCollection?: string;
 }
 
 /**
  * Roles list surface: search, member counts (`includeUsers=true`),
- * pagination, and a row menu for edit/delete. Ported from the buildpad-daas
- * reference `app/roles/page.tsx` to `useRoles` + `usePermissions` and
- * routing-agnostic navigation via `onRoleClick`/`onCreateRole` props.
+ * pagination with a page-size selector, and a row menu for edit/delete.
+ * Ported from the buildpad-daas reference `app/roles/page.tsx` to
+ * `useRoles` + `usePermissions` and routing-agnostic navigation via
+ * `onRoleClick`/`onCreateRole` props.
+ *
+ * No column sorting: the roles API ignores the `sort` param (hardcodes
+ * name-asc), so a sort UI here would lie across pages (Req 20.6).
  */
 export const RolesManager: React.FC<RolesManagerProps> = ({
   onRoleClick,
   onCreateRole,
   pageSize = 25,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
+  hideHeader = false,
   rolesCollection = 'daas_roles',
 }) => {
   const { fetchRoles, deleteRole } = useRoles();
@@ -71,6 +84,7 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -83,12 +97,16 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
   });
   const [deleting, setDeleting] = useState(false);
 
+  const sizeOptions = useMemo(() => {
+    return Array.from(new Set([...pageSizeOptions, pageSize])).sort((a, b) => a - b);
+  }, [pageSizeOptions, pageSize]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await fetchRoles({
         page,
-        limit: pageSize,
+        limit,
         search: debouncedSearch || undefined,
         includeUsers: true,
       });
@@ -100,7 +118,7 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [fetchRoles, page, pageSize, debouncedSearch]);
+  }, [fetchRoles, page, limit, debouncedSearch]);
 
   useEffect(() => {
     void load();
@@ -108,7 +126,7 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, limit]);
 
   const confirmDelete = useCallback(async () => {
     setDeleting(true);
@@ -121,23 +139,30 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
     }
   }, [deleteRole, deleteModal.id, load]);
 
+  const addButton =
+    createAllowed && onCreateRole ? (
+      <Button leftSection={<IconPlus size={16} />} onClick={onCreateRole} data-testid="roles-manager-add-btn">
+        Add Role
+      </Button>
+    ) : null;
+
   return (
     <Stack gap="md" data-testid="roles-manager">
-      <Group justify="space-between" align="flex-start">
-        <Box>
-          <Title order={2} mb={4}>
-            Roles
-          </Title>
-          <Text size="sm" c="dimmed">
-            Define roles to group users and assign permissions
-          </Text>
-        </Box>
-        {createAllowed && onCreateRole && (
-          <Button leftSection={<IconPlus size={16} />} onClick={onCreateRole} data-testid="roles-manager-add-btn">
-            Add Role
-          </Button>
-        )}
-      </Group>
+      {(!hideHeader || addButton) && (
+        <Group justify={hideHeader ? 'flex-end' : 'space-between'} align="flex-start">
+          {!hideHeader && (
+            <Box>
+              <Title order={2} mb={4}>
+                Roles
+              </Title>
+              <Text size="sm" c="dimmed">
+                Define roles to group users and assign permissions
+              </Text>
+            </Box>
+          )}
+          {addButton}
+        </Group>
+      )}
 
       <Paper p="sm" radius="md" withBorder>
         <Group>
@@ -276,12 +301,25 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
           </Table>
         </Box>
 
-        {totalPages > 1 && (
+        {totalCount > 0 && (
           <Group justify="space-between" px="md" py="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
-            <Text size="xs" c="dimmed">
-              Showing {roles.length} of {totalCount} roles
-            </Text>
-            <Pagination value={page} onChange={setPage} total={totalPages} />
+            <Group gap="sm">
+              <Text size="xs" c="dimmed">
+                Showing {roles.length} of {totalCount} roles
+              </Text>
+              <Select
+                size="xs"
+                w={110}
+                value={String(limit)}
+                onChange={(value) => {
+                  if (value) setLimit(Number(value));
+                }}
+                data={sizeOptions.map((n) => ({ value: String(n), label: `${n} / page` }))}
+                aria-label="Items per page"
+                data-testid="roles-manager-page-size"
+              />
+            </Group>
+            {totalPages > 1 && <Pagination value={page} onChange={setPage} total={totalPages} />}
           </Group>
         )}
       </Paper>

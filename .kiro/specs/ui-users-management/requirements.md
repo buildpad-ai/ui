@@ -183,3 +183,131 @@ Context: the feature-parity audit against `buildpad-daas/app/policies` (2026-07-
 8. WHEN a permission row has only `presets` set (fields `['*']`, no filter, no validation) THEN `getPermissionLevel` SHALL report `custom`, not `all`.
 9. WHEN field or relation metadata is needed THEN it SHALL be fetched via `apiRequest` from `GET /api/fields/{collection}` and the flat `GET /api/relations` (client-side matching, `useRelationM2O` precedent) with module-level caching, and the components SHALL accept `fields`/`relations`/`fieldsByCollection` injection props for tests and stories (mirroring the existing `collections` prop).
 10. WHEN the registry is built THEN the `system-permissions` entry SHALL list every new editor file as a flat kebab-case target under `components/ui/` (PascalCase sources so the CLI transformer rewrites relative imports), with `internalDependencies: ["services"]` unchanged.
+
+### Requirement 14 — Role hierarchy navigation (parity gap closure)
+
+**User Story:** As an app administrator, I want the role detail sidebar to show and link the role's parent and child roles, so that I can navigate the role hierarchy directly.
+
+Context: the feature-parity audit against `buildpad-daas/app/roles` (2026-07-10) found that the daas `RoleInfoSidebar` designs a "View Parent" link and a Child Roles card, while the port's generic `InfoPanel` shows only counts. The audit also verified that the daas API never populates `role.children` (the card is dead code at daas runtime), so there is no reverse-relation endpoint to lean on: children are derived client-side from the roles list `RoleDetail` already fetches for its parent-role select (subject to that select's existing 1000-role ceiling).
+
+#### Acceptance Criteria
+
+1. WHEN `RoleDetail` renders an existing role that has a `parent` THEN the info sidebar SHALL show a "Parent Role" row displaying the parent role's name (resolved from the fetched roles list, falling back to the raw ID), rendered as a link when `onRoleClick` is provided and as plain text otherwise.
+2. WHEN other fetched roles have this role as their `parent` THEN the sidebar SHALL show a "Child Roles" card listing each child role's name, each rendered as a link when `onRoleClick` is provided; the card SHALL be hidden when there are no children or in create mode.
+3. WHEN a parent or child link is activated THEN the component SHALL invoke `onRoleClick(role)` with the full `Role` object (matching the `RolesManager` callback signature) and SHALL NOT import `next/navigation` (Req 9.1).
+4. WHEN children are derived THEN they SHALL be computed client-side from the already-fetched roles list (`fetchRoles({ limit: 1000 })`), not from a new endpoint or hook method.
+5. WHEN a parent or child link is activated while the form has unsaved changes THEN the unsaved-changes confirmation dialog SHALL interpose before `onRoleClick` is invoked (consistent with Req 5.8).
+6. WHEN the `users-routes` role detail template is installed THEN it SHALL wire `onRoleClick` to router navigation, and `RoleDetail` SHALL re-load its data (and reset to the Basic tab) when its `id` prop changes without a remount.
+
+### Requirement 15 — App-minimal permission customization (parity gap closure)
+
+**User Story:** As an app administrator, I want to extend app-access minimal permission cells with custom rules, so that a policy with app access can grant more than the enforced minimum while the minimum itself stays irrevocable.
+
+Context: closes the known divergence recorded in design.md ("app-minimal cells stay locked … revisit if requested"). The 2026-07-10 audit found that the shipped daas `PermissionsToggle` has the same static-badge early return as the port, but its dead menu guard (`{!appMinimal && <No Access/>}`) plus its live modal/fields plumbing encode the intended behavior: menu available, No Access hidden, minimal fields locked in the editor. This requirement implements that intended design (intent-parity, not runtime-parity with shipped daas).
+
+#### Acceptance Criteria
+
+1. WHEN `appAccess` is enabled and a cell matches `APP_ACCESS_MINIMAL_PERMISSIONS` THEN the toggle SHALL render as the cyan badge but open a menu offering "All Access" and "Use Custom"; "No Access" SHALL NOT be offered.
+2. WHEN "Use Custom" is selected on an app-minimal cell THEN the `PermissionDetailModal` SHALL open with the matched minimal entry passed as `appMinimal`, with minimal fields rendered checked and disabled in the Field Permissions tab and excluded from the emitted `fields` array (existing Req 13.3 behavior).
+3. WHEN the modal is saved for an app-minimal cell with no existing permission row THEN the alterations model SHALL receive a `create[]` entry carrying `policy`/`collection`/`action`; WHEN a row exists (persisted, `$type: 'created'`) THEN the existing `update[]`/`create[$index]` provenance branches SHALL apply unchanged (Req 13.6).
+4. WHEN an app-minimal cell renders THEN the badge SHALL stay cyan (locked look) and SHALL expose a `data-app-minimal` marker plus `data-level` reflecting the underlying row's computed level, falling back to `all` when no explicit row exists.
+5. WHEN the component is `disabled` THEN app-minimal cells SHALL render without a menu (read-only), as all other cells do.
+6. WHEN the modal deletes an explicit row on an app-minimal cell THEN the removal SHALL flow through the existing alterations delete/splice logic and the cell SHALL revert to the implicit minimal state (cyan, level `all`).
+
+### Requirement 16 — Static token UX (parity gap closure)
+
+**User Story:** As an app administrator, I want the user token field to behave like the daas system-token interface — generate, copy-once, securely-saved concealment, and explicit revoke — so that static tokens can be managed safely.
+
+Context: the 2026-07-10 audit compared the port's masked `PasswordInput` + regenerate icon against daas `app/components/interfaces/system-token/SystemToken.tsx`: generate shows the plaintext once with a Copy affordance, a saved token displays "Value Securely Saved" (the backend masks `token` as all-asterisks in every read response per `lib/services/sensitive-fields.ts`), and Clear revokes. One deliberate divergence: token generation stays client-side via the existing `generateToken()` in `accessUtils.ts` — `/api/utils/random/string` is not part of the module's API contract.
+
+#### Acceptance Criteria
+
+1. WHEN `UserDetail` renders the token field THEN it SHALL use a dedicated `TokenInput` component: a read-only monospace input (never free-typed) with Generate/Regenerate, Copy, and Clear affordances.
+2. WHEN no token exists THEN the input SHALL show a placeholder inviting generation and a Generate action.
+3. WHEN Generate is activated THEN a token SHALL be produced client-side via `generateToken()`, displayed in plaintext, propagated through `onChange`, and accompanied by a Copy affordance plus a persistent notice warning that the value cannot be viewed again after saving.
+4. WHEN the loaded value matches the concealed pattern (`/^\*+$/`, backend masking) THEN the input SHALL show a "Value Securely Saved" state with no plaintext and no Copy affordance, and the Generate action SHALL read as Regenerate.
+5. WHEN Clear is activated THEN the field value SHALL become empty and the save PATCH SHALL send `token: null` (revocation) via the existing edits-only diff.
+6. WHEN a concealed value is loaded and left untouched THEN save SHALL NOT include `token` in the PATCH payload.
+7. WHEN the registry is built THEN `TokenInput.tsx` SHALL be listed in the `users-management` entry and exported from the package barrel with its props type.
+
+### Requirement 17 — Avatar image display (parity gap closure)
+
+**User Story:** As an app administrator, I want user avatars to render the user's actual avatar image where one exists, so that people are recognizable in lists instead of everyone showing as initials.
+
+Context: the 2026-07-11 parity audit found daas `components/RoleUsersManager.tsx` renders `<Avatar src={user.avatar || undefined}>` — a verbatim pass-through of the stored value with no asset-URL construction — while the port's `UserAvatar` is initials-only and the `User` type lacks `avatar` entirely. Avatar **upload** remains out of scope in both codebases (the daas user form excludes `avatar`; see the parity boundary in the Introduction). The initials fallback is a superset of daas, which falls back to a generic placeholder.
+
+#### Acceptance Criteria
+
+1. WHEN `@buildpad/types` is built THEN the `User` type SHALL carry `avatar?: string | null`, documented as a display-only pass-through (never written by this module).
+2. WHEN `UserAvatar` receives a user with a truthy `avatar` THEN it SHALL render it as the Mantine `Avatar` `src` (verbatim, no asset-URL construction) with `alt` set to the user's display name.
+3. WHEN `avatar` is absent, null, or the image fails to load THEN the existing initials placeholder SHALL render (Mantine children fallback).
+4. WHEN an explicit `src` prop is passed to `UserAvatar` THEN it SHALL override the user-derived value.
+5. WHEN `UsersManager` and `RoleUsersManager` render avatars THEN they SHALL pick up image support with no call-site changes, and `UserDetail` SHALL continue to exclude the `avatar` field (Req 4.8).
+
+### Requirement 18 — Headerless list mode (parity gap closure)
+
+**User Story:** As a downstream app developer, I want to embed the list managers without their built-in page headings, so that they compose into surfaces that already have their own headers (matching the daas embedded mode).
+
+Context: daas hides each list page's `Title` + subtitle when `useEmbedded().isEmbedded` (iframe host); the Add button stays. A component library has no app context, so the equivalent is a prop. No title/description override props — hiding is all daas does; a consumer that wants a different heading renders its own above the component.
+
+#### Acceptance Criteria
+
+1. WHEN `hideHeader` is true on `UsersManager`, `RolesManager`, or `PoliciesManager` THEN the built-in `Title` and subtitle SHALL NOT render.
+2. WHEN `hideHeader` is true and the create action is permitted with its callback provided THEN the Add button SHALL still render, right-aligned (matching daas embedded behavior).
+3. WHEN `hideHeader` is true and no Add button applies THEN the header row SHALL NOT render at all (no empty spacer).
+4. WHEN `hideHeader` is omitted THEN it SHALL default to false and existing consumers SHALL be unaffected.
+
+### Requirement 19 — Password-manager input suppression (parity polish)
+
+**User Story:** As an app administrator, I want browser password managers to leave the admin password and token fields alone, so that autofill overlays do not collide with the fields' own affordances.
+
+Context: daas `input-hash` carries `data-lpignore="true"` and `data-1p-ignore="true"`; the port's password and token inputs lack them. The audit confirmed the password field is otherwise functionally at parity (create/edit placeholders, `autoComplete="new-password"`, blank-keeps-current).
+
+#### Acceptance Criteria
+
+1. WHEN `UserDetail` renders the password field THEN the input SHALL carry `data-lpignore="true"` and `data-1p-ignore="true"`.
+2. WHEN `TokenInput` renders THEN its inner input SHALL carry the same two attributes.
+
+### Requirement 20 — Column sorting on users and policies lists (beyond parity — deliberate)
+
+**User Story:** As an app administrator, I want to sort the users and policies lists by column, so that I can scan large lists in a meaningful order.
+
+Context: **deliberate beyond-parity feature — buildpad-daas has no column sorting; future parity audits must not flag it as a divergence.** Server support verified 2026-07-11: the users route accepts full Directus-style `sort` (`field` / `-field`) via ItemsService, and the policies route parses `sort` for real columns (`userCount`/`roleCount` are computed after the query and are not sortable). The roles route ignores `sort` (hardcodes name-asc), so `RolesManager` is excluded until the daas API changes. Invalid sort columns error server-side (500), so sortable fields are a hard client-side whitelist. `fetchUsers`/`fetchPolicies` already accept `sort` — no hooks changes.
+
+#### Acceptance Criteria
+
+1. WHEN a sortable users-list header is clicked THEN the list SHALL re-fetch cycling `sort=<field>` → `sort=-<field>` → no sort, with the whitelist: User → `first_name`, Email → `email`, Status → `status`, Last Access → `last_access`.
+2. WHEN the policies-list Name header is clicked THEN the same cycle SHALL apply via `fetchPolicies({ sort })` with the single whitelisted field `name`.
+3. WHEN a sortable header renders THEN it SHALL show a direction indicator (chevron up/down when active, neutral selector icon when inactive) and a correct `aria-sort` attribute.
+4. WHEN the sort changes THEN the page SHALL reset to 1.
+5. WHEN sorting is offered THEN it SHALL NOT be gated by update/delete permissions (read functionality).
+6. WHEN `RolesManager` renders THEN it SHALL NOT offer sorting (server hardcodes name-asc — recorded API limitation).
+7. WHEN the registry is built THEN the new `SortableTh` component SHALL be listed in the `users-management` entry and exported from the package barrel with its props type, and the pure `toggleSort` helper SHALL be exported from `accessUtils`.
+
+### Requirement 21 — Users-list bulk actions (beyond parity — deliberate)
+
+**User Story:** As an app administrator, I want to select multiple users and apply role, status, or delete operations in one step, so that routine account administration scales past one-at-a-time edits.
+
+Context: **deliberate beyond-parity feature — buildpad-daas has no list-page bulk actions; future parity audits must not flag it.** Endpoint shape verified 2026-07-11: `PATCH /api/users/bulk-update` accepts only `{ userIds, addRoles?, removeRoles? }` (plus legacy `role` replace) — no status field and no bulk-delete endpoint — so bulk status and bulk delete fan out per-user through the existing `updateUser`/`deleteUser` hook methods with `Promise.allSettled`. Selection is page-bounded (max page size 100), keeping payloads and fan-outs small.
+
+#### Acceptance Criteria
+
+1. WHEN the current user may update or delete users THEN each row SHALL show a selection checkbox and the header a select-all-on-page checkbox (checked/indeterminate reflecting the current page's rows); WHEN neither permission is present THEN no checkbox column SHALL render.
+2. WHEN the selection is non-empty THEN a toolbar SHALL show "N selected", a Clear control, and the gated actions: "Update roles…" and "Set status" (update-gated) and Delete (delete-gated).
+3. WHEN "Update roles…" is applied with add and/or remove role selections THEN exactly ONE `bulkUpdateUsers(ids, { addRoles?, removeRoles? })` call SHALL be issued.
+4. WHEN a bulk status is chosen THEN `updateUser(id, { status })` SHALL be issued per selected user via `Promise.allSettled`, followed by a notification reporting success/failure counts.
+5. WHEN bulk Delete is confirmed via `DeleteConfirmModal` (whose description SHALL include the selection count) THEN `deleteUser(id)` SHALL be issued per selected user via `Promise.allSettled`.
+6. WHEN any bulk action completes THEN the selection SHALL clear and the list reload; the selection SHALL persist across page changes but clear when search or filters change.
+7. WHEN a checkbox or toolbar control is activated THEN row click-through navigation SHALL NOT fire.
+
+### Requirement 22 — Page-size selector (beyond parity — deliberate)
+
+**User Story:** As an app administrator, I want to choose how many rows the users, roles, and policies lists show per page, so that I can trade scanning density against load size.
+
+Context: **deliberate beyond-parity feature — buildpad-daas fixes page size at 25; future parity audits must not flag it.** The `pageSize` prop's meaning shifts from fixed value to initial value — backward compatible.
+
+#### Acceptance Criteria
+
+1. WHEN any of the three list managers renders its footer THEN it SHALL include a page-size Select with options from a `pageSizeOptions` prop (default `[10, 25, 50, 100]`), initialized from the `pageSize` prop (injected into the options when missing).
+2. WHEN the page size changes THEN the list SHALL re-fetch with the new `limit` and reset to page 1.
+3. WHEN `totalCount > 0` THEN the footer ("Showing N of M" + selector) SHALL render; the Pagination control SHALL continue to render only when `totalPages > 1`.

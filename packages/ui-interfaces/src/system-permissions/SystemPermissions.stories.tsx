@@ -112,7 +112,12 @@ export const WithExistingPermissions: Story = {
   },
 };
 
-/** System collections with app access enabled (shows reset controls). */
+/**
+ * System collections with app access enabled: reset controls, and the
+ * app-minimal cells (e.g. daas_users read) rendered cyan but extendable —
+ * All Access / Use Custom offered, No Access withheld. Field metadata is
+ * injected so the detail modal works without an API.
+ */
 export const WithAppAccess: Story = {
   render: () => {
     const [value, setValue] = useState<PermissionAlterations | null>({
@@ -130,6 +135,7 @@ export const WithAppAccess: Story = {
         value={value}
         onChange={setValue}
         collections={MOCK_COLLECTIONS}
+        fieldsByCollection={MOCK_FIELDS_BY_COLLECTION as any}
         appAccess
         label="Permissions (App Access)"
         data-testid="sp"
@@ -254,6 +260,13 @@ const MOCK_FIELDS_BY_COLLECTION = {
     { collection: 'products', field: 'id', type: 'uuid' },
     { collection: 'products', field: 'name', type: 'string' },
     { collection: 'products', field: 'price', type: 'decimal' },
+  ],
+  daas_users: [
+    { collection: 'daas_users', field: 'id', type: 'uuid' },
+    { collection: 'daas_users', field: 'first_name', type: 'string' },
+    { collection: 'daas_users', field: 'last_name', type: 'string' },
+    { collection: 'daas_users', field: 'email', type: 'string' },
+    { collection: 'daas_users', field: 'status', type: 'string' },
   ],
 };
 
