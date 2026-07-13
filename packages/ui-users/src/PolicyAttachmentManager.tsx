@@ -17,7 +17,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconExternalLink, IconPlus, IconShield, IconTrash } from '@tabler/icons-react';
 import type { Policy } from '@buildpad/types';
-import { IconDisplay } from './IconDisplay';
+import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { PolicyPickerModal } from './PolicyPickerModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 

@@ -11,12 +11,11 @@ import {
   Stack,
   Table,
   Text,
-  TextInput,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconSearch } from '@tabler/icons-react';
 import { usePolicies } from '@buildpad/hooks';
 import type { Policy } from '@buildpad/types';
+import { SearchInput } from './SearchInput';
 
 export interface PolicyPickerModalProps {
   opened: boolean;
@@ -106,11 +105,11 @@ export const PolicyPickerModal: React.FC<PolicyPickerModalProps> = ({
   return (
     <Modal opened={opened} onClose={handleClose} title={title} size="lg" data-testid="policy-picker-modal">
       <Stack gap="md">
-        <TextInput
+        <SearchInput
           placeholder="Search policies..."
-          leftSection={<IconSearch size={16} />}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={setSearch}
+          size="md"
           data-testid="policy-picker-search"
         />
 

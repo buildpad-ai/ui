@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
-import { SelectIcon } from './SelectIcon';
+import { IconShield } from '@tabler/icons-react';
+import { SelectIcon, IconDisplay } from '../select-icon/SelectIcon';
 
 const renderWithMantine = (component: React.ReactElement) => {
   return render(
@@ -13,8 +14,8 @@ const renderWithMantine = (component: React.ReactElement) => {
 describe('SelectIcon', () => {
   it('renders with default props', () => {
     renderWithMantine(<SelectIcon />);
-    expect(screen.getByRole('button')).toBeInTheDocument();
-    expect(screen.getByText('Select an icon')).toBeInTheDocument();
+    expect(screen.getByTestId('select-icon-trigger')).toBeInTheDocument();
+    expect(screen.getByText('Search for an icon...')).toBeInTheDocument();
   });
 
   it('renders with custom label', () => {
@@ -61,8 +62,8 @@ describe('SelectIcon', () => {
     
     await waitFor(() => {
       // Should show results with "home" and hide categories that don't contain it
-      expect(screen.queryByText('Activities')).toBeInTheDocument(); // home is in Activities
-      expect(screen.queryByText('Communication')).not.toBeInTheDocument(); // home is not in Communication
+      expect(screen.queryByTestId('icon-home')).toBeInTheDocument(); // 'home' lives in Action
+      expect(screen.queryByText('Communication')).not.toBeInTheDocument(); // no 'home' in Communication
     });
   });
 
@@ -86,18 +87,12 @@ describe('SelectIcon', () => {
     expect(mockOnChange).toHaveBeenCalledWith('add');
   });
 
-  it('clears selection when clear button is clicked', async () => {
+  it('clears selection when clear button is clicked', () => {
     const mockOnChange = jest.fn();
     renderWithMantine(<SelectIcon value="home" onChange={mockOnChange} />);
-    
-    const button = screen.getByRole('button');
-    fireEvent.click(button);
-    
-    await waitFor(() => {
-      const clearButton = screen.getByTitle('Clear selection');
-      fireEvent.click(clearButton);
-    });
-    
+
+    fireEvent.click(screen.getByTestId('clear-icon-button'));
+
     expect(mockOnChange).toHaveBeenCalledWith(null);
   });
 
@@ -149,9 +144,41 @@ describe('SelectIcon', () => {
     expect(screen.getByText('Arrow Back Ios')).toBeInTheDocument();
   });
 
-  it('applies custom width', () => {
+  it('accepts a custom width without breaking rendering', () => {
+    // Mantine 8 applies the `w` style prop through its styles engine, which
+    // jsdom cannot observe (no inline style, no jsdom-visible stylesheet) —
+    // so this is a smoke test of the prop path only.
     renderWithMantine(<SelectIcon width="300px" />);
-    const stackContainer = screen.getByRole('button').closest('.mantine-Stack-root');
-    expect(stackContainer).toHaveStyle({ width: '300px' });
+    expect(screen.getByTestId('select-icon-trigger')).toBeInTheDocument();
+  });
+});
+
+describe('IconDisplay', () => {
+  it('renders the mapped Tabler icon for a known Material name', () => {
+    const { container } = renderWithMantine(<IconDisplay icon="shield" />);
+    expect(container.querySelector('svg.tabler-icon-shield')).not.toBeNull();
+  });
+
+  it('renders the daas default role icon (supervised_user_circle)', () => {
+    const { container } = renderWithMantine(<IconDisplay icon="supervised_user_circle" />);
+    expect(container.querySelector('svg.tabler-icon-users-group')).not.toBeNull();
+  });
+
+  it('falls back to the provided component for unknown or empty names', () => {
+    const { container } = renderWithMantine(<IconDisplay icon="not_a_real_icon" />);
+    expect(container.querySelector('svg.tabler-icon-users-group')).not.toBeNull();
+
+    const { container: second } = renderWithMantine(
+      <IconDisplay icon={null} fallback={IconShield} />
+    );
+    expect(second.querySelector('svg.tabler-icon-shield')).not.toBeNull();
+  });
+
+  it('applies size and stroke and stays aria-hidden (decorative)', () => {
+    const { container } = renderWithMantine(<IconDisplay icon="key" size={28} stroke={2} />);
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveAttribute('width', '28');
+    expect(svg).toHaveAttribute('stroke-width', '2');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
   });
 });

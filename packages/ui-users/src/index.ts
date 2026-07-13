@@ -60,11 +60,25 @@ export type { DeleteConfirmModalProps } from './DeleteConfirmModal';
 export { PolicyPickerModal } from './PolicyPickerModal';
 export type { PolicyPickerModalProps } from './PolicyPickerModal';
 
-export { IconDisplay } from './IconDisplay';
-export type { IconDisplayProps } from './IconDisplay';
+// Re-exported from @buildpad/ui-interfaces so lists render icons from the
+// same map the SelectIcon picker offers (no drift between pick and display).
+export { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
+export type { IconDisplayProps } from '@buildpad/ui-interfaces/select-icon';
 
 export { SortableTh } from './SortableTh';
 export type { SortableThProps } from './SortableTh';
+
+export { SearchInput } from './SearchInput';
+export type { SearchInputProps } from './SearchInput';
+
+export { ListFooter } from './ListFooter';
+export type { ListFooterProps } from './ListFooter';
+
+export { ListEmptyState } from './ListEmptyState';
+export type { ListEmptyStateProps } from './ListEmptyState';
+
+export { RowActionsMenu } from './RowActionsMenu';
+export type { RowActionsMenuProps } from './RowActionsMenu';
 
 export { TokenInput } from './TokenInput';
 export type { TokenInputProps } from './TokenInput';

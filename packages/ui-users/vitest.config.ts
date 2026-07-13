@@ -28,5 +28,9 @@ export default defineConfig({
       'react/jsx-runtime': resolve(rootModules, 'react/jsx-runtime'),
       'react/jsx-dev-runtime': resolve(rootModules, 'react/jsx-dev-runtime'),
     },
+    // Aliased ui-interfaces sources must share ONE Mantine (and React) copy
+    // with the tests — a second pnpm-keyed instance crashes with a null
+    // dispatcher ("Cannot read properties of null (reading 'useContext')").
+    dedupe: ['react', 'react-dom', '@mantine/core', '@mantine/hooks', '@mantine/notifications'],
   },
 });

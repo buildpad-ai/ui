@@ -19,6 +19,11 @@ import {
   IconX,
   IconSearch,
   IconQuestionMark,
+  IconEdit,
+  IconIdBadge2,
+  IconShield,
+  IconShieldCheck,
+  IconShieldLock,
   IconHome,
   IconSettings,
   IconInfoCircle,
@@ -341,8 +346,15 @@ const ICON_CATEGORIES = [
   {
     name: 'Toggle',
     icons: [
-      'check_box', 'check_box_outline_blank', 'radio_button_checked', 
+      'check_box', 'check_box_outline_blank', 'radio_button_checked',
       'radio_button_unchecked', 'star', 'star_border', 'star_half', 'toggle_off', 'toggle_on',
+    ],
+  },
+  {
+    name: 'Security & Identity',
+    icons: [
+      'security', 'shield', 'verified_user', 'admin_panel_settings', 'policy',
+      'lock', 'key', 'vpn_key', 'fingerprint', 'badge', 'supervised_user_circle', 'edit',
     ],
   },
 ];
@@ -354,11 +366,29 @@ const formatTitle = (str: string): string => {
   return str.replace(/[_-]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
+/** Prop surface shared by every Tabler icon we map to. */
+export interface MappedIconProps {
+  size?: number | string;
+  stroke?: number | string;
+  style?: React.CSSProperties;
+  'aria-hidden'?: boolean;
+}
+
 /**
  * Map Material Design icon names to Tabler icons
  * Provides visual representation for common icons
  */
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number; style?: React.CSSProperties }>> = {
+const ICON_MAP: Record<string, React.ComponentType<MappedIconProps>> = {
+  // Security & identity icons (daas_roles / daas_policies defaults)
+  security: IconShield,
+  shield: IconShield,
+  verified_user: IconShieldCheck,
+  admin_panel_settings: IconShieldLock,
+  policy: IconShieldCheck,
+  key: IconKey,
+  badge: IconIdBadge2,
+  supervised_user_circle: IconUsersGroup,
+  edit: IconEdit,
   // Action icons
   home: IconHome,
   search: IconSearch,
@@ -620,6 +650,32 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number; style?: Reac
   notes: IconNote,
   text_fields: IconTypography,
   highlight: IconHighlight,
+};
+
+export interface IconDisplayProps {
+  /** Material Design icon name as stored on the entity (e.g. `role.icon`, `policy.icon`). */
+  icon?: string | null;
+  /** Icon size in px. Default: 20. */
+  size?: number;
+  /** Tabler icon component rendered when the name is unknown/empty. Default: `IconUsersGroup`. */
+  fallback?: React.ComponentType<MappedIconProps>;
+  /** Stroke width passed to the Tabler icon. Default: 1.5. */
+  stroke?: number;
+}
+
+/**
+ * Read-only companion to `SelectIcon`: renders the Tabler equivalent of a
+ * stored Material Design icon name from the same `ICON_MAP` the picker uses,
+ * so anything pickable displays consistently in lists and detail views.
+ */
+export const IconDisplay: React.FC<IconDisplayProps> = ({
+  icon,
+  size = 20,
+  fallback: Fallback = IconUsersGroup,
+  stroke = 1.5,
+}) => {
+  const Component = (icon && ICON_MAP[icon]) || Fallback;
+  return <Component size={size} stroke={stroke} aria-hidden />;
 };
 
 export interface SelectIconProps {

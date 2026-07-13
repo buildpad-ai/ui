@@ -10,6 +10,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UsersManager } from '../src/UsersManager';
 import { mockUsers, mockRoles } from '../src/_fixtures';
@@ -259,5 +260,20 @@ describe('UsersManager', () => {
         expect.objectContaining({ limit: 50, page: 1 })
       )
     );
+  });
+
+  it('surfaces a load failure as an error empty state plus a toast (not "no users yet")', async () => {
+    const show = vi.spyOn(notifications, 'show').mockImplementation(() => '');
+    fetchUsersMock.mockRejectedValue(new Error('service unavailable'));
+
+    renderManager();
+
+    await waitFor(() => expect(screen.getByText('Failed to load users')).toBeInTheDocument());
+    expect(screen.getByText('service unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('No users found')).not.toBeInTheDocument();
+    expect(show).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Failed to load users', color: 'red' })
+    );
+    show.mockRestore();
   });
 });

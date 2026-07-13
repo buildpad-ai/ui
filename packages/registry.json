@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-12T08:36:27.765Z",
+  "generatedAt": "2026-07-13T04:57:10.571Z",
   "version": "1.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1130,7 +1130,7 @@
         {
           "source": "ui-interfaces/src/system-token/SystemToken.tsx",
           "target": "components/ui/system-token.tsx",
-          "sourceSha256": "0bc39f8b099aac80e898da7bc48ae0e758752b5bc22fe15b42d3f18b66581d73"
+          "sourceSha256": "848e36504fdec98ac93dedf81f5f1bf06bebb5bc730145ec5f4386e62a55da02"
         },
         {
           "source": "ui-interfaces/src/system-token/SystemToken.css",
@@ -1542,13 +1542,13 @@
     {
       "name": "select-icon",
       "title": "SelectIcon",
-      "description": "Icon picker with categorized Tabler icons",
+      "description": "Icon picker with categorized Tabler icons, plus the read-only IconDisplay companion that renders stored Material icon names from the same map",
       "category": "selection",
       "files": [
         {
           "source": "ui-interfaces/src/select-icon/SelectIcon.tsx",
           "target": "components/ui/select-icon.tsx",
-          "sourceSha256": "bd8df494046cf952775f3e7c2ed33d94aac0aa98a3618f0ac32d3fc3f59893f4"
+          "sourceSha256": "1a85ff0e41f88ae025cc4cd412e607ed5f66984b135badaf42168764fecb0b5f"
         }
       ],
       "dependencies": [
@@ -3150,12 +3150,12 @@
         {
           "source": "ui-users/src/UsersManager.tsx",
           "target": "components/ui/users-management/users-manager.tsx",
-          "sourceSha256": "06d5730d40910322abfafbda9b0fa9cdee9574e30fb1873b3eac1d9a992dcb6f"
+          "sourceSha256": "224c654623e3390d0bb6b271d481e24895366e77a93cb6872e91aa3c18045050"
         },
         {
           "source": "ui-users/src/UsersManager.css",
           "target": "components/ui/users-management/users-manager.css",
-          "sourceSha256": "ec68d89c6a1cd3e7d8a55d76b67e04d392ed7441ef40b9507f2a15b550590599"
+          "sourceSha256": "a48858f5b0481da7c9d48294f8e13964cdfa3a6dbcc946c4e815a224244bf79e"
         },
         {
           "source": "ui-users/src/UserDetail.tsx",
@@ -3170,7 +3170,7 @@
         {
           "source": "ui-users/src/RolesManager.tsx",
           "target": "components/ui/users-management/roles-manager.tsx",
-          "sourceSha256": "f05cedbbf79f086d1918f8cf215f9c96343f0c664c92cb55e949f606f77da651"
+          "sourceSha256": "f74fd3378d6cbf879592ff593d3ea59e0acea6d53926d3df31bfb18d05e69b38"
         },
         {
           "source": "ui-users/src/RoleDetail.tsx",
@@ -3190,7 +3190,7 @@
         {
           "source": "ui-users/src/PoliciesManager.tsx",
           "target": "components/ui/users-management/policies-manager.tsx",
-          "sourceSha256": "07860bf7eb87405a285362bb1052c0c20d9a48e0a0e2ee341af90b6a5a52034a"
+          "sourceSha256": "03d9cba420b1ecf248911fb1224ca8268fc29ff7ade4ea4399d6719fad759c44"
         },
         {
           "source": "ui-users/src/PolicyDetail.tsx",
@@ -3200,12 +3200,12 @@
         {
           "source": "ui-users/src/PolicyAttachmentManager.tsx",
           "target": "components/ui/users-management/policy-attachment-manager.tsx",
-          "sourceSha256": "fc7e596c5f17f6124fdda2e5b5a0e3962a087feb5bb7107d6b77d30f8fc6b9c0"
+          "sourceSha256": "a3d3f7e360a362db5195c9f76fb6d2fb11f39807bb03e466b31dfa10415a1135"
         },
         {
           "source": "ui-users/src/PolicyPickerModal.tsx",
           "target": "components/ui/users-management/policy-picker-modal.tsx",
-          "sourceSha256": "201384df9eb54e34d7c80e15a477abeb6b82ad08f2bbcb60535791fd69da07b4"
+          "sourceSha256": "f9b3efb91458e7d8a6fbd22fd0e9681156c1ab01656898804cd9a64a7efb7854"
         },
         {
           "source": "ui-users/src/UserStatusBadge.tsx",
@@ -3228,19 +3228,34 @@
           "sourceSha256": "e4c619b2da962993221a152b3c7b5152e3556e8de1ca3b0cbc5f121f4f9a6da7"
         },
         {
-          "source": "ui-users/src/IconDisplay.tsx",
-          "target": "components/ui/users-management/icon-display.tsx",
-          "sourceSha256": "dca4bbf90c361231c6d9777253ec08de7ed014653b34bfd6d20d41c6309527ba"
-        },
-        {
           "source": "ui-users/src/SortableTh.tsx",
           "target": "components/ui/users-management/sortable-th.tsx",
           "sourceSha256": "4f187f0e9f26849348078fedcfc5380d8213bcb75733906baa0a0fa810d283d1"
         },
         {
+          "source": "ui-users/src/SearchInput.tsx",
+          "target": "components/ui/users-management/search-input.tsx",
+          "sourceSha256": "f39d1fb5c7bb3ee64545e2f5e7b5928bd809787fd0ced2e637fbb5950ae7dc1e"
+        },
+        {
+          "source": "ui-users/src/ListFooter.tsx",
+          "target": "components/ui/users-management/list-footer.tsx",
+          "sourceSha256": "7b818804e1302e8ab671ca8a5d2a318bf923ef0dfdb6c08360512f9f58aeb841"
+        },
+        {
+          "source": "ui-users/src/ListEmptyState.tsx",
+          "target": "components/ui/users-management/list-empty-state.tsx",
+          "sourceSha256": "0b3ba09bc065dbdb13c7d5b3d072f9fe0f8bc33ed305efebebebfd0edcfb573c"
+        },
+        {
+          "source": "ui-users/src/RowActionsMenu.tsx",
+          "target": "components/ui/users-management/row-actions-menu.tsx",
+          "sourceSha256": "b3237244bfef1bfee549d80ae2055dc6e897f124beb80da8a8ce15897f9f21a2"
+        },
+        {
           "source": "ui-users/src/TokenInput.tsx",
           "target": "components/ui/users-management/token-input.tsx",
-          "sourceSha256": "fc804510e96446b656713ce051c7be4ddb2d344c60818e8c0ae502645ed4d347"
+          "sourceSha256": "d23e4d5d119814fbf50347bc0e2b924be1bf0522503d65131e630a335be9da68"
         },
         {
           "source": "ui-users/src/userDisplay.ts",
@@ -3255,7 +3270,7 @@
         {
           "source": "ui-users/src/index.ts",
           "target": "components/ui/users-management/index.ts",
-          "sourceSha256": "093811146b4f84b38247e23c565f72152904c1a51b28034bf178d1149f850684"
+          "sourceSha256": "e557cad95db6ca77808c3df42e6da4b72c22039c1add6f3c75829b50a12947ab"
         }
       ],
       "dependencies": [
@@ -3271,7 +3286,8 @@
       ],
       "registryDependencies": [
         "system-permissions",
-        "select-icon"
+        "select-icon",
+        "system-token"
       ],
       "sourcePackage": "@buildpad/ui-users",
       "version": "1.6.0",

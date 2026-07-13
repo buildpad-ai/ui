@@ -1,5 +1,6 @@
 import React, { forwardRef, useState, useEffect, useCallback } from 'react';
 import { TextInput, ActionIcon, Alert, Group, Loader } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconCopy, IconPlus, IconRefresh, IconX, IconKey } from '@tabler/icons-react';
 import { apiRequest } from '@buildpad/services';
 import { useClipboard } from '@buildpad/hooks';
@@ -10,6 +11,12 @@ export interface SystemTokenProps {
   value?: string | null;
   /** Change handler - emits token value or null */
   onChange?: (value: string | null) => void;
+  /**
+   * Custom token producer replacing the default `GET /api/utils/random/string`
+   * backend call — e.g. a client-side generator when that endpoint is not part
+   * of the app's API surface. Synchronous producers emit synchronously.
+   */
+  generate?: () => string | Promise<string>;
   /** Whether the field is disabled */
   disabled?: boolean;
   /** Field label */
@@ -28,6 +35,7 @@ const MASKED_REGEX = /^\*+$/;
 export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
   value,
   onChange,
+  generate,
   disabled = false,
   label,
   description,
@@ -41,6 +49,8 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
   const { isCopySupported, copyToClipboard } = useClipboard({
     copySuccessMessage: 'Token copied to clipboard',
     copyFailMessage: 'Failed to copy token',
+    onNotify: (message, type) =>
+      notifications.show({ message, color: type === 'error' ? 'red' : 'green' }),
   });
 
   // Sync local state when external value changes
@@ -60,23 +70,36 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
   const placeholder = disabled && !value
     ? undefined
     : value
-      ? 'Token securely saved'
-      : 'No token set — click generate to create one';
+      ? 'Value Securely Saved'
+      : 'Click "Generate Token" to create a new static access token';
 
-  const generateToken = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await apiRequest<{ data: string }>('/api/utils/random/string');
-      const token = response.data;
-      setLocalValue(token);
-      setIsNewTokenGenerated(true);
-      onChange?.(token);
-    } catch (err) {
-      console.error('Failed to generate token:', err);
-    } finally {
-      setLoading(false);
-    }
+  const applyGeneratedToken = useCallback((token: string) => {
+    setLocalValue(token);
+    setIsNewTokenGenerated(true);
+    onChange?.(token);
   }, [onChange]);
+
+  const generateToken = useCallback(() => {
+    // A synchronous producer emits synchronously (no loading flicker).
+    if (generate) {
+      const produced = generate();
+      if (typeof produced === 'string') {
+        applyGeneratedToken(produced);
+        return;
+      }
+      setLoading(true);
+      produced
+        .then(applyGeneratedToken)
+        .catch((err) => console.error('Failed to generate token:', err))
+        .finally(() => setLoading(false));
+      return;
+    }
+    setLoading(true);
+    apiRequest<{ data: string }>('/api/utils/random/string')
+      .then((response) => applyGeneratedToken(response.data))
+      .catch((err) => console.error('Failed to generate token:', err))
+      .finally(() => setLoading(false));
+  }, [generate, applyGeneratedToken]);
 
   const emitValue = useCallback((newValue: string | null) => {
     onChange?.(newValue);
@@ -113,6 +136,8 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
         description={description}
         error={error}
         data-testid={testId}
+        data-lpignore="true"
+        data-1p-ignore="true"
         style={{ fontFamily: 'var(--mantine-font-family-monospace, monospace)' }}
         classNames={value && !localValue ? { input: 'system-token-saved' } : undefined}
         onFocus={handleFocus}
@@ -181,7 +206,8 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
           mt="sm"
           data-testid={testId ? `${testId}-notice` : undefined}
         >
-          Make sure to copy the token now — you won&apos;t be able to see it again.
+          Make sure to back up and copy the token above. For security reasons, you will not be
+          able to view it again after saving.
         </Alert>
       )}
     </div>

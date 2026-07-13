@@ -2,36 +2,28 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActionIcon,
   Badge,
   Box,
   Button,
   Group,
   LoadingOverlay,
-  Menu,
-  Pagination,
   Paper,
-  Select,
   Stack,
   Table,
   Text,
-  TextInput,
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import {
-  IconDots,
-  IconEdit,
-  IconPlus,
-  IconSearch,
-  IconTrash,
-  IconUsersGroup,
-  IconX,
-} from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import { IconPlus, IconUsersGroup } from '@tabler/icons-react';
 import { usePermissions, useRoles } from '@buildpad/hooks';
 import type { Role } from '@buildpad/types';
-import { IconDisplay } from './IconDisplay';
+import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { ListEmptyState } from './ListEmptyState';
+import { ListFooter } from './ListFooter';
+import { RowActionsMenu } from './RowActionsMenu';
+import { SearchInput } from './SearchInput';
 
 function getUserCount(role: Role): number {
   return role.users?.[0]?.count ?? 0;
@@ -83,6 +75,7 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
@@ -113,8 +106,12 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
       setRoles(result.roles);
       setTotalCount(result.total);
       setTotalPages(result.totalPages);
-    } catch {
+      setLoadError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load roles';
       setRoles([]);
+      setLoadError(message);
+      notifications.show({ title: 'Failed to load roles', message, color: 'red' });
     } finally {
       setLoading(false);
     }
@@ -134,6 +131,13 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
       await deleteRole(deleteModal.id);
       setDeleteModal({ opened: false, id: '' });
       await load();
+    } catch (err) {
+      // Keep the modal open so the administrator can retry or cancel.
+      notifications.show({
+        title: 'Failed to delete role',
+        message: err instanceof Error ? err.message : 'Failed to delete role',
+        color: 'red',
+      });
     } finally {
       setDeleting(false);
     }
@@ -166,19 +170,10 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
 
       <Paper p="sm" radius="md" withBorder>
         <Group>
-          <TextInput
+          <SearchInput
             placeholder="Search roles..."
-            leftSection={<IconSearch size={15} stroke={1.5} />}
-            rightSection={
-              search ? (
-                <ActionIcon variant="subtle" color="gray" size="xs" onClick={() => setSearch('')} aria-label="Clear search">
-                  <IconX size={12} />
-                </ActionIcon>
-              ) : null
-            }
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-            size="sm"
+            onChange={setSearch}
             style={{ flex: 1, minWidth: 200, maxWidth: 360 }}
             data-testid="roles-manager-search"
           />
@@ -208,17 +203,18 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
               {roles.length === 0 && !loading ? (
                 <Table.Tr>
                   <Table.Td colSpan={updateAllowed || deleteAllowed ? 5 : 4}>
-                    <Box ta="center" py="xl">
-                      <IconSearch size={40} stroke={1} color="var(--mantine-color-gray-4)" />
-                      <Text fw={500} size="sm" mb={4}>
-                        No roles found
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {debouncedSearch
-                          ? 'Try a different search term'
-                          : 'Create your first role to get started'}
-                      </Text>
-                    </Box>
+                    {loadError ? (
+                      <ListEmptyState error title="Failed to load roles" hint={loadError} />
+                    ) : (
+                      <ListEmptyState
+                        title="No roles found"
+                        hint={
+                          debouncedSearch
+                            ? 'Try a different search term'
+                            : 'Create your first role to get started'
+                        }
+                      />
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ) : (
@@ -254,44 +250,14 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
                     </Table.Td>
                     {(updateAllowed || deleteAllowed) && (
                       <Table.Td>
-                        <Menu position="bottom-end" withinPortal>
-                          <Menu.Target>
-                            <ActionIcon
-                              variant="subtle"
-                              color="gray"
-                              size="sm"
-                              onClick={(e) => e.stopPropagation()}
-                              aria-label="Row actions"
-                            >
-                              <IconDots size={16} />
-                            </ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            {updateAllowed && (
-                              <Menu.Item
-                                leftSection={<IconEdit size={14} />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onRoleClick?.(role);
-                                }}
-                              >
-                                Edit
-                              </Menu.Item>
-                            )}
-                            {deleteAllowed && (
-                              <Menu.Item
-                                leftSection={<IconTrash size={14} />}
-                                color="red"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteModal({ opened: true, id: role.id });
-                                }}
-                              >
-                                Delete
-                              </Menu.Item>
-                            )}
-                          </Menu.Dropdown>
-                        </Menu>
+                        <RowActionsMenu
+                          onEdit={updateAllowed ? () => onRoleClick?.(role) : undefined}
+                          onDelete={
+                            deleteAllowed
+                              ? () => setDeleteModal({ opened: true, id: role.id })
+                              : undefined
+                          }
+                        />
                       </Table.Td>
                     )}
                   </Table.Tr>
@@ -301,27 +267,18 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
           </Table>
         </Box>
 
-        {totalCount > 0 && (
-          <Group justify="space-between" px="md" py="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
-            <Group gap="sm">
-              <Text size="xs" c="dimmed">
-                Showing {roles.length} of {totalCount} roles
-              </Text>
-              <Select
-                size="xs"
-                w={110}
-                value={String(limit)}
-                onChange={(value) => {
-                  if (value) setLimit(Number(value));
-                }}
-                data={sizeOptions.map((n) => ({ value: String(n), label: `${n} / page` }))}
-                aria-label="Items per page"
-                data-testid="roles-manager-page-size"
-              />
-            </Group>
-            {totalPages > 1 && <Pagination value={page} onChange={setPage} total={totalPages} />}
-          </Group>
-        )}
+        <ListFooter
+          shown={roles.length}
+          totalCount={totalCount}
+          itemsLabel="roles"
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          limit={limit}
+          sizeOptions={sizeOptions}
+          onLimitChange={setLimit}
+          data-testid="roles-manager-page-size"
+        />
       </Paper>
 
       <DeleteConfirmModal

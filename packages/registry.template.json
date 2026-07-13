@@ -1263,7 +1263,7 @@
     {
       "name": "select-icon",
       "title": "SelectIcon",
-      "description": "Icon picker with categorized Tabler icons",
+      "description": "Icon picker with categorized Tabler icons, plus the read-only IconDisplay companion that renders stored Material icon names from the same map",
       "category": "selection",
       "files": [
         {
@@ -2737,12 +2737,24 @@
           "target": "components/ui/users-management/delete-confirm-modal.tsx"
         },
         {
-          "source": "ui-users/src/IconDisplay.tsx",
-          "target": "components/ui/users-management/icon-display.tsx"
-        },
-        {
           "source": "ui-users/src/SortableTh.tsx",
           "target": "components/ui/users-management/sortable-th.tsx"
+        },
+        {
+          "source": "ui-users/src/SearchInput.tsx",
+          "target": "components/ui/users-management/search-input.tsx"
+        },
+        {
+          "source": "ui-users/src/ListFooter.tsx",
+          "target": "components/ui/users-management/list-footer.tsx"
+        },
+        {
+          "source": "ui-users/src/ListEmptyState.tsx",
+          "target": "components/ui/users-management/list-empty-state.tsx"
+        },
+        {
+          "source": "ui-users/src/RowActionsMenu.tsx",
+          "target": "components/ui/users-management/row-actions-menu.tsx"
         },
         {
           "source": "ui-users/src/TokenInput.tsx",
@@ -2774,7 +2786,8 @@
       ],
       "registryDependencies": [
         "system-permissions",
-        "select-icon"
+        "select-icon",
+        "system-token"
       ]
     },
     {

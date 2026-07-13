@@ -40,8 +40,8 @@ export { SelectRadio } from './select-radio';
 export type { SelectRadioProps } from './select-radio';
 export { SelectMultipleCheckbox, SelectMultipleCheckboxTree, SelectMultipleDropdown } from './select-multiple-checkbox';
 export type { SelectMultipleCheckboxProps, Option, SelectMultipleCheckboxTreeProps, TreeChoice, SelectMultipleDropdownProps, DropdownChoice } from './select-multiple-checkbox';
-export { SelectIcon } from './select-icon';
-export type { SelectIconProps } from './select-icon';
+export { SelectIcon, IconDisplay } from './select-icon';
+export type { SelectIconProps, IconDisplayProps, MappedIconProps } from './select-icon';
 
 // Autocomplete
 export { AutocompleteAPI } from './autocomplete-api';

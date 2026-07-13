@@ -1,2 +1,2 @@
-export { SelectIcon, default } from './SelectIcon';
-export type { SelectIconProps } from './SelectIcon';
+export { SelectIcon, IconDisplay, default } from './SelectIcon';
+export type { SelectIconProps, IconDisplayProps, MappedIconProps } from './SelectIcon';

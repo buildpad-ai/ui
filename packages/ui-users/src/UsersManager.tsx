@@ -4,7 +4,6 @@ import './UsersManager.css';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActionIcon,
   Badge,
   Box,
   Button,
@@ -14,31 +13,25 @@ import {
   Menu,
   Modal,
   MultiSelect,
-  Pagination,
   Paper,
   Select,
   Stack,
   Table,
   Text,
-  TextInput,
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import {
-  IconDots,
-  IconEdit,
-  IconPlus,
-  IconSearch,
-  IconTrash,
-  IconUsersGroup,
-  IconX,
-} from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconUsersGroup } from '@tabler/icons-react';
 import { usePermissions, useRoles, useSelection, useUsers } from '@buildpad/hooks';
 import type { Role, User, UserStatus } from '@buildpad/types';
 import { UserAvatar } from './UserAvatar';
 import { UserStatusBadge } from './UserStatusBadge';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { ListEmptyState } from './ListEmptyState';
+import { ListFooter } from './ListFooter';
+import { RowActionsMenu } from './RowActionsMenu';
+import { SearchInput } from './SearchInput';
 import { SortableTh } from './SortableTh';
 import { toggleSort } from './accessUtils';
 import { getUserDisplayName } from './userDisplay';
@@ -194,6 +187,7 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
@@ -248,8 +242,12 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
       setUsers(result.users);
       setTotalCount(result.total);
       setTotalPages(result.totalPages);
-    } catch {
+      setLoadError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load users';
       setUsers([]);
+      setLoadError(message);
+      notifications.show({ title: 'Failed to load users', message, color: 'red' });
     } finally {
       setLoading(false);
     }
@@ -301,6 +299,13 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
       await deleteUser(deleteModal.id);
       setDeleteModal({ opened: false, id: '' });
       await load();
+    } catch (err) {
+      // Keep the modal open so the administrator can retry or cancel.
+      notifications.show({
+        title: 'Failed to delete user',
+        message: err instanceof Error ? err.message : 'Failed to delete user',
+        color: 'red',
+      });
     } finally {
       setDeleting(false);
     }
@@ -411,19 +416,10 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
 
       <Paper p="sm" radius="md" withBorder>
         <Group>
-          <TextInput
+          <SearchInput
             placeholder="Search users..."
-            leftSection={<IconSearch size={15} stroke={1.5} />}
-            rightSection={
-              search ? (
-                <ActionIcon variant="subtle" color="gray" size="xs" onClick={() => setSearch('')} aria-label="Clear search">
-                  <IconX size={12} />
-                </ActionIcon>
-              ) : null
-            }
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-            size="sm"
+            onChange={setSearch}
             style={{ flex: 1, minWidth: 200, maxWidth: 360 }}
             data-testid="users-manager-search"
           />
@@ -550,15 +546,14 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
               {users.length === 0 && !loading ? (
                 <Table.Tr>
                   <Table.Td colSpan={selectable ? 7 : 5}>
-                    <Box className="bp-users-manager__empty-state">
-                      <IconSearch size={40} stroke={1} className="bp-users-manager__empty-icon" />
-                      <Text fw={500} size="sm" mb={4}>
-                        No users found
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {hasFilters ? 'Try adjusting your filters' : 'Get started by adding your first user'}
-                      </Text>
-                    </Box>
+                    {loadError ? (
+                      <ListEmptyState error title="Failed to load users" hint={loadError} />
+                    ) : (
+                      <ListEmptyState
+                        title="No users found"
+                        hint={hasFilters ? 'Try adjusting your filters' : 'Get started by adding your first user'}
+                      />
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ) : (
@@ -621,44 +616,10 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
                       </Table.Td>
                       {(updateAllowed || deleteAllowed) && (
                         <Table.Td>
-                          <Menu position="bottom-end" withinPortal>
-                            <Menu.Target>
-                              <ActionIcon
-                                variant="subtle"
-                                color="gray"
-                                size="sm"
-                                onClick={(e) => e.stopPropagation()}
-                                aria-label="Row actions"
-                              >
-                                <IconDots size={16} />
-                              </ActionIcon>
-                            </Menu.Target>
-                            <Menu.Dropdown>
-                              {updateAllowed && (
-                                <Menu.Item
-                                  leftSection={<IconEdit size={14} />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onUserClick?.(user);
-                                  }}
-                                >
-                                  Edit
-                                </Menu.Item>
-                              )}
-                              {deleteAllowed && (
-                                <Menu.Item
-                                  leftSection={<IconTrash size={14} />}
-                                  color="red"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    requestDelete(user.id);
-                                  }}
-                                >
-                                  Delete
-                                </Menu.Item>
-                              )}
-                            </Menu.Dropdown>
-                          </Menu>
+                          <RowActionsMenu
+                            onEdit={updateAllowed ? () => onUserClick?.(user) : undefined}
+                            onDelete={deleteAllowed ? () => requestDelete(user.id) : undefined}
+                          />
                         </Table.Td>
                       )}
                     </Table.Tr>
@@ -669,27 +630,18 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
           </Table>
         </Box>
 
-        {totalCount > 0 && (
-          <Group justify="space-between" px="md" py="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
-            <Group gap="sm">
-              <Text size="xs" c="dimmed">
-                Showing {users.length} of {totalCount} users
-              </Text>
-              <Select
-                size="xs"
-                w={110}
-                value={String(limit)}
-                onChange={(value) => {
-                  if (value) setLimit(Number(value));
-                }}
-                data={sizeOptions.map((n) => ({ value: String(n), label: `${n} / page` }))}
-                aria-label="Items per page"
-                data-testid="users-manager-page-size"
-              />
-            </Group>
-            {totalPages > 1 && <Pagination value={page} onChange={setPage} total={totalPages} />}
-          </Group>
-        )}
+        <ListFooter
+          shown={users.length}
+          totalCount={totalCount}
+          itemsLabel="users"
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          limit={limit}
+          sizeOptions={sizeOptions}
+          onLimitChange={setLimit}
+          data-testid="users-manager-page-size"
+        />
       </Paper>
 
       <DeleteConfirmModal

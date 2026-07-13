@@ -40,3 +40,16 @@ class ResizeObserverStub {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
+
+// jsdom does not implement the async clipboard API — SystemToken (behind
+// TokenInput) only offers its Copy affordance when `navigator.clipboard`
+// exists (useClipboard's isCopySupported).
+if (!navigator.clipboard) {
+  Object.defineProperty(navigator, 'clipboard', {
+    writable: true,
+    value: {
+      writeText: () => Promise.resolve(),
+      readText: () => Promise.resolve(''),
+    },
+  });
+}

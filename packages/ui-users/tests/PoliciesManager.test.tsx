@@ -6,6 +6,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PoliciesManager } from '../src/PoliciesManager';
 import { mockPolicies } from '../src/_fixtures';
@@ -88,5 +89,20 @@ describe('PoliciesManager', () => {
         expect.objectContaining({ limit: 50, page: 1 })
       )
     );
+  });
+
+  it('surfaces a load failure as an error empty state plus a toast (not "no policies yet")', async () => {
+    const show = vi.spyOn(notifications, 'show').mockImplementation(() => '');
+    fetchPoliciesMock.mockRejectedValue(new Error('service unavailable'));
+
+    renderManager();
+
+    await waitFor(() => expect(screen.getByText('Failed to load policies')).toBeInTheDocument());
+    expect(screen.getByText('service unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('No policies found')).not.toBeInTheDocument();
+    expect(show).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Failed to load policies', color: 'red' })
+    );
+    show.mockRestore();
   });
 });

@@ -43,15 +43,17 @@ It gives you six screens:
 | `PoliciesManager` / `PolicyDetail` | `@buildpad/ui-users` | Policy list + create/edit with access flags and the permissions matrix |
 | `SystemPermissions` | `@buildpad/ui-interfaces` | The per-collection CRUD-S permissions matrix (reused inside `PolicyDetail`) |
 | `PermissionDetailModal` | `@buildpad/ui-interfaces` | Tabbed custom-permission editor (item filters, field access, validation, presets) opened from the matrix |
-| `TokenInput` | `@buildpad/ui-users` | Static-token field: client-side generate, copy-once plaintext, "Value Securely Saved" concealment, clear-to-revoke |
-| `SelectIcon` | `@buildpad/ui-interfaces` | Icon picker for roles and policies |
+| `TokenInput` | `@buildpad/ui-users` | Static-token field — a thin wrapper over the `system-token` interface that swaps in client-side generation (copy-once plaintext, "Value Securely Saved" concealment, clear-to-revoke) |
+| `SystemToken` | `@buildpad/ui-interfaces` | The underlying token interface (server-side generation by default; accepts a custom `generate` producer) |
+| `SelectIcon` / `IconDisplay` | `@buildpad/ui-interfaces` | Icon picker for roles and policies, plus the read-only renderer the lists use — both driven by the same icon map, so anything pickable displays correctly |
+| `SearchInput` / `ListFooter` / `ListEmptyState` / `RowActionsMenu` | `@buildpad/ui-users` | Shared list chrome used by all three managers (search box, "Showing N of M" + page-size + pagination footer, empty/error states, row kebab menu) |
 | `useUsers` / `useRoles` / `usePolicies` / `useAccess` | `@buildpad/hooks` | CRUD, bulk role membership, and policy attach/detach against `/api/users`, `/api/roles`, `/api/policies`, `/api/access` |
 
 <Callout type="info">
 This recipe is **opt-in** — it is *not* part of `bootstrap`. Generate the
 module with `buildpad add users-routes`; it pulls in the `users-management`
-component (which in turn pulls the `system-permissions` and `select-icon`
-components and the `types` / `hooks` / `services` lib modules). In a generated
+component (which in turn pulls the `system-permissions`, `select-icon`, and
+`system-token` components and the `types` / `hooks` / `services` lib modules). In a generated
 app the imports point at your local copies (`@/components/ui/users-management`,
 `@/lib/buildpad/hooks`); when consuming the packages directly, import from
 `@buildpad/ui-users` and `@buildpad/hooks` instead.
@@ -69,7 +71,8 @@ buildpad add users-routes
 
 This copies six page shells into `app/users/`, `app/roles/`, and
 `app/policies/`, the components into `components/ui/users-management/`, the
-`system-permissions` and `select-icon` interfaces into `components/ui/`, and the
+`system-permissions`, `select-icon`, and `system-token` interfaces into
+`components/ui/`, and the
 `useUsers` / `useRoles` / `usePolicies` / `useAccess` hooks into
 `lib/buildpad/hooks/`. It also adds **Users**, **Roles**, and **Policies** to
 the sidebar under an **Administration** group
@@ -144,6 +147,11 @@ button stays), and an overridable RBAC collection name
 User avatars render the record's `avatar` value verbatim as the image source
 (initials fallback when absent or broken) — display only; avatar upload is out
 of scope, matching the reference admin.
+
+Load failures never masquerade as an empty list: each manager shows a
+"Failed to load …" state (with the API error) plus a red notification, and a
+failed row delete keeps the confirm dialog open with an error toast so the
+action can be retried or cancelled.
 
 ### Sorting and bulk actions
 

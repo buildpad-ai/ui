@@ -6,6 +6,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RolesManager } from '../src/RolesManager';
 import { mockRoles } from '../src/_fixtures';
@@ -71,5 +72,40 @@ describe('RolesManager', () => {
         expect.objectContaining({ limit: 50, page: 1 })
       )
     );
+  });
+
+  it('surfaces a load failure as an error empty state plus a toast (not "no roles yet")', async () => {
+    const show = vi.spyOn(notifications, 'show').mockImplementation(() => '');
+    fetchRolesMock.mockRejectedValue(new Error('service unavailable'));
+
+    renderManager();
+
+    await waitFor(() => expect(screen.getByText('Failed to load roles')).toBeInTheDocument());
+    expect(screen.getByText('service unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('No roles found')).not.toBeInTheDocument();
+    expect(show).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Failed to load roles', color: 'red' })
+    );
+    show.mockRestore();
+  });
+
+  it('toasts a delete failure and keeps the confirm modal open for retry', async () => {
+    const show = vi.spyOn(notifications, 'show').mockImplementation(() => '');
+    deleteRoleMock.mockRejectedValue(new Error('role is in use'));
+
+    renderManager();
+    await waitFor(() => expect(screen.getByText('Administrator')).toBeInTheDocument());
+
+    fireEvent.click(screen.getAllByLabelText('Row actions')[0]);
+    fireEvent.click(await screen.findByText('Delete'));
+    fireEvent.click(await screen.findByTestId('users-delete-confirm-btn'));
+
+    await waitFor(() =>
+      expect(show).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Failed to delete role', color: 'red' })
+      )
+    );
+    expect(screen.getByTestId('users-delete-confirm-modal')).toBeInTheDocument();
+    show.mockRestore();
   });
 });

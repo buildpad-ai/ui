@@ -2,36 +2,28 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActionIcon,
   Badge,
   Box,
   Button,
   Group,
   LoadingOverlay,
-  Menu,
-  Pagination,
   Paper,
-  Select,
   Stack,
   Table,
   Text,
-  TextInput,
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import {
-  IconDots,
-  IconEdit,
-  IconPlus,
-  IconSearch,
-  IconShield,
-  IconTrash,
-  IconX,
-} from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+import { IconPlus, IconShield } from '@tabler/icons-react';
 import { usePermissions, usePolicies } from '@buildpad/hooks';
 import type { Policy } from '@buildpad/types';
-import { IconDisplay } from './IconDisplay';
+import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { ListEmptyState } from './ListEmptyState';
+import { ListFooter } from './ListFooter';
+import { RowActionsMenu } from './RowActionsMenu';
+import { SearchInput } from './SearchInput';
 import { SortableTh } from './SortableTh';
 import { toggleSort } from './accessUtils';
 
@@ -81,6 +73,7 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
@@ -113,8 +106,12 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
       setPolicies(result.policies);
       setTotalCount(result.total);
       setTotalPages(result.totalPages);
-    } catch {
+      setLoadError(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load policies';
       setPolicies([]);
+      setLoadError(message);
+      notifications.show({ title: 'Failed to load policies', message, color: 'red' });
     } finally {
       setLoading(false);
     }
@@ -138,6 +135,13 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
       await deletePolicy(deleteModal.id);
       setDeleteModal({ opened: false, id: '' });
       await load();
+    } catch (err) {
+      // Keep the modal open so the administrator can retry or cancel.
+      notifications.show({
+        title: 'Failed to delete policy',
+        message: err instanceof Error ? err.message : 'Failed to delete policy',
+        color: 'red',
+      });
     } finally {
       setDeleting(false);
     }
@@ -170,19 +174,10 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
 
       <Paper p="sm" radius="md" withBorder>
         <Group>
-          <TextInput
+          <SearchInput
             placeholder="Search policies..."
-            leftSection={<IconSearch size={15} stroke={1.5} />}
-            rightSection={
-              search ? (
-                <ActionIcon variant="subtle" color="gray" size="xs" onClick={() => setSearch('')} aria-label="Clear search">
-                  <IconX size={12} />
-                </ActionIcon>
-              ) : null
-            }
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-            size="sm"
+            onChange={setSearch}
             style={{ flex: 1, minWidth: 200, maxWidth: 360 }}
             data-testid="policies-manager-search"
           />
@@ -213,17 +208,18 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
               {policies.length === 0 && !loading ? (
                 <Table.Tr>
                   <Table.Td colSpan={updateAllowed || deleteAllowed ? 6 : 5}>
-                    <Box ta="center" py="xl">
-                      <IconSearch size={40} stroke={1} color="var(--mantine-color-gray-4)" />
-                      <Text fw={500} size="sm" mb={4}>
-                        No policies found
-                      </Text>
-                      <Text size="xs" c="dimmed">
-                        {debouncedSearch
-                          ? 'Try a different search term'
-                          : 'Create your first policy to get started'}
-                      </Text>
-                    </Box>
+                    {loadError ? (
+                      <ListEmptyState error title="Failed to load policies" hint={loadError} />
+                    ) : (
+                      <ListEmptyState
+                        title="No policies found"
+                        hint={
+                          debouncedSearch
+                            ? 'Try a different search term'
+                            : 'Create your first policy to get started'
+                        }
+                      />
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ) : (
@@ -269,44 +265,14 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
                     </Table.Td>
                     {(updateAllowed || deleteAllowed) && (
                       <Table.Td>
-                        <Menu position="bottom-end" withinPortal>
-                          <Menu.Target>
-                            <ActionIcon
-                              variant="subtle"
-                              color="gray"
-                              size="sm"
-                              onClick={(e) => e.stopPropagation()}
-                              aria-label="Row actions"
-                            >
-                              <IconDots size={16} />
-                            </ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            {updateAllowed && (
-                              <Menu.Item
-                                leftSection={<IconEdit size={14} />}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onPolicyClick?.(policy);
-                                }}
-                              >
-                                Edit
-                              </Menu.Item>
-                            )}
-                            {deleteAllowed && (
-                              <Menu.Item
-                                leftSection={<IconTrash size={14} />}
-                                color="red"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteModal({ opened: true, id: policy.id });
-                                }}
-                              >
-                                Delete
-                              </Menu.Item>
-                            )}
-                          </Menu.Dropdown>
-                        </Menu>
+                        <RowActionsMenu
+                          onEdit={updateAllowed ? () => onPolicyClick?.(policy) : undefined}
+                          onDelete={
+                            deleteAllowed
+                              ? () => setDeleteModal({ opened: true, id: policy.id })
+                              : undefined
+                          }
+                        />
                       </Table.Td>
                     )}
                   </Table.Tr>
@@ -316,27 +282,18 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
           </Table>
         </Box>
 
-        {totalCount > 0 && (
-          <Group justify="space-between" px="md" py="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
-            <Group gap="sm">
-              <Text size="xs" c="dimmed">
-                Showing {policies.length} of {totalCount} policies
-              </Text>
-              <Select
-                size="xs"
-                w={110}
-                value={String(limit)}
-                onChange={(value) => {
-                  if (value) setLimit(Number(value));
-                }}
-                data={sizeOptions.map((n) => ({ value: String(n), label: `${n} / page` }))}
-                aria-label="Items per page"
-                data-testid="policies-manager-page-size"
-              />
-            </Group>
-            {totalPages > 1 && <Pagination value={page} onChange={setPage} total={totalPages} />}
-          </Group>
-        )}
+        <ListFooter
+          shown={policies.length}
+          totalCount={totalCount}
+          itemsLabel="policies"
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          limit={limit}
+          sizeOptions={sizeOptions}
+          onLimitChange={setLimit}
+          data-testid="policies-manager-page-size"
+        />
       </Paper>
 
       <DeleteConfirmModal

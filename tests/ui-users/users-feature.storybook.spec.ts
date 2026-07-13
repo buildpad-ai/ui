@@ -66,8 +66,14 @@ test.describe('Users Feature Smoke (admin)', () => {
   test('users-manager renders with fixture users', async ({ page }) => {
     await loadStory(page, USERS_STORY);
     await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
-    // At least the four e2e fixture users exist
-    await expect(page.getByText(fixtures.admin.email)).toBeVisible({ timeout: 20_000 });
+    // Scope the search so the fixture user is on page 1 regardless of how much
+    // data the instance holds, and scope the locator to the manager — the
+    // connected-account card above the story shows the same admin email, which
+    // strict mode would otherwise report as a second match.
+    await page.getByTestId('users-manager-search').fill(fixtures.admin.email);
+    await expect(
+      page.getByTestId('users-manager').getByText(fixtures.admin.email)
+    ).toBeVisible({ timeout: 20_000 });
   });
 
   test('users-manager search narrows the list', async ({ page }) => {
@@ -85,8 +91,12 @@ test.describe('Users Feature Smoke (admin)', () => {
     await expect(page.getByTestId('users-manager')).toBeVisible({ timeout: 20_000 });
 
     // Scope to the four deterministic fixture users before asserting order.
+    // (Scoped to the manager: the connected-account card above the story also
+    // shows the admin email — a strict-mode double match otherwise.)
     await page.getByTestId('users-manager-search').fill('e2e-users');
-    await expect(page.getByText(fixtures.admin.email)).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.getByTestId('users-manager').getByText(fixtures.admin.email)
+    ).toBeVisible({ timeout: 20_000 });
 
     const firstRow = page.locator('[data-testid^="users-manager-row-"]').first();
 
