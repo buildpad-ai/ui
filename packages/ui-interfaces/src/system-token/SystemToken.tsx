@@ -138,7 +138,10 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
         data-testid={testId}
         data-lpignore="true"
         data-1p-ignore="true"
-        style={{ fontFamily: 'var(--mantine-font-family-monospace, monospace)' }}
+        // Scoped to the input element: a root-level style would leak the
+        // monospace face into the label/description, and instance styles must
+        // outrank the design-system theme's TextInput input font override.
+        styles={{ input: { fontFamily: 'var(--mantine-font-family-monospace, monospace)' } }}
         classNames={value && !localValue ? { input: 'system-token-saved' } : undefined}
         onFocus={handleFocus}
         onBlur={handleBlur}
@@ -191,7 +194,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
             ) : (
               <IconKey
                 size={16}
-                style={{ color: hasToken ? 'var(--mantine-primary-color-6)' : 'var(--mantine-color-gray-5)' }}
+                style={{ color: hasToken ? 'var(--mantine-primary-color-6)' : 'var(--mantine-color-dimmed)' }}
                 data-testid={testId ? `${testId}-key-icon` : undefined}
               />
             )}

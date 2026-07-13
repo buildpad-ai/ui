@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-13T04:57:10.571Z",
+  "generatedAt": "2026-07-13T05:50:07.379Z",
   "version": "1.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1130,7 +1130,7 @@
         {
           "source": "ui-interfaces/src/system-token/SystemToken.tsx",
           "target": "components/ui/system-token.tsx",
-          "sourceSha256": "848e36504fdec98ac93dedf81f5f1bf06bebb5bc730145ec5f4386e62a55da02"
+          "sourceSha256": "bd3116e31754597122480af05539dcae715f39de8a2a3dffb3d16e2e54c7746d"
         },
         {
           "source": "ui-interfaces/src/system-token/SystemToken.css",
@@ -3170,7 +3170,7 @@
         {
           "source": "ui-users/src/RolesManager.tsx",
           "target": "components/ui/users-management/roles-manager.tsx",
-          "sourceSha256": "f74fd3378d6cbf879592ff593d3ea59e0acea6d53926d3df31bfb18d05e69b38"
+          "sourceSha256": "304bc8a5fa4d8a229e5f7d6973dbd857f90bc9d9f017b6b72d83994fce16169d"
         },
         {
           "source": "ui-users/src/RoleDetail.tsx",
@@ -3240,12 +3240,12 @@
         {
           "source": "ui-users/src/ListFooter.tsx",
           "target": "components/ui/users-management/list-footer.tsx",
-          "sourceSha256": "7b818804e1302e8ab671ca8a5d2a318bf923ef0dfdb6c08360512f9f58aeb841"
+          "sourceSha256": "7d118bb436adc3a5a977009fdb15746b46170518f57e7a473a5668e438f03c48"
         },
         {
           "source": "ui-users/src/ListEmptyState.tsx",
           "target": "components/ui/users-management/list-empty-state.tsx",
-          "sourceSha256": "0b3ba09bc065dbdb13c7d5b3d072f9fe0f8bc33ed305efebebebfd0edcfb573c"
+          "sourceSha256": "f42c1e66fdeb4a7b3642dafa3c6f0b77b1d4e8bdfa4004896b8f5043a8f2b922"
         },
         {
           "source": "ui-users/src/RowActionsMenu.tsx",

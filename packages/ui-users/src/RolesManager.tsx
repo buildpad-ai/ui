@@ -237,7 +237,7 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
                     </Table.Td>
                     <Table.Td>
                       <Group gap={4}>
-                        <IconUsersGroup size={14} stroke={1.5} color="var(--mantine-color-gray-5)" />
+                        <IconUsersGroup size={14} stroke={1.5} color="var(--mantine-color-dimmed)" />
                         <Text size="sm" c="dimmed">
                           {getUserCount(role)}
                         </Text>

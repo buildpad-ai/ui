@@ -26,3 +26,11 @@ Reuse consolidation and error surfacing from the ui-users conventions audit:
 - Error surfacing: a failed list load renders a distinct "Failed to load …"
   state plus a red notification instead of masquerading as "no data yet", and
   a failed row delete toasts and keeps the confirm dialog open for retry.
+- Design-system compliance: `SystemToken` scopes its monospace face to the
+  input element via `styles={{ input }}` — the previous root-level `style`
+  leaked monospace into the label/description while the design-system theme's
+  own TextInput input override forced the input back to sans (the exact
+  inverse of intended). Scheme-static grays swapped for semantic tokens:
+  `--mantine-color-default-border` (list footers, matching ui-collections),
+  `--mantine-color-dimmed` (empty-state/count/key icons), and
+  `--mantine-color-error` (load-failure icon).

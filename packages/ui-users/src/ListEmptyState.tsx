@@ -26,9 +26,9 @@ export const ListEmptyState: React.FC<ListEmptyStateProps> = ({
 }) => (
   <Box ta="center" py="xl" data-testid={testId}>
     {error ? (
-      <IconAlertTriangle size={40} stroke={1} color="var(--mantine-color-red-5)" />
+      <IconAlertTriangle size={40} stroke={1} color="var(--mantine-color-error)" />
     ) : (
-      <IconSearch size={40} stroke={1} color="var(--mantine-color-gray-4)" />
+      <IconSearch size={40} stroke={1} color="var(--mantine-color-dimmed)" />
     )}
     <Text fw={500} size="sm" mb={4}>
       {title}
