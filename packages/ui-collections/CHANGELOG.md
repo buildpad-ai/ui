@@ -1,5 +1,38 @@
 # @buildpad/ui-collections
 
+## 1.7.0
+
+### Patch Changes
+
+- c6dd470: `CollectionForm`'s split save button (Save + SaveOptions caret) no longer
+  renders with a gap in host apps whose Mantine theme forces `Group` gap via
+  `theme.components.Group.styles.root` — theme styles are applied inline and
+  override the `gap={0}` prop, so the group now also sets an inline
+  `style={{ gap: 0 }}`, which takes precedence over both.
+- c6dd470: `CollectionList` and `CollectionForm` no longer assume every collection has an
+  `id` primary key column. Both components now resolve the real PK from field
+  metadata (`schema.is_primary_key`), falling back to `id`, with the
+  `primaryKeyField` prop kept as an explicit override.
+
+  Previously, on a collection whose PK is not named `id` (e.g. `code`, `sku`):
+
+  - `CollectionList` injected `id` into the `fields` query parameter of every
+    list request, so the DaaS API returned HTTP 500
+    (`column <table>.id does not exist`) and the list never rendered.
+  - The total record count used `aggregate[count]=id` and failed silently.
+  - `CollectionForm` read the created record's key from `result.id`, breaking
+    M2M relation persistence and copy-mode after create.
+
+  `onItemClick` now also receives the item's primary key value as a second
+  argument so consumers can navigate without hardcoding `item.id`.
+
+- Updated dependencies [90dc795]
+  - @buildpad/types@2.0.0
+  - @buildpad/ui-form@2.0.0
+  - @buildpad/ui-table@2.0.0
+  - @buildpad/services@2.0.0
+  - @buildpad/utils@2.0.0
+
 ## 1.6.0
 
 ### Patch Changes
