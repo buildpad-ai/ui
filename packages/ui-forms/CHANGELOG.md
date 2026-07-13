@@ -1,5 +1,22 @@
 # @buildpad/ui-forms
 
+## 1.7.0
+
+### Patch Changes
+
+- Updated dependencies [c6dd470]
+- Updated dependencies [c6dd470]
+- Updated dependencies [6db435b]
+- Updated dependencies [90dc795]
+- Updated dependencies [e563c73]
+  - @buildpad/ui-collections@2.0.0
+  - @buildpad/ui-interfaces@2.0.0
+  - @buildpad/hooks@2.0.0
+  - @buildpad/types@2.0.0
+  - @buildpad/ui-form@2.0.0
+  - @buildpad/services@2.0.0
+  - @buildpad/utils@2.0.0
+
 ## 1.6.0
 
 ### Minor Changes
