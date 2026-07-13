@@ -143,7 +143,7 @@ const SAMPLE_ITEMS = {
   meta: { page: 1, limit: 25, total: 3 },
 };
 
-/** Aggregate count response matching Directus format */
+/** Aggregate count response matching DaaS format */
 function makeCountResponse(count: number) {
   return { data: [{ count: { id: count } }] };
 }

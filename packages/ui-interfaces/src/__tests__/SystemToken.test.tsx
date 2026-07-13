@@ -77,7 +77,7 @@ describe('SystemToken', () => {
       const { container } = renderWithProvider(
         <SystemToken label="Token" data-testid="token" onChange={mockOnChange} />
       );
-      const styledEl = container.querySelector('[style*="Monaco"]');
+      const styledEl = container.querySelector('[style*="monospace"]');
       expect(styledEl).not.toBeNull();
     });
 
@@ -88,19 +88,28 @@ describe('SystemToken', () => {
       const input = screen.getByTestId('token') as HTMLInputElement;
       expect(input.readOnly).toBe(true);
     });
+
+    it('suppresses password managers via data-lpignore/data-1p-ignore', () => {
+      renderWithProvider(
+        <SystemToken data-testid="token" onChange={mockOnChange} />
+      );
+      const input = screen.getByTestId('token');
+      expect(input).toHaveAttribute('data-lpignore', 'true');
+      expect(input).toHaveAttribute('data-1p-ignore', 'true');
+    });
   });
 
   describe('Placeholder Text', () => {
     it('shows generate prompt when no token exists', () => {
       renderWithProvider(<SystemToken onChange={mockOnChange} />);
-      expect(screen.getByPlaceholderText('No token set — click generate to create one')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Click "Generate Token" to create a new static access token')).toBeInTheDocument();
     });
 
-    it('shows "Token securely saved" when token exists but not in local state', () => {
+    it('shows "Value Securely Saved" when token exists but not in local state', () => {
       renderWithProvider(
         <SystemToken value="**************" onChange={mockOnChange} />
       );
-      expect(screen.getByPlaceholderText('Token securely saved')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Value Securely Saved')).toBeInTheDocument();
     });
 
     it('shows no placeholder when disabled and no value', () => {
@@ -159,7 +168,7 @@ describe('SystemToken', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('token-notice')).toBeInTheDocument();
-        expect(screen.getByText(/copy the token now/i)).toBeInTheDocument();
+        expect(screen.getByText(/copy the token above/i)).toBeInTheDocument();
       });
     });
 
@@ -208,6 +217,41 @@ describe('SystemToken', () => {
         <SystemToken disabled data-testid="token" onChange={mockOnChange} />
       );
       expect(screen.queryByTestId('token-generate')).not.toBeInTheDocument();
+    });
+
+    it('uses a synchronous `generate` producer instead of the API, emitting synchronously', () => {
+      renderWithProvider(
+        <SystemToken
+          data-testid="token"
+          onChange={mockOnChange}
+          generate={() => 'client-side-token'}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('token-generate'));
+
+      expect(mockedApiRequest).not.toHaveBeenCalled();
+      expect(mockOnChange).toHaveBeenCalledWith('client-side-token');
+      expect((screen.getByTestId('token') as HTMLInputElement).value).toBe('client-side-token');
+    });
+
+    it('awaits an async `generate` producer instead of the API', async () => {
+      renderWithProvider(
+        <SystemToken
+          data-testid="token"
+          onChange={mockOnChange}
+          generate={() => Promise.resolve('async-client-token')}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('token-generate'));
+      });
+
+      await waitFor(() => {
+        expect(mockedApiRequest).not.toHaveBeenCalled();
+        expect(mockOnChange).toHaveBeenCalledWith('async-client-token');
+      });
     });
   });
 

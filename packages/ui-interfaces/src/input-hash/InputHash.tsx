@@ -79,7 +79,7 @@ export const InputHash = forwardRef<HTMLInputElement, InputHashProps>(({
     </Box>
   );
 
-  // Match Directus: placeholder text in primary blue when hashed, monospace font always
+  // Match DaaS: placeholder text in primary blue when hashed, monospace font always
   const isShowingHashedState = isHashed && !localValue;
   const commonProps = {
     label,

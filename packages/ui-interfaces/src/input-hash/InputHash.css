@@ -1,4 +1,4 @@
-/* Match Directus: placeholder text in primary color when a hash value is stored */
+/* Match DaaS: placeholder text in primary color when a hash value is stored */
 .input-hash-hashed::placeholder {
   color: var(--mantine-primary-color-6, var(--ds-primary, #ea580c)) !important;
   opacity: 1;

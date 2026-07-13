@@ -58,6 +58,7 @@ import {
   hashTransformed,
 } from './transformer.js';
 import { threeWayMerge } from '../utils/three-way-merge.js';
+import { applyNavItems } from './add.js';
 
 async function getRegistry(): Promise<Registry> {
   try {
@@ -500,6 +501,19 @@ export async function upgrade(options: UpgradeOptions) {
       chalk.dim(isAdoption ? ` install @ ${latestVersion}` : ` ${installedVersion} → ${latestVersion}`)
     );
 
+    // Detect first-time adoption of the CLI-managed nav file — when this
+    // upgrade CREATES components/layout/navigation.ts, seed it afterwards
+    // with the nav entries of route modules that are already installed.
+    // (Existing nav files are never re-seeded: removals are user intent.)
+    const navFile = (mod.files ?? []).find(f =>
+      f.target.endsWith('components/layout/navigation.ts')
+    );
+    const navExistedBefore = navFile
+      ? fs.existsSync(
+          path.join(config.srcDir ? path.join(cwd, 'src') : cwd, navFile.target)
+        )
+      : true;
+
     const fileSpinner = ora('').start();
     const newFiles: FileChecksum[] = [];
     let moduleHadConflict = false;
@@ -509,6 +523,18 @@ export async function upgrade(options: UpgradeOptions) {
 
       // Lib targets are literal paths (no .tsx/.jsx ext swap) — must match copyLibModule.
       const finalPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
+
+      // The nav config is adopt-once: it accumulates user edits and
+      // CLI-inserted route-module entries — upgrades create it when missing
+      // but never overwrite or merge it.
+      if (
+        file.target.endsWith('components/layout/navigation.ts') &&
+        fs.existsSync(finalPath)
+      ) {
+        const existing = await fs.readFile(finalPath, 'utf-8');
+        newFiles.push({ target: file.target, sha256: hashTransformed(existing) });
+        continue;
+      }
 
       if (!(await sourceFileExists(file.source))) {
         fileSpinner.warn(`    Source not found: ${file.source}`);
@@ -555,6 +581,19 @@ export async function upgrade(options: UpgradeOptions) {
       if (!config.packageVersions) config.packageVersions = {};
       config.packageVersions[sourcePackage] = latestVersion;
       dirty = true;
+
+      // Seed the freshly-adopted nav file from already-installed route
+      // modules (users-routes, files-routes, forms-routes, …).
+      if (navFile && !navExistedBefore) {
+        const navSpinner = ora('').start();
+        for (const libName of config.installedLib) {
+          const installedModule = registry.lib[libName];
+          if (installedModule?.navItems?.length) {
+            await applyNavItems(installedModule, config, cwd, navSpinner);
+          }
+        }
+        navSpinner.stop();
+      }
     }
 
     const verb = isAdoption ? 'installed at' : 'upgraded to';

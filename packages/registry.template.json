@@ -165,6 +165,10 @@
           "target": "lib/buildpad/types/field-spec.ts"
         },
         {
+          "source": "types/src/users.ts",
+          "target": "lib/buildpad/types/users.ts"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts"
         }
@@ -337,6 +341,26 @@
           "target": "lib/buildpad/hooks/useFormDefinitions.ts"
         },
         {
+          "source": "hooks/src/parseDaaSError.ts",
+          "target": "lib/buildpad/hooks/parseDaaSError.ts"
+        },
+        {
+          "source": "hooks/src/useUsers.ts",
+          "target": "lib/buildpad/hooks/useUsers.ts"
+        },
+        {
+          "source": "hooks/src/useRoles.ts",
+          "target": "lib/buildpad/hooks/useRoles.ts"
+        },
+        {
+          "source": "hooks/src/usePolicies.ts",
+          "target": "lib/buildpad/hooks/usePolicies.ts"
+        },
+        {
+          "source": "hooks/src/useAccess.ts",
+          "target": "lib/buildpad/hooks/useAccess.ts"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts"
         }
@@ -493,6 +517,70 @@
       ],
       "registryDependencies": [
         "file-manager"
+      ],
+      "navItems": [
+        {
+          "label": "Files",
+          "href": "/files",
+          "icon": "IconFolders"
+        }
+      ]
+    },
+    "users-routes": {
+      "name": "users-routes",
+      "description": "Users/roles/policies admin module pages — /users, /users/[id], /roles, /roles/[id], /policies, /policies/[id] (list + create/edit for each access-control domain). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the users-management component.",
+      "files": [
+        {
+          "source": "cli/templates/app/users/page.tsx",
+          "target": "app/(authenticated)/users/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/users/[id]/page.tsx",
+          "target": "app/(authenticated)/users/[id]/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/roles/page.tsx",
+          "target": "app/(authenticated)/roles/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/roles/[id]/page.tsx",
+          "target": "app/(authenticated)/roles/[id]/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/policies/page.tsx",
+          "target": "app/(authenticated)/policies/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/policies/[id]/page.tsx",
+          "target": "app/(authenticated)/policies/[id]/page.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "users-management"
+      ],
+      "navItems": [
+        {
+          "label": "Users",
+          "href": "/users",
+          "icon": "IconUsers",
+          "section": "Administration"
+        },
+        {
+          "label": "Roles",
+          "href": "/roles",
+          "icon": "IconUsersGroup",
+          "section": "Administration"
+        },
+        {
+          "label": "Policies",
+          "href": "/policies",
+          "icon": "IconShieldLock",
+          "section": "Administration"
+        }
       ]
     },
     "forms-routes": {
@@ -522,6 +610,13 @@
       ],
       "registryDependencies": [
         "form-builder"
+      ],
+      "navItems": [
+        {
+          "label": "Forms",
+          "href": "/forms",
+          "icon": "IconForms"
+        }
       ]
     },
     "supabase-auth": {
@@ -643,6 +738,10 @@
         {
           "source": "cli/templates/components/ColorSchemeToggle.tsx",
           "target": "components/ColorSchemeToggle.tsx"
+        },
+        {
+          "source": "cli/templates/components/layout/navigation.ts",
+          "target": "components/layout/navigation.ts"
         },
         {
           "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
@@ -835,7 +934,7 @@
     {
       "name": "system-permissions",
       "title": "SystemPermissions",
-      "description": "Permissions management interface with collection-based CRUD permission toggles. Used for policy permission editing with full/custom/none access levels.",
+      "description": "Permissions management interface with collection-based CRUD permission toggles. Used for policy permission editing with full/custom/none access levels, plus a tabbed detail editor for custom per-permission rules (item filters, field access, validation, presets).",
       "category": "relational",
       "files": [
         {
@@ -845,6 +944,46 @@
         {
           "source": "ui-interfaces/src/system-permissions/SystemPermissions.css",
           "target": "components/ui/system-permissions.css"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionDetailModal.tsx",
+          "target": "components/ui/permission-detail-modal.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFieldsTab.tsx",
+          "target": "components/ui/permission-fields-tab.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterTab.tsx",
+          "target": "components/ui/permission-filter-tab.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionValidationTab.tsx",
+          "target": "components/ui/permission-validation-tab.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionPresetsTab.tsx",
+          "target": "components/ui/permission-presets-tab.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/FilterRuleBuilder.tsx",
+          "target": "components/ui/filter-rule-builder.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/FilterRuleNode.tsx",
+          "target": "components/ui/filter-rule-node.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterTypes.ts",
+          "target": "components/ui/permission-filter-types.ts"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/PermissionFilterUtils.ts",
+          "target": "components/ui/permission-filter-utils.ts"
+        },
+        {
+          "source": "ui-interfaces/src/system-permissions/permissionMetadata.ts",
+          "target": "components/ui/permission-metadata.ts"
         }
       ],
       "dependencies": [
@@ -1124,7 +1263,7 @@
     {
       "name": "select-icon",
       "title": "SelectIcon",
-      "description": "Icon picker with categorized Tabler icons",
+      "description": "Icon picker with categorized Tabler icons, plus the read-only IconDisplay companion that renders stored Material icon names from the same map",
       "category": "selection",
       "files": [
         {
@@ -2527,6 +2666,131 @@
       ]
     },
     {
+      "name": "users-management",
+      "title": "UsersManagement",
+      "excludeFromAll": true,
+      "description": "Users, roles, and policies administration (RBAC management) — user list/detail with role assignment (M2M) and direct policy attachment, role list/detail with member management, hierarchy, and scope-assignment rules, policy list/detail with access flags and a per-collection permissions matrix (via system-permissions). Composes the useUsers/useRoles/usePolicies hooks.",
+      "category": "admin",
+      "files": [
+        {
+          "source": "ui-users/src/UsersManager.tsx",
+          "target": "components/ui/users-management/users-manager.tsx"
+        },
+        {
+          "source": "ui-users/src/UsersManager.css",
+          "target": "components/ui/users-management/users-manager.css"
+        },
+        {
+          "source": "ui-users/src/UserDetail.tsx",
+          "target": "components/ui/users-management/user-detail.tsx"
+        },
+        {
+          "source": "ui-users/src/UserPoliciesManager.tsx",
+          "target": "components/ui/users-management/user-policies-manager.tsx"
+        },
+        {
+          "source": "ui-users/src/RolesManager.tsx",
+          "target": "components/ui/users-management/roles-manager.tsx"
+        },
+        {
+          "source": "ui-users/src/RoleDetail.tsx",
+          "target": "components/ui/users-management/role-detail.tsx"
+        },
+        {
+          "source": "ui-users/src/RoleUsersManager.tsx",
+          "target": "components/ui/users-management/role-users-manager.tsx"
+        },
+        {
+          "source": "ui-users/src/RolePoliciesManager.tsx",
+          "target": "components/ui/users-management/role-policies-manager.tsx"
+        },
+        {
+          "source": "ui-users/src/PoliciesManager.tsx",
+          "target": "components/ui/users-management/policies-manager.tsx"
+        },
+        {
+          "source": "ui-users/src/PolicyDetail.tsx",
+          "target": "components/ui/users-management/policy-detail.tsx"
+        },
+        {
+          "source": "ui-users/src/PolicyAttachmentManager.tsx",
+          "target": "components/ui/users-management/policy-attachment-manager.tsx"
+        },
+        {
+          "source": "ui-users/src/PolicyPickerModal.tsx",
+          "target": "components/ui/users-management/policy-picker-modal.tsx"
+        },
+        {
+          "source": "ui-users/src/UserStatusBadge.tsx",
+          "target": "components/ui/users-management/user-status-badge.tsx"
+        },
+        {
+          "source": "ui-users/src/UserAvatar.tsx",
+          "target": "components/ui/users-management/user-avatar.tsx"
+        },
+        {
+          "source": "ui-users/src/InfoPanel.tsx",
+          "target": "components/ui/users-management/info-panel.tsx"
+        },
+        {
+          "source": "ui-users/src/DeleteConfirmModal.tsx",
+          "target": "components/ui/users-management/delete-confirm-modal.tsx"
+        },
+        {
+          "source": "ui-users/src/SortableTh.tsx",
+          "target": "components/ui/users-management/sortable-th.tsx"
+        },
+        {
+          "source": "ui-users/src/SearchInput.tsx",
+          "target": "components/ui/users-management/search-input.tsx"
+        },
+        {
+          "source": "ui-users/src/ListFooter.tsx",
+          "target": "components/ui/users-management/list-footer.tsx"
+        },
+        {
+          "source": "ui-users/src/ListEmptyState.tsx",
+          "target": "components/ui/users-management/list-empty-state.tsx"
+        },
+        {
+          "source": "ui-users/src/RowActionsMenu.tsx",
+          "target": "components/ui/users-management/row-actions-menu.tsx"
+        },
+        {
+          "source": "ui-users/src/TokenInput.tsx",
+          "target": "components/ui/users-management/token-input.tsx"
+        },
+        {
+          "source": "ui-users/src/userDisplay.ts",
+          "target": "components/ui/users-management/user-display.ts"
+        },
+        {
+          "source": "ui-users/src/accessUtils.ts",
+          "target": "components/ui/users-management/access-utils.ts"
+        },
+        {
+          "source": "ui-users/src/index.ts",
+          "target": "components/ui/users-management/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services"
+      ],
+      "registryDependencies": [
+        "system-permissions",
+        "select-icon",
+        "system-token"
+      ]
+    },
+    {
       "name": "form-builder",
       "title": "FormBuilder",
       "excludeFromAll": true,
@@ -2669,6 +2933,11 @@
       "name": "workflow",
       "title": "Workflow",
       "description": "Workflow state and transition components"
+    },
+    {
+      "name": "admin",
+      "title": "Administration",
+      "description": "Users, roles, and policies administration components"
     }
   ]
 }

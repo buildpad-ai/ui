@@ -98,6 +98,13 @@ const catalog: CatalogTier[] = [
         port: 6010,
         blurb: "Design forms visually; render them live with DynamicForm.",
       },
+      {
+        emoji: "🛡️",
+        name: "Users",
+        path: "/storybook/users",
+        port: 6011,
+        blurb: "Users, roles & policies admin — RBAC management with a permissions matrix.",
+      },
     ],
   },
 ];
@@ -416,7 +423,8 @@ pnpm storybook:form         # Port 6006
 pnpm storybook:forms        # Port 6010 (form builder)
 pnpm storybook:table        # Port 6007
 pnpm storybook:collections  # Port 6008
-pnpm storybook:files        # Port 6009`}</pre>
+pnpm storybook:files        # Port 6009
+pnpm storybook:users        # Port 6011 (users/roles/policies)`}</pre>
           </div>
         )}
       </section>

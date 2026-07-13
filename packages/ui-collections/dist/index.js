@@ -201,6 +201,7 @@ var CollectionForm = ({
   );
   const stableIncludeFields = useMemo(() => includeFields, [includeFields]);
   const [fields, setFields] = useState([]);
+  const [resolvedPk, setResolvedPk] = useState("id");
   const [formData, setFormData] = useState(stableDefaultValues);
   const [initialFormData, setInitialFormData] = useState(stableDefaultValues);
   const [loading, setLoading] = useState(true);
@@ -235,6 +236,8 @@ var CollectionForm = ({
           PermissionsService.getMyCollectionAccess().catch(() => ({}))
         ]);
         setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
+        const schemaPk = allFields.find((f) => f.schema?.is_primary_key)?.field;
+        setResolvedPk(schemaPk ?? "id");
         const access = collectionAccess?.[collection] || {};
         const readAccess = access.read;
         const createAccess = access.create;
@@ -525,9 +528,9 @@ var CollectionForm = ({
         setInitialFormData(clearedFormData);
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
-          delete copyData.id;
+          delete copyData[resolvedPk];
           const copyResult = await itemsService.createOne(copyData);
-          onSuccess?.({ ...copyData, id: copyResult?.id });
+          onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
           return;
         }
         if (afterSave === "add-new") {
@@ -555,7 +558,7 @@ var CollectionForm = ({
           scalarData[EXTRAS_COLUMN] = createdExtras;
         }
         const result = await itemsService.createOne(scalarData);
-        const newId = result?.id;
+        const newId = result?.[resolvedPk];
         if (newId != null && m2mEntries.length > 0) {
           await flushM2MChanges(newId, m2mEntries);
         }
@@ -689,7 +692,7 @@ var CollectionForm = ({
             children: "Cancel"
           }
         ),
-        /* @__PURE__ */ jsxs2(Group2, { gap: 0, children: [
+        /* @__PURE__ */ jsxs2(Group2, { gap: 0, style: { gap: 0 }, children: [
           /* @__PURE__ */ jsx2(
             Button,
             {
@@ -1584,7 +1587,7 @@ var CollectionList = ({
   enableHeaderMenu = true,
   enableAddField = true,
   enableCreate = false,
-  primaryKeyField = "id",
+  primaryKeyField: primaryKeyFieldProp,
   rowHeight: rowHeightProp,
   tableSpacing = "cozy",
   archiveField,
@@ -1602,6 +1605,8 @@ var CollectionList = ({
   renderCell: consumerRenderCell
 }) => {
   const [allFields, setAllFields] = useState3([]);
+  const [resolvedPk, setResolvedPk] = useState3(null);
+  const primaryKeyField = primaryKeyFieldProp ?? resolvedPk ?? "id";
   const [visibleFieldKeys, setVisibleFieldKeys] = useState3([]);
   const [items, setItems] = useState3([]);
   const [totalCount, setTotalCount] = useState3(0);
@@ -1684,6 +1689,11 @@ var CollectionList = ({
           visible = visible.filter((f) => accessibleSet.has(f.field));
         }
         setAllFields(visible);
+        const schemaPk = fieldsResult.find(
+          (f) => f.schema?.is_primary_key
+        )?.field;
+        const pkField = primaryKeyFieldProp ?? schemaPk ?? "id";
+        setResolvedPk(schemaPk ?? "id");
         if (displayFields) {
           const keys = hasRestriction ? displayFields.filter((k) => new Set(permFields).has(k)) : displayFields;
           setVisibleFieldKeys(
@@ -1691,8 +1701,8 @@ var CollectionList = ({
           );
         } else {
           const initial = visible.slice(0, 5).map((f) => f.field);
-          if (!initial.includes(primaryKeyField) && visible.some((f) => f.field === primaryKeyField)) {
-            initial.unshift(primaryKeyField);
+          if (!initial.includes(pkField) && visible.some((f) => f.field === pkField)) {
+            initial.unshift(pkField);
           }
           setVisibleFieldKeys(initial);
         }
@@ -1714,7 +1724,7 @@ var CollectionList = ({
     return () => {
       cancelled = true;
     };
-  }, [collection, displayFields, primaryKeyField]);
+  }, [collection, displayFields, primaryKeyFieldProp]);
   const mergedFilter = useMemo3(() => {
     const filters = [];
     if (filter && Object.keys(filter).length > 0) filters.push(filter);
@@ -1830,8 +1840,10 @@ var CollectionList = ({
     }
   }, [loadItems, visibleFieldKeys.length]);
   useEffect2(() => {
-    getTotalCount();
-  }, [getTotalCount]);
+    if (primaryKeyFieldProp || resolvedPk) {
+      getTotalCount();
+    }
+  }, [getTotalCount, primaryKeyFieldProp, resolvedPk]);
   useEffect2(() => {
     setPage(1);
   }, [search, filter, internalFilter]);
@@ -2210,7 +2222,10 @@ var CollectionList = ({
         onUpdate: setSelectedItems,
         onSortChange: handleSortChange,
         onHeadersChange: handleHeadersChange,
-        onRowClick: onItemClick ? ({ item }) => onItemClick(item) : void 0,
+        onRowClick: onItemClick ? ({ item }) => onItemClick(
+          item,
+          item[primaryKeyField]
+        ) : void 0,
         "data-testid": "collection-list-table"
       }
     ),

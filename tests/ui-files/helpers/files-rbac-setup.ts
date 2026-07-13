@@ -1,7 +1,7 @@
 /**
- * Global setup for the files E2E suite — DaaS4-compatible.
+ * Global setup for the files E2E suite — BuildPad DaaS-compatible.
  *
- * DaaS4 differences vs Directus v9/v10:
+ * DaaS differences from the main buildpad-ui RBAC setup:
  *   - Roles have no admin_access / app_access flags (those are policy-level)
  *   - Users have a `roles` array (not a single `role` field)
  *   - Built-in Admin Policy id = 00000000-0000-0000-0000-000000000001 (admin_access=true)

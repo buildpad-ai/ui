@@ -192,6 +192,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const stableIncludeFields = useMemo(() => includeFields, [includeFields]);
 
   const [fields, setFields] = useState<Field[]>([]);
+  // PK column resolved from field metadata (schema.is_primary_key); collections
+  // may use a primary key not named "id"
+  const [resolvedPk, setResolvedPk] = useState<string>("id");
   const [formData, setFormData] =
     useState<Record<string, unknown>>(stableDefaultValues);
   const [initialFormData, setInitialFormData] =
@@ -247,6 +250,10 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
         // Does the target collection expose the `extras` jsonb tail column?
         setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
+
+        // Resolve the collection's real PK column (may not be named "id")
+        const schemaPk = allFields.find((f) => f.schema?.is_primary_key)?.field;
+        setResolvedPk(schemaPk ?? "id");
 
         const access = collectionAccess?.[collection] || {};
         const readAccess: CollectionActionAccess | undefined = access.read;
@@ -708,9 +715,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
-          delete copyData.id;
+          delete copyData[resolvedPk];
           const copyResult = await itemsService.createOne(copyData);
-          onSuccess?.({ ...copyData, id: copyResult?.id });
+          onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
           return;
         }
 
@@ -746,7 +753,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         }
 
         const result = await itemsService.createOne(scalarData);
-        const newId = result?.id as string | number | undefined;
+        const newId = result?.[resolvedPk] as string | number | undefined;
 
         // Flush M2M changes now that we have the parent PK
         if (newId != null && m2mEntries.length > 0) {
@@ -921,7 +928,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 Cancel
               </Button>
             )}
-            <Group gap={0}>
+            {/* inline gap: host themes may force Group gap via theme styles,
+                which beats the gap prop; inline style wins over both */}
+            <Group gap={0} style={{ gap: 0 }}>
               <Button
                 type="submit"
                 loading={saving}

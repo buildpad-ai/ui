@@ -162,6 +162,28 @@ export {
   type UseCollectionsReturn
 } from './useCollections';
 
+// Users / Roles / Policies / Access hooks (DaaS RBAC administration)
+export {
+  useUsers,
+  type FetchUsersParams,
+  type UsersListResult,
+} from './useUsers';
+export {
+  useRoles,
+  type FetchRolesParams,
+  type RolesListResult,
+} from './useRoles';
+export {
+  usePolicies,
+  type FetchPoliciesParams,
+  type PoliciesListResult,
+} from './usePolicies';
+export {
+  useAccess,
+  type FetchAccessParams,
+} from './useAccess';
+export { parseDaaSError } from './parseDaaSError';
+
 // API helpers
 export { api, daasAPI, createDaaSAPI, type DaaSAPIConfig, type QueryParams } from './api';
 

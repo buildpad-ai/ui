@@ -21,7 +21,7 @@ docs tooling. Two reading paths:
 
 ### What DaaS already gives us (the starting point)
 
-BuildPad DaaS is **Directus-like**: the [Data Model](https://docs.daas.buildpad.ai/getting-started/core-concepts/#collections)
+BuildPad DaaS is **DaaS-like**: the [Data Model](https://docs.daas.buildpad.ai/getting-started/core-concepts/#collections)
 is made of **Collections** (tables) and **Fields** (columns), and — crucially — *"fields carry **interface
 metadata** that drives the form renderer (e.g. show an `<input>`, a rich-text editor, a file picker, etc.)."*
 So **any collection is already dynamically renderable as a form** straight from its schema; nothing is

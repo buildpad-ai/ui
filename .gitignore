@@ -76,3 +76,7 @@ storybook-static/
 # files E2E test fixtures (contains tokens — never commit)
 tests/ui-files/.files-rbac.json
 
+# users E2E test fixtures (contains tokens — never commit)
+tests/ui-users/.users-rbac.json
+playwright-report-users/
+
