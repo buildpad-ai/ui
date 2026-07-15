@@ -1,5 +1,13 @@
 # @buildpad/hooks
 
+## 1.8.0
+
+### Patch Changes
+
+- @buildpad/services@1.8.0
+- @buildpad/types@1.8.0
+- @buildpad/utils@1.8.0
+
 ## 1.7.0
 
 ### Minor Changes
@@ -20,9 +28,9 @@
 ### Patch Changes
 
 - Updated dependencies [90dc795]
-  - @buildpad/types@2.0.0
-  - @buildpad/services@2.0.0
-  - @buildpad/utils@2.0.0
+  - @buildpad/types@1.8.0
+  - @buildpad/services@1.8.0
+  - @buildpad/utils@1.8.0
 
 ## 1.6.0
 

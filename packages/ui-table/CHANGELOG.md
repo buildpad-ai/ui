@@ -1,13 +1,21 @@
 # @buildpad/ui-table
 
+## 1.8.0
+
+### Patch Changes
+
+- @buildpad/hooks@1.8.0
+- @buildpad/services@1.8.0
+- @buildpad/types@1.8.0
+
 ## 1.7.0
 
 ### Patch Changes
 
 - Updated dependencies [90dc795]
-  - @buildpad/hooks@2.0.0
-  - @buildpad/types@2.0.0
-  - @buildpad/services@2.0.0
+  - @buildpad/hooks@1.8.0
+  - @buildpad/types@1.8.0
+  - @buildpad/services@1.8.0
 
 ## 1.6.0
 
