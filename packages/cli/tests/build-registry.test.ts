@@ -10,7 +10,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 // @ts-expect-error — pure ESM helper file lives outside the TS project
-import { extractSemverFromTag, releaseTagSemver, earliestReleaseSemver } from '../../../scripts/build-registry.mjs';
+import { extractSemverFromTag, releaseTagSemver, earliestReleaseSemver, deriveLastChangedIn } from '../../../scripts/build-registry.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REGISTRY_PATH = path.resolve(__dirname, '../../registry.json');
@@ -97,6 +97,27 @@ describe('earliestReleaseSemver', () => {
     expect(
       earliestReleaseSemver(['@buildpad/cli@1.10.0', '@buildpad/cli@1.9.0'])
     ).toBe('1.9.0');
+  });
+});
+
+describe('deriveLastChangedIn', () => {
+  test('takes the most recent release across files', () => {
+    expect(deriveLastChangedIn(['1.2.0', '1.7.0', '1.3.1'], '1.9.0')).toBe('1.7.0');
+  });
+
+  test('an untagged file change dominates as the upcoming version', () => {
+    // Regression: a component whose .tsx changed since the last release
+    // (undefined) but whose .css last shipped in 1.8.0 must NOT report
+    // 1.8.0 — consumers at 1.8.0 would never be flagged.
+    expect(deriveLastChangedIn([undefined, '1.8.0'], '1.8.1')).toBe('1.8.1');
+  });
+
+  test('no files → the upcoming version', () => {
+    expect(deriveLastChangedIn([], '1.9.0')).toBe('1.9.0');
+  });
+
+  test('compares numerically across minors', () => {
+    expect(deriveLastChangedIn(['1.10.0', '1.9.0'], '1.11.0')).toBe('1.10.0');
   });
 });
 
