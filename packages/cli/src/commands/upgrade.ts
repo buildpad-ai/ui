@@ -58,6 +58,7 @@ import {
   hashTransformed,
 } from './transformer.js';
 import { threeWayMerge } from '../utils/three-way-merge.js';
+import { ensureExternalDeps } from '../utils/external-deps.js';
 import { applyNavItems } from './add.js';
 
 async function getRegistry(): Promise<Registry> {
@@ -366,6 +367,10 @@ export async function upgrade(options: UpgradeOptions) {
   let skipped = 0;
   let conflicts = 0;
   let dirty = false;
+  // npm deps declared by everything we upgrade — a new version can introduce
+  // dependencies the app doesn't have yet (e.g. rich-text-markdown 1.8.0
+  // added @tiptap/extension-table + tiptap-markdown + marked).
+  const externalDeps = new Set<string>();
 
   // ── Components ────────────────────────────────────────────────────
   if (targetComponents.length > 0) {
@@ -440,6 +445,10 @@ export async function upgrade(options: UpgradeOptions) {
     }
 
     fileSpinner.stop();
+
+    // The new source is on disk now (even with conflicts, .new files reference
+    // the new imports) — make sure its declared npm deps get installed.
+    regComponent.dependencies?.forEach(dep => externalDeps.add(dep));
 
     if (!dryRun) {
       if (!config.components) config.components = {};
@@ -569,6 +578,10 @@ export async function upgrade(options: UpgradeOptions) {
 
     fileSpinner.stop();
 
+    // Lib deps may carry version specifiers (e.g. "@supabase/ssr@^0.5") — strip
+    // to the bare name, matching add.ts.
+    mod.dependencies?.forEach(dep => externalDeps.add(dep.replace(/@[^@/]*$/, '')));
+
     if (!dryRun) {
       if (!config.lib) config.lib = {};
       config.lib[moduleName] = {
@@ -607,6 +620,18 @@ export async function upgrade(options: UpgradeOptions) {
 
   if (!dryRun && dirty) {
     await saveConfig(cwd, config);
+  }
+
+  // Install npm deps the upgraded source now needs but the app lacks.
+  // `--yes` (non-interactive) installs without prompting, like bootstrap.
+  if (externalDeps.size > 0) {
+    console.log(chalk.bold('\n📦 External dependencies...\n'));
+    await ensureExternalDeps({
+      cwd,
+      deps: externalDeps,
+      autoInstall: options.yes ? true : undefined,
+      dryRun,
+    });
   }
 
   console.log('\n' + chalk.bold('Summary:'));

@@ -23,6 +23,7 @@ import {
   hashTransformed
 } from './transformer.js';
 import { inferSourcePackage, resolvePackageVersion, semverGte } from '../utils/checksum.js';
+import { ensureExternalDeps } from '../utils/external-deps.js';
 import { validate } from './validate.js';
 import {
   getRegistry as fetchRegistry,
@@ -45,76 +46,8 @@ async function getRegistry(): Promise<Registry> {
   }
 }
 
-/**
- * Version ranges for auto-installed npm dependencies.
- *
- * Registry entries list bare package names; installing those unpinned resolves
- * to `latest`, which drifts from the ranges the source packages are developed
- * and tested against. Concretely: `pnpm add @mantine/tiptap` pulled Mantine 9.x
- * into apps whose init template pins @mantine/core 8.x — mixed Mantine majors
- * break at runtime ("forwardRef render functions accept exactly two
- * parameters" on every RichTextEditor control).
- *
- * Keep these aligned with the peerDependencies of the source packages
- * (packages/ui-forms/package.json carries the widest surface) and with the
- * init template's base dependencies (init.ts `minimalPackageJson`).
- */
-const DEPENDENCY_VERSIONS: Record<string, string> = {
-  // Mantine ecosystem — must stay on the same major as @mantine/core (init template)
-  '@mantine/core': '^8.0.0',
-  '@mantine/hooks': '^8.0.0',
-  '@mantine/dates': '^8.0.0',
-  '@mantine/notifications': '^8.0.0',
-  '@mantine/dropzone': '^8.0.0',
-  '@mantine/tiptap': '^8.0.0',
-  // Drag-and-drop (aligned with the init template)
-  '@dnd-kit/core': '^6.0.0',
-  '@dnd-kit/sortable': '^9.0.0',
-  '@dnd-kit/utilities': '^3.0.0',
-  // Rich text (tiptap v3 line, per @buildpad/ui-forms peers)
-  '@tiptap/react': '^3.13.0',
-  '@tiptap/starter-kit': '^3.13.0',
-  '@tiptap/extension-link': '^3.13.0',
-  '@tiptap/extension-highlight': '^3.13.0',
-  '@tiptap/extension-color': '^3.13.0',
-  '@tiptap/extension-placeholder': '^3.13.0',
-  '@tiptap/extension-subscript': '^3.13.0',
-  '@tiptap/extension-superscript': '^3.13.0',
-  '@tiptap/extension-text-align': '^3.13.0',
-  '@tiptap/extension-text-style': '^3.13.0',
-  '@tiptap/extension-underline': '^3.13.0',
-  '@tiptap/extension-code-block-lowlight': '^3.13.0',
-  'highlight.js': '^11.11.1',
-  'lowlight': '^3.3.0',
-  // Block editor
-  '@editorjs/editorjs': '^2.31.0',
-  '@editorjs/checklist': '^1.6.0',
-  '@editorjs/code': '^2.9.3',
-  '@editorjs/delimiter': '^1.4.2',
-  '@editorjs/header': '^2.8.8',
-  '@editorjs/inline-code': '^1.5.2',
-  '@editorjs/nested-list': '^1.4.3',
-  '@editorjs/paragraph': '^2.11.7',
-  '@editorjs/quote': '^2.7.6',
-  '@editorjs/table': '^2.4.5',
-  '@editorjs/underline': '^1.2.1',
-  // Map
-  'maplibre-gl': '^5.17.0',
-  '@mapbox/mapbox-gl-draw': '^1.5.1',
-  // Misc (aligned with the init template / services)
-  '@tabler/icons-react': '^3.0.0',
-  '@supabase/ssr': '^0.5',
-  '@supabase/supabase-js': '^2',
-  'jose': '^5',
-  'axios': '^1.6.0',
-  'dayjs': '^1.11.0',
-};
-
-/** Turn a bare dependency name into a pinned install spec (quoted for shells). */
-function toInstallSpec(dep: string): string {
-  const range = DEPENDENCY_VERSIONS[dep];
-  return range ? `"${dep}@${range}"` : dep;
-}
+// Dependency version pins + shared installer live in ../utils/external-deps.js
+// (shared with `upgrade`, which must install deps a new version introduces).
 
 /**
  * Common component aliases for better discovery
@@ -1180,75 +1113,13 @@ export async function add(
     // Check for missing external dependencies
     console.log(chalk.bold('\n📦 External dependencies...\n'));
 
-    const packageJsonPath = path.join(cwd, 'package.json');
-    let missingDeps: string[] = [];
-
-    if (fs.existsSync(packageJsonPath)) {
-      const packageJson = await fs.readJSON(packageJsonPath);
-      const installed = {
-        ...packageJson.dependencies,
-        ...packageJson.devDependencies,
-      };
-
-      missingDeps = Array.from(allDeps).filter(dep => !installed[dep]);
-    } else {
-      missingDeps = Array.from(allDeps);
-    }
-
-    if (missingDeps.length > 0) {
-      console.log(chalk.yellow('⚠ Missing dependencies:'));
-      missingDeps.forEach(dep => console.log(chalk.dim(`  - ${dep}`)));
-      
-      // In non-interactive mode (bootstrap), auto-install without prompting
-      let autoInstall = nonInteractive;
-      if (!nonInteractive) {
-        const answer = await prompts({
-          type: 'confirm',
-          name: 'autoInstall',
-          message: 'Install missing dependencies automatically?',
-          initial: true,
-        });
-        autoInstall = answer.autoInstall;
-      }
-      
-      if (autoInstall) {
-        const installSpinner = ora('Installing dependencies...').start();
-        try {
-          // Detect package manager
-          const hasYarnLock = fs.existsSync(path.join(cwd, 'yarn.lock'));
-          const hasPnpmLock = fs.existsSync(path.join(cwd, 'pnpm-lock.yaml'));
-          const hasBunLock = fs.existsSync(path.join(cwd, 'bun.lockb'));
-          
-          // Pin known deps to their tested ranges — a bare name installs
-          // `latest`, which can drift majors (see DEPENDENCY_VERSIONS).
-          const installSpecs = missingDeps.map(toInstallSpec);
-
-          let installCmd: string;
-          if (hasPnpmLock) {
-            installCmd = `pnpm add ${installSpecs.join(' ')}`;
-          } else if (hasYarnLock) {
-            installCmd = `yarn add ${installSpecs.join(' ')}`;
-          } else if (hasBunLock) {
-            installCmd = `bun add ${installSpecs.join(' ')}`;
-          } else {
-            installCmd = `npm install ${installSpecs.join(' ')}`;
-          }
-          
-          const { execSync } = await import('child_process');
-          execSync(installCmd, { cwd, stdio: 'pipe' });
-          installSpinner.succeed('Dependencies installed!');
-        } catch (error) {
-          installSpinner.fail('Failed to install dependencies');
-          console.log(chalk.dim('\nInstall manually with:'));
-          console.log(chalk.cyan(`  pnpm add ${missingDeps.map(toInstallSpec).join(' ')}\n`));
-        }
-      } else {
-        console.log(chalk.dim('\nInstall manually with:'));
-        console.log(chalk.cyan(`  pnpm add ${missingDeps.join(' ')}\n`));
-      }
-    } else {
-      console.log(chalk.green('✓ All external dependencies installed\n'));
-    }
+    // In non-interactive mode (bootstrap), auto-install without prompting
+    await ensureExternalDeps({
+      cwd,
+      deps: allDeps,
+      autoInstall: nonInteractive ? true : undefined,
+      announceClean: true,
+    });
 
     // Summary
     console.log(chalk.bold.blue('📋 Summary:\n'));
