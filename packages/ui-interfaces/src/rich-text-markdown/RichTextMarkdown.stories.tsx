@@ -8,11 +8,11 @@ const meta: Meta<typeof RichTextMarkdown> = {
     layout: 'padded',
     docs: {
       description: {
-        component: `A Markdown editor with WYSIWYG editing and preview modes.
+        component: `A Markdown editor with WYSIWYG editing and a raw-source mode.
 
 ## Features
-- WYSIWYG Markdown editing
-- Live preview mode
+- WYSIWYG Markdown editing (renders as you type — the editor is the preview)
+- Editable raw Markdown "Source" mode (monospace)
 - Syntax highlighting for code blocks
 - Table insertion
 - Image support
@@ -72,11 +72,6 @@ import { RichTextMarkdown } from '@buildpad/ui-interfaces';
       options: ['sans-serif', 'serif', 'monospace'],
       description: 'Editor font family',
     },
-    previewFont: {
-      control: 'select',
-      options: ['sans-serif', 'serif', 'monospace'],
-      description: 'Preview font family',
-    },
   },
 };
 
@@ -124,7 +119,6 @@ export const DocumentationStyle: Story = {
   args: {
     label: 'Documentation',
     editorFont: 'monospace',
-    previewFont: 'sans-serif',
     value: `# API Reference
 
 ## \`getUser(id)\`
@@ -149,7 +143,6 @@ export const BlogPost: Story = {
   args: {
     label: 'Blog Post',
     editorFont: 'serif',
-    previewFont: 'serif',
     value: `# My First Blog Post
 
 *Published on December 13, 2024*

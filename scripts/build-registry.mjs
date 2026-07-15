@@ -151,6 +151,25 @@ export function earliestReleaseSemver(tags) {
   return earliest;
 }
 
+/**
+ * Combine per-file "first release containing the last change" values into a
+ * component/module-level lastChangedIn. A file whose latest change is not in
+ * any release tag yet (undefined) ships in the UPCOMING release — it must
+ * dominate as `version`, not be skipped: a component whose .tsx changed
+ * yesterday but whose .css last shipped in 1.8.0 has lastChangedIn = the
+ * upcoming version, or consumers at 1.8.0 would never be flagged.
+ *
+ * Exposed for testing.
+ */
+export function deriveLastChangedIn(perFileTags, version) {
+  let latest;
+  for (const tag of perFileTags) {
+    const effective = tag ?? version;
+    if (!latest || compareSemver(effective, latest) > 0) latest = effective;
+  }
+  return latest ?? version;
+}
+
 // Last-change commit → earliest containing release. Files last touched by the
 // same commit (the common case for a component's file set) share one lookup.
 const containingReleaseCache = new Map();
@@ -241,16 +260,12 @@ function buildRegistry() {
     // lastChangedIn: the release that first shipped the most recent change to
     // ANY of this component's source files. Scanning every file matters — a
     // change to a non-first file (a hook, a types module) must still bump
-    // lastChangedIn. Falls back to the package version when a file's latest
-    // change is not in any release tag yet (it ships in the upcoming release).
-    let foundTag;
-    for (const file of component.files ?? []) {
-      const tag = getLastChangedTag(join(PACKAGES_DIR, file.source));
-      if (tag && (!foundTag || compareSemver(tag, foundTag) > 0)) {
-        foundTag = tag;
-      }
-    }
-    const lastChangedIn = foundTag ?? version;
+    // lastChangedIn. Untagged changes dominate as the upcoming release; see
+    // deriveLastChangedIn.
+    const lastChangedIn = deriveLastChangedIn(
+      (component.files ?? []).map((file) => getLastChangedTag(join(PACKAGES_DIR, file.source))),
+      version
+    );
 
     // Enrich each file with its source SHA-256
     const enrichedFiles = (component.files ?? []).map((file) => {
@@ -287,18 +302,14 @@ function buildRegistry() {
       const version = packagesMap[sourcePackage]?.version ?? template.version;
 
       // lastChangedIn: the release that first shipped the latest change to ANY
-      // of the module's source files (and its single-file `path`). Falls back
-      // to version for changes not yet in any release tag.
-      let foundTag;
+      // of the module's source files (and its single-file `path`). Untagged
+      // changes dominate as the upcoming release; see deriveLastChangedIn.
       const allSources = [...(mod.files ?? []).map((f) => f.source)];
       if (mod.path) allSources.push(mod.path);
-      for (const source of allSources) {
-        const tag = getLastChangedTag(join(PACKAGES_DIR, source));
-        if (tag && (!foundTag || compareSemver(tag, foundTag) > 0)) {
-          foundTag = tag;
-        }
-      }
-      const lastChangedIn = foundTag ?? version;
+      const lastChangedIn = deriveLastChangedIn(
+        allSources.map((source) => getLastChangedTag(join(PACKAGES_DIR, source))),
+        version
+      );
 
       let enrichedMod = {
         ...mod,
