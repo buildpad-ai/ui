@@ -512,11 +512,12 @@ export function RichTextMarkdown({
               aria-label={label ? `${label} (Markdown source)` : 'Markdown source'}
               placeholder={placeholder}
               variant="unstyled"
+              // No minHeight here: react-textarea-autosize (behind `autosize`)
+              // rejects style.minHeight — minRows provides the floor instead.
               styles={{
                 input: {
                   fontFamily: 'var(--mantine-font-family-monospace)',
                   fontSize: 'var(--mantine-font-size-sm)',
-                  minHeight: '200px',
                   padding: 'var(--mantine-spacing-md)',
                 },
               }}
