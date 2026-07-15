@@ -1,5 +1,15 @@
 # @buildpad/ui-files
 
+## 1.9.1
+
+### Patch Changes
+
+- Updated dependencies [a453388]
+  - @buildpad/ui-interfaces@1.9.1
+  - @buildpad/hooks@1.9.1
+  - @buildpad/services@1.9.1
+  - @buildpad/types@1.9.1
+
 ## 1.9.0
 
 ### Patch Changes

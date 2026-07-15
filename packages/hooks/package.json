@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/hooks",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
   "description": "Shared React hooks for Buildpad projects - DaaS-compatible relation hooks",
   "main": "./src/index.ts",

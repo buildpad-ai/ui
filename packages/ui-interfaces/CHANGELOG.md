@@ -1,5 +1,17 @@
 # @buildpad/ui-interfaces
 
+## 1.9.1
+
+### Patch Changes
+
+- a453388: RichTextMarkdown: fix a crash when opening Source mode — react-textarea-autosize (behind Mantine's `autosize` Textarea) rejects `style.minHeight`; the height floor now comes from `minRows` alone. This fix was part of the Source-mode branch but missed the 1.9.0 merge window.
+  - @buildpad/ui-form@1.9.1
+  - @buildpad/ui-collections@1.9.1
+  - @buildpad/hooks@1.9.1
+  - @buildpad/services@1.9.1
+  - @buildpad/types@1.9.1
+  - @buildpad/utils@1.9.1
+
 ## 1.9.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-collections",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "Dynamic collection components (Form, List) for Buildpad projects",
   "type": "module",
   "main": "./dist/index.js",
