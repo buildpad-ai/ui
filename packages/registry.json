@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-15T05:37:44.782Z",
+  "generatedAt": "2026-07-15T05:46:35.139Z",
   "version": "1.8.1",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -2467,7 +2467,7 @@
         {
           "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.tsx",
           "target": "components/ui/rich-text-markdown.tsx",
-          "sourceSha256": "f78c11aefc2a9871faf493e54c11af3abb5804b83e28ce7b2ea67ed9d5a040e1"
+          "sourceSha256": "827415de21ff1ade09ee04d43f441a17ea073f73761e4914a232a8ec63e7caf5"
         },
         {
           "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.css",
