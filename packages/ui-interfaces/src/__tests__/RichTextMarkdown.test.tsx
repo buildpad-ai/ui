@@ -72,35 +72,51 @@ describe('RichTextMarkdown', () => {
     expect(editor).toBeDefined();
   });
 
-  it('shows edit and preview toggle buttons', async () => {
+  it('shows edit and source toggle buttons', async () => {
     renderWithProvider(<RichTextMarkdown />);
 
     expect(await screen.findByText('Edit')).toBeDefined();
-    expect(screen.getByText('Preview')).toBeDefined();
+    expect(screen.getByText('Source')).toBeDefined();
   });
 
-  it('renders Markdown as formatted HTML in preview mode (not raw source)', async () => {
-    renderWithProvider(
-      <RichTextMarkdown
-        value={'## MarkdownPreview\n\n> todo: React component preview markdown text.'}
-      />
-    );
+  it('shows the raw Markdown in source mode', async () => {
+    const md = '## MarkdownSource\n\n> todo: React component source markdown text.';
+    renderWithProvider(<RichTextMarkdown value={md} label="Markdown" />);
 
-    // Wait for the Tiptap editor to initialize, then switch to preview.
-    const previewButton = await screen.findByText('Preview');
-    fireEvent.click(previewButton);
+    // Wait for the Tiptap editor to initialize, then switch to source.
+    const sourceButton = await screen.findByText('Source');
+    fireEvent.click(sourceButton);
+
+    const textarea = await screen.findByLabelText<HTMLTextAreaElement>('Markdown (Markdown source)');
+    // Raw Markdown syntax, verbatim — NOT rendered elements.
+    expect(textarea.value).toContain('## MarkdownSource');
+    expect(textarea.value).toContain('> todo:');
+  });
+
+  it('propagates source-mode edits through onChange', async () => {
+    const onChange = jest.fn();
+    renderWithProvider(<RichTextMarkdown value="Hello" onChange={onChange} />);
+
+    fireEvent.click(await screen.findByText('Source'));
+    const textarea = await screen.findByLabelText<HTMLTextAreaElement>('Markdown source');
+    fireEvent.change(textarea, { target: { value: '## Edited in source' } });
+
+    expect(onChange).toHaveBeenCalledWith('## Edited in source');
+  });
+
+  it('re-parses source edits into the WYSIWYG doc when switching back', async () => {
+    renderWithProvider(<RichTextMarkdown value="Hello" />);
+
+    fireEvent.click(await screen.findByText('Source'));
+    const textarea = await screen.findByLabelText<HTMLTextAreaElement>('Markdown source');
+    fireEvent.change(textarea, { target: { value: '## FromSource' } });
+    fireEvent.click(screen.getByText('Edit'));
 
     await waitFor(() => {
-      const heading = document.querySelector('.mantine-Paper-root h2');
+      const heading = document.querySelector('.mantine-RichTextEditor-content h2');
       expect(heading).not.toBeNull();
-      expect(heading?.textContent).toContain('MarkdownPreview');
+      expect(heading?.textContent).toContain('FromSource');
     });
-
-    const preview = document.querySelector('.mantine-Paper-root');
-    // The blockquote should be rendered as an element...
-    expect(preview?.querySelector('blockquote')).not.toBeNull();
-    // ...and the raw Markdown symbols should NOT appear as literal text.
-    expect(preview?.innerHTML).not.toContain('## MarkdownPreview');
   });
 });
 

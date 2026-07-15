@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RichTextEditor, Link } from '@mantine/tiptap';
 import '@mantine/tiptap/styles.css';
 import { useEditor } from '@tiptap/react';
@@ -29,8 +29,8 @@ import typescript from 'highlight.js/lib/languages/typescript';
 import css from 'highlight.js/lib/languages/css';
 import html from 'highlight.js/lib/languages/xml';
 import json from 'highlight.js/lib/languages/json';
-import { ActionIcon, Group, Button, Paper, Text } from '@mantine/core';
-import { IconEye, IconEdit, IconPhoto, IconTable, IconHeading } from '@tabler/icons-react';
+import { ActionIcon, Group, Button, Text, Textarea } from '@mantine/core';
+import { IconCode, IconEdit, IconPhoto, IconTable, IconHeading } from '@tabler/icons-react';
 import './RichTextMarkdown.css';
 
 // Create lowlight instance for code highlighting
@@ -89,7 +89,11 @@ export interface RichTextMarkdownProps {
   softLength?: number;
   /** Font family for editor */
   editorFont?: 'sans-serif' | 'serif' | 'monospace';
-  /** Font family for preview */
+  /**
+   * @deprecated The rendered "Preview" mode was replaced by an editable raw
+   * "Source" mode (always monospace) — the WYSIWYG editor IS the preview.
+   * Kept so existing call sites keep type-checking; has no effect.
+   */
   previewFont?: 'sans-serif' | 'serif' | 'monospace';
   /** Custom syntax extensions */
   customSyntax?: Array<{
@@ -101,7 +105,10 @@ export interface RichTextMarkdownProps {
   }>;
 }
 
-type ViewMode = 'editor' | 'preview';
+// 'editor' is the WYSIWYG view (Markdown renders as you type — it doubles as
+// the preview); 'source' is an editable raw-Markdown textarea for users who
+// want to see or edit the underlying syntax.
+type ViewMode = 'editor' | 'source';
 
 const defaultToolbar = [
   'heading',
@@ -128,10 +135,12 @@ export function RichTextMarkdown({
   toolbar = defaultToolbar,
   softLength,
   editorFont = 'sans-serif',
-  previewFont = 'sans-serif',
   customSyntax = [],
 }: RichTextMarkdownProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('editor');
+  // Raw Markdown shown/edited in source mode. Seeded from the editor when
+  // entering source mode; written back into the editor when leaving it.
+  const [sourceText, setSourceText] = useState('');
   const [tableDialog, setTableDialog] = useState({ open: false, rows: 3, columns: 3 });
   const [imageDialog, setImageDialog] = useState(false);
 
@@ -188,13 +197,45 @@ export function RichTextMarkdown({
     },
   });
 
-  // Update editor content when value prop changes. Compare against the
+  // Update editor content when the value prop changes. Compare against the
   // serialized Markdown (not HTML) so an unchanged value doesn't reset the doc.
+  // In source mode the textarea is the live view: sync EXTERNAL value changes
+  // into it instead of the hidden editor (an echo of our own onChange
+  // satisfies value === sourceText, so typing never loses the cursor).
+  //
+  // Deliberately keyed to [editor, value] only — mode transitions carry
+  // content across imperatively in switchViewMode; re-running this effect on
+  // viewMode/sourceText changes would clobber source edits with a stale
+  // `value` when the component is used uncontrolled. Refs supply the current
+  // values without retriggering.
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+  const sourceTextRef = useRef(sourceText);
+  sourceTextRef.current = sourceText;
   useEffect(() => {
-    if (editor && value !== editor.storage.markdown.getMarkdown()) {
+    if (!editor) return;
+    if (viewModeRef.current === 'source') {
+      if (value !== sourceTextRef.current) {
+        setSourceText(value || '');
+      }
+      return;
+    }
+    if (value !== editor.storage.markdown.getMarkdown()) {
       editor.commands.setContent(value || '');
     }
   }, [editor, value]);
+
+  // Switch views, carrying content across: editor → source serializes the doc;
+  // source → editor re-parses whatever the user typed as Markdown.
+  const switchViewMode = useCallback((mode: ViewMode) => {
+    if (!editor || mode === viewMode) return;
+    if (mode === 'source') {
+      setSourceText(editor.storage.markdown.getMarkdown());
+    } else if (sourceText !== editor.storage.markdown.getMarkdown()) {
+      editor.commands.setContent(sourceText);
+    }
+    setViewMode(mode);
+  }, [editor, viewMode, sourceText]);
 
   // Character count functionality
   const characterCount = editor?.getText()?.length || 0;
@@ -421,25 +462,26 @@ export function RichTextMarkdown({
           {/* Spacer */}
           <div className="rich-text-markdown-spacer" />
 
-          {/* View Mode Toggle */}
+          {/* View Mode Toggle — the WYSIWYG editor renders Markdown as you
+              type (it IS the preview); Source exposes the raw Markdown. */}
           <Group gap={0}>
             <Button
               variant={viewMode === 'editor' ? 'filled' : 'subtle'}
               size="xs"
-              onClick={() => setViewMode('editor')}
+              onClick={() => switchViewMode('editor')}
               leftSection={<IconEdit size={14} />}
               style={{ borderRadius: 'var(--mantine-radius-sm) 0 0 var(--mantine-radius-sm)' }}
             >
               Edit
             </Button>
             <Button
-              variant={viewMode === 'preview' ? 'filled' : 'subtle'}
+              variant={viewMode === 'source' ? 'filled' : 'subtle'}
               size="xs"
-              onClick={() => setViewMode('preview')}
-              leftSection={<IconEye size={14} />}
+              onClick={() => switchViewMode('source')}
+              leftSection={<IconCode size={14} />}
               style={{ borderRadius: '0 var(--mantine-radius-sm) var(--mantine-radius-sm) 0' }}
             >
-              Preview
+              Source
             </Button>
           </Group>
         </RichTextEditor.Toolbar>
@@ -453,26 +495,32 @@ export function RichTextMarkdown({
             }} 
           />
           
-          {/* Preview — render the current Markdown to HTML so headings,
-              blockquotes, tables, etc. display as formatted content rather
-              than raw Markdown source. */}
-          {viewMode === 'preview' && (
-            <Paper
-              p="md"
-              style={{
-                minHeight: '200px',
-                fontFamily: `var(--mantine-font-family-${previewFont})`,
+          {/* Source — the raw Markdown behind the document, editable. Changes
+              flow up through onChange immediately and re-parse into the
+              WYSIWYG doc when switching back to Edit. */}
+          {viewMode === 'source' && (
+            <Textarea
+              value={sourceText}
+              onChange={(e) => {
+                const text = e.currentTarget.value;
+                setSourceText(text);
+                onChange?.(text);
               }}
-            >
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: marked.parse(editor.storage.markdown.getMarkdown() || '', {
-                    async: false,
-                    gfm: true,
-                  }) || '<p><em>Nothing to preview</em></p>'
-                }}
-              />
-            </Paper>
+              disabled={disabled}
+              autosize
+              minRows={8}
+              aria-label={label ? `${label} (Markdown source)` : 'Markdown source'}
+              placeholder={placeholder}
+              variant="unstyled"
+              styles={{
+                input: {
+                  fontFamily: 'var(--mantine-font-family-monospace)',
+                  fontSize: 'var(--mantine-font-size-sm)',
+                  minHeight: '200px',
+                  padding: 'var(--mantine-spacing-md)',
+                },
+              }}
+            />
           )}
         </div>
 
