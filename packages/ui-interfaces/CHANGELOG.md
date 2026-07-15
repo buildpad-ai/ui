@@ -1,5 +1,20 @@
 # @buildpad/ui-interfaces
 
+## 1.9.0
+
+### Minor Changes
+
+- 5bf4320: RichTextMarkdown: replace the rendered "Preview" toggle with an editable raw-Markdown "Source" mode. The WYSIWYG editor renders Markdown as you type (it is the preview), which made a separate Preview mode redundant and confusing. Source mode shows the underlying Markdown in a monospace textarea; edits flow through `onChange` immediately and re-parse into the rich editor when switching back. The `previewFont` prop is deprecated (kept for type compatibility, no effect).
+
+### Patch Changes
+
+- @buildpad/ui-form@1.9.0
+- @buildpad/ui-collections@1.9.0
+- @buildpad/hooks@1.9.0
+- @buildpad/services@1.9.0
+- @buildpad/types@1.9.0
+- @buildpad/utils@1.9.0
+
 ## 1.8.1
 
 ### Patch Changes

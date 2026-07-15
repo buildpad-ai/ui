@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
   "license": "MIT",
