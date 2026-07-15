@@ -1,5 +1,16 @@
 # @buildpad/ui-interfaces
 
+## 1.8.1
+
+### Patch Changes
+
+- @buildpad/hooks@1.8.1
+- @buildpad/services@1.8.1
+- @buildpad/types@1.8.1
+- @buildpad/ui-collections@1.8.1
+- @buildpad/ui-form@1.8.1
+- @buildpad/utils@1.8.1
+
 ## 1.8.0
 
 ### Minor Changes

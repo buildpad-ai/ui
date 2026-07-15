@@ -1,5 +1,13 @@
 # @buildpad/hooks
 
+## 1.8.1
+
+### Patch Changes
+
+- @buildpad/services@1.8.1
+- @buildpad/types@1.8.1
+- @buildpad/utils@1.8.1
+
 ## 1.8.0
 
 ### Patch Changes

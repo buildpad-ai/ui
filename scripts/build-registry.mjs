@@ -117,28 +117,73 @@ export function extractSemverFromTag(tag) {
 }
 
 /**
- * Ask git for the most recent tag (as bare semver) that included a change
- * to `fullPath`.  Returns undefined when git is unavailable, no tags exist
- * yet, or no tag could be parsed into a semver.
+ * Semver of a RELEASE tag, or undefined for anything else.
+ * Release tags are the changesets shape `@buildpad/<pkg>@X.Y.Z` plus the
+ * legacy bare / `v` / `release-` prefixed shapes. Non-release tags that
+ * happen to embed a version (docs@0.1.0, storybook-host@0.1.0) must return
+ * undefined — their low semvers would otherwise win the earliest-containing-
+ * release selection below.
+ *
+ * Exposed for testing.
+ */
+export function releaseTagSemver(tag) {
+  if (!tag) return undefined;
+  const t = tag.trim();
+  const m = t.match(/^@buildpad\/[^@]+@(\d+)\.(\d+)\.(\d+)$/);
+  if (m) return `${m[1]}.${m[2]}.${m[3]}`;
+  if (/^(v|release-)?\d+\.\d+\.\d+$/.test(t)) return extractSemverFromTag(t);
+  return undefined;
+}
+
+/**
+ * Lowest release semver among `tags` — i.e. the release that first shipped
+ * whatever commit the tags were derived from. Returns undefined when no
+ * release tag is present.
+ *
+ * Exposed for testing.
+ */
+export function earliestReleaseSemver(tags) {
+  let earliest;
+  for (const tag of tags) {
+    const semver = releaseTagSemver(tag);
+    if (semver && (!earliest || compareSemver(semver, earliest) < 0)) earliest = semver;
+  }
+  return earliest;
+}
+
+// Last-change commit → earliest containing release. Files last touched by the
+// same commit (the common case for a component's file set) share one lookup.
+const containingReleaseCache = new Map();
+
+/**
+ * The release (as bare semver) that first shipped the most recent change to
+ * `fullPath`: take the file's last-change commit and find the earliest
+ * release tag containing it. Returns undefined when git is unavailable, the
+ * file has no history, or its latest change is not in any release tag yet
+ * (i.e. it changes in the upcoming release — callers fall back to the
+ * package version, which is exactly that release).
+ *
+ * NOTE: this must NOT look for tag decorations on the file's own commits
+ * (the pre-1.8.1 implementation did) — changesets tags point at release
+ * commits, which never touch component sources, so that lookup found
+ * nothing and every component degraded to lastChangedIn == version
+ * ("everything changed every release").
  */
 function getLastChangedTag(fullPath) {
   try {
-    // Walk the log; stop at the first line that mentions a tag decoration.
-    const raw = execSync(
-      `git log --format="%D" --tags --follow -- "${fullPath}"`,
-      { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8', timeout: 5000 }
-    );
-    for (const line of raw.split('\n')) {
-      const m = line.match(/tag:\s*([^\s,]+)/);
-      if (m) {
-        const semver = extractSemverFromTag(m[1]);
-        if (semver) return semver;
-      }
-    }
+    const gitOpts = { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8', timeout: 5000 };
+    const sha = execSync(`git log -1 --follow --format=%H -- "${fullPath}"`, gitOpts).trim();
+    if (!sha) return undefined;
+
+    if (containingReleaseCache.has(sha)) return containingReleaseCache.get(sha);
+    const tags = execSync(`git tag --contains ${sha}`, gitOpts).split('\n');
+    const semver = earliestReleaseSemver(tags);
+    containingReleaseCache.set(sha, semver);
+    return semver;
   } catch {
     // git not available or no history — ignore
+    return undefined;
   }
-  return undefined;
 }
 
 /**
@@ -193,10 +238,11 @@ function buildRegistry() {
 
     const version = packagesMap[sourcePackage]?.version ?? '0.1.18';
 
-    // lastChangedIn: most recent git tag (by semver) that touched ANY of this
-    // component's source files. Scanning every file matters — a change to a
-    // non-first file (a hook, a types module) must still bump lastChangedIn.
-    // Falls back to the package version when no file has a tagged change.
+    // lastChangedIn: the release that first shipped the most recent change to
+    // ANY of this component's source files. Scanning every file matters — a
+    // change to a non-first file (a hook, a types module) must still bump
+    // lastChangedIn. Falls back to the package version when a file's latest
+    // change is not in any release tag yet (it ships in the upcoming release).
     let foundTag;
     for (const file of component.files ?? []) {
       const tag = getLastChangedTag(join(PACKAGES_DIR, file.source));
@@ -240,8 +286,9 @@ function buildRegistry() {
         : '@buildpad/cli';
       const version = packagesMap[sourcePackage]?.version ?? template.version;
 
-      // lastChangedIn: highest semver tag that touched ANY of the module's
-      // source files (and its single-file `path`). Falls back to version.
+      // lastChangedIn: the release that first shipped the latest change to ANY
+      // of the module's source files (and its single-file `path`). Falls back
+      // to version for changes not yet in any release tag.
       let foundTag;
       const allSources = [...(mod.files ?? []).map((f) => f.source)];
       if (mod.path) allSources.push(mod.path);

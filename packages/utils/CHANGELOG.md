@@ -1,5 +1,11 @@
 # @buildpad/utils
 
+## 1.8.1
+
+### Patch Changes
+
+- @buildpad/types@1.8.1
+
 ## 1.8.0
 
 ### Patch Changes
