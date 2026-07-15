@@ -89,3 +89,24 @@
 .rich-text-markdown-file-input {
   margin-bottom: 12px;
 }
+
+/* Tables — shared styling for the editor content and the rendered preview */
+.rich-text-markdown-wrapper table {
+  border-collapse: collapse;
+  width: auto;
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.rich-text-markdown-wrapper table th,
+.rich-text-markdown-wrapper table td {
+  border: 1px solid var(--mantine-color-gray-4);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rich-text-markdown-wrapper table th {
+  background-color: var(--mantine-color-gray-1);
+  font-weight: 600;
+}

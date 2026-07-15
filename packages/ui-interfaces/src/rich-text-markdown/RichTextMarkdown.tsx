@@ -12,7 +12,18 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
+import { Markdown, type MarkdownStorage } from 'tiptap-markdown';
+import { marked } from 'marked';
 import { createLowlight } from 'lowlight';
+
+// tiptap-markdown adds `editor.storage.markdown` at runtime but does not
+// augment Tiptap's Storage type, so declare it here.
+declare module '@tiptap/core' {
+  interface Storage {
+    markdown: MarkdownStorage;
+  }
+}
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
 import css from 'highlight.js/lib/languages/css';
@@ -25,6 +36,35 @@ import './RichTextMarkdown.css';
 // Create lowlight instance for code highlighting
 const lowlight = createLowlight();
 lowlight.register({ javascript, typescript, css, html, json });
+
+// Detect Markdown block syntax so we only reinterpret code-block pastes that
+// are actually Markdown source (leaving genuine code snippets as code blocks).
+function looksLikeMarkdown(text: string): boolean {
+  return (
+    /(^|\n)\s{0,3}(#{1,6}\s|>\s|[-*+]\s|\d+\.\s|\|.*\|)/.test(text) ||
+    /(^|\n)\s*(```|~~~)/.test(text)
+  );
+}
+
+// When content is copied from a *rendered* Markdown code fence (chat apps, code
+// viewers, GitHub), the clipboard's text/html is a lone <pre><code> block.
+// Tiptap prefers text/html, so it would trap the whole document in a code block.
+// For a Markdown field we instead treat that source as Markdown and render it.
+// Exported for unit testing.
+export function unwrapCodeBlockPaste(html: string): string {
+  if (typeof window === 'undefined' || !html) {
+    return html;
+  }
+  const body = new window.DOMParser().parseFromString(html, 'text/html').body;
+  const elements = Array.from(body.children);
+  if (elements.length === 1 && elements[0].tagName === 'PRE') {
+    const source = elements[0].textContent ?? '';
+    if (looksLikeMarkdown(source)) {
+      return marked.parse(source, { async: false, gfm: true }) as string;
+    }
+  }
+  return html;
+}
 
 export interface RichTextMarkdownProps {
   /** Current value of the editor */
@@ -115,24 +155,43 @@ export function RichTextMarkdown({
       CodeBlockLowlight.configure({
         lowlight,
       }),
+      // GFM tables so Markdown tables round-trip instead of being flattened
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Placeholder.configure({
         placeholder,
+      }),
+      // Parse the `value` string as Markdown on load and serialize the
+      // document back to Markdown via editor.storage.markdown.getMarkdown()
+      Markdown.configure({
+        html: true,
+        linkify: true,
+        breaks: false,
+        transformPastedText: true,
       }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
-      // Get HTML content for now (we'll convert to markdown later if needed)
-      const html = editor.getHTML();
-      onChange?.(html);
+      // Persist Markdown (not HTML) so the field round-trips as Markdown
+      const markdown = editor.storage.markdown.getMarkdown();
+      onChange?.(markdown);
     },
     editable: !disabled && viewMode === 'editor',
     immediatelyRender: false,
     shouldRerenderOnTransaction: true,
+    editorProps: {
+      // Reinterpret Markdown source pasted from a rendered code fence instead
+      // of dropping the whole document into a single code block.
+      transformPastedHTML: unwrapCodeBlockPaste,
+    },
   });
 
-  // Update editor content when value prop changes
+  // Update editor content when value prop changes. Compare against the
+  // serialized Markdown (not HTML) so an unchanged value doesn't reset the doc.
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
+    if (editor && value !== editor.storage.markdown.getMarkdown()) {
       editor.commands.setContent(value || '');
     }
   }, [editor, value]);
@@ -183,9 +242,12 @@ export function RichTextMarkdown({
       }
       case 'table':
         if (options?.rows && options?.columns) {
-          // For now, just insert a markdown table structure
-          const tableMarkdown = createTableMarkdown(options.rows, options.columns);
-          editor.chain().focus().insertContent(tableMarkdown).run();
+          // Insert a real table node so it round-trips through Markdown
+          editor
+            .chain()
+            .focus()
+            .insertTable({ rows: options.rows, cols: options.columns, withHeaderRow: true })
+            .run();
         }
         break;
       case 'custom':
@@ -198,17 +260,6 @@ export function RichTextMarkdown({
         break;
     }
   }, [editor]);
-
-  // Helper function to create table markdown
-  const createTableMarkdown = (rows: number, columns: number): string => {
-    const headerRow = `| ${Array(columns).fill('Header').join(' | ')} |`;
-    const separatorRow = `| ${Array(columns).fill('---').join(' | ')} |`;
-    const dataRows = Array(rows - 1).fill(0).map(() => 
-      `| ${Array(columns).fill('Cell').join(' | ')} |`
-    ).join('\n');
-    
-    return `\n${headerRow}\n${separatorRow}\n${dataRows}\n`;
-  };
 
   // Handle image upload
   const handleImageUpload = useCallback((file: File) => {
@@ -402,20 +453,24 @@ export function RichTextMarkdown({
             }} 
           />
           
-          {/* Preview */}
+          {/* Preview — render the current Markdown to HTML so headings,
+              blockquotes, tables, etc. display as formatted content rather
+              than raw Markdown source. */}
           {viewMode === 'preview' && (
-            <Paper 
-              p="md" 
-              style={{ 
+            <Paper
+              p="md"
+              style={{
                 minHeight: '200px',
                 fontFamily: `var(--mantine-font-family-${previewFont})`,
-                whiteSpace: 'pre-wrap',
               }}
             >
-              <div 
-                dangerouslySetInnerHTML={{ 
-                  __html: editor.getHTML() || '<p><em>Nothing to preview</em></p>' 
-                }} 
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: marked.parse(editor.storage.markdown.getMarkdown() || '', {
+                    async: false,
+                    gfm: true,
+                  }) || '<p><em>Nothing to preview</em></p>'
+                }}
               />
             </Paper>
           )}
