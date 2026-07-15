@@ -1,5 +1,7 @@
 # @buildpad/cli
 
+## 2.0.0
+
 ## 1.8.1
 
 ### Patch Changes

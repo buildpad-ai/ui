@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-forms",
-  "version": "1.8.1",
+  "version": "2.0.0",
   "description": "Dynamic form builder (design-time authoring + runtime renderer) for Buildpad projects",
   "type": "module",
   "main": "./dist/index.js",

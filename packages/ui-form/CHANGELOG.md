@@ -1,5 +1,15 @@
 # @buildpad/ui-form
 
+## 2.0.0
+
+### Patch Changes
+
+- Updated dependencies [5bf4320]
+  - @buildpad/ui-interfaces@2.0.0
+  - @buildpad/services@2.0.0
+  - @buildpad/types@2.0.0
+  - @buildpad/utils@2.0.0
+
 ## 1.8.1
 
 ### Patch Changes
