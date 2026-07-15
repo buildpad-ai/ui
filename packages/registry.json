@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-13T09:05:16.085Z",
+  "generatedAt": "2026-07-14T10:16:42.188Z",
   "version": "1.7.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -2467,12 +2467,12 @@
         {
           "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.tsx",
           "target": "components/ui/rich-text-markdown.tsx",
-          "sourceSha256": "cfbc4df68225ad6ea15ea21835690c766fb507ef2ec43cfbf10f5ec3bca8dcc9"
+          "sourceSha256": "581845e9e595e0d87c9195f789de8d7966dc6f978898c25a413e7fcaf16c3096"
         },
         {
           "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.css",
           "target": "components/ui/RichTextMarkdown.css",
-          "sourceSha256": "2eaac51bc3e2db2bcad78e2e1b6833f28cc10ddd03253c164445a8c080e50cf7"
+          "sourceSha256": "2c752744acd2b60e14c6a3e73e74e519966dfe41bb6916d6c964f428dd284cc8"
         }
       ],
       "dependencies": [
@@ -2490,8 +2490,11 @@
         "@tiptap/extension-color",
         "@tiptap/extension-text-style",
         "@tiptap/extension-code-block-lowlight",
+        "@tiptap/extension-table",
         "lowlight",
-        "highlight.js"
+        "highlight.js",
+        "tiptap-markdown",
+        "marked"
       ],
       "internalDependencies": [],
       "interface": {

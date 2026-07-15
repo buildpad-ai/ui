@@ -1,22 +1,25 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 
-// Mock the lowlight import to avoid test issues
+// Mock the lowlight import to avoid ESM/highlight.js issues in jsdom
 jest.mock('lowlight', () => ({
   createLowlight: () => ({
     register: jest.fn(),
   }),
 }));
 
+// The component imports CodeBlockLowlight as a default export, so the mock
+// must expose a default with a `configure` that returns a valid extension.
 jest.mock('@tiptap/extension-code-block-lowlight', () => ({
-  CodeBlockLowlight: {
+  __esModule: true,
+  default: {
     configure: jest.fn(() => ({})),
   },
 }));
 
 // Import after mocking
-import { RichTextMarkdown } from './RichTextMarkdown';
+import { RichTextMarkdown, unwrapCodeBlockPaste } from '../rich-text-markdown/RichTextMarkdown';
 
 const renderWithProvider = (component: React.ReactElement) => {
   return render(
@@ -29,7 +32,7 @@ const renderWithProvider = (component: React.ReactElement) => {
 describe('RichTextMarkdown', () => {
   it('renders with default props', () => {
     renderWithProvider(<RichTextMarkdown />);
-    
+
     // Check if the rich text editor container is present
     expect(document.querySelector('.mantine-RichTextEditor-root')).toBeDefined();
   });
@@ -38,7 +41,7 @@ describe('RichTextMarkdown', () => {
     renderWithProvider(
       <RichTextMarkdown label="Markdown Editor" />
     );
-    
+
     expect(screen.getByText('Markdown Editor')).toBeDefined();
   });
 
@@ -46,7 +49,7 @@ describe('RichTextMarkdown', () => {
     renderWithProvider(
       <RichTextMarkdown label="Markdown Editor" required />
     );
-    
+
     expect(screen.getByText('Markdown Editor')).toBeDefined();
     expect(screen.getByText('*')).toBeDefined();
   });
@@ -55,7 +58,7 @@ describe('RichTextMarkdown', () => {
     renderWithProvider(
       <RichTextMarkdown error="This field has an error" />
     );
-    
+
     expect(screen.getByText('This field has an error')).toBeDefined();
   });
 
@@ -63,26 +66,65 @@ describe('RichTextMarkdown', () => {
     renderWithProvider(
       <RichTextMarkdown disabled />
     );
-    
+
     // Editor should be present but in disabled state
     const editor = document.querySelector('.mantine-RichTextEditor-root');
     expect(editor).toBeDefined();
   });
 
-  it('shows edit and preview toggle buttons', () => {
+  it('shows edit and preview toggle buttons', async () => {
     renderWithProvider(<RichTextMarkdown />);
-    
-    expect(screen.getByText('Edit')).toBeDefined();
+
+    expect(await screen.findByText('Edit')).toBeDefined();
     expect(screen.getByText('Preview')).toBeDefined();
   });
 
-  it('calls onChange when content changes', () => {
-    const mockOnChange = jest.fn();
+  it('renders Markdown as formatted HTML in preview mode (not raw source)', async () => {
     renderWithProvider(
-      <RichTextMarkdown onChange={mockOnChange} value="<p>Initial content</p>" />
+      <RichTextMarkdown
+        value={'## MarkdownPreview\n\n> todo: React component preview markdown text.'}
+      />
     );
-    
-    // Editor should be rendered properly
-    expect(document.querySelector('.mantine-RichTextEditor-root')).toBeDefined();
+
+    // Wait for the Tiptap editor to initialize, then switch to preview.
+    const previewButton = await screen.findByText('Preview');
+    fireEvent.click(previewButton);
+
+    await waitFor(() => {
+      const heading = document.querySelector('.mantine-Paper-root h2');
+      expect(heading).not.toBeNull();
+      expect(heading?.textContent).toContain('MarkdownPreview');
+    });
+
+    const preview = document.querySelector('.mantine-Paper-root');
+    // The blockquote should be rendered as an element...
+    expect(preview?.querySelector('blockquote')).not.toBeNull();
+    // ...and the raw Markdown symbols should NOT appear as literal text.
+    expect(preview?.innerHTML).not.toContain('## MarkdownPreview');
+  });
+});
+
+describe('unwrapCodeBlockPaste', () => {
+  const md = '# Title\n\n| # | Problem |\n| --- | --- |\n| 1 | tax |\n';
+  const codeFenceHtml = `<pre><code class="language-markdown">${md
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')}</code></pre>`;
+
+  it('reinterprets a code-fence paste of Markdown as rendered HTML', () => {
+    const out = unwrapCodeBlockPaste(codeFenceHtml);
+    expect(out).toContain('<h1');
+    expect(out).toContain('<table');
+    expect(out).not.toContain('| #');
+  });
+
+  it('leaves a genuine code snippet as a code block', () => {
+    const codeHtml = '<pre><code class="language-js">function add(a, b) { return a + b; }</code></pre>';
+    expect(unwrapCodeBlockPaste(codeHtml)).toBe(codeHtml);
+  });
+
+  it('passes through non-code-block HTML unchanged', () => {
+    const rich = '<p>Some <strong>bold</strong> text</p>';
+    expect(unwrapCodeBlockPaste(rich)).toBe(rich);
   });
 });

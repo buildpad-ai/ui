@@ -2114,8 +2114,11 @@
         "@tiptap/extension-color",
         "@tiptap/extension-text-style",
         "@tiptap/extension-code-block-lowlight",
+        "@tiptap/extension-table",
         "lowlight",
-        "highlight.js"
+        "highlight.js",
+        "tiptap-markdown",
+        "marked"
       ],
       "internalDependencies": [],
       "interface": {
