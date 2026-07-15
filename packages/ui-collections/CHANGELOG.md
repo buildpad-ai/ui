@@ -1,5 +1,15 @@
 # @buildpad/ui-collections
 
+## 1.8.0
+
+### Patch Changes
+
+- @buildpad/ui-form@1.8.0
+- @buildpad/services@1.8.0
+- @buildpad/types@1.8.0
+- @buildpad/ui-table@1.8.0
+- @buildpad/utils@1.8.0
+
 ## 1.7.0
 
 ### Patch Changes
@@ -27,11 +37,11 @@
   argument so consumers can navigate without hardcoding `item.id`.
 
 - Updated dependencies [90dc795]
-  - @buildpad/types@2.0.0
-  - @buildpad/ui-form@2.0.0
-  - @buildpad/ui-table@2.0.0
-  - @buildpad/services@2.0.0
-  - @buildpad/utils@2.0.0
+  - @buildpad/types@1.8.0
+  - @buildpad/ui-form@1.8.0
+  - @buildpad/ui-table@1.8.0
+  - @buildpad/services@1.8.0
+  - @buildpad/utils@1.8.0
 
 ## 1.6.0
 

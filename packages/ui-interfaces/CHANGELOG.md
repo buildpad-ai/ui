@@ -1,5 +1,20 @@
 # @buildpad/ui-interfaces
 
+## 1.8.0
+
+### Minor Changes
+
+- 5c1000a: RichTextMarkdown now persists and round-trips Markdown instead of HTML. It parses the `value` prop as Markdown on load, serializes the document back to Markdown through `onChange`, and renders the preview from Markdown. Adds GFM table support so tables round-trip as real table nodes (the toolbar "table" action now inserts a table node), and reinterprets Markdown source pasted from a rendered code fence instead of trapping the whole document in a single code block.
+
+### Patch Changes
+
+- @buildpad/ui-form@1.8.0
+- @buildpad/ui-collections@1.8.0
+- @buildpad/hooks@1.8.0
+- @buildpad/services@1.8.0
+- @buildpad/types@1.8.0
+- @buildpad/utils@1.8.0
+
 ## 1.7.0
 
 ### Minor Changes
@@ -57,12 +72,12 @@
 - Updated dependencies [c6dd470]
 - Updated dependencies [c6dd470]
 - Updated dependencies [90dc795]
-  - @buildpad/ui-collections@2.0.0
-  - @buildpad/hooks@2.0.0
-  - @buildpad/types@2.0.0
-  - @buildpad/ui-form@2.0.0
-  - @buildpad/services@2.0.0
-  - @buildpad/utils@2.0.0
+  - @buildpad/ui-collections@1.8.0
+  - @buildpad/hooks@1.8.0
+  - @buildpad/types@1.8.0
+  - @buildpad/ui-form@1.8.0
+  - @buildpad/services@1.8.0
+  - @buildpad/utils@1.8.0
 
 ## 1.6.0
 
