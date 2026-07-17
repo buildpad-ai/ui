@@ -6,7 +6,7 @@
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-md);
   box-shadow: var(--mantine-shadow-xs, 0 1px 2px 0 rgb(0 0 0 / 0.05));
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* The composed VTable already sits inside the card — drop its own chrome

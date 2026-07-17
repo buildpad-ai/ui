@@ -13,7 +13,7 @@
 .v-table {
   position: relative;
   height: auto;
-  overflow-y: auto;
+  overflow: visible;
   background: var(--mantine-color-body);
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-md);
@@ -25,6 +25,8 @@
 }
 
 .v-table table {
+  display: flex;
+  flex-direction: column;
   min-width: 100%;
   border-collapse: collapse;
   border-spacing: 0;

@@ -462,7 +462,7 @@ function checkRegistry() {
 
 // Run only when invoked directly (e.g. `node scripts/build-registry.mjs`),
 // not when imported by tests for the helper exports.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url.endsWith('build-registry.mjs') || process.argv[1]?.replace(/\\/g, '/').endsWith('scripts/build-registry.mjs')) {
   if (process.argv.includes('--check')) {
     checkRegistry();
   } else {
