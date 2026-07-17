@@ -13,7 +13,7 @@
 .v-table {
   position: relative;
   height: auto;
-  overflow: visible;
+  overflow: auto;
   background: var(--mantine-color-body);
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-md);
@@ -30,6 +30,7 @@
   min-width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
+  flex: 1;
 }
 
 .v-table table tbody {
@@ -133,6 +134,9 @@
 .v-table .no-items-text {
   text-align: center;
   background-color: var(--mantine-color-gray-0);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 [data-mantine-color-scheme="dark"] .v-table .loading-text,
@@ -144,6 +148,10 @@
 .v-table .no-items-text td {
   padding: 16px;
   color: var(--mantine-color-dimmed);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* Inline style — kept for backwards compatibility; the default table is
