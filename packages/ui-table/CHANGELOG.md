@@ -1,5 +1,14 @@
 # @buildpad/ui-table
 
+## 1.9.2
+
+### Patch Changes
+
+- 0a7e18d: Resolve vertical scrolling issues on collections table and height/scroll-sync bugs on code input editor.
+  - @buildpad/hooks@1.9.2
+  - @buildpad/services@1.9.2
+  - @buildpad/types@1.9.2
+
 ## 1.9.1
 
 ### Patch Changes
