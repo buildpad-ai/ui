@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-15T06:02:45.979Z",
+  "generatedAt": "2026-07-17T07:29:21.913Z",
   "version": "1.9.1",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -86,47 +86,47 @@
   },
   "packages": {
     "@buildpad/ui-interfaces": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "ui-interfaces/CHANGELOG.md"
     },
     "@buildpad/ui-form": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "ui-form/CHANGELOG.md"
     },
     "@buildpad/ui-table": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "ui-table/CHANGELOG.md"
     },
     "@buildpad/ui-collections": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "ui-collections/CHANGELOG.md"
     },
     "@buildpad/ui-files": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "ui-files/CHANGELOG.md"
     },
     "@buildpad/ui-forms": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "ui-forms/CHANGELOG.md"
     },
     "@buildpad/ui-users": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "ui-users/CHANGELOG.md"
     },
     "@buildpad/hooks": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "hooks/CHANGELOG.md"
     },
     "@buildpad/services": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "services/CHANGELOG.md"
     },
     "@buildpad/types": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "types/CHANGELOG.md"
     },
     "@buildpad/utils": {
-      "version": "1.9.1",
+      "version": "1.9.2",
       "changelogUrl": "utils/CHANGELOG.md"
     }
   },
@@ -138,62 +138,62 @@
         {
           "source": "cli/templates/lib/common-utils.ts",
           "target": "lib/buildpad/common-utils.ts",
-          "sourceSha256": "775bef3e1a304ea0119d401969afe24854dc660586a98e92173b55395e6fe436"
+          "sourceSha256": "0c0c094b7d8b558aace59f93036d3df3d8aac19416263400d077c820b74c24c9"
         },
         {
           "source": "utils/src/field-interface-mapper.ts",
           "target": "lib/buildpad/field-interface-mapper.ts",
-          "sourceSha256": "7e5d2576ff5e5938314a2848693bbc8f0dda6dfc75d381bf1046c35e2c182c4c"
+          "sourceSha256": "7f5cbdf4ffc92aefdf396ca99b25536004b698ac121045cc18b680ce2ecfd760"
         },
         {
           "source": "utils/src/interface-types.ts",
           "target": "lib/buildpad/interface-types.ts",
-          "sourceSha256": "1a6e914292ca576bc52219c1c53c2368a448ba2f95611a73a3d4fd5caa5508f9"
+          "sourceSha256": "b06eece66bb8100b01e3156bbc385b9c5927c349151d9a7d392ec0049b0db4b4"
         },
         {
           "source": "utils/src/define-interface.ts",
           "target": "lib/buildpad/define-interface.ts",
-          "sourceSha256": "19b1e22ab7764c79f8d64c5e40188d4d4d95d000c02474179d65e45f6f87830f"
+          "sourceSha256": "7454d4f068ce33ea05807fef5d229277f5cbc718f7f8b2a2cca703f22a47f996"
         },
         {
           "source": "utils/src/interface-registry.ts",
           "target": "lib/buildpad/interface-registry.ts",
-          "sourceSha256": "85303a48aceb704e67a9d2de14ce2c9cd8e2f65a51146dacbd9fcb0dd99b11a3"
+          "sourceSha256": "94ea02db5bf3578f6d59cbdfe024bddbf904e278f0d91808ffbdecad0a3dc061"
         },
         {
           "source": "utils/src/is-new-item.ts",
           "target": "lib/buildpad/is-new-item.ts",
-          "sourceSha256": "852eda416e2fe0e3f41a64de2bc49078ddde3bf232a0cee1f96863f3d7830d44"
+          "sourceSha256": "aae4e9d628aaf1851efc01ebd93d4f24dd26a59f42654f13316fbf2571a98dd5"
         },
         {
           "source": "utils/src/build-fields-from-definition.ts",
           "target": "lib/buildpad/build-fields-from-definition.ts",
-          "sourceSha256": "c09e507e2fafa4c941f681f37724d5defd35e0dd9e53b4933eec9e9f02360e85"
+          "sourceSha256": "423b3002f9d9ffe81bf2b3daab006486afa78c1a76871e02660552779eebf45b"
         },
         {
           "source": "utils/src/field-spec-mapper.ts",
           "target": "lib/buildpad/field-spec-mapper.ts",
-          "sourceSha256": "8dd0bf9be2ee76147bce6a0eeecbd3573497190d344cf7e5d3f7c32dd541f512"
+          "sourceSha256": "68342e8914e4dc0e4204c6a4ac864737eb4c7fb9545f703c2aeb39eb82a1c46e"
         },
         {
           "source": "utils/src/interface-catalog.ts",
           "target": "lib/buildpad/interface-catalog.ts",
-          "sourceSha256": "32d32e50e478106b03730ce54c2838ec1794c77d635983fe98364c461e87b18f"
+          "sourceSha256": "8675c8a3e3873f87a605b28587f300cd3c44308047dce93c7fb76275111bc335"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "1f5ef1bdfeeccf19ba75cdd43a4936c8ca97e024cde40fa03af3b74ec986c4b8"
+          "sourceSha256": "9cc43c3bcc46cf7e8f6b3f44a53126dd055a48bd78b280da964751b2fadb0d93"
         },
         {
           "source": "cli/templates/lib/utils.ts",
           "target": "lib/buildpad/utils.ts",
-          "sourceSha256": "6f343edb3742106a402c9e73eb9c9fa0d5a398cccca7774fa95679f63ebc7424"
+          "sourceSha256": "0aec1f0cf768142e441dca495986d308f847a5b57e6ecd3c2a4b8c4262312ea7"
         },
         {
           "source": "cli/templates/types/modules.d.ts",
           "target": "types/modules.d.ts",
-          "sourceSha256": "ed4bc8b049b79bfab2a006d8734758d2b8fea8df87c40c5c57892523fa432da2"
+          "sourceSha256": "7478b4a3e9b14ca2037bb0688d378fac76922bc44ce27eee980ea97b8cbe578d"
         }
       ],
       "internalDependencies": [
@@ -201,7 +201,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "lastChangedIn": "1.9.1"
     },
     "types": {
       "name": "types",
@@ -210,42 +210,42 @@
         {
           "source": "types/src/core.ts",
           "target": "lib/buildpad/types/core.ts",
-          "sourceSha256": "c98eee2f04e87fde3d2379d072a4c0449ca88d7fec49e6e2628c08631eaedcc5"
+          "sourceSha256": "c8c5cb23428bcf0199d026fcfbf4d4f6168079ebae848704b34294d06debd008"
         },
         {
           "source": "types/src/file.ts",
           "target": "lib/buildpad/types/file.ts",
-          "sourceSha256": "43f75c43349ff182591a84e0c15a5730b51838c250b5e8c2369f5e342f4e2676"
+          "sourceSha256": "fa931ca6bae067365a3a82c4727fd97d302caf3944b0c4481d51cb805063f7f2"
         },
         {
           "source": "types/src/relations.ts",
           "target": "lib/buildpad/types/relations.ts",
-          "sourceSha256": "838d987553cbe09d57cd5560bdde689ba0849f9de4303ea663cc66627bff2362"
+          "sourceSha256": "ad40efb6f22220f05e4af43536b56e9af319a335be8d11cf109c6c59eed85152"
         },
         {
           "source": "types/src/form-definition.ts",
           "target": "lib/buildpad/types/form-definition.ts",
-          "sourceSha256": "76fb865ab75e5d584063b2b46b5f1cac0a56a5eb46f52c629e71cddb719f0946"
+          "sourceSha256": "675830a115a422217945bc71c07c3cf73939edb0d763316af77bf21c9a65b940"
         },
         {
           "source": "types/src/field-spec.ts",
           "target": "lib/buildpad/types/field-spec.ts",
-          "sourceSha256": "3632753aa9591f82873699df8e35661b79d97982e5d64403e2ff35a648600998"
+          "sourceSha256": "4f578056cb5f7c9ad307d5827bdf6410fbde24caf0f65a17ffce90446f555f6e"
         },
         {
           "source": "types/src/users.ts",
           "target": "lib/buildpad/types/users.ts",
-          "sourceSha256": "501b1d5e671f5bbd57dfbe381e28d04e53d623769d4d30d8f521c0b7cc0ebae4"
+          "sourceSha256": "94cfc606c9610a428602a951a7ba7436aaeebdab95d9eb62fa1f5fda5854cf80"
         },
         {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts",
-          "sourceSha256": "ea58945d91f22ac17d04cf31b725b89dcee01e54e20adad62e9ef2ee66f62551"
+          "sourceSha256": "1a0920a88be52e63c3f28158c17f46f96c2130215e9cebd6d5c556949c38bd56"
         }
       ],
       "sourcePackage": "@buildpad/types",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     "services": {
       "name": "services",
@@ -254,27 +254,27 @@
         {
           "source": "services/src/api-request.ts",
           "target": "lib/buildpad/services/api-request.ts",
-          "sourceSha256": "963a52e14f6d9dd0f3f011e1dd489707a8308a53e30be461ec4c2a259e7a3ea5"
+          "sourceSha256": "24e22bab761594fb45584b69300bf58fd26780d3a4a172b2569f2d845e5fcab2"
         },
         {
           "source": "services/src/fields.ts",
           "target": "lib/buildpad/services/fields.ts",
-          "sourceSha256": "12eccf78eb5aff3974fa4b74f3a62bb2e580b233147f81b24a3d2939b0779958"
+          "sourceSha256": "ed405d39a086b8aa91638f6b25149a65da122136a544e6c2b8238f5cf1b20eca"
         },
         {
           "source": "services/src/collections.ts",
           "target": "lib/buildpad/services/collections.ts",
-          "sourceSha256": "a05b4db33971e8da22e8719a6445bdbfa9a266fd304a093439a67aa29d2d94a6"
+          "sourceSha256": "9da00f21617f846494bf4214e65a399e7f180cde58ab00d4a2a13b4fd0832fa8"
         },
         {
           "source": "services/src/items.ts",
           "target": "lib/buildpad/services/items.ts",
-          "sourceSha256": "637afd971d85b5b0bc69250d8e7bb6f76e7e5e3ce668ad93f23749f1ebbe3ee5"
+          "sourceSha256": "82fc59d045a081edb4455f0d02e3f1152ced207b38a137117d739a81da6edf75"
         },
         {
           "source": "services/src/permissions.ts",
           "target": "lib/buildpad/services/permissions.ts",
-          "sourceSha256": "ed5ab59784291d552034665e95eb1d49b2aac1e6c0c33d7604a8ea71226b4393"
+          "sourceSha256": "cbbd3eefa573442b70e93b495e14d4a41f3c3a48bf4274d80d22212bedc4906c"
         },
         {
           "source": "services/src/daas-context.tsx",
@@ -284,27 +284,27 @@
         {
           "source": "services/src/auth/index.ts",
           "target": "lib/buildpad/services/auth/index.ts",
-          "sourceSha256": "861bb2c7ff9383147c959fd04f0fe8fcb2a713c1a16440870fa0b76fd4b8fc89"
+          "sourceSha256": "48c72157fc8ce0a1428ab2d5f73543622d536b6b53358eec37a882e1ffbc5589"
         },
         {
           "source": "services/src/auth/session.ts",
           "target": "lib/buildpad/services/auth/session.ts",
-          "sourceSha256": "863e2e61a04abbbd9a7768579063ce4595733ec41762f2374e1f538e31084b8a"
+          "sourceSha256": "e217ab32754b1fbb6886509e27981581f141aea4f2fbcb9d1af06164ac17554e"
         },
         {
           "source": "services/src/auth/enforcer.ts",
           "target": "lib/buildpad/services/auth/enforcer.ts",
-          "sourceSha256": "f222b9302d45d14c88417179f23357ea0cf90823953b5ec5745c6817f0c3ddcf"
+          "sourceSha256": "c6809af05ebc11956c483023a8c4a7c7959eb7a9929ded6cb5fcec25feabbbb0"
         },
         {
           "source": "services/src/auth/filter-to-query.ts",
           "target": "lib/buildpad/services/auth/filter-to-query.ts",
-          "sourceSha256": "498e44e46519230f573f4a6c99dec516f99ff82daf221ef61ed5edf56065b399"
+          "sourceSha256": "71be752cc6273d62d4818455c7ac55a1919a8a808af071e1fdf769f23325fb88"
         },
         {
           "source": "cli/templates/lib/services/index.ts",
           "target": "lib/buildpad/services/index.ts",
-          "sourceSha256": "fd1872d3a69b59f0a89b69b9ab0970ebcbf35bf8df568be7daacd1b09191f397"
+          "sourceSha256": "cc5722b15749226971c674b9722d11aa4b19f50ed4d255e52e0de982df1db8a3"
         }
       ],
       "internalDependencies": [
@@ -312,8 +312,8 @@
         "utils"
       ],
       "sourcePackage": "@buildpad/services",
-      "version": "1.9.1",
-      "lastChangedIn": "1.6.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     "hooks": {
       "name": "hooks",
@@ -322,127 +322,127 @@
         {
           "source": "hooks/src/api.ts",
           "target": "lib/buildpad/hooks/api.ts",
-          "sourceSha256": "5de2deee001827a84c1b4f1179290c5b0105894bf8157f225e719d24c93073fd"
+          "sourceSha256": "cdd9126e56c5dc6ad1a4515e0e356329a52a76987d214048716e90b274a3ae90"
         },
         {
           "source": "hooks/src/utils.ts",
           "target": "lib/buildpad/hooks/utils.ts",
-          "sourceSha256": "c10ba073a78659ae1f1683f11cd0f3299c21dd48845f57ccb2085dbcc623d99b"
+          "sourceSha256": "668438f8c4b79d977b254b79e304d2e8acbc13271fb727780c3006eb018a7f12"
         },
         {
           "source": "hooks/src/useFiles.ts",
           "target": "lib/buildpad/hooks/useFiles.ts",
-          "sourceSha256": "cf2a7a0b539ee6ca6bd856dd8a85df7fcb536c38767a31521c8fb0688a14fee4"
+          "sourceSha256": "192bb00a98c3af0452d59950d8ab3630bd83ee1d5943d960fcab31814332ab70"
         },
         {
           "source": "hooks/src/useFolders.ts",
           "target": "lib/buildpad/hooks/useFolders.ts",
-          "sourceSha256": "b0e0e0dda9991b53a5afc1323f55bc12cef8405399124402851e23220a39e32a"
+          "sourceSha256": "46b93bbc6c646d434ffc83bbeec9bcf17f1645335898f4f32f13556bc15dec79"
         },
         {
           "source": "hooks/src/useRelationM2M.ts",
           "target": "lib/buildpad/hooks/useRelationM2M.ts",
-          "sourceSha256": "14379ab4f1c40fe7cfbfdd1f6d5abb999bf02b0c526b5b828f424395c13c31f3"
+          "sourceSha256": "576806e5067e5a5f8b5f4a2a94a6fa0b53fe3d1c706f115ac1d735698057208a"
         },
         {
           "source": "hooks/src/useRelationM2MItems.ts",
           "target": "lib/buildpad/hooks/useRelationM2MItems.ts",
-          "sourceSha256": "0b4f2b802d1673a9dadcd3bf538edf7cc099fc0c9ceb2190aefbd688e6c4b791"
+          "sourceSha256": "6603d4c4985d8e1ab986e7fc5c83f6f4e6b28653b0c2f48f0712ca5a29dff705"
         },
         {
           "source": "hooks/src/useRelationM2O.ts",
           "target": "lib/buildpad/hooks/useRelationM2O.ts",
-          "sourceSha256": "a980bcc5b8a4e3ac4414ae96bcfa3eff767f2362647cc0dc715ebab9491b0899"
+          "sourceSha256": "95863120b6223dacc3ee45a0e749995edf3229f0d004cc517cee0fd3f2a376ab"
         },
         {
           "source": "hooks/src/useRelationO2M.ts",
           "target": "lib/buildpad/hooks/useRelationO2M.ts",
-          "sourceSha256": "8c294b800b1e67274be95d3070209930a34fac0e123957d249697f2ade0add90"
+          "sourceSha256": "49440d92ab3c1ea2b5271343053917fa54f1ebb5f9d0f9a0c943a13dd7b25d36"
         },
         {
           "source": "hooks/src/useRelationM2A.ts",
           "target": "lib/buildpad/hooks/useRelationM2A.ts",
-          "sourceSha256": "3304abb376c6bc8868671136a5e356aedf8bfbc9d3e45ea33ad8f81250e46a9f"
+          "sourceSha256": "284b4b64341f4bd9a01bbaf05150c148d066f894f5d6c08cf3a86622eb7223a0"
         },
         {
           "source": "hooks/src/useRelationPermissionsM2A.ts",
           "target": "lib/buildpad/hooks/useRelationPermissionsM2A.ts",
-          "sourceSha256": "ba5abe43fc3829b5827b015f78d353be33227bb3123a4bf3fc135bf9817eb1f9"
+          "sourceSha256": "ed5170d45f8648a6b4eba7f8507ebb42db1f11d170e1e9aeaf79b61246e8dde0"
         },
         {
           "source": "hooks/src/useSelection.ts",
           "target": "lib/buildpad/hooks/useSelection.ts",
-          "sourceSha256": "d7ebabfa8522b132e31a4a4b5e4eeac47cb8654aefde9b319cdc207fbdb30200"
+          "sourceSha256": "b2b281fdc3b493b92f118cbe9e162f736a3fa8c941f43e4d8f002bb470d8119a"
         },
         {
           "source": "hooks/src/usePreset.ts",
           "target": "lib/buildpad/hooks/usePreset.ts",
-          "sourceSha256": "86b5193cbe07861ed6ac89490ddfaed2df48a8691f9e5d8117502592ae742a6f"
+          "sourceSha256": "439886a42220ee796df489fad3711bba0abbffe2a62ef32ca9e5fcc09faf1730"
         },
         {
           "source": "hooks/src/useEditsGuard.ts",
           "target": "lib/buildpad/hooks/useEditsGuard.ts",
-          "sourceSha256": "3bfed8df1a681cd457f0c9a676714988681b39c4d777401cb45c669ca7de5ecc"
+          "sourceSha256": "dc5e0e5b0c86fb507cca152785795ad5d93a788d625a6979a03efa0e4d2f1a4f"
         },
         {
           "source": "hooks/src/useClipboard.ts",
           "target": "lib/buildpad/hooks/useClipboard.ts",
-          "sourceSha256": "c82ba42a31667df23ad157f8db25c9619e4e8f5005acd9732562a9e5bad8e6e9"
+          "sourceSha256": "ac64b909f6973180ed1a9c2dee0cd2be1103a46f7720e31b9b4e868bd7095d8f"
         },
         {
           "source": "hooks/src/useLocalStorage.ts",
           "target": "lib/buildpad/hooks/useLocalStorage.ts",
-          "sourceSha256": "03add59462e3c6d86317a66f353cc71c15af00ab9f91feba7bf83abce0843c9b"
+          "sourceSha256": "2ed3fb3c6552d9dc8f06cf837b474254232991462db691badc1cd689d3fdc611"
         },
         {
           "source": "hooks/src/useVersions.ts",
           "target": "lib/buildpad/hooks/useVersions.ts",
-          "sourceSha256": "c4e70bc059952f69306944d3ea7313d8d1ed87defdfbfa5756730aa872d2f3e2"
+          "sourceSha256": "49b61a815e6a9314b21ddc21241e9cff9e172d4454a162e01789168d359758fc"
         },
         {
           "source": "hooks/src/useWorkflowAssignment.ts",
           "target": "lib/buildpad/hooks/useWorkflowAssignment.ts",
-          "sourceSha256": "f7ca88d5a8b6b5aeafb262fbba348068a42c09ca8e2a49ce96555404e605a0ad"
+          "sourceSha256": "672d053d0ae8d1a6c1a55b40518dab296c8bf68e03aef0fe95c720072ce0dc62"
         },
         {
           "source": "hooks/src/useWorkflowVersioning.ts",
           "target": "lib/buildpad/hooks/useWorkflowVersioning.ts",
-          "sourceSha256": "8e803d387ecd6fa69021810226060adf5ad1f580b13b921c9cdc98f56bd0398b"
+          "sourceSha256": "9e950ccc0900efb912b713c70e6bd6d69ffb72483264082f25232d9612c4cc9f"
         },
         {
           "source": "hooks/src/useCollections.ts",
           "target": "lib/buildpad/hooks/useCollections.ts",
-          "sourceSha256": "8f19635ff9a0d0f061780bcfcebe8ff8ccc3b73f14272df1f7f56f9b827afc6c"
+          "sourceSha256": "dc4bb90da5d7f0af535b9312201655ea24267e46c30d2f9541ca8c7d322d32a4"
         },
         {
           "source": "hooks/src/useRelationMultipleM2M.ts",
           "target": "lib/buildpad/hooks/useRelationMultipleM2M.ts",
-          "sourceSha256": "e2322c54301cdf6553013e0ab6e7d64daf33d850899605dae9d9a04073f406c7"
+          "sourceSha256": "05ccfb63e22311a139763725b56bebbfec5e4c4e99cfefd514a7235d292a109e"
         },
         {
           "source": "hooks/src/useRelationPermissionsM2M.ts",
           "target": "lib/buildpad/hooks/useRelationPermissionsM2M.ts",
-          "sourceSha256": "43cc76256989cb88b533c0ecd1a59e586b14c4c846750e702dcf7d5c10894aa4"
+          "sourceSha256": "76df2053c54005e64c14df9d3f4d36076904687a5eb713c7c9ac14c48cb5cc19"
         },
         {
           "source": "hooks/src/useRelationPermissionsM2O.ts",
           "target": "lib/buildpad/hooks/useRelationPermissionsM2O.ts",
-          "sourceSha256": "1401a957f852be89f70e964c98eaa2af3465c2fcfdce5037764d9a65ce8f8e63"
+          "sourceSha256": "1cdd4b8934065b5d53121e181d02dbbc49327de253097101125711a3bda79884"
         },
         {
           "source": "hooks/src/useFieldMetadata.ts",
           "target": "lib/buildpad/hooks/useFieldMetadata.ts",
-          "sourceSha256": "7b02b90dc70cf3f31ffe5dce5cd9aaba8d5e2042496a285747fa2a7692f8af94"
+          "sourceSha256": "9663d7641b439eddb016354c8cf525783c3e47b807bb585d680d1e94f11f2fb4"
         },
         {
           "source": "hooks/src/useAuth.ts",
           "target": "lib/buildpad/hooks/useAuth.ts",
-          "sourceSha256": "98a05954a4adaac92473b47c5a45027e4815f37f810f42ebd1a91fa1bf4fe0ce"
+          "sourceSha256": "4953d5b3d8ccaffe4c8e7dd600ac974e6c3e914f0621927f4eaa33515ac903aa"
         },
         {
           "source": "hooks/src/usePermissions.ts",
           "target": "lib/buildpad/hooks/usePermissions.ts",
-          "sourceSha256": "b75eddb0b07edabb8a5bb43e8b301e7f2dbb878f4cebd7e71cd2db8b3a7fca34"
+          "sourceSha256": "676861ef76025213f1de3d11b73e92af2df4abc1a101ac0fc1e639bb3ba8a07a"
         },
         {
           "source": "hooks/src/useDaaSContext.tsx",
@@ -452,37 +452,37 @@
         {
           "source": "hooks/src/useFormDefinitions.ts",
           "target": "lib/buildpad/hooks/useFormDefinitions.ts",
-          "sourceSha256": "85cbde9145d2692a34cc81b6fbf9fe9e393d492f9f1954daa5edb3f89a1cc6e5"
+          "sourceSha256": "376d1800d9cb3f804d36c95fe16dd1cd29c22f8a371ea341fd48c4323cc2a0c0"
         },
         {
           "source": "hooks/src/parseDaaSError.ts",
           "target": "lib/buildpad/hooks/parseDaaSError.ts",
-          "sourceSha256": "682bfe67db56f770606a7a1690fd96037adffa89fba694bcb4cedadfc57a056b"
+          "sourceSha256": "94fce2d5cf878450177c5502830c300dbd7f7e96111967e610474a612ecc9370"
         },
         {
           "source": "hooks/src/useUsers.ts",
           "target": "lib/buildpad/hooks/useUsers.ts",
-          "sourceSha256": "76710bc5538e2717e417cc04e142d26381ba634dfe34b9b909381dd8e274eae7"
+          "sourceSha256": "debf4c9a29d470dfec9d6bf1a2db83fe65f8a13ca32e98aeebcf340c8bb981d2"
         },
         {
           "source": "hooks/src/useRoles.ts",
           "target": "lib/buildpad/hooks/useRoles.ts",
-          "sourceSha256": "24da6768b0417ad5184175ec6e8b837f9e3d722eec136b1856929fb547b3d356"
+          "sourceSha256": "01690d80801327aa11a7be16c7922693222419d896205b62709f721df8f2e059"
         },
         {
           "source": "hooks/src/usePolicies.ts",
           "target": "lib/buildpad/hooks/usePolicies.ts",
-          "sourceSha256": "c1e0481c2db49e4bb37a368c586b0feeb123b4ad75f7d51a5c10cb78099412dd"
+          "sourceSha256": "6d3e769ba699b0a41a7c783b80a91857791311a50ac345e5dbe7b378aa6bf59e"
         },
         {
           "source": "hooks/src/useAccess.ts",
           "target": "lib/buildpad/hooks/useAccess.ts",
-          "sourceSha256": "65e32c4d4f6ae544335c297948c6181511c3eaaa29e88f4791818f94fd9b558e"
+          "sourceSha256": "61aede3a6e018afcd1d2edc6ee4b9bb0450e5b77e703b6c5236ed968cabc3c80"
         },
         {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "3df971302825e6db62a457f574a96095f563f58566f06a568e0fbb16516d93ef"
+          "sourceSha256": "7dca9f38e0bf54ae75e836540b4087c9104f59f05ddfbd5edfde540f2d362241"
         }
       ],
       "internalDependencies": [
@@ -490,8 +490,8 @@
         "services"
       ],
       "sourcePackage": "@buildpad/hooks",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     "api-routes": {
       "name": "api-routes",
@@ -500,107 +500,107 @@
         {
           "source": "cli/templates/api/auth-login-route.ts",
           "target": "app/api/auth/login/route.ts",
-          "sourceSha256": "8eaa3c34cd1a1ce4d99f5fd77effe82da484f6c10c61713a137132d9ed2ca365"
+          "sourceSha256": "cf622faed78316d2c689c5d363239ac691c3f6dac7059edc7be51a84e1cdc090"
         },
         {
           "source": "cli/templates/api/auth-logout-route.ts",
           "target": "app/api/auth/logout/route.ts",
-          "sourceSha256": "a534a86e057275efa4077cea8d91cae112ad7ae9501938b0646a0ebd0fb144ad"
+          "sourceSha256": "087f46c6cd244d9ec63549ac33c12cc73d0a2148144f22562ae80fe6168f6f07"
         },
         {
           "source": "cli/templates/api/auth-user-route.ts",
           "target": "app/api/auth/user/route.ts",
-          "sourceSha256": "534f86126713aabfbdfc3fab99f73d06c64a043965a3b87db58854324ba8af73"
+          "sourceSha256": "6c396172ff2fcb1266af72f026407da38eb0f528363422764bb192bd97a3cc07"
         },
         {
           "source": "cli/templates/api/auth-callback-route.ts",
           "target": "app/api/auth/callback/route.ts",
-          "sourceSha256": "4b592578c3d56bf5576c81116400aabfc461d577dba424bf159dbd0011a23a39"
+          "sourceSha256": "8dcfbf542c46ed7d9ab98e638782cd0327a53bb49a0f9f343ae04228e292e6fd"
         },
         {
           "source": "cli/templates/api/login-page.tsx",
           "target": "app/login/page.tsx",
-          "sourceSha256": "8face67ab32708a7b432d6870c2f9c78ce6eb7fcc51b8e487c62cf36b003162e"
+          "sourceSha256": "152b09e9ce5e8ceaf4b9f93ec4e3aa8b27b827ee64772629fb508a84922ea0c7"
         },
         {
           "source": "cli/templates/lib/api-auth-headers.ts",
           "target": "lib/api/auth-headers.ts",
-          "sourceSha256": "9f56b642eba97281ceb080b2b058026c58dc2bfb47647469399ea9cf7b1b811a"
+          "sourceSha256": "b8b77f913dd89cc3841d8e29d33578064b0680a9933872f64000cc637f0d7d7d"
         },
         {
           "source": "cli/templates/api/daas-fields-route.ts",
           "target": "app/api/fields/[collection]/route.ts",
-          "sourceSha256": "6796c7c5a508b421b9bb72a04410a06bc0e7d39c226adff6b4c9cac888858466"
+          "sourceSha256": "8a1762a66e6265a1274a65388feb8ed330fe1f0eaef08b42eb8ab280b7c74802"
         },
         {
           "source": "cli/templates/api/daas-fields-id-route.ts",
           "target": "app/api/fields/[collection]/[field]/route.ts",
-          "sourceSha256": "8ca89b5e2bd77aaaf76ec5d1fae294743f31a306860003bd733e6bf678e09cc0"
+          "sourceSha256": "758b28fa87583e21d28b407e5705c57ab67c23f66efcfe10903c2cfe7ce29265"
         },
         {
           "source": "cli/templates/api/daas-collections-route.ts",
           "target": "app/api/collections/route.ts",
-          "sourceSha256": "e60d9effd50e62920848b56cb84dfd5b842bda309a1297b64a6fe3b35ff84026"
+          "sourceSha256": "b9421751da7fb430633672080e3bc5bf5fd5c02701dd9456a430cb6079939c25"
         },
         {
           "source": "cli/templates/api/daas-collections-id-route.ts",
           "target": "app/api/collections/[collection]/route.ts",
-          "sourceSha256": "25a1e4d344506773c8f2bcec2c8455a9eca7bbd2747b70c2f1f2b5600ea91f04"
+          "sourceSha256": "5fe54367c4e5a903e19c1eeb1d0e2751150338cbaf49c656524c9de67b4c4f54"
         },
         {
           "source": "cli/templates/api/daas-items-collection-route.ts",
           "target": "app/api/items/[collection]/route.ts",
-          "sourceSha256": "dba3ebdaa5b2e7bccc7eb43263ecc46ad96aa85877099956cd7d97e025a17be5"
+          "sourceSha256": "05ab228578a4c112c8ea627d2c2194d659143d877dc9fabfd4a0ca68a8fd5943"
         },
         {
           "source": "cli/templates/api/daas-items-id-route.ts",
           "target": "app/api/items/[collection]/[id]/route.ts",
-          "sourceSha256": "84b169abe0ffe0525f37e9a9725ebcaf2c2ee1013b55196c924580be93a914cd"
+          "sourceSha256": "d927d54669275081a5f9ae04a6a5398fbcedb8e696a266426fcdc6fd7d381d91"
         },
         {
           "source": "cli/templates/api/daas-relations-route.ts",
           "target": "app/api/relations/route.ts",
-          "sourceSha256": "77f608f9721406618b9e42736018a9e852f272e4fa0f5c7751ff0295d0b316f4"
+          "sourceSha256": "7f11eb02c58f9ad9416ea17c64994e39dbde336fe6e1e03bcb3de229688f0cd1"
         },
         {
           "source": "cli/templates/api/daas-files-route.ts",
           "target": "app/api/files/route.ts",
-          "sourceSha256": "6eaab9e1306274937a5dbf600a6e38fce5da736b3e4cf9debf99019f0f0a469a"
+          "sourceSha256": "80039d1e5839d149fc3fff1983f155b55889c980799d010603a13193b9855ee5"
         },
         {
           "source": "cli/templates/api/daas-files-id-route.ts",
           "target": "app/api/files/[id]/route.ts",
-          "sourceSha256": "7ad3b3c60eedc1b59a1c959da7bb3ea7a3263e21b4b01b0fd68ea7b83026f897"
+          "sourceSha256": "683e989e3c711d3cfbe33027c125aacdb2ef1c0439d14bee037912e3312521ee"
         },
         {
           "source": "cli/templates/api/daas-files-id-download-route.ts",
           "target": "app/api/files/[id]/download/route.ts",
-          "sourceSha256": "8793a2e25b6c66d55ce8eb0aa37eff5e511418c07fff286e697387d955616446"
+          "sourceSha256": "32fa16961fec08437654e89981254a61675c128e3ee4eadb5a40c969225ead9e"
         },
         {
           "source": "cli/templates/api/daas-files-import-route.ts",
           "target": "app/api/files/import/route.ts",
-          "sourceSha256": "f0bfb2ddc11da8d6af58e48ce36c5bb7f426f95ac8fcced0311e54c455c461a6"
+          "sourceSha256": "f8f7b76a95389ecc52f08dfb46dadaa924a7cd09d0a416fb11a947ee9b39a8e8"
         },
         {
           "source": "cli/templates/api/daas-folders-route.ts",
           "target": "app/api/folders/route.ts",
-          "sourceSha256": "ca5b29aac179f801994d1f44bb3645f91faa7531d5b31d981a4cbe70a17cdef7"
+          "sourceSha256": "924d40176275da5f9950049a87ddd0d438995965ea3074c4c5560a3bc3e6347f"
         },
         {
           "source": "cli/templates/api/daas-folders-id-route.ts",
           "target": "app/api/folders/[id]/route.ts",
-          "sourceSha256": "bc9ee2db737778b3aea9f717c28030c42964e82fe765ba7c8ee9aa3037cefa06"
+          "sourceSha256": "73b3c40ff9100e65910d40e400ff1d6c00ff6477319b18be7e4e1c3600b9711e"
         },
         {
           "source": "cli/templates/api/daas-assets-id-route.ts",
           "target": "app/api/assets/[id]/route.ts",
-          "sourceSha256": "b7c63ad57472902651772d9fde6b57f29cbd1c6a5a394aedbe92bc6bd31cf411"
+          "sourceSha256": "a05acfa70db042cf18f90d4c8f5647ee7f870c06f4af78a698a50d727fab839a"
         },
         {
           "source": "cli/templates/api/daas-permissions-me-route.ts",
           "target": "app/api/permissions/me/route.ts",
-          "sourceSha256": "bc5f0b43e7d3495d351361e634b9da21d2957e1ad16ff76bc59a47376baab9ff"
+          "sourceSha256": "20735b6a78d987046d1bddb303d3cb84c24aa9d89953dfa7348a2f49555e971b"
         },
         {
           "source": "cli/templates/components/DaaSProviderWrapper.tsx",
@@ -619,7 +619,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.8.0"
+      "lastChangedIn": "1.9.1"
     },
     "content-routes": {
       "name": "content-routes",
@@ -628,22 +628,22 @@
         {
           "source": "cli/templates/app/content/layout.tsx",
           "target": "app/content/layout.tsx",
-          "sourceSha256": "de692931420f236801892e2337b945f5f6298e2fc1e659a667a9d026cf3b0e40"
+          "sourceSha256": "1a6ba30b05cddec63a665bb334036147ccda234279e52d68595036e6cd2e790e"
         },
         {
           "source": "cli/templates/app/content/page.tsx",
           "target": "app/content/page.tsx",
-          "sourceSha256": "76f0147df59407db3b0150be5173312f86e3d99fd759522a4948c8781d2b13f9"
+          "sourceSha256": "0111673cfa5ea6ba3355644c087360dcafb24a1eebf475e962807ba133d6049c"
         },
         {
           "source": "cli/templates/app/content/[collection]/page.tsx",
           "target": "app/content/[collection]/page.tsx",
-          "sourceSha256": "eceee12bca8b3159b3c639f71bc36a1f7c2e825816518c5e0158270389cb0bd9"
+          "sourceSha256": "fae9da6b7e97651e95b4633751cf63121a6fb7f92dfb5fa93ecf5fb9ac6a1efe"
         },
         {
           "source": "cli/templates/app/content/[collection]/[id]/page.tsx",
           "target": "app/content/[collection]/[id]/page.tsx",
-          "sourceSha256": "ef9eb2f3d9c00349bd8870202a85671c02b4c11577412b6aaadd6fdb18c1279f"
+          "sourceSha256": "b81b55955843c7b8cc5eed84787dc5332ada6c17a4750e10ae938b98724c4bf9"
         }
       ],
       "internalDependencies": [
@@ -652,7 +652,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "lastChangedIn": "1.9.1"
     },
     "files-routes": {
       "name": "files-routes",
@@ -661,12 +661,12 @@
         {
           "source": "cli/templates/app/files/page.tsx",
           "target": "app/(authenticated)/files/page.tsx",
-          "sourceSha256": "b3c331be7112a71a37aef712ac2c1f90003713630c21ccc39395630929e63866"
+          "sourceSha256": "789a76425b373290203f8060661b9ad527e212b390bf97d7ae7d621489245d12"
         },
         {
           "source": "cli/templates/app/files/[id]/page.tsx",
           "target": "app/(authenticated)/files/[id]/page.tsx",
-          "sourceSha256": "4e92795e4774928fcc4ace3628bc0900b775b2a544a5c2b3aab4171e4a42d584"
+          "sourceSha256": "14298ee994d1b9c260bc8f277504b9cc64da25db55202b314d55731d5fb4c7e7"
         }
       ],
       "internalDependencies": [
@@ -685,7 +685,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.5.0"
+      "lastChangedIn": "1.9.1"
     },
     "users-routes": {
       "name": "users-routes",
@@ -694,32 +694,32 @@
         {
           "source": "cli/templates/app/users/page.tsx",
           "target": "app/(authenticated)/users/page.tsx",
-          "sourceSha256": "2c9dd8b1b6fd69fdd7e1b2520e9f887871bdd4da0bb1bed63511db530d39000d"
+          "sourceSha256": "6c1a5ed1afd948d11c9adadf490392728ae507c997ebcc75563ee785b61d007d"
         },
         {
           "source": "cli/templates/app/users/[id]/page.tsx",
           "target": "app/(authenticated)/users/[id]/page.tsx",
-          "sourceSha256": "ca1979db1a18fc9b67eec2e1f6919e5d7c8388e384ae0032a37abbcd82961406"
+          "sourceSha256": "62c0cb8247952d5163eecf3b996fd3d5fe3fab565da6065a88f042b7ed9389cb"
         },
         {
           "source": "cli/templates/app/roles/page.tsx",
           "target": "app/(authenticated)/roles/page.tsx",
-          "sourceSha256": "1e159e931d3fcb9b4bd261461dd3f18d7c4bf246795750e2c79da5bbfa944cc9"
+          "sourceSha256": "39784255ba940c25c5f13eb9e6bbe3efef603233a1543aace183c1fce72b01f4"
         },
         {
           "source": "cli/templates/app/roles/[id]/page.tsx",
           "target": "app/(authenticated)/roles/[id]/page.tsx",
-          "sourceSha256": "218a2fb150450b364c264f5f5c1c6f4e0c1dc1e212f6b5f7b6e620f72f4a29f7"
+          "sourceSha256": "8d3651f8e7a841e0f09c623cc1e709ce62908083726757bb553ba4b93b2235c5"
         },
         {
           "source": "cli/templates/app/policies/page.tsx",
           "target": "app/(authenticated)/policies/page.tsx",
-          "sourceSha256": "dca5a5a685f44507330344f116c604a5c242b55cca3997c18c92b436c494b062"
+          "sourceSha256": "2fee5381ed88b25929cb9332dff912a30991f9f943b6277dc2a22df0dbe00191"
         },
         {
           "source": "cli/templates/app/policies/[id]/page.tsx",
           "target": "app/(authenticated)/policies/[id]/page.tsx",
-          "sourceSha256": "0c5367719efd8918c26d0ee7ad143bee6a369d14315efdeca0b6799326376017"
+          "sourceSha256": "431b0976511e2daf086912ce96c58233971ade6be7f26a7c431996b899389b9f"
         }
       ],
       "internalDependencies": [
@@ -751,7 +751,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "lastChangedIn": "1.9.1"
     },
     "forms-routes": {
       "name": "forms-routes",
@@ -760,22 +760,22 @@
         {
           "source": "cli/templates/app/forms/page.tsx",
           "target": "app/(authenticated)/forms/page.tsx",
-          "sourceSha256": "95a50a2fe1889ac83f9ca672f869d349700a0abba8b52141be0d2b8403bbe1a5"
+          "sourceSha256": "8938b68d7c49510f32c1267c688bf0bffbed67903b53d5075865af0fdfc503b5"
         },
         {
           "source": "cli/templates/app/forms/new/page.tsx",
           "target": "app/(authenticated)/forms/new/page.tsx",
-          "sourceSha256": "ba9ed55d022686daf54f1824acc58113fbaffbd37d165f347d7fc8151eb90db1"
+          "sourceSha256": "e189ed5b645599a778d61493b27d4c59fe71db86559f275658ef87a7ab0c0933"
         },
         {
           "source": "cli/templates/app/forms/[id]/page.tsx",
           "target": "app/(authenticated)/forms/[id]/page.tsx",
-          "sourceSha256": "812f5b589ddc8ba9779b465af0fa24c7d775461b3cd255ef5763b4b8b1b6fb91"
+          "sourceSha256": "a4d8662ecc8a8545cca38e85c1694131b19abada52c1b7d3928d7684b766fcc3"
         },
         {
           "source": "cli/templates/app/forms/[id]/fill/page.tsx",
           "target": "app/(authenticated)/forms/[id]/fill/page.tsx",
-          "sourceSha256": "0f1b4ee8d968c4b174484d8fa4d277f7ac3f5eaad56f1ec1a9467b743b1f2153"
+          "sourceSha256": "064ed0ea9ce0e490889daede34821db7839d9c76f830f091a8d12d50051a568a"
         }
       ],
       "internalDependencies": [
@@ -794,7 +794,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.6.0"
+      "lastChangedIn": "1.9.1"
     },
     "supabase-auth": {
       "name": "supabase-auth",
@@ -807,17 +807,17 @@
         {
           "source": "cli/templates/supabase/client.ts",
           "target": "lib/supabase/client.ts",
-          "sourceSha256": "af193762a219fb279f72345d8d12d0164b5e367d9ff6874b68351fabc4841f5e"
+          "sourceSha256": "53751e7665e12afbad14597c25f373addcfdf44fbbced7a49964c19259422dc4"
         },
         {
           "source": "cli/templates/supabase/server.ts",
           "target": "lib/supabase/server.ts",
-          "sourceSha256": "5a2ff2ebb53938a6a2090ddc11f196ea66af1d45a1cc46b84e98ff4c8a06df8a"
+          "sourceSha256": "01d52a789fe0a687f65e169f893a518805d47f8813870226b34a1aedb8f0495f"
         },
         {
           "source": "cli/templates/supabase/middleware.ts",
           "target": "lib/supabase/middleware.ts",
-          "sourceSha256": "0c4774d02fff2d3b8248093b26ba39c476ce712cee1735f557eb3bf5d041679f"
+          "sourceSha256": "defac2e56fae6f1515c7629d19eec5084f706ffead82400e38a0476cb7066b6e"
         },
         {
           "source": "cli/templates/supabase/admin.ts",
@@ -827,12 +827,12 @@
         {
           "source": "cli/templates/middleware/middleware.ts",
           "target": "middleware.ts",
-          "sourceSha256": "382591a2830ed8c6155affd3c37427ef66af407a549b8475be521bd51e143286"
+          "sourceSha256": "92988b4f22c242c399dfdeb472de9887a47c8a2715f9a2f33c40e3892a065308"
         }
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "lastChangedIn": "1.9.1"
     },
     "external-oauth": {
       "name": "external-oauth",
@@ -883,7 +883,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "lastChangedIn": "1.9.1"
     },
     "scope-routes": {
       "name": "scope-routes",
@@ -920,7 +920,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "lastChangedIn": "1.9.1"
     },
     "design-system": {
       "name": "design-system",
@@ -929,37 +929,37 @@
         {
           "source": "cli/templates/app/design-tokens.css",
           "target": "app/design-tokens.css",
-          "sourceSha256": "d225f860e786eb16823c18198b313acebe93ed18f24da3421722caa0c29646d4"
+          "sourceSha256": "4800ac47c960008724a98dcaf9c9655a79839d2bece310c23586ce36064a8272"
         },
         {
           "source": "cli/templates/app/globals.css",
           "target": "app/globals.css",
-          "sourceSha256": "9bc54b075d9afa7b706020f1404e8136300ff7a053f9da317f92e2631e7c3bcb"
+          "sourceSha256": "1c81ce410f40bd7c7f0455cc5662d91d296ef6851bb23883c7c48b0716f5692e"
         },
         {
           "source": "cli/templates/lib/theme.ts",
           "target": "lib/theme.ts",
-          "sourceSha256": "f800464f7a569176c3a88bfa9f0bcdc907cfb1983895daf95945ccae2a876af8"
+          "sourceSha256": "40db433b0a19550fbf9d8517158da8ca63e51a43fe3b88a412ca7cd64e225311"
         },
         {
           "source": "cli/templates/components/ColorSchemeToggle.tsx",
           "target": "components/ColorSchemeToggle.tsx",
-          "sourceSha256": "927cd205a4e4a6fe2b4adb4e9b3f74be993e38a3c368786860f97970bf8a7a00"
+          "sourceSha256": "c7ee2a375c6e4fe598d7492e9a075870ceb2702bbb96d1f0da1414fd0383b058"
         },
         {
           "source": "cli/templates/components/layout/navigation.ts",
           "target": "components/layout/navigation.ts",
-          "sourceSha256": "1100e9609012fc3a0ca7b95d3a2ab5c1384e258153d7e69bbe2e385f054e18d0"
+          "sourceSha256": "0cec77baa9f2622240490befce01ee20395ba0099f9eef5402f374dec6156b65"
         },
         {
           "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
           "target": "components/layout/AuthenticatedShell.tsx",
-          "sourceSha256": "24cbeafe514b9ac89b0c8f82d1fce5b212bf579a3aa0b3111792f820f8c72d74"
+          "sourceSha256": "55d81dba7fffe7c455be76edf325373f81490242e2514373b786beb649c8a4a1"
         }
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "lastChangedIn": "1.9.1"
     }
   },
   "components": [
@@ -972,7 +972,7 @@
         {
           "source": "ui-interfaces/src/input/Input.tsx",
           "target": "components/ui/input.tsx",
-          "sourceSha256": "14fdb0150592852beba7e03024c583065a5dcf8995e33606e8fbebb3302111c7"
+          "sourceSha256": "4ce24825f864dba9998ba81fdc54d204ba534a0c884edf281a4cc5bb1167cb50"
         }
       ],
       "dependencies": [
@@ -1003,8 +1003,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "textarea",
@@ -1015,7 +1015,7 @@
         {
           "source": "ui-interfaces/src/textarea/Textarea.tsx",
           "target": "components/ui/textarea.tsx",
-          "sourceSha256": "1bf2bb352f6079d3e5aa658135031ce796cc028770455526b3931e9b1e0d31c3"
+          "sourceSha256": "7813b730ed9f2dbe4473ce2b32703ca437cfecaaafe3fc460b49ea345aa6d5f5"
         }
       ],
       "dependencies": [
@@ -1039,8 +1039,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "input-code",
@@ -1051,7 +1051,7 @@
         {
           "source": "ui-interfaces/src/input-code/InputCode.tsx",
           "target": "components/ui/input-code.tsx",
-          "sourceSha256": "8a02455e38c284ca9742d899a262e32e039be142cfeb2edec426aaef44697eeb"
+          "sourceSha256": "74d137fa0bd760222c07be875b323c0b6207357e027788843c155b75aebf72e3"
         }
       ],
       "dependencies": [
@@ -1077,8 +1077,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "input-hash",
@@ -1089,12 +1089,12 @@
         {
           "source": "ui-interfaces/src/input-hash/InputHash.tsx",
           "target": "components/ui/input-hash.tsx",
-          "sourceSha256": "fc09dddb2e32d6fb91703536fcf0843af981e0604e3f70f8d6684f8b7b104bcd"
+          "sourceSha256": "c1b69ca893f7a8c004e8b704bf7c213b403e28969765a225dac05033a85a5d11"
         },
         {
           "source": "ui-interfaces/src/input-hash/InputHash.css",
           "target": "components/ui/InputHash.css",
-          "sourceSha256": "00da180d01f2af399ae1b70d7cca31fec4d43be5edcc5e3ea447887de705292a"
+          "sourceSha256": "fa359b2ae8912f16d0ba6ae0b2b623deeb6e58e88f4cb677f92f4800a0a08967"
         }
       ],
       "dependencies": [
@@ -1118,8 +1118,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "system-token",
@@ -1130,12 +1130,12 @@
         {
           "source": "ui-interfaces/src/system-token/SystemToken.tsx",
           "target": "components/ui/system-token.tsx",
-          "sourceSha256": "bd3116e31754597122480af05539dcae715f39de8a2a3dffb3d16e2e54c7746d"
+          "sourceSha256": "2a6dd3d7afc6f4c1f310c4113ce8986bde78c8ef272eb2adad6ffff8391cfc2d"
         },
         {
           "source": "ui-interfaces/src/system-token/SystemToken.css",
           "target": "components/ui/SystemToken.css",
-          "sourceSha256": "f1884a5f3be5990ea93eae385d2ba6f4cba39587c5d922a2add102c0085e976a"
+          "sourceSha256": "6f1f6966a6feab066e079ef10a83acaf69daddd0406eda74e43b98ba7838a515"
         }
       ],
       "dependencies": [
@@ -1162,8 +1162,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "system-permissions",
@@ -1174,62 +1174,62 @@
         {
           "source": "ui-interfaces/src/system-permissions/SystemPermissions.tsx",
           "target": "components/ui/system-permissions.tsx",
-          "sourceSha256": "c52b3d291c713cc6d6ea8f7ff06c4b8a76345744040ba6939743af642429c6d1"
+          "sourceSha256": "6bbb10f303f3a40a8cff98a69111a938dbabc7669ff31903cbe4e6f556b29a7c"
         },
         {
           "source": "ui-interfaces/src/system-permissions/SystemPermissions.css",
           "target": "components/ui/system-permissions.css",
-          "sourceSha256": "d14f3faec281f3992e0b2d9b5547698cfe9d603e61bb3d1b9d3d485bd5cdfc33"
+          "sourceSha256": "3baef2fa381e0ec6a2e2f8278b71f45ce5d768d6ef480e241bbf6f54541813fc"
         },
         {
           "source": "ui-interfaces/src/system-permissions/PermissionDetailModal.tsx",
           "target": "components/ui/permission-detail-modal.tsx",
-          "sourceSha256": "1f1ca3ec2c87be9a0a20db50d6cacbc0e0da85a380f4be63df87a69ea09db726"
+          "sourceSha256": "1af2d8a65cf67d7b745c1d127573a52bb1582c4ee668ad55a3ce70f473b1183f"
         },
         {
           "source": "ui-interfaces/src/system-permissions/PermissionFieldsTab.tsx",
           "target": "components/ui/permission-fields-tab.tsx",
-          "sourceSha256": "186a1bf6e63be81df7947cf32f3fc7fe08164d4ccbbaf09de5904abb120f037f"
+          "sourceSha256": "b103567943ce1874e62734a86becb84cdc3e89f6cb71b1fe0f25ba5c71757c6b"
         },
         {
           "source": "ui-interfaces/src/system-permissions/PermissionFilterTab.tsx",
           "target": "components/ui/permission-filter-tab.tsx",
-          "sourceSha256": "daf4d888797f05942919e1be2d02b670292dcf85130fbaeabbf8a12471552be0"
+          "sourceSha256": "31f9ff5b42a60ea492b30e0faa5cbfb850a34caac2198f9049232a25cd057774"
         },
         {
           "source": "ui-interfaces/src/system-permissions/PermissionValidationTab.tsx",
           "target": "components/ui/permission-validation-tab.tsx",
-          "sourceSha256": "386a62616fac5825785110b2b7ede10382ae5a486032c0eec380600ffb457bd4"
+          "sourceSha256": "f477f4474fd93e2050d6725464ffc1b8290e98f4e509e631962e29e75589c476"
         },
         {
           "source": "ui-interfaces/src/system-permissions/PermissionPresetsTab.tsx",
           "target": "components/ui/permission-presets-tab.tsx",
-          "sourceSha256": "1921a57506be0fb68c9c19c9240e5da8efe29700c1e4f987a4e92ba0428f8bf9"
+          "sourceSha256": "8e1d0960a9216e333c4de676b1b3ebb8cf81bd1d9d6c81f62a22898eee3cdbe8"
         },
         {
           "source": "ui-interfaces/src/system-permissions/FilterRuleBuilder.tsx",
           "target": "components/ui/filter-rule-builder.tsx",
-          "sourceSha256": "a454a59c91d63f65963f451037aa2ea5330ca9ddb0f32858ca175d8bece8cab7"
+          "sourceSha256": "9a5b61bb59a2c39691c2181f7b053e2d01cf94dbdfe58537dbde7e0a96d436e5"
         },
         {
           "source": "ui-interfaces/src/system-permissions/FilterRuleNode.tsx",
           "target": "components/ui/filter-rule-node.tsx",
-          "sourceSha256": "09176f1930e9102ea290d6f8869f068a133fd24e0c361973de8471f4b9947e5b"
+          "sourceSha256": "f2036e6b7517ded34eee5040bb27788336d1a6920d042c43bf1c4d8e715fd6c1"
         },
         {
           "source": "ui-interfaces/src/system-permissions/PermissionFilterTypes.ts",
           "target": "components/ui/permission-filter-types.ts",
-          "sourceSha256": "91d5735d70af70fe507725430d568c8ee9540450186e076f92d3f1fc042ee11b"
+          "sourceSha256": "d1aede3a4be32fb888f417088d77a9a69fb6b0dcc532201519effb2b0b6c0b99"
         },
         {
           "source": "ui-interfaces/src/system-permissions/PermissionFilterUtils.ts",
           "target": "components/ui/permission-filter-utils.ts",
-          "sourceSha256": "c185164cfb4b3e6be8f8b3bf53b67afa0793fd94620b5c769992466044275a70"
+          "sourceSha256": "df18db141f549e2b0e22198b6786b497ddf5f527161ef509d81906c39432195a"
         },
         {
           "source": "ui-interfaces/src/system-permissions/permissionMetadata.ts",
           "target": "components/ui/permission-metadata.ts",
-          "sourceSha256": "c0a6138c8326e262fc56ec4f537bc74a06f9495bcfbf63a0ed3a5c6af6006745"
+          "sourceSha256": "ec5f375a255876dc9ce68121119b43bba34604cb82a521f3992ee9cf84ef0c49"
         }
       ],
       "dependencies": [
@@ -1255,8 +1255,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "input-block-editor",
@@ -1267,17 +1267,17 @@
         {
           "source": "ui-interfaces/src/input-block-editor/index.tsx",
           "target": "components/ui/input-block-editor-wrapper.tsx",
-          "sourceSha256": "5ab4d8c41d115c921459ae7d2d335e469c74cf64f4f2d565d189752410fa91bd"
+          "sourceSha256": "ed0c0d56f2062a0c5206eed9f67705172c1b6d3c82dfc69f618bc5569a00beb0"
         },
         {
           "source": "ui-interfaces/src/input-block-editor/InputBlockEditor.tsx",
           "target": "components/ui/input-block-editor.tsx",
-          "sourceSha256": "4f77a853fa6cdcdf2b84f2f5bce94289742b049782fb1bb5d8cfcde7bb1c4dcf"
+          "sourceSha256": "4b0d38ae3aa30dff942a088a901c876aebc0eb82bf02a7694e7114e989a7868b"
         },
         {
           "source": "ui-interfaces/src/input-block-editor/InputBlockEditor.css",
           "target": "components/ui/InputBlockEditor.css",
-          "sourceSha256": "786f91d7d38f1660795c656658cbb029a5d465d666c4ecbe594b9d19060e6e6e"
+          "sourceSha256": "f934205747da7180abf54761fec151b0e51e0f6509487ce4e3274f6b2f7e1db7"
         }
       ],
       "dependencies": [
@@ -1312,8 +1312,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "tags",
@@ -1324,7 +1324,7 @@
         {
           "source": "ui-interfaces/src/tags/Tags.tsx",
           "target": "components/ui/tags.tsx",
-          "sourceSha256": "ab817f0e92dfc5ba4378238eba1fa0934ac1f32115d55450e36da7553a5e58c2"
+          "sourceSha256": "1323f977b901993862b35cfd37d72d5b9444c481d2c098eaaaee1a84ce6bccc2"
         }
       ],
       "dependencies": [
@@ -1349,8 +1349,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "select-dropdown",
@@ -1361,7 +1361,7 @@
         {
           "source": "ui-interfaces/src/select-dropdown/SelectDropdown.tsx",
           "target": "components/ui/select-dropdown.tsx",
-          "sourceSha256": "13f53eec48c3cac46018883c33284973ea54b8ad34a2450ba9cdc74948ff6c3c"
+          "sourceSha256": "940d30694b30f2c6033115689525ed8aea7de439c08bff1f5467cb437db04987"
         }
       ],
       "dependencies": [
@@ -1389,8 +1389,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "select-radio",
@@ -1401,7 +1401,7 @@
         {
           "source": "ui-interfaces/src/select-radio/SelectRadio.tsx",
           "target": "components/ui/select-radio.tsx",
-          "sourceSha256": "e8914bb03aadab770b220201a539a4561e423b6926833abad53d45103f15f145"
+          "sourceSha256": "1e8376b700fbc55cfe2f718532dd7505d69185e74603bb254392b6f9c9ebcffd"
         }
       ],
       "dependencies": [
@@ -1425,8 +1425,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "select-multiple-checkbox",
@@ -1437,7 +1437,7 @@
         {
           "source": "ui-interfaces/src/select-multiple-checkbox/SelectMultipleCheckbox.tsx",
           "target": "components/ui/select-multiple-checkbox.tsx",
-          "sourceSha256": "ea62f3a7b97cf29a349c345702ad4fd0c88aa5968cf7d54cde1fc8e8ee07b228"
+          "sourceSha256": "ccb702e451860bbff24cfd28b16f847e6cdc769056afc70626c388702b76c232"
         }
       ],
       "dependencies": [
@@ -1461,8 +1461,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "select-multiple-checkbox-tree",
@@ -1473,7 +1473,7 @@
         {
           "source": "ui-interfaces/src/select-multiple-checkbox/SelectMultipleCheckboxTree.tsx",
           "target": "components/ui/select-multiple-checkbox-tree.tsx",
-          "sourceSha256": "f5806ed3e4a992a60b8eda8383ec221f6a02f7df739ce0fd16e76323ae0aa321"
+          "sourceSha256": "74414966d4e2dbb90aabe45ce8a1dd18364a7e8cd0aef4d77e7e2d1d3d9a01e2"
         }
       ],
       "dependencies": [
@@ -1499,8 +1499,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "select-multiple-dropdown",
@@ -1511,7 +1511,7 @@
         {
           "source": "ui-interfaces/src/select-multiple-checkbox/SelectMultipleDropdown.tsx",
           "target": "components/ui/select-multiple-dropdown.tsx",
-          "sourceSha256": "4420dca58b41ec6a15b07db258ad673f4fe521a0ef86f3be495a0a5dec39c511"
+          "sourceSha256": "226d00ede8395c0de8164b79c14946cf5c47f031a24e1f14cf8ac7d792cc2484"
         }
       ],
       "dependencies": [
@@ -1536,8 +1536,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "select-icon",
@@ -1548,7 +1548,7 @@
         {
           "source": "ui-interfaces/src/select-icon/SelectIcon.tsx",
           "target": "components/ui/select-icon.tsx",
-          "sourceSha256": "1a85ff0e41f88ae025cc4cd412e607ed5f66984b135badaf42168764fecb0b5f"
+          "sourceSha256": "ddc31e5ac24c066937e555aed621a0d027f1e7fe13cf55239fef69111c63941e"
         }
       ],
       "dependencies": [
@@ -1572,8 +1572,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "autocomplete-api",
@@ -1584,7 +1584,7 @@
         {
           "source": "ui-interfaces/src/autocomplete-api/AutocompleteApi.tsx",
           "target": "components/ui/autocomplete-api.tsx",
-          "sourceSha256": "2c6fb1ac9eeb814706d22a1835903b668668233f55d1a1153fc2b840467b540f"
+          "sourceSha256": "ef00680829ab693f7e0a2f4d33bbdb544622abc7689a51def10c0ad32fc7b247"
         }
       ],
       "dependencies": [
@@ -1609,8 +1609,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "collection-item-dropdown",
@@ -1621,7 +1621,7 @@
         {
           "source": "ui-interfaces/src/collection-item-dropdown/CollectionItemDropdown.tsx",
           "target": "components/ui/collection-item-dropdown.tsx",
-          "sourceSha256": "4b01b2a2589fcd846d195c8ab663e00931984e5a179931c67c6c8c3dc1f596cf"
+          "sourceSha256": "aae3fca1c65cf3bddb1c2e24786bd7f865df45797bceac85183e132883ac7903"
         }
       ],
       "dependencies": [
@@ -1653,8 +1653,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "datetime",
@@ -1665,7 +1665,7 @@
         {
           "source": "ui-interfaces/src/datetime/DateTime.tsx",
           "target": "components/ui/datetime.tsx",
-          "sourceSha256": "9d14843f3ba48fc57c7373f74c7a3ee2868dbc68228cfa99d992956656b62238"
+          "sourceSha256": "7edf6f3156dcc76c89bafa63dd1a3e913065e3912d9e75cf3bbe73d44fe8193f"
         }
       ],
       "dependencies": [
@@ -1694,8 +1694,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "boolean",
@@ -1706,7 +1706,7 @@
         {
           "source": "ui-interfaces/src/boolean/Boolean.tsx",
           "target": "components/ui/boolean.tsx",
-          "sourceSha256": "1318cf75d80ef2c91c4d248f96a210bd69708ce4a6587f4b8c048994125e8e4c"
+          "sourceSha256": "3a426c064445f7d270965a606a03d348821015c85fa97af02d8dc954318996d3"
         }
       ],
       "dependencies": [
@@ -1730,8 +1730,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "toggle",
@@ -1742,7 +1742,7 @@
         {
           "source": "ui-interfaces/src/toggle/Toggle.tsx",
           "target": "components/ui/toggle.tsx",
-          "sourceSha256": "81c0181f47f6c6f62af3117e58e6fe74d7c4c678d57a41561614c511cce9821d"
+          "sourceSha256": "f35e7c6a714db729e4b62bda19d54e81806c95bfe03d2e86f1107c544c70f778"
         }
       ],
       "dependencies": [
@@ -1766,8 +1766,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "file",
@@ -1778,7 +1778,7 @@
         {
           "source": "ui-interfaces/src/file/File.tsx",
           "target": "components/ui/file.tsx",
-          "sourceSha256": "0454b71c145bd1a169eaef3d7bee597ba84fbd1d8d5f8a1d2b94ae579f13ace1"
+          "sourceSha256": "df412e5d476ee5f5572820728440aff54950418cde2897eead781f0409e5728b"
         }
       ],
       "dependencies": [
@@ -1808,8 +1808,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "file-image",
@@ -1820,7 +1820,7 @@
         {
           "source": "ui-interfaces/src/file-image/FileImage.tsx",
           "target": "components/ui/file-image.tsx",
-          "sourceSha256": "8cbae558ae7c52ed6bd5c9f1613f55277c3e8ce92065950bcbba058105771604"
+          "sourceSha256": "1fcf96ec4434b3a8b40e9f4bbd4e28301ab80f5b49fd09872d423c87c0f2deaf"
         }
       ],
       "dependencies": [
@@ -1849,8 +1849,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "files",
@@ -1861,7 +1861,7 @@
         {
           "source": "ui-interfaces/src/files/Files.tsx",
           "target": "components/ui/files.tsx",
-          "sourceSha256": "2db1d46565d62e7bbe9534117d8bfdb8ed96888cf47406a98c0dc247c1a63c18"
+          "sourceSha256": "9664fb531acd93dc842dd797338ccb260986bef1d838c85554fec97ef73cd906"
         }
       ],
       "dependencies": [
@@ -1891,8 +1891,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "upload",
@@ -1903,12 +1903,12 @@
         {
           "source": "ui-interfaces/src/upload/Upload.tsx",
           "target": "components/ui/upload.tsx",
-          "sourceSha256": "bebe2df416819e434c17cbda5f878ad1a1369c9f1c5a13aace6ed4cfb8a38239"
+          "sourceSha256": "e9b78e6b1c36f9a82f3b73208cc6131c58b616fa9362343e6ef7ad69396c0f28"
         },
         {
           "source": "ui-interfaces/src/upload/Upload.css",
           "target": "components/ui/upload.css",
-          "sourceSha256": "2cba51f7672969b62c460a9e1309cb87cf68ccb50c075ffb57ff6e45d8ad3d45"
+          "sourceSha256": "bd806bc404b390a917ece2ddf05ba8d6b6958e99fc99eefe81faa0fa5bd170b4"
         }
       ],
       "dependencies": [
@@ -1932,8 +1932,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "color",
@@ -1944,7 +1944,7 @@
         {
           "source": "ui-interfaces/src/color/Color.tsx",
           "target": "components/ui/color.tsx",
-          "sourceSha256": "b232be06715c8087a84f0558e203b4a9c1f451ee085530291ce908ff71693685"
+          "sourceSha256": "5892b5a9610588fffd3d864ea5d9a85b9a9660621d95afb393c1f4aa0854e0b4"
         }
       ],
       "dependencies": [
@@ -1967,8 +1967,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "list-m2m",
@@ -1979,17 +1979,17 @@
         {
           "source": "ui-interfaces/src/list-m2m/ListM2M.tsx",
           "target": "components/ui/list-m2m.tsx",
-          "sourceSha256": "26aba26b86fba1388a68da882be21453805c626a7dd136ca847504d6765077e1"
+          "sourceSha256": "6c5377885f05a551e8f208b08a060d78c52b2823d5970c1d08a1133f44e0f883"
         },
         {
           "source": "ui-interfaces/src/list-m2m/ListM2MInterface.tsx",
           "target": "components/ui/list-m2m-interface.tsx",
-          "sourceSha256": "62259bdcae4f6fe08eb8385c444028d7ea5dfde99261b9477f2180dbbde7420d"
+          "sourceSha256": "223452400c63655c3138f908cd5760ecbdc2e571195658d591eb379e4b82da5a"
         },
         {
           "source": "ui-interfaces/src/list-m2m/translations.ts",
           "target": "components/ui/list-m2m/translations.ts",
-          "sourceSha256": "7f8ea929a63ad399c09ad7a1e4c53346a3064f83fbaa99c7fe42ccdab1d73f75"
+          "sourceSha256": "731a990fc0e44916ccad8861f7836ca380480c54bb47a5b2216ae97809187585"
         }
       ],
       "dependencies": [
@@ -2024,8 +2024,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "select-dropdown-m2o",
@@ -2036,12 +2036,12 @@
         {
           "source": "ui-interfaces/src/select-dropdown-m2o/SelectDropdownM2O.tsx",
           "target": "components/ui/select-dropdown-m2o.tsx",
-          "sourceSha256": "5f547ba94280988caecd621c8e46026bb22d7c32a2befe5f285b8b9a91273cb1"
+          "sourceSha256": "719a096b14aa55ed29e94c9f2d3a183abc1f970ff33bd17fe9e712089be85871"
         },
         {
           "source": "ui-interfaces/src/select-dropdown-m2o/SelectDropdownM2OInterface.tsx",
           "target": "components/ui/select-dropdown-m2o-interface.tsx",
-          "sourceSha256": "09da2d88a64f122e16778c450ad99ed5676c3861414b0213371c9da0c9d22598"
+          "sourceSha256": "a180aecae90557f44bf16b6b583d4c0a122ef7991d1559cc317dda160a14c4f6"
         }
       ],
       "dependencies": [
@@ -2082,8 +2082,8 @@
         ]
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "list-o2m",
@@ -2094,7 +2094,7 @@
         {
           "source": "ui-interfaces/src/list-o2m/ListO2M.tsx",
           "target": "components/ui/list-o2m.tsx",
-          "sourceSha256": "1ec5d24fe508d8d47d2ac37e0286787b0edc18c05cf3baf62d42be21c0a20125"
+          "sourceSha256": "e4f2b95b7b95a048cfb18cf27317b702614a413b31b40df7386ebb564954961d"
         }
       ],
       "dependencies": [
@@ -2129,8 +2129,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "list-m2a",
@@ -2141,17 +2141,17 @@
         {
           "source": "ui-interfaces/src/list-m2a/ListM2A.tsx",
           "target": "components/ui/list-m2a.tsx",
-          "sourceSha256": "39e045f411678c3324f25a7354b3d683dfd8af0fedf091df0004670b6966c643"
+          "sourceSha256": "36fb60813aad54b7afd0cf47cd67f4e44019671557f373265808dab03a0ac5ef"
         },
         {
           "source": "ui-interfaces/src/list-m2a/JunctionItemForm.tsx",
           "target": "components/ui/list-m2a/JunctionItemForm.tsx",
-          "sourceSha256": "bd972410de2f87b5a30d1dab78b95f763b0b0d9b2f7a717d5c7cb3f6d2392ed1"
+          "sourceSha256": "7cf0c3814ed3384eeab472795f1c862b060bae594b1abe8df15d72476494456f"
         },
         {
           "source": "ui-interfaces/src/list-m2a/render-template.ts",
           "target": "components/ui/list-m2a/render-template.ts",
-          "sourceSha256": "3d1ddad6c28ec2b92a2093f998d0e1d01328744e7d47844b36f91cd6c5886763"
+          "sourceSha256": "6e63c17d86ab1f69c5279de820aa27bfb5f497686e53095966824c35071e6bb8"
         }
       ],
       "dependencies": [
@@ -2184,8 +2184,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "divider",
@@ -2196,7 +2196,7 @@
         {
           "source": "ui-interfaces/src/divider/Divider.tsx",
           "target": "components/ui/divider.tsx",
-          "sourceSha256": "1f13abcf2b3b4e613723dfe2b2229ab216a214b1e6e4f41963eff4130666f41f"
+          "sourceSha256": "45a44cfc014ab426a2ee0f29a05ef889522508abca4e94812ac35ccd3d591d8c"
         }
       ],
       "dependencies": [
@@ -2220,8 +2220,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "notice",
@@ -2232,7 +2232,7 @@
         {
           "source": "ui-interfaces/src/notice/Notice.tsx",
           "target": "components/ui/notice.tsx",
-          "sourceSha256": "0440161147c0c836a31fbf3b7742a1733746294c0043342c476f06932a4f59c9"
+          "sourceSha256": "de3d3e04012fe02b38cfbc6df1de0606b6c5c3af797688119f6f079dd4429b47"
         }
       ],
       "dependencies": [
@@ -2256,8 +2256,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "group-detail",
@@ -2268,7 +2268,7 @@
         {
           "source": "ui-interfaces/src/group-detail/GroupDetail.tsx",
           "target": "components/ui/group-detail.tsx",
-          "sourceSha256": "961030c02aba46dea10dee0784e9d86f915b79e466198232cb05d94b49cb8e7f"
+          "sourceSha256": "7061ec02417eecffe574ef19ad31367930bd7848a1123001f4c66cfa012daf73"
         }
       ],
       "dependencies": [
@@ -2293,8 +2293,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "group-accordion",
@@ -2305,7 +2305,7 @@
         {
           "source": "ui-interfaces/src/group-accordion/GroupAccordion.tsx",
           "target": "components/ui/group-accordion.tsx",
-          "sourceSha256": "a5d84b3752030a4423de326c85f98f02ad1eb9866662a3d983a85b6cb8f3c229"
+          "sourceSha256": "c42dc977d539babbe2376748b39fb987f5f3429047b24bb798ae5b09f7a14514"
         }
       ],
       "dependencies": [
@@ -2329,8 +2329,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "group-raw",
@@ -2341,7 +2341,7 @@
         {
           "source": "ui-interfaces/src/group-raw/GroupRaw.tsx",
           "target": "components/ui/group-raw.tsx",
-          "sourceSha256": "c05d5b33a84bdc0e29a93deb5f418eb118a91be2c50233c46f921acf47537751"
+          "sourceSha256": "e541c76b5dcfd2b71c72391b7403238c2ae24f7996ba5f6ebe229af00eab74b0"
         }
       ],
       "dependencies": [
@@ -2364,8 +2364,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "slider",
@@ -2376,7 +2376,7 @@
         {
           "source": "ui-interfaces/src/slider/Slider.tsx",
           "target": "components/ui/slider.tsx",
-          "sourceSha256": "bc529625ce7d5c275f06334286af70c5bcb1855f8dce749692c4341f314b6d51"
+          "sourceSha256": "22efad744b07a3e5cb282940875bcd4eea71da787ea49f9a2f5a3619ce0135ae"
         }
       ],
       "dependencies": [
@@ -2402,8 +2402,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "rich-text-html",
@@ -2414,12 +2414,12 @@
         {
           "source": "ui-interfaces/src/rich-text-html/RichTextHTML.tsx",
           "target": "components/ui/rich-text-html.tsx",
-          "sourceSha256": "9c2d79b73df29dc6ab628c4130cbc47c870121f75a854a04fbcc95cf63e9f0d7"
+          "sourceSha256": "518460ddb85fbedffdfccd845f130729195822bf64bf7f9de3c5d43edaf71339"
         },
         {
           "source": "ui-interfaces/src/rich-text-html/RichTextHTML.css",
           "target": "components/ui/RichTextHTML.css",
-          "sourceSha256": "6e93144cdc94e9c1b43ba45f9deac1c27b898a01ab35d0da530d0808579bcb96"
+          "sourceSha256": "e1d50da66fb2b99a9e9233735a1533c04814829bd2cf43dce4e8d67376dadf47"
         }
       ],
       "dependencies": [
@@ -2455,8 +2455,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.3.1"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "rich-text-markdown",
@@ -2467,12 +2467,12 @@
         {
           "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.tsx",
           "target": "components/ui/rich-text-markdown.tsx",
-          "sourceSha256": "827415de21ff1ade09ee04d43f441a17ea073f73761e4914a232a8ec63e7caf5"
+          "sourceSha256": "3087fa42b0bd9178e6aa806e38d4cc7156cbdedd1e24ab4d6b4c090dc5819de7"
         },
         {
           "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.css",
           "target": "components/ui/RichTextMarkdown.css",
-          "sourceSha256": "2c752744acd2b60e14c6a3e73e74e519966dfe41bb6916d6c964f428dd284cc8"
+          "sourceSha256": "b358abfcdcd2f9a37f4eb7b64726fd66fcedf1f6d3cd25c1c8aa64295cfffca1"
         }
       ],
       "dependencies": [
@@ -2513,8 +2513,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.9.1"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "vform",
@@ -2525,97 +2525,97 @@
         {
           "source": "ui-form/src/VForm.tsx",
           "target": "components/ui/vform/VForm.tsx",
-          "sourceSha256": "875e91bd25516ee283cb665bd81ffbbbadc2bb304333d4baf963371413d18727"
+          "sourceSha256": "4918514606e5434f199963f6a3f3cb722c24a2c789fdd0cb45dafc98a73a1ec2"
         },
         {
           "source": "ui-form/src/VForm.css",
           "target": "components/ui/vform/VForm.css",
-          "sourceSha256": "8b2b5f4b9217c3e2a1ec9e9679744a74c9fe0e7875658deceab556686bd5ddd1"
+          "sourceSha256": "e67a53bf43490c2522a3d5cde3fafc4c49e26bb503781029fe3cfa14d1ad718f"
         },
         {
           "source": "ui-form/src/types.ts",
           "target": "components/ui/vform/types.ts",
-          "sourceSha256": "82a39c950a29beb5c3f6dfebdfb6e75f649d038997e3a1ea25d6a02aee029f7a"
+          "sourceSha256": "c4a4e1572dc0b020fef34cfa31ea442fd463be5ec3a5a0fe7dd5848ca6fe99d0"
         },
         {
           "source": "ui-form/src/components/FormField.tsx",
           "target": "components/ui/vform/components/FormField.tsx",
-          "sourceSha256": "6a3bdfea654b517c06362b1c0979c76ca2181bbcf5ad0e0e90807de1ac0de6c8"
+          "sourceSha256": "7bd7c5e5dd77500bffcb2e3cf97229e29db78335e56c0e32c74e26bb29a41cfe"
         },
         {
           "source": "ui-form/src/components/FormFieldLabel.tsx",
           "target": "components/ui/vform/components/FormFieldLabel.tsx",
-          "sourceSha256": "45e52e028f4fa177f8d36004a1dff3fe6f64054e63a4a328c9a2bf4530ffcc2c"
+          "sourceSha256": "3bcd1ae848905b3e505792ef60bf62efe90450c539aece9ec14256a319976b41"
         },
         {
           "source": "ui-form/src/components/FormFieldInterface.tsx",
           "target": "components/ui/vform/components/FormFieldInterface.tsx",
-          "sourceSha256": "21cf083249c643deb8a490f8efff106d7ec9747f5dcb854d1910d0700a16e526"
+          "sourceSha256": "be07dc1619dca2c8e733606cc533467e1a7302295d1a3e8ebd7d77259d043669"
         },
         {
           "source": "ui-form/src/components/FormGroupField.tsx",
           "target": "components/ui/vform/components/FormGroupField.tsx",
-          "sourceSha256": "82ef98d5d284457614362994753ddc48ea4c4f0e375816374a71c5bb14dfa7bf"
+          "sourceSha256": "925f103e067ea754481a2a221227af50c1e87e74fc486c673b3b5794d3360a7f"
         },
         {
           "source": "ui-form/src/components/InterfaceErrorBoundary.tsx",
           "target": "components/ui/vform/components/InterfaceErrorBoundary.tsx",
-          "sourceSha256": "b06bcdcd67efd51f3b5c61730bc128967b85913556909410ebab321cbf8d7ab5"
+          "sourceSha256": "8743f4599c5166c7ff613bbbcdbfc602dba8d03cb74e067a543d00340870ccd8"
         },
         {
           "source": "ui-form/src/components/ValidationErrors.tsx",
           "target": "components/ui/vform/components/ValidationErrors.tsx",
-          "sourceSha256": "999056531db8fb7a03064c8e04ecd4b4d1b65b429a56f0151438bda338a63b1e"
+          "sourceSha256": "d623131a4053d51ba85b28e48413809fd53852f3ab11971433a35260dab3289e"
         },
         {
           "source": "ui-form/src/components/index.ts",
           "target": "components/ui/vform/components/index.ts",
-          "sourceSha256": "05155cc2f3d6f323792fdb342c439de0a7d8d908bd2e549c86a129e088e7f257"
+          "sourceSha256": "87fd951d954fe4141b371c1ab0499ec0802db792b5c859496b3d7f35f4206099"
         },
         {
           "source": "ui-form/src/utils/get-default-values.ts",
           "target": "components/ui/vform/utils/get-default-values.ts",
-          "sourceSha256": "4bc78f15af855ea89ad8325fe826916eabf676a8056a530eab2bcc34416c0b02"
+          "sourceSha256": "c4b8f0c98250275eaaea1497eb363bafacadade17eb31185fe4c90b990e2a26b"
         },
         {
           "source": "ui-form/src/utils/get-form-fields.ts",
           "target": "components/ui/vform/utils/get-form-fields.ts",
-          "sourceSha256": "9f700acb6d763e45d2342652aff954c07ed9d8fd9e9d7645534af2c66804618f"
+          "sourceSha256": "7cc886181158e5a8a6e938c65713d7cd45f02dee47f7d169a1027e51bcf65750"
         },
         {
           "source": "ui-form/src/utils/update-field-widths.ts",
           "target": "components/ui/vform/utils/update-field-widths.ts",
-          "sourceSha256": "e85c43fdc7d8b6ed0162f01a177efddf4f28373171b39fa543f2a28fde137ea9"
+          "sourceSha256": "035157f8e4ab2158ac8b6b25a29a2228f4599bd08fcb657c5c9890e906f7395c"
         },
         {
           "source": "ui-form/src/utils/apply-conditions.ts",
           "target": "components/ui/vform/utils/apply-conditions.ts",
-          "sourceSha256": "b790cfc96ac61b67dabe11d015cb89390c90554434d26ba1fea3ee3cd5423f63"
+          "sourceSha256": "8d42e17566828a4d49ed0f28eaaa5c30f5cc03d4f14455f7ab7a6c885c433d20"
         },
         {
           "source": "ui-form/src/utils/push-group-options-down.ts",
           "target": "components/ui/vform/utils/push-group-options-down.ts",
-          "sourceSha256": "57f794a9fa7d7b3904d567e8220680c10021361dc0854dfaf0018ea3f1567f9f"
+          "sourceSha256": "61871c45acfec69ba3780c7e927f36ff93449c0718dd6ff0e5301972a72b75e9"
         },
         {
           "source": "ui-form/src/utils/set-primary-key-readonly.ts",
           "target": "components/ui/vform/utils/set-primary-key-readonly.ts",
-          "sourceSha256": "4cb0c6eef964d045cb3dfd7f56bf888bb98aa6b04e95c289e323051bcddf90c8"
+          "sourceSha256": "5165cfb1e3e4fcd9b0044e7002b9d27c48dd3e6dee8903c35422a62d2dcb279c"
         },
         {
           "source": "ui-form/src/utils/update-system-divider.ts",
           "target": "components/ui/vform/utils/update-system-divider.ts",
-          "sourceSha256": "bcdaee9a7bea6beac2a0a3a32fb66a9a6200a9b0ea4d83e1dfd2d4d62e7adc30"
+          "sourceSha256": "a10bb69d7bcae3dbf3126e236e1f2e15100678ac08e5ac97d644539721b4d965"
         },
         {
           "source": "ui-form/src/utils/index.ts",
           "target": "components/ui/vform/utils/index.ts",
-          "sourceSha256": "4ff38d27012b3cc146dbbdb6fa297b091a1c913d7a9c2562bd8b7f155ebb8ee9"
+          "sourceSha256": "d720dc60d3f19d833a21b87b12bd0bccbc9eddaf2aa8e7084074df1fd45ead6e"
         },
         {
           "source": "cli/templates/lib/vform/index.ts",
           "target": "components/ui/vform/index.ts",
-          "sourceSha256": "da2c1d1eed79ecb4652b3fc3889be773f8f3917f35911e00c82fba01a75e4560"
+          "sourceSha256": "04a7ff06b0b01e3cf794210d56ce4115e7151cbfc8ca46a03d784fdcc609b6ac"
         }
       ],
       "dependencies": [
@@ -2667,8 +2667,8 @@
         "workflow-button"
       ],
       "sourcePackage": "@buildpad/ui-form",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "collection-form",
@@ -2679,12 +2679,12 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "b6427eaa4c241506ba4c4a9012f216b690ae7fc264eff112b764966038fa45dc"
+          "sourceSha256": "d45885ab603154635382912e1bf38dea7d7effc8631400415eb20a8119954162"
         },
         {
           "source": "ui-collections/src/extras-storage.ts",
           "target": "components/ui/extras-storage.ts",
-          "sourceSha256": "bad12008c9d16281452c103555ba6f64ba6567a1bbdac821b9c44ab43489a3be"
+          "sourceSha256": "f9dfef4eaa5be68efd4e7573355bd771ff391ad24e116d6b9c06bd0fc1330c22"
         }
       ],
       "dependencies": [
@@ -2701,8 +2701,8 @@
         "save-options"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "vtable",
@@ -2713,37 +2713,37 @@
         {
           "source": "ui-table/src/VTable.tsx",
           "target": "components/ui/vtable.tsx",
-          "sourceSha256": "fbaad5b119334be71e5d8e46c716e38353a4fc9b3ed8b9dd813fbf5c674402d8"
+          "sourceSha256": "e739321fe6db26c35a72d3e4dcdf977ae0d4311a4811e81ff2c249a5efa52c5c"
         },
         {
           "source": "ui-table/src/VTable.css",
           "target": "components/ui/vtable.css",
-          "sourceSha256": "7dcc01b6a298018b32e6249402ea9f65103d1efe600280b4d77d5ed7d7668dbd"
+          "sourceSha256": "2e8401fcbc6533a03cc1b8ec54577dbd7090f5985cae3fef38843aed8bcac325"
         },
         {
           "source": "ui-table/src/components/TableHeader.tsx",
           "target": "components/ui/table-header.tsx",
-          "sourceSha256": "1d600a76da0e966348e114617f057002d66f9b9142d260e66115e2c871abc046"
+          "sourceSha256": "c6f6130c9514ca192083bdf86ed412942d1e0b5bc4c87ab6ab498d0f1196b761"
         },
         {
           "source": "ui-table/src/components/TableHeader.css",
           "target": "components/ui/table-header.css",
-          "sourceSha256": "dd62b4e5790440a8b5942d4c6f4a2819293a889b74bfde1c4f47e04c5f826a2b"
+          "sourceSha256": "9971b0ea98c708241598dbf40c4c81368a2a52918372f2973a5f06a294aa1fcc"
         },
         {
           "source": "ui-table/src/components/TableRow.tsx",
           "target": "components/ui/table-row.tsx",
-          "sourceSha256": "6d15d8724bd9c058c7148aaf72d951784fe48f4755ce030efb928237a5246ba3"
+          "sourceSha256": "019368eb7340d3b05c78602b416c8a6defdf38f7c26a69181e2bfd996369f6ac"
         },
         {
           "source": "ui-table/src/components/TableRow.css",
           "target": "components/ui/table-row.css",
-          "sourceSha256": "248459ad1bf157014786fe688274f6e4e5cd4c0f600c569deca784bed143e176"
+          "sourceSha256": "7de388c2f6b17698fcd16a8460bc9004f62f2da55e83a3cc8513cb032faf2332"
         },
         {
           "source": "ui-table/src/types.ts",
           "target": "components/ui/vtable-types.ts",
-          "sourceSha256": "b93fe701f06eba776a98ac6c57cd0ae3a0d47222325dbd80a090880a611a32a1"
+          "sourceSha256": "47414fc91e0c86f1f4a8e9508e9a94caeffdf6e91cd947864a0dc682fb665e59"
         }
       ],
       "dependencies": [
@@ -2756,8 +2756,8 @@
       ],
       "internalDependencies": [],
       "sourcePackage": "@buildpad/ui-table",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "collection-list",
@@ -2768,32 +2768,32 @@
         {
           "source": "ui-collections/src/CollectionList.tsx",
           "target": "components/ui/collection-list.tsx",
-          "sourceSha256": "c9c7b4cd2446d48718ca4cc3f9b815fd9127290fdbcb66d1c42bc848ae603d13"
+          "sourceSha256": "dd2e1204f49eaf0685c95bb21a4d74098f45dbec82fd4e3c2b5df5f85cfc5b0a"
         },
         {
           "source": "ui-collections/src/CollectionList.css",
           "target": "components/ui/collection-list.css",
-          "sourceSha256": "dea9d30f350214efcec63e9edb4032c962d2a946d647f09b1fc7f0947076ed66"
+          "sourceSha256": "b4e8a8ebdd0ab8861efb8ad8863d041bc294f713ec34275717d95772ca237a9d"
         },
         {
           "source": "ui-collections/src/CollectionListToolbar.tsx",
           "target": "components/ui/collection-list-toolbar.tsx",
-          "sourceSha256": "6e2591f62b150b4931ff952e46a08daa568c3851822b75ec825a0b599757dc26"
+          "sourceSha256": "8109a8c90e505f9eac94415eee40a968ecdb796231e5f3e6f6bd3621d44ecd71"
         },
         {
           "source": "ui-collections/src/CollectionListFooter.tsx",
           "target": "components/ui/collection-list-footer.tsx",
-          "sourceSha256": "95749fd9e4bbb7cc3d582606a84dcf90e716dcaaf1edae70f1cd8abc53162d15"
+          "sourceSha256": "2a5b53d003c4f49bdfeaa22f0ba9a6cb1b9be1f7ddc73c6135e11f21b22d8c3d"
         },
         {
           "source": "ui-collections/src/DeleteConfirmModal.tsx",
           "target": "components/ui/delete-confirm-modal.tsx",
-          "sourceSha256": "48fadde99a93aa74036883f9c8b1e16ddd3e161e62cf1a1dccd21ecea3e86470"
+          "sourceSha256": "9f4006060db15a23ee3c9dcf12e4eee37cbf01622ab406bfc0843b927409f4f9"
         },
         {
           "source": "ui-collections/src/BulkActionsBar.tsx",
           "target": "components/ui/bulk-actions-bar.tsx",
-          "sourceSha256": "069e0da8db273f8d9a77b465c8f5d8cd7063f3cec31c471709ac7c4924a17a66"
+          "sourceSha256": "a02b0ea5edee108414aec3874d9592f87a178ac83e13215792718b15fc49eb55"
         }
       ],
       "dependencies": [
@@ -2809,8 +2809,8 @@
         "filter-panel"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "filter-panel",
@@ -2821,7 +2821,7 @@
         {
           "source": "ui-collections/src/FilterPanel.tsx",
           "target": "components/ui/filter-panel.tsx",
-          "sourceSha256": "7da6fbacfe6820898adfc6ebb2c4f559987e9755485bbf3d1957b79b2efdf932"
+          "sourceSha256": "6c6909da6a8d11103fc838c9377a37a58d0d6cfd557c39ea862389072f583e89"
         }
       ],
       "dependencies": [
@@ -2832,8 +2832,8 @@
         "types"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "content-navigation",
@@ -2844,7 +2844,7 @@
         {
           "source": "ui-collections/src/ContentNavigation.tsx",
           "target": "components/ui/content-navigation.tsx",
-          "sourceSha256": "35a836c7ce50614e283c4507c5cbed7f7e6d93ba69787eee4fbc3d9e71abd6f0"
+          "sourceSha256": "0d0a58b0a9d0821cf656971a63d400d4626c76e6b38aa7fd187efc6b1360e6aa"
         }
       ],
       "dependencies": [
@@ -2857,8 +2857,8 @@
         "hooks"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "content-layout",
@@ -2869,7 +2869,7 @@
         {
           "source": "ui-collections/src/ContentLayout.tsx",
           "target": "components/ui/content-layout.tsx",
-          "sourceSha256": "0c3f4061f649a1ecb640b5a904b012e44249782bef2fc603c19154438ff477a6"
+          "sourceSha256": "f9b27ff770b9dc034b913ad6f8a22092e1ee0ed4cf47730d1a9a777c10151cc0"
         }
       ],
       "dependencies": [
@@ -2882,8 +2882,8 @@
         "content-navigation"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "save-options",
@@ -2894,7 +2894,7 @@
         {
           "source": "ui-collections/src/SaveOptions.tsx",
           "target": "components/ui/save-options.tsx",
-          "sourceSha256": "1310b7f63b38057bd74e549a9793c78ca3da68f76c0a3991c2eab78088ec09ee"
+          "sourceSha256": "382685fd826b26fe890d9eb51f4b40b15b698f020a2de71ad7a5b7e6e665e718"
         }
       ],
       "dependencies": [
@@ -2903,8 +2903,8 @@
       ],
       "internalDependencies": [],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "map",
@@ -2915,7 +2915,7 @@
         {
           "source": "ui-interfaces/src/map/Map.tsx",
           "target": "components/ui/map.tsx",
-          "sourceSha256": "9a70daf2c55b28bb348a6e3e3d97b8fefad774d982ef269b7d16bae8754c7e55"
+          "sourceSha256": "6cb72df54b32b69959f0f22ca969195b30d811a71e2a62c30bbb4770950ba405"
         }
       ],
       "dependencies": [
@@ -2941,8 +2941,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "map-with-real-map",
@@ -2953,7 +2953,7 @@
         {
           "source": "ui-interfaces/src/map/MapWithRealMap.tsx",
           "target": "components/ui/map-with-real-map.tsx",
-          "sourceSha256": "97ddfff337e7d83ad38dfc8e8ab763d637585899e91ff458978510c146468dd4"
+          "sourceSha256": "ec7881b20d3078cbcc0cc9d8c8f658b9f42630dbec63aa7b3f01e9f1eaa42d2b"
         }
       ],
       "dependencies": [
@@ -2981,8 +2981,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "workflow-button",
@@ -2993,22 +2993,22 @@
         {
           "source": "ui-interfaces/src/workflow-button/workflow-button.tsx",
           "target": "components/ui/workflow-button/workflow-button.tsx",
-          "sourceSha256": "40f80783aa079da47e563c73276fb3abf2fe003e5902484441a35f32b071adef"
+          "sourceSha256": "0bd1f42b68d6a662c0d8504f14d9df2ac928533db345a4287e17f144ed6d9a5d"
         },
         {
           "source": "ui-interfaces/src/workflow-button/use-workflow.ts",
           "target": "components/ui/workflow-button/use-workflow.ts",
-          "sourceSha256": "db4c38fb2ed0a30c4cfd73efb8f82e82089e84dfb49d49950f75f93e33c5c26b"
+          "sourceSha256": "50b5f6965ab9fc7cbf8cae355646e92c2edccf4a7fa27fd00f2cf795e3b273b0"
         },
         {
           "source": "ui-interfaces/src/workflow-button/types.ts",
           "target": "components/ui/workflow-button/types.ts",
-          "sourceSha256": "4787ca2dbf30d8a52bb07d4f1bd30c3f4446a79ceff90797b59e4481690c2a42"
+          "sourceSha256": "5933820e3c1eddf301286c5a10c0df148e0078c0ed6470b83164df511eda774e"
         },
         {
           "source": "ui-interfaces/src/workflow-button/index.ts",
           "target": "components/ui/workflow-button/index.ts",
-          "sourceSha256": "059f912de61a7af69e16b6a5c191766ce92fe933832729c50b805dcb97265d92"
+          "sourceSha256": "9e07fd2a206e0f7daf22ad96798f7c93dc066fb2b86f980c387eeb21bac2f558"
         }
       ],
       "dependencies": [
@@ -3034,8 +3034,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.1",
-      "lastChangedIn": "1.2.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "file-manager",
@@ -3047,82 +3047,82 @@
         {
           "source": "ui-files/src/FileManager.tsx",
           "target": "components/ui/file-manager/file-manager.tsx",
-          "sourceSha256": "5dbadb27b0a735a75b3a6468bbfb7218a9bf76ff4c08427031f59ba45a11d96b"
+          "sourceSha256": "3e9fb8bfbf792800cc274c65b63c3793e8d73641d821ba842093a814a21554cd"
         },
         {
           "source": "ui-files/src/FileManager.css",
           "target": "components/ui/file-manager/file-manager.css",
-          "sourceSha256": "83cb2b0f76638ed68d1d9858084c0a38b7d7a0003ac6795cd0672821f19d2609"
+          "sourceSha256": "fd0828c554488b6a8d864082a228f4eb21c6581a0818b3259a2ec3c9e32c01c2"
         },
         {
           "source": "ui-files/src/FilesToolbar.tsx",
           "target": "components/ui/file-manager/files-toolbar.tsx",
-          "sourceSha256": "943c3c2dbf49cbefcd0a135a69aae6454e9c65a12c4a9da21b5b1bab0c099a4d"
+          "sourceSha256": "39f41ad0022e9df63227a24a71bd482d59ee719074f179cd3843302489cf2008"
         },
         {
           "source": "ui-files/src/FilesGrid.tsx",
           "target": "components/ui/file-manager/files-grid.tsx",
-          "sourceSha256": "f5e1c9090d3824421e2db6c41b6832919a56878f790ea896196e8ae24109dfcc"
+          "sourceSha256": "399af36b692ac393f321a583ed9c54bb6a41425586b2fbc327c7880b03b43f01"
         },
         {
           "source": "ui-files/src/FilesList.tsx",
           "target": "components/ui/file-manager/files-list.tsx",
-          "sourceSha256": "e5607f35bc86f185ae76d913acb516b96c703864466c85a58a895458d70d8ab3"
+          "sourceSha256": "8c3aedc58e9ecd6d0b9dfa7fb3e6a0bf11b851644f1df478823662464f48ae32"
         },
         {
           "source": "ui-files/src/FileCard.tsx",
           "target": "components/ui/file-manager/file-card.tsx",
-          "sourceSha256": "83b73d6dbe1dee7fa1fe91fc342f3f8ce7d6ece782c2e2deea4d5f5cb22a2219"
+          "sourceSha256": "cf360ca68bcd018fa9818c2f5f3beb5b71edc33ed9c25e2fb9a909f78e58dee7"
         },
         {
           "source": "ui-files/src/FolderCard.tsx",
           "target": "components/ui/file-manager/folder-card.tsx",
-          "sourceSha256": "49a32d20a02f171d17a1b7e515d5dac09edcea14a9200e96730f38e76490db0b"
+          "sourceSha256": "99e09a7be8298c07bfbaab628c89a410292480c39f2b05e03e2029dc97eb4392"
         },
         {
           "source": "ui-files/src/FolderBreadcrumb.tsx",
           "target": "components/ui/file-manager/folder-breadcrumb.tsx",
-          "sourceSha256": "983515f390bf3f00c4dcaa706bb76330d520a16cb7e57e4e833f6f9ba43efd0e"
+          "sourceSha256": "4eb58e029cf0f5d0278d1660dc3871e1fdd9941076fa32ce928cd019a81676d0"
         },
         {
           "source": "ui-files/src/NewFolderDialog.tsx",
           "target": "components/ui/file-manager/new-folder-dialog.tsx",
-          "sourceSha256": "395230b88a5e494cb22eae65eb149084e4c46c39be6ccb68b04930cf27140156"
+          "sourceSha256": "e1277eb7b2fcefcd51c0577a1bfeb5632aea8299c11ed192ac5d5301be2e3a52"
         },
         {
           "source": "ui-files/src/BulkActionsBar.tsx",
           "target": "components/ui/file-manager/bulk-actions-bar.tsx",
-          "sourceSha256": "2a641cc7bb696a33b1bd3b311df4a0a58f4462bea6246ccf7de329f67bae3fe8"
+          "sourceSha256": "c4a2dd144ba3deacf84dbee6dbd251c6072a131ac3710fe7be793e7992184e54"
         },
         {
           "source": "ui-files/src/DeleteConfirmModal.tsx",
           "target": "components/ui/file-manager/delete-confirm-modal.tsx",
-          "sourceSha256": "6c271fc811895a2876ff1b09d897d9260ba4fbfc6e61e00e51bd5d42acafe477"
+          "sourceSha256": "294f71ea157946b1cf247e8ca29749d4a041dfc73855a336d211665ac9a0ce23"
         },
         {
           "source": "ui-files/src/FileDetail.tsx",
           "target": "components/ui/file-manager/file-detail.tsx",
-          "sourceSha256": "4c146f2cae2400448a74a91e0d86dbc9a31197d6a280ca3d93554959c47d2447"
+          "sourceSha256": "6eeb35a4f04fa72dac9677b2ac5415b7952d4a558baff361fef6d9e0271e3bd6"
         },
         {
           "source": "ui-files/src/FileMetadataForm.tsx",
           "target": "components/ui/file-manager/file-metadata-form.tsx",
-          "sourceSha256": "804ded5c64200024d2f38f4388b3f04c8201048c59c8571c92cd35ea07467134"
+          "sourceSha256": "b9ae0cb69195c944a4f0882e19d6f856203564bfbabb4bdf6a7feb18013ef98c"
         },
         {
           "source": "ui-files/src/FilePreview.tsx",
           "target": "components/ui/file-manager/file-preview.tsx",
-          "sourceSha256": "fdfa9c61924fbb9ae79bac6068ca723360bcc7feb0cc60455d82e718cc02da9f"
+          "sourceSha256": "49dde2c0d1549d77dccec27085c501123e5e0b2f9f2c9255638fb7758e564219"
         },
         {
           "source": "ui-files/src/FileInfoPanel.tsx",
           "target": "components/ui/file-manager/file-info-panel.tsx",
-          "sourceSha256": "941ba5c1076aacabdc2eb2d182f35d5a45661ee3cef45a78ecce6467eb135b1a"
+          "sourceSha256": "2d1bf1c1cb5f66af80d13332b21b33983726a267641ddf6d59526c22e480e5a0"
         },
         {
           "source": "ui-files/src/index.ts",
           "target": "components/ui/file-manager/index.ts",
-          "sourceSha256": "cbbb64708de3afe29ce07b2c8ce583333c1cdee4f1919a35c37257a3c0ff0b68"
+          "sourceSha256": "e506d706cc3b9da80afe5db55222f064ce7d12f67bccb5134c63e249984d05be"
         }
       ],
       "dependencies": [
@@ -3140,8 +3140,8 @@
         "upload"
       ],
       "sourcePackage": "@buildpad/ui-files",
-      "version": "1.9.1",
-      "lastChangedIn": "1.5.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "users-management",
@@ -3153,127 +3153,127 @@
         {
           "source": "ui-users/src/UsersManager.tsx",
           "target": "components/ui/users-management/users-manager.tsx",
-          "sourceSha256": "224c654623e3390d0bb6b271d481e24895366e77a93cb6872e91aa3c18045050"
+          "sourceSha256": "71eff36b9e86c5487de06ce31ff0eb5693fe5041e4f9b73c10ac1463f0b46512"
         },
         {
           "source": "ui-users/src/UsersManager.css",
           "target": "components/ui/users-management/users-manager.css",
-          "sourceSha256": "a48858f5b0481da7c9d48294f8e13964cdfa3a6dbcc946c4e815a224244bf79e"
+          "sourceSha256": "db90c3f0a9c9a05f91c8c94bba24fca0516592c83ab05347d69be6b99b4039ce"
         },
         {
           "source": "ui-users/src/UserDetail.tsx",
           "target": "components/ui/users-management/user-detail.tsx",
-          "sourceSha256": "cac983d1fadc6a45cc6b3b13ce279c272f6916408dff81160fb1837715e3a40a"
+          "sourceSha256": "bf57292c3f6738626d203afd4943080df9ccf2c29b54cfb1f9a927551f9ec54a"
         },
         {
           "source": "ui-users/src/UserPoliciesManager.tsx",
           "target": "components/ui/users-management/user-policies-manager.tsx",
-          "sourceSha256": "a267a0b6815d918e430a2bd8e2e37e742b11ea75eb6c26b31c37506a95b44297"
+          "sourceSha256": "328f6d11c5a9681cea50df19250f758d7e0e7f31f368bccfe323b6e6cc04a813"
         },
         {
           "source": "ui-users/src/RolesManager.tsx",
           "target": "components/ui/users-management/roles-manager.tsx",
-          "sourceSha256": "304bc8a5fa4d8a229e5f7d6973dbd857f90bc9d9f017b6b72d83994fce16169d"
+          "sourceSha256": "10736021d0e6e40071bf14b95e2b32ed20257f511ffb86bdb8b3950877a06960"
         },
         {
           "source": "ui-users/src/RoleDetail.tsx",
           "target": "components/ui/users-management/role-detail.tsx",
-          "sourceSha256": "fe5fa026c026e8a4243b002421e9e921c7f9bdd0ad5ea58a5bd152eb4b74a59e"
+          "sourceSha256": "8affa05a0aa1f0dfa5676c396aed37f7f8851098d553a97f161451567d140078"
         },
         {
           "source": "ui-users/src/RoleUsersManager.tsx",
           "target": "components/ui/users-management/role-users-manager.tsx",
-          "sourceSha256": "4c74d949ee11e4cc411e797492af65ed76d1b8e59b5fcdfde119aa1ca88a63f9"
+          "sourceSha256": "831e48b00b782c0755745aa2e9916df1ea333f1e5e5b50a367bdab4e50e7abe8"
         },
         {
           "source": "ui-users/src/RolePoliciesManager.tsx",
           "target": "components/ui/users-management/role-policies-manager.tsx",
-          "sourceSha256": "bb031aba33321f42f66293e5b5d249fdad2038fbfb36d23af3dcea1dd11d5813"
+          "sourceSha256": "ea6258988cff87bb9b036cf0138503d218a42b4bcc89954f0042a4c933597491"
         },
         {
           "source": "ui-users/src/PoliciesManager.tsx",
           "target": "components/ui/users-management/policies-manager.tsx",
-          "sourceSha256": "03d9cba420b1ecf248911fb1224ca8268fc29ff7ade4ea4399d6719fad759c44"
+          "sourceSha256": "813c1aa2f92cd7206be2e333a32b987a31b7c3a9a70a9817e31babb297b53d1a"
         },
         {
           "source": "ui-users/src/PolicyDetail.tsx",
           "target": "components/ui/users-management/policy-detail.tsx",
-          "sourceSha256": "198388df52ad7df90ac02c3739dc2e98030a139a5f8600c49cb3442c2894f689"
+          "sourceSha256": "1be1bc25beffdcdea8aca9ec765fc4bc6ffeca84add55d5b1e21abe3df6d2a70"
         },
         {
           "source": "ui-users/src/PolicyAttachmentManager.tsx",
           "target": "components/ui/users-management/policy-attachment-manager.tsx",
-          "sourceSha256": "a3d3f7e360a362db5195c9f76fb6d2fb11f39807bb03e466b31dfa10415a1135"
+          "sourceSha256": "6f673dbcda87bb6c3b53199375d930f36b8ca1db3547188cbfc669cfa83d8029"
         },
         {
           "source": "ui-users/src/PolicyPickerModal.tsx",
           "target": "components/ui/users-management/policy-picker-modal.tsx",
-          "sourceSha256": "f9b3efb91458e7d8a6fbd22fd0e9681156c1ab01656898804cd9a64a7efb7854"
+          "sourceSha256": "0fbdd65ee9084d5b363353f86085f936dd32ba9b7c63463f29999dedfb9508f4"
         },
         {
           "source": "ui-users/src/UserStatusBadge.tsx",
           "target": "components/ui/users-management/user-status-badge.tsx",
-          "sourceSha256": "9f3461f0106f7e5e9946c1faf895faaefd3e944ad1893de33ef2ca98b5d7d2e7"
+          "sourceSha256": "74a18bde95e74baa940836c777038bbc34413744881034c06b873cb59c58c75c"
         },
         {
           "source": "ui-users/src/UserAvatar.tsx",
           "target": "components/ui/users-management/user-avatar.tsx",
-          "sourceSha256": "d102e57353ee032369cbfbcbe0c22ee9002de10a3c0c8cfdf332cbf89948d07e"
+          "sourceSha256": "96fed6077caed6495454a2fc0f09daaee2a4f1897f2a14adfc24c6b7a50998c8"
         },
         {
           "source": "ui-users/src/InfoPanel.tsx",
           "target": "components/ui/users-management/info-panel.tsx",
-          "sourceSha256": "797c8b0e04d12728d4f23f99bb76032c198fa2730fcf4edc6963765e17b57e77"
+          "sourceSha256": "0dfd4d5a67796202584dac88fd62425096c0b3b72076986a86fd44208ddf1209"
         },
         {
           "source": "ui-users/src/DeleteConfirmModal.tsx",
           "target": "components/ui/users-management/delete-confirm-modal.tsx",
-          "sourceSha256": "e4c619b2da962993221a152b3c7b5152e3556e8de1ca3b0cbc5f121f4f9a6da7"
+          "sourceSha256": "138272eb865a7fc9941f0e39e9fe49e040cff041eb1fc96509283f131a2956e7"
         },
         {
           "source": "ui-users/src/SortableTh.tsx",
           "target": "components/ui/users-management/sortable-th.tsx",
-          "sourceSha256": "4f187f0e9f26849348078fedcfc5380d8213bcb75733906baa0a0fa810d283d1"
+          "sourceSha256": "9591ba0600ffd8e39474898248e9e64e3faa8cf6d08ad689ed4b3195a991c371"
         },
         {
           "source": "ui-users/src/SearchInput.tsx",
           "target": "components/ui/users-management/search-input.tsx",
-          "sourceSha256": "f39d1fb5c7bb3ee64545e2f5e7b5928bd809787fd0ced2e637fbb5950ae7dc1e"
+          "sourceSha256": "f1078658ba71ca677fd0b99605b47097896b52b5231f28aec6982d5bf959b2b3"
         },
         {
           "source": "ui-users/src/ListFooter.tsx",
           "target": "components/ui/users-management/list-footer.tsx",
-          "sourceSha256": "7d118bb436adc3a5a977009fdb15746b46170518f57e7a473a5668e438f03c48"
+          "sourceSha256": "a6ad1b7c20f6393340f57689703a6af2e47237291f9c200a6ff2d7bd29084e92"
         },
         {
           "source": "ui-users/src/ListEmptyState.tsx",
           "target": "components/ui/users-management/list-empty-state.tsx",
-          "sourceSha256": "f42c1e66fdeb4a7b3642dafa3c6f0b77b1d4e8bdfa4004896b8f5043a8f2b922"
+          "sourceSha256": "d78bdc6600b9ef9edef533dfa476e06e8d670990c1573d271dd12734d94bcc1f"
         },
         {
           "source": "ui-users/src/RowActionsMenu.tsx",
           "target": "components/ui/users-management/row-actions-menu.tsx",
-          "sourceSha256": "b3237244bfef1bfee549d80ae2055dc6e897f124beb80da8a8ce15897f9f21a2"
+          "sourceSha256": "d711701f960bfe827e71a74aecde82b0f915d6d9f6c9e236b807937ab72d2d1f"
         },
         {
           "source": "ui-users/src/TokenInput.tsx",
           "target": "components/ui/users-management/token-input.tsx",
-          "sourceSha256": "d23e4d5d119814fbf50347bc0e2b924be1bf0522503d65131e630a335be9da68"
+          "sourceSha256": "452546611b79ace28e9e5c645bc0077e3644e22594d6ec984dd27090181eed73"
         },
         {
           "source": "ui-users/src/userDisplay.ts",
           "target": "components/ui/users-management/user-display.ts",
-          "sourceSha256": "92248657e5cb534a047a595a30147835181b5a82ec8b39483eb8ebd115834673"
+          "sourceSha256": "409e2fd9e5a32a4b0737081735b07151f9161533da78ae983cd2ecc48c0e8644"
         },
         {
           "source": "ui-users/src/accessUtils.ts",
           "target": "components/ui/users-management/access-utils.ts",
-          "sourceSha256": "bbcfe8a279dbeb162be0061d21538b030a112a67f4c1c0cd18166902f9013536"
+          "sourceSha256": "002fb7df16a94a8be435c57c0d1468ca74d006fe0af39cb75a5e966cdf9d71fa"
         },
         {
           "source": "ui-users/src/index.ts",
           "target": "components/ui/users-management/index.ts",
-          "sourceSha256": "e557cad95db6ca77808c3df42e6da4b72c22039c1add6f3c75829b50a12947ab"
+          "sourceSha256": "013ba647bba0a28cafaec9d091b41410b9436669170d4972c193d45f4290c268"
         }
       ],
       "dependencies": [
@@ -3293,8 +3293,8 @@
         "system-token"
       ],
       "sourcePackage": "@buildpad/ui-users",
-      "version": "1.9.1",
-      "lastChangedIn": "1.7.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     },
     {
       "name": "form-builder",
@@ -3306,82 +3306,82 @@
         {
           "source": "ui-forms/src/FormBuilder.tsx",
           "target": "components/ui/form-builder/form-builder.tsx",
-          "sourceSha256": "2b8426f760c9ed7820a7f99f77792a3be4bbed841029967ba8cf07b89f5650ef"
+          "sourceSha256": "574a82bbe53619b0779d55a64ca9595cf3ea35f91e5626e4212031118cfe75ac"
         },
         {
           "source": "ui-forms/src/FormBuilder.css",
           "target": "components/ui/form-builder/form-builder.css",
-          "sourceSha256": "00ab18367929814236a1fc52ac9300f49e4c7c2b673593cab559625c7327f2e8"
+          "sourceSha256": "95b802ecb991982c56e7b45cd2c8db3335680bda01af271a599fa2cbba9e5094"
         },
         {
           "source": "ui-forms/src/FieldPalette.tsx",
           "target": "components/ui/form-builder/field-palette.tsx",
-          "sourceSha256": "b842e2c73de34cbb80849601fb7592f83bc377eabfea367e7025044f9f3d0f07"
+          "sourceSha256": "ffe8b7a5bb1e32675b8e03ec9f29bdf9f7c7455695f70dbdfcf3e32f8c124d44"
         },
         {
           "source": "ui-forms/src/AddFieldModal.tsx",
           "target": "components/ui/form-builder/add-field-modal.tsx",
-          "sourceSha256": "1d1f5848b54a6760f03084f8c5a613a0840657c27f1eef1530a913b2a9b8eec4"
+          "sourceSha256": "4954e6461cf026d9ac47a20a52ff5068ac0c599ee77d35a987930700f240b50a"
         },
         {
           "source": "ui-forms/src/NameFieldModal.tsx",
           "target": "components/ui/form-builder/name-field-modal.tsx",
-          "sourceSha256": "01b749c60f563c1d602db0da5f43ab8bbf004d6b29577646d82d54be182beecc"
+          "sourceSha256": "de98a817885bc7573f738e8a65b97b68b1bc566faa5bdcf5582be05981eab27b"
         },
         {
           "source": "ui-forms/src/ChoicesInput.tsx",
           "target": "components/ui/form-builder/choices-input.tsx",
-          "sourceSha256": "e74372bd9fbe655f9dfc88a360fafbd7cb4394c978b7b826ad1fb5ee7f77757f"
+          "sourceSha256": "93c71210593c0e0eae502a4f6da72c46813174f4334456e900554c82af960f3c"
         },
         {
           "source": "ui-forms/src/field-name.ts",
           "target": "components/ui/form-builder/field-name.ts",
-          "sourceSha256": "b8edefdfa33b94bb1b380586856522927540ec48a47c95370db589ec3c0d15bd"
+          "sourceSha256": "5a6bd85cf394825d2fec5fadc30bf64ddaf31123dd654a276abb55fe3365e712"
         },
         {
           "source": "ui-forms/src/BuilderCanvas.tsx",
           "target": "components/ui/form-builder/builder-canvas.tsx",
-          "sourceSha256": "0c47a0055d9e04463f75e79d51305c9c342c7c9a8db2bfd5ab2f133285227810"
+          "sourceSha256": "89182d5847e14bffeb7a41406072c065bdcd245280b32ff399eb5894cc60ebbc"
         },
         {
           "source": "ui-forms/src/BuilderSection.tsx",
           "target": "components/ui/form-builder/builder-section.tsx",
-          "sourceSha256": "7c319227f53c24d9d33ae329f26109ac663cc2169418f98bb37309e54c1cdd92"
+          "sourceSha256": "ed953ec4c953d037304047a1731f00a4658bcb5865a05e5c99f800ebc78ee9eb"
         },
         {
           "source": "ui-forms/src/BuilderFieldRow.tsx",
           "target": "components/ui/form-builder/builder-field-row.tsx",
-          "sourceSha256": "6ee484e7ce73cbee784fac13c4855976deafe195e067c78e6d609d2bd493bd45"
+          "sourceSha256": "cc0650a9da41ba69c2d06f2304a80a6dfdb84a0121a50da0089a405f03941e2b"
         },
         {
           "source": "ui-forms/src/FieldSettingsPanel.tsx",
           "target": "components/ui/form-builder/field-settings-panel.tsx",
-          "sourceSha256": "4f60f7ba59e42b16e1f29336fb896049313f6601b4cf3783f36eaf4ef3cf4bf7"
+          "sourceSha256": "01016ddbb1d59fef2361b80b8debe9feeca479c3653c5e929a9de7c01c0988ae"
         },
         {
           "source": "ui-forms/src/ConditionsEditor.tsx",
           "target": "components/ui/form-builder/conditions-editor.tsx",
-          "sourceSha256": "acdd08a24022078c698105693c678c4b3265f69ec57f9a6295fe9f2b476bc8b4"
+          "sourceSha256": "42519ac8ebeb5a5eb99549115602efdb271d3fffecc5e5474b91537401816163"
         },
         {
           "source": "ui-forms/src/FormPreview.tsx",
           "target": "components/ui/form-builder/form-preview.tsx",
-          "sourceSha256": "ef1fc522cdcef57f3e80339bdc9842dffc424149c749680181c4e4e5f6fa4d1d"
+          "sourceSha256": "45899b3b9265835702ae6b2058ed6bc2cef2a79d8cd87f8a48b1bf6d795b8e72"
         },
         {
           "source": "ui-forms/src/DynamicForm.tsx",
           "target": "components/ui/form-builder/dynamic-form.tsx",
-          "sourceSha256": "b9654c4037c89cf9b9b4ed10c2c0bfd46d70d576360ea2f758e98aa940b11ff4"
+          "sourceSha256": "a1238a8978aaf30a8c450bc143718b05930b80c6f65275695b8d811eddc16592"
         },
         {
           "source": "ui-forms/src/FormsEmptyState.tsx",
           "target": "components/ui/form-builder/forms-empty-state.tsx",
-          "sourceSha256": "1496c757dc7bb888d4b612f7de88e120637abe61c03dbe7de4dcacb3d8cbf5bb"
+          "sourceSha256": "65c925555d75a2382d1d39801c9a24214598bdb41befcbac230786ce972eec13"
         },
         {
           "source": "ui-forms/src/index.ts",
           "target": "components/ui/form-builder/index.ts",
-          "sourceSha256": "3a6992fc5771d5ca43501f128b55b01fdc9253d38c970b81ebf7ca58a4665b92"
+          "sourceSha256": "85ba3951cb00b2a91511d73cc3cff331234d99d8e919b9f325a7703cbefbf7c2"
         }
       ],
       "dependencies": [
@@ -3404,8 +3404,8 @@
         "filter-panel"
       ],
       "sourcePackage": "@buildpad/ui-forms",
-      "version": "1.9.1",
-      "lastChangedIn": "1.6.0"
+      "version": "1.9.2",
+      "lastChangedIn": "1.9.2"
     }
   ],
   "categories": [

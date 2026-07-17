@@ -89,6 +89,7 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
   lineWrapping = true,
   template,
   'data-testid': testId,
+  className,
   ...props
 }, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -139,14 +140,23 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
 
   const handleScroll = (event: React.UIEvent<HTMLTextAreaElement>) => {
     // Sync line numbers scroll with textarea
-    const lineNumbersEl = event.currentTarget.parentElement?.querySelector('[data-line-numbers]');
+    const lineNumbersEl = event.currentTarget.parentElement?.parentElement?.querySelector('[data-line-numbers]');
     if (lineNumbersEl) {
       lineNumbersEl.scrollTop = event.currentTarget.scrollTop;
     }
   };
 
   return (
-    <Box style={{ position: 'relative' }} data-testid={testId}>
+    <Box
+      className={className}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+      }}
+      data-testid={testId}
+    >
       {label && (
         <Text fw={500} size="sm" mb="xs">
           {label}
@@ -160,9 +170,14 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
         style={{
           overflow: 'hidden',
           borderColor: error ? 'var(--mantine-color-red-filled)' : undefined,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          maxHeight: '480px',
         }}
       >
-        <Box style={{ display: 'flex', minHeight: '120px' }}>
+        <Box style={{ display: 'flex', minHeight: '120px', flex: 1, height: '100%' }}>
           {/* Line numbers */}
           {lineNumber && (
             <Box
@@ -191,7 +206,7 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
           )}
 
           {/* Code editor textarea */}
-          <Box style={{ flex: 1, position: 'relative' }}>
+          <Box style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <Box
               component="textarea"
               ref={ref || textareaRef}
@@ -204,6 +219,7 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
               spellCheck={false}
               style={{
                 width: '100%',
+                flex: '1 1 0%',
                 minHeight: '120px',
                 border: 'none',
                 outline: 'none',

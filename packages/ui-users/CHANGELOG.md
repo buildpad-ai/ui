@@ -1,5 +1,15 @@
 # @buildpad/ui-users
 
+## 1.9.2
+
+### Patch Changes
+
+- Updated dependencies [0a7e18d]
+  - @buildpad/ui-interfaces@1.9.2
+  - @buildpad/hooks@1.9.2
+  - @buildpad/services@1.9.2
+  - @buildpad/types@1.9.2
+
 ## 1.9.1
 
 ### Patch Changes
