@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/utils",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "description": "Utility functions for Buildpad UI packages",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

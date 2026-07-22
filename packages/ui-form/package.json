@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-form",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "description": "Dynamic form component (VForm) for Buildpad projects - inspired by DaaS v-form",
   "type": "module",
   "main": "./dist/index.js",

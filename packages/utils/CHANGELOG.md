@@ -1,5 +1,11 @@
 # @buildpad/utils
 
+## 1.9.3
+
+### Patch Changes
+
+- @buildpad/types@1.9.3
+
 ## 1.9.2
 
 ### Patch Changes

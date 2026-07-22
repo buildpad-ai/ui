@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-07-17T07:29:21.913Z",
+  "generatedAt": "2026-07-22T09:24:48.696Z",
   "version": "1.9.1",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -86,47 +86,47 @@
   },
   "packages": {
     "@buildpad/ui-interfaces": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "ui-interfaces/CHANGELOG.md"
     },
     "@buildpad/ui-form": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "ui-form/CHANGELOG.md"
     },
     "@buildpad/ui-table": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "ui-table/CHANGELOG.md"
     },
     "@buildpad/ui-collections": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "ui-collections/CHANGELOG.md"
     },
     "@buildpad/ui-files": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "ui-files/CHANGELOG.md"
     },
     "@buildpad/ui-forms": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "ui-forms/CHANGELOG.md"
     },
     "@buildpad/ui-users": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "ui-users/CHANGELOG.md"
     },
     "@buildpad/hooks": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "hooks/CHANGELOG.md"
     },
     "@buildpad/services": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "services/CHANGELOG.md"
     },
     "@buildpad/types": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "types/CHANGELOG.md"
     },
     "@buildpad/utils": {
-      "version": "1.9.2",
+      "version": "1.9.3",
       "changelogUrl": "utils/CHANGELOG.md"
     }
   },
@@ -244,8 +244,8 @@
         }
       ],
       "sourcePackage": "@buildpad/types",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     "services": {
       "name": "services",
@@ -312,8 +312,8 @@
         "utils"
       ],
       "sourcePackage": "@buildpad/services",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     "hooks": {
       "name": "hooks",
@@ -490,8 +490,8 @@
         "services"
       ],
       "sourcePackage": "@buildpad/hooks",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     "api-routes": {
       "name": "api-routes",
@@ -1003,8 +1003,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "textarea",
@@ -1039,8 +1039,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "input-code",
@@ -1077,8 +1077,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "input-hash",
@@ -1118,8 +1118,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "system-token",
@@ -1162,8 +1162,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "system-permissions",
@@ -1255,8 +1255,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "input-block-editor",
@@ -1312,8 +1312,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "tags",
@@ -1349,8 +1349,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "select-dropdown",
@@ -1389,8 +1389,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "select-radio",
@@ -1425,8 +1425,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "select-multiple-checkbox",
@@ -1461,8 +1461,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "select-multiple-checkbox-tree",
@@ -1499,8 +1499,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "select-multiple-dropdown",
@@ -1536,8 +1536,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "select-icon",
@@ -1572,8 +1572,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "autocomplete-api",
@@ -1609,8 +1609,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "collection-item-dropdown",
@@ -1653,8 +1653,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "datetime",
@@ -1694,8 +1694,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "boolean",
@@ -1730,8 +1730,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "toggle",
@@ -1766,8 +1766,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "file",
@@ -1808,8 +1808,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "file-image",
@@ -1849,8 +1849,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "files",
@@ -1891,8 +1891,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "upload",
@@ -1932,8 +1932,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "color",
@@ -1967,8 +1967,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "list-m2m",
@@ -2024,8 +2024,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "select-dropdown-m2o",
@@ -2082,8 +2082,8 @@
         ]
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "list-o2m",
@@ -2129,8 +2129,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "list-m2a",
@@ -2184,8 +2184,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "divider",
@@ -2220,8 +2220,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "notice",
@@ -2256,8 +2256,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "group-detail",
@@ -2293,8 +2293,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "group-accordion",
@@ -2329,8 +2329,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "group-raw",
@@ -2364,8 +2364,8 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "slider",
@@ -2402,8 +2402,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "rich-text-html",
@@ -2455,8 +2455,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "rich-text-markdown",
@@ -2513,8 +2513,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "vform",
@@ -2667,8 +2667,8 @@
         "workflow-button"
       ],
       "sourcePackage": "@buildpad/ui-form",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "collection-form",
@@ -2701,8 +2701,8 @@
         "save-options"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "vtable",
@@ -2718,7 +2718,7 @@
         {
           "source": "ui-table/src/VTable.css",
           "target": "components/ui/vtable.css",
-          "sourceSha256": "2e8401fcbc6533a03cc1b8ec54577dbd7090f5985cae3fef38843aed8bcac325"
+          "sourceSha256": "ef8cecb59750afa9fa7d6599ee03baf862cfd20431334372a3b1d94bbf9de8c8"
         },
         {
           "source": "ui-table/src/components/TableHeader.tsx",
@@ -2756,8 +2756,8 @@
       ],
       "internalDependencies": [],
       "sourcePackage": "@buildpad/ui-table",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "collection-list",
@@ -2773,7 +2773,7 @@
         {
           "source": "ui-collections/src/CollectionList.css",
           "target": "components/ui/collection-list.css",
-          "sourceSha256": "b4e8a8ebdd0ab8861efb8ad8863d041bc294f713ec34275717d95772ca237a9d"
+          "sourceSha256": "320113ab3fb64063e4840b65b8bbe2452f26004d420c6d18cd7f47538e7747b7"
         },
         {
           "source": "ui-collections/src/CollectionListToolbar.tsx",
@@ -2809,8 +2809,8 @@
         "filter-panel"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "filter-panel",
@@ -2832,8 +2832,8 @@
         "types"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "content-navigation",
@@ -2857,8 +2857,8 @@
         "hooks"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "content-layout",
@@ -2882,8 +2882,8 @@
         "content-navigation"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "save-options",
@@ -2903,8 +2903,8 @@
       ],
       "internalDependencies": [],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "map",
@@ -2941,8 +2941,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "map-with-real-map",
@@ -2981,8 +2981,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "workflow-button",
@@ -3034,8 +3034,8 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "file-manager",
@@ -3140,8 +3140,8 @@
         "upload"
       ],
       "sourcePackage": "@buildpad/ui-files",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "users-management",
@@ -3293,8 +3293,8 @@
         "system-token"
       ],
       "sourcePackage": "@buildpad/ui-users",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     },
     {
       "name": "form-builder",
@@ -3404,8 +3404,8 @@
         "filter-panel"
       ],
       "sourcePackage": "@buildpad/ui-forms",
-      "version": "1.9.2",
-      "lastChangedIn": "1.9.2"
+      "version": "1.9.3",
+      "lastChangedIn": "1.9.3"
     }
   ],
   "categories": [
