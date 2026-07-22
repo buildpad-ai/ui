@@ -837,6 +837,45 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         );
       }
 
+      // ---------- Collection Item Dropdown Interface ----------
+      if (fieldMeta.meta?.interface === "collection-item-dropdown") {
+        let parsed = value;
+        if (typeof value === "string" && value.trim().startsWith("{")) {
+          try {
+            parsed = JSON.parse(value);
+          } catch {
+            // treat as raw string
+          }
+        }
+        
+        if (typeof parsed === "object" && parsed !== null && "key" in parsed) {
+          const keyVal = String(parsed.key);
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(keyVal);
+          
+          if (isUuid) {
+            return (
+              <Tooltip label={keyVal} openDelay={300}>
+                <Badge variant="light" size="sm" color="blue" style={{ textTransform: "none", maxWidth: 120 }}>
+                  {keyVal.substring(0, 8)}…
+                </Badge>
+              </Tooltip>
+            );
+          }
+          
+          return (
+            <Badge variant="light" size="sm" color="blue" style={{ textTransform: "none" }}>
+              {keyVal}
+            </Badge>
+          );
+        }
+        
+        return (
+          <Text size="sm" truncate="end">
+            {String(value)}
+          </Text>
+        );
+      }
+
       // ---------- Default: let VTable handle it ----------
       return null;
     },
