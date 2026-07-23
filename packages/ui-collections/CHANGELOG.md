@@ -4,6 +4,7 @@
 
 ### Patch Changes
 
+- Make CollectionList pagination footer sticky horizontally and vertically when scrolling.
 - 3c55e13: adjust flex property on CollectionList to prevent empty space issue
   - @buildpad/ui-form@1.9.3
   - @buildpad/services@1.9.3
