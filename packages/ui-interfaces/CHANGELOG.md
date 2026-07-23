@@ -17,6 +17,19 @@
   - @buildpad/types@2.0.0
   - @buildpad/utils@2.0.0
 
+## 1.9.3
+
+### Patch Changes
+
+- Updated dependencies [3c55e13]
+  - @buildpad/ui-collections@1.9.3
+  - @buildpad/ui-form@1.9.3
+  - @buildpad/hooks@1.9.3
+  - @buildpad/services@1.9.3
+  - @buildpad/types@1.9.3
+  - @buildpad/utils@1.9.3
+
+
 ## 1.9.2
 
 ### Patch Changes
