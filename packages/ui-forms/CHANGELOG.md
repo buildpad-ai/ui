@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- Updated dependencies
+- Updated dependencies [3c55e13]
   - @buildpad/ui-collections@1.9.3
   - @buildpad/ui-interfaces@1.9.3
   - @buildpad/ui-form@1.9.3
