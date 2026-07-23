@@ -83,6 +83,15 @@
   padding: 8px 16px;
   border-top: 1px solid var(--mantine-color-default-border);
   margin-top: auto;
+  position: sticky;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background: var(--mantine-color-body);
+  z-index: 5;
+  flex-shrink: 0;
 }
 
 /* ── Bottom Pagination ── */
@@ -94,6 +103,14 @@
   border-top: 1px solid var(--mantine-color-default-border);
   background: var(--mantine-color-body);
   margin-top: auto;
+  position: sticky;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  z-index: 5;
+  flex-shrink: 0;
 }
 
 /* ── Filter panel (inline, collapsible) ── */
