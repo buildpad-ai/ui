@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-interfaces",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "private": true,
   "description": "Shared UI interface components for Buildpad projects - DaaS-compatible field interfaces",
   "main": "./src/index.ts",

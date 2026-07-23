@@ -1,5 +1,16 @@
 # @buildpad/ui-collections
 
+## 1.9.3
+
+### Patch Changes
+
+- 3c55e13: adjust flex property on CollectionList to prevent empty space issue
+  - @buildpad/ui-form@1.9.3
+  - @buildpad/services@1.9.3
+  - @buildpad/types@1.9.3
+  - @buildpad/ui-table@1.9.3
+  - @buildpad/utils@1.9.3
+
 ## 1.9.2
 
 ### Patch Changes

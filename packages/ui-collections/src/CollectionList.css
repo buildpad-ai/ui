@@ -4,7 +4,7 @@
 .collection-list {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   background: var(--mantine-color-body);
   border: 1px solid var(--mantine-color-default-border);
