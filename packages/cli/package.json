@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/cli",
-  "version": "2.0.0",
+  "version": "1.9.3",
   "description": "CLI tool for adding Buildpad components to your project - like shadcn/ui",
   "type": "module",
   "main": "dist/index.js",

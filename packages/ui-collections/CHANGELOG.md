@@ -1,20 +1,5 @@
 # @buildpad/ui-collections
 
-## 2.0.0
-
-### Minor Changes
-
-- feat(ui-collections): render selected key inside Badge in CollectionList for collection-item-dropdown
-  feat(ui-interfaces): fetch display item from API in real mode for CollectionItemDropdown and parse serialized JSON strings in CollectionItemDropdown value
-
-### Patch Changes
-
-- @buildpad/ui-form@2.0.0
-- @buildpad/services@2.0.0
-- @buildpad/types@2.0.0
-- @buildpad/ui-table@2.0.0
-- @buildpad/utils@2.0.0
-
 ## 1.9.3
 
 ### Patch Changes
@@ -26,7 +11,6 @@
   - @buildpad/types@1.9.3
   - @buildpad/ui-table@1.9.3
   - @buildpad/utils@1.9.3
-
 
 ## 1.9.2
 
