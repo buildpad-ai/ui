@@ -53,6 +53,7 @@ vi.mock("@buildpad/ui-table", () => ({
     onRowClick,
     renderFooter,
     noItemsText,
+    renderCell,
   }: {
     items: Array<Record<string, unknown>>;
     headers: Array<{ text: string; value: string }>;
@@ -63,6 +64,7 @@ vi.mock("@buildpad/ui-table", () => ({
     onRowClick?: (args: { item: Record<string, unknown> }) => void;
     renderFooter?: () => React.ReactNode;
     noItemsText?: string;
+    renderCell?: (item: Record<string, unknown>, header: any) => React.ReactNode;
   }) => (
     <div data-testid="vtable-mock">
       {loading && <div data-testid="vtable-loading">Loading...</div>}
@@ -102,11 +104,14 @@ vi.mock("@buildpad/ui-table", () => ({
                   />
                 </td>
               )}
-              {headers.map((h) => (
-                <td key={h.value} data-testid={`cell-${i}-${h.value}`}>
-                  {String(item[h.value] ?? "")}
-                </td>
-              ))}
+              {headers.map((h) => {
+                const cellContent = renderCell ? renderCell(item, h) : null;
+                return (
+                  <td key={h.value} data-testid={`cell-${i}-${h.value}`}>
+                    {cellContent !== null && cellContent !== undefined ? cellContent : String(item[h.value] ?? "")}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -612,6 +617,58 @@ describe("CollectionList", () => {
       await waitFor(() => {
         expect(screen.getByTestId("vtable-empty")).toBeInTheDocument();
       });
+    });
+  });
+
+  // =====================================================================
+  // Cell Renderers
+  // =====================================================================
+  describe("collection-item-dropdown cell rendering", () => {
+    it("renders collection-item-dropdown values appropriately", async () => {
+      const dropdownFields = [
+        { field: "id", type: "integer", meta: { interface: "input", sort: 0, hidden: false } },
+        { field: "relation_non_uuid", type: "string", meta: { interface: "collection-item-dropdown", sort: 1, hidden: false } },
+        { field: "relation_uuid", type: "string", meta: { interface: "collection-item-dropdown", sort: 2, hidden: false } },
+        { field: "relation_raw", type: "string", meta: { interface: "collection-item-dropdown", sort: 3, hidden: false } },
+      ];
+
+      const dropdownItems = {
+        data: [
+          {
+            id: 1,
+            relation_non_uuid: { key: "non-uuid-key" },
+            relation_uuid: '{"key":"12345678-abcd-1234-abcd-123456789abc"}',
+            relation_raw: "raw-string-val",
+          },
+        ],
+        meta: { page: 1, limit: 25, total: 1 },
+      };
+
+      mockFieldsReadAll.mockResolvedValue(dropdownFields);
+      mockApiRequest.mockImplementation((url: string) => {
+        if (url.includes("aggregate")) {
+          return Promise.resolve(makeCountResponse(1));
+        }
+        return Promise.resolve(dropdownItems);
+      });
+
+      renderList();
+
+      // Wait for table to load and cells to be rendered
+      const nonUuidCell = await screen.findByTestId("cell-0-relation_non_uuid");
+      expect(nonUuidCell).toHaveTextContent("non-uuid-key");
+      // It should render a Badge
+      expect(nonUuidCell.querySelector('[data-component="Badge"]')).toBeInTheDocument();
+
+      // 2. UUID key JSON string should be rendered as a Badge with truncated key text
+      const uuidCell = screen.getByTestId("cell-0-relation_uuid");
+      expect(uuidCell).toHaveTextContent("12345678…");
+      expect(uuidCell.querySelector('[data-component="Badge"]')).toBeInTheDocument();
+
+      // 3. Raw value should be rendered as a Text component
+      const rawCell = screen.getByTestId("cell-0-relation_raw");
+      expect(rawCell).toHaveTextContent("raw-string-val");
+      expect(rawCell.querySelector('[data-component="Text"]')).toBeInTheDocument();
     });
   });
 });

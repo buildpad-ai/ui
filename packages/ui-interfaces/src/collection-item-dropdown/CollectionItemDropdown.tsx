@@ -180,6 +180,43 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
     const [internalCollection, setInternalCollection] = useState<string>(selectedCollectionProp || '');
     const selectedCollection = selectedCollectionProp || internalCollection;
 
+    // Normalize value from primitive or other object formats to CollectionItemDropdownValue
+    const normalizedValue = React.useMemo<CollectionItemDropdownValue | null>(() => {
+        if (!value) return null;
+        
+        let parsedValue = value;
+        if (typeof value === 'string' && value.trim().startsWith('{')) {
+            try {
+                parsedValue = JSON.parse(value);
+            } catch {
+                // Ignore parse error, treat as raw string
+            }
+        }
+
+        // If it's already in the expected shape
+        if (typeof parsedValue === 'object' && parsedValue !== null && 'key' in parsedValue) {
+            return parsedValue as CollectionItemDropdownValue;
+        }
+        
+        // If it's a resolved item object (e.g. { id: 123, name: '...' })
+        if (typeof parsedValue === 'object' && parsedValue !== null) {
+            const keyVal = (parsedValue as any)[primaryKey] ?? (parsedValue as any).id;
+            if (keyVal !== undefined && keyVal !== null) {
+                return {
+                    key: keyVal,
+                    collection: selectedCollection,
+                };
+            }
+            return null;
+        }
+        
+        // If it's a primitive string/number key
+        return {
+            key: parsedValue as string | number,
+            collection: selectedCollection,
+        };
+    }, [value, selectedCollection, primaryKey]);
+
     // Collection selection state
     const [collectionsLoading, setCollectionsLoading] = useState(false);
     const [availableCollections, setAvailableCollections] = useState<CollectionInfo[]>([]);
@@ -225,14 +262,16 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
     const mockItemsRef = useRef(mockItems);
     const primaryKeyRef = useRef(primaryKey);
     const filterRef = useRef(filter);
+    const availableItemsRef = useRef(availableItems);
     
-    // Update refs when props change
+    // Update refs when props/state change
     useEffect(() => {
         fieldsRef.current = fields;
         mockItemsRef.current = mockItems;
         primaryKeyRef.current = primaryKey;
         filterRef.current = filter;
-    }, [fields, mockItems, primaryKey, filter]);
+        availableItemsRef.current = availableItems;
+    }, [fields, mockItems, primaryKey, filter, availableItems]);
 
     // Load available collections for collection selection mode
     useEffect(() => {
@@ -312,7 +351,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
             const currentMockItems = mockItemsRef.current;
             const currentPrimaryKey = primaryKeyRef.current;
             
-            if (!value || !value.key) {
+            if (!normalizedValue || !normalizedValue.key) {
                 setDisplayItem(null);
                 return;
             }
@@ -320,19 +359,44 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
             // In mock mode, find item from mockItems
             if (currentMockItems && currentMockItems.length > 0) {
                 const found = currentMockItems.find(item => 
-                    item[currentPrimaryKey] === value.key || item.id === value.key
+                    item[currentPrimaryKey] === normalizedValue.key || item.id === normalizedValue.key
                 );
                 setDisplayItem(found || null);
                 return;
             }
 
-            // In real mode, would fetch from API
-            // For now, set a placeholder
+            // Try to find the item in currently loaded items first to avoid a network request
+            const currentAvailableItems = availableItemsRef.current;
+            if (currentAvailableItems && currentAvailableItems.length > 0) {
+                const found = currentAvailableItems.find(item => 
+                    item[currentPrimaryKey] === normalizedValue.key || item.id === normalizedValue.key
+                );
+                if (found) {
+                    setDisplayItem(found);
+                    return;
+                }
+            }
+
+            // In real mode, fetch from API
+            const collectionName = normalizedValue.collection || selectedCollection;
+            if (!collectionName) {
+                setDisplayItem({ [currentPrimaryKey]: normalizedValue.key });
+                return;
+            }
+
             setLoading(true);
             try {
-                // Simulated delay for demo
-                await new Promise(resolve => setTimeout(resolve, 100));
-                setDisplayItem({ [currentPrimaryKey]: value.key });
+                const response = await fetch(`/api/items/${collectionName}/${normalizedValue.key}`);
+                if (response.ok) {
+                    const result = await response.json();
+                    setDisplayItem(result.data || null);
+                } else {
+                    console.error('Failed to fetch selected item:', await response.text());
+                    setDisplayItem({ [currentPrimaryKey]: normalizedValue.key });
+                }
+            } catch (err) {
+                console.error('Error fetching selected item:', err);
+                setDisplayItem({ [currentPrimaryKey]: normalizedValue.key });
             } finally {
                 setLoading(false);
             }
@@ -340,7 +404,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
 
         loadDisplayItem();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [value?.key, value?.collection]); // Only depend on the primitive values to avoid infinite loops
+    }, [normalizedValue?.key, normalizedValue?.collection]); // Only depend on the primitive values to avoid infinite loops
 
     // Load available items for dropdown
     const loadAvailableItems = useCallback(async (searchTerm?: string) => {
@@ -591,7 +655,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                         rightSection={
                             loading ? (
                                 <Loader size={16} />
-                            ) : value?.key && allowNone && !disabled && !readOnly ? (
+                            ) : normalizedValue?.key && allowNone && !disabled && !readOnly ? (
                                 <CloseButton
                                     size="sm"
                                     onMouseDown={(e) => e.preventDefault()}
@@ -611,7 +675,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                 combobox.toggleDropdown();
                             }
                         }}
-                        rightSectionPointerEvents={value?.key && allowNone && !disabled && !readOnly ? 'auto' : 'none'}
+                        rightSectionPointerEvents={normalizedValue?.key && allowNone && !disabled && !readOnly ? 'auto' : 'none'}
                         disabled={disabled || readOnly}
                         error={error ? true : undefined}
                         data-testid="collection-item-dropdown-input"
@@ -659,7 +723,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                             ) : (
                                 availableItems.map((item, index) => {
                                     const itemKey = item[primaryKey] ?? item.id;
-                                    const isSelected = value?.key === itemKey;
+                                    const isSelected = normalizedValue?.key === itemKey;
                                     
                                     return (
                                         <Combobox.Option
@@ -761,7 +825,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                     ) : (
                                         availableItems.map((item) => {
                                             const itemKey = item[primaryKey] ?? item.id;
-                                            const isSelected = value?.key === itemKey;
+                                            const isSelected = normalizedValue?.key === itemKey;
                                             
                                             return (
                                                 <Table.Tr
@@ -818,7 +882,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
 
                         {/* Footer actions */}
                         <Group justify="space-between">
-                            {allowNone && value?.key && (
+                            {allowNone && normalizedValue?.key && (
                                 <ActionIcon
                                     variant="subtle"
                                     color="red"
