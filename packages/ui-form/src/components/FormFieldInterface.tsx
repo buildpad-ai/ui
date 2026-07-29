@@ -215,6 +215,29 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
     return component;
   }, [interfaceConfig.type]);
 
+  // Build props for interface component
+  // Merge interfaceConfig.props (from @buildpad/utils) with runtime props
+  // When nonEditable, suppress onChange and mark disabled+readonly
+  const isEffectivelyReadonly = readonly || nonEditable;
+
+  // DaaS omits hash field values (e.g. password) from API responses for security.
+  // DaaS uses a server-side 'conceal' transformer to return '**********' instead.
+  // Synthesize the same indicator so InputHash can detect an existing hashed value.
+  //
+  // Hoisted above the early returns below (loading skeleton / component-not-found alert)
+  // so every hook in this component runs unconditionally on every render. Previously this
+  // useMemo ran after those returns, so toggling `loading` or the interface resolving from
+  // unknown to known changed the hook count on the same instance, triggering React's
+  // "Rendered more hooks than during the previous render" crash.
+  const effectiveValue = useMemo(() => {
+    if (value !== undefined && value !== null) return value;
+    const isHashField = field.meta?.special?.includes?.('hash') || field.type === 'hash';
+    if (isHashField && interfaceConfig.type === 'input-hash') return '**********';
+    const isConcealField = field.meta?.special?.includes?.('conceal');
+    if (isConcealField && interfaceConfig.type === 'system-token') return '**********';
+    return value;
+  }, [value, field, interfaceConfig.type]);
+
   // Show loading skeleton
   if (loading && !field.hideLoader) {
     return <Skeleton height={36} />;
@@ -233,23 +256,6 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
       </Alert>
     );
   }
-
-  // Build props for interface component
-  // Merge interfaceConfig.props (from @buildpad/utils) with runtime props
-  // When nonEditable, suppress onChange and mark disabled+readonly
-  const isEffectivelyReadonly = readonly || nonEditable;
-
-  // DaaS omits hash field values (e.g. password) from API responses for security.
-  // DaaS uses a server-side 'conceal' transformer to return '**********' instead.
-  // Synthesize the same indicator so InputHash can detect an existing hashed value.
-  const effectiveValue = useMemo(() => {
-    if (value !== undefined && value !== null) return value;
-    const isHashField = field.meta?.special?.includes?.('hash') || field.type === 'hash';
-    if (isHashField && interfaceConfig.type === 'input-hash') return '**********';
-    const isConcealField = field.meta?.special?.includes?.('conceal');
-    if (isConcealField && interfaceConfig.type === 'system-token') return '**********';
-    return value;
-  }, [value, field, interfaceConfig.type]);
 
   const interfaceProps: any = {
     value: effectiveValue,
