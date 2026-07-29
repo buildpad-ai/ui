@@ -178,7 +178,16 @@ export function resolveRelationFields(
     pkField = "id",
 ): string[] {
     const fromTemplate = extractFieldsFromTemplate(displayTemplate);
-    const fromProp = explicitFields.filter((f) => f !== pkField);
+    // Callers pass DEFAULT_RELATIONAL_FIELDS (["id"]) as a bootstrap default
+    // when they have no real field list yet — that "id" is only ever a
+    // stand-in for "the primary key", not a genuine column reference. Once
+    // the caller has resolved a different real pkField (e.g. a related
+    // collection whose PK is "slug"), the bootstrapped "id" is a column
+    // that doesn't exist on that collection and 500s the fields= query.
+    // Drop it unless the resolved pkField actually is "id".
+    const fromProp = explicitFields.filter(
+        (f) => f !== pkField && !(f === "id" && pkField !== "id"),
+    );
     const merged = new Set([pkField, ...fromTemplate, ...fromProp]);
     return Array.from(merged);
 }

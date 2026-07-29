@@ -1,7 +1,33 @@
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
-import type { Field, Relation as BaseRelation, RelationMeta as BaseRelationMeta } from '@buildpad/types';
+import type { Relation as BaseRelation, RelationMeta as BaseRelationMeta } from '@buildpad/types';
 import { apiRequest } from './utils';
+
+/**
+ * Resolve a collection's real primary key field (name + type), mirroring
+ * useRelationM2A's detectPrimaryKeyFields. `relatedPrimaryKeyField` and
+ * `junctionPrimaryKeyField` were previously hardcoded to id/uuid and
+ * id/integer respectively — correct for the common case, but wrong (and
+ * silently so) for any related or junction collection whose PK isn't
+ * literally `id`, breaking dedupe, edit-target resolution, and the
+ * "exclude already-linked" filter that read these fields.
+ */
+async function detectPrimaryKeyField(
+  collection: string,
+): Promise<{ field: string; type: string }> {
+  try {
+    const response = await apiRequest<{ data: FieldInfo[] } | FieldInfo[]>(`/api/fields/${collection}`);
+    const fields: FieldInfo[] = Array.isArray(response) ? response : (response.data ?? []);
+    const pkField = fields.find((f) => f.schema?.is_primary_key === true);
+    if (pkField) {
+      return { field: pkField.field, type: pkField.type || 'uuid' };
+    }
+    const idField = fields.find((f) => f.field === 'id');
+    return { field: idField?.field || 'id', type: idField?.type || 'uuid' };
+  } catch {
+    return { field: 'id', type: 'uuid' };
+  }
+}
 
 interface CollectionMeta {
   display_template?: string;
@@ -18,6 +44,7 @@ interface FieldInfo {
   field: string;
   type?: string;
   meta?: FieldMeta;
+  schema?: { is_primary_key?: boolean };
 }
 
 interface RelationMeta extends BaseRelationMeta {
@@ -153,7 +180,12 @@ export function useRelationM2M(collection: string, field: string) {
             const relatedCollection = options.related_collection as string;
             const junctionFieldCurrent = (options.junction_field_current as string) || `${collection}_id`;
             const junctionFieldRelated = (options.junction_field_related as string) || `${relatedCollection}_id`;
-            
+
+            const [relatedPrimaryKeyField, junctionPrimaryKeyField] = await Promise.all([
+              detectPrimaryKeyField(relatedCollection),
+              detectPrimaryKeyField(junctionCollection),
+            ]);
+
             const info: M2MRelationInfo = {
               junctionCollection: {
                 collection: junctionCollection,
@@ -171,14 +203,8 @@ export function useRelationM2M(collection: string, field: string) {
                 field: junctionFieldCurrent,
                 type: 'uuid'
               },
-              relatedPrimaryKeyField: {
-                field: 'id',
-                type: 'uuid'
-              },
-              junctionPrimaryKeyField: {
-                field: 'id',
-                type: 'integer'
-              },
+              relatedPrimaryKeyField,
+              junctionPrimaryKeyField,
               sortField: (options.sort_field as string) || undefined,
               relation: {
                 field: junctionFieldRelated,
@@ -234,6 +260,12 @@ export function useRelationM2M(collection: string, field: string) {
           return;
         }
 
+        // Resolve real PKs (previously hardcoded to id/uuid and id/integer).
+        const [relatedPrimaryKeyField, junctionPrimaryKeyField] = await Promise.all([
+          detectPrimaryKeyField(relation.related_collection),
+          detectPrimaryKeyField(junctionCollection),
+        ]);
+
         // Build the M2MRelationInfo
         const info: M2MRelationInfo = {
           junctionCollection: {
@@ -252,14 +284,8 @@ export function useRelationM2M(collection: string, field: string) {
             field: junction.field || `${collection}_id`,
             type: 'uuid'
           },
-          relatedPrimaryKeyField: {
-            field: 'id',
-            type: 'uuid'
-          },
-          junctionPrimaryKeyField: {
-            field: 'id',
-            type: 'integer'
-          },
+          relatedPrimaryKeyField,
+          junctionPrimaryKeyField,
           sortField: junction.meta?.sort_field || undefined,
           relation: {
             field: junctionField,

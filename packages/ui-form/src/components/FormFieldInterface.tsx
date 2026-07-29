@@ -7,7 +7,7 @@
  * @buildpad/ui-interfaces for interface components.
  */
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Alert, Skeleton, Text } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { FormField } from '../types';
@@ -16,6 +16,25 @@ import { InterfaceErrorBoundary } from './InterfaceErrorBoundary';
 
 // Import interface components
 import * as Interfaces from '@buildpad/ui-interfaces';
+
+/**
+ * The three multi-select interfaces are registered for `types: ['json','csv']`
+ * — storage is either a real array (`json`) or a comma-separated string
+ * (`csv`) — but none of the leaf components (or this pipeline, previously)
+ * normalized between the two shapes. A `csv` field therefore delivered a raw
+ * string straight to array-only leaf logic: substring-match reads
+ * (`string.includes` instead of `array.includes`), character-spread
+ * corruption on toggle, and `TypeError`s calling `.filter`/`.map` on a
+ * string. Normalizing once here — coerce to array on the way in, coerce back
+ * to a comma-string on the way out when the field really is `csv` — fixes
+ * the whole cluster (SelectMultipleCheckbox, SelectMultipleCheckboxTree,
+ * SelectMultipleDropdown) without touching each leaf.
+ */
+const MULTI_SELECT_INTERFACE_TYPES = new Set([
+  'select-multiple-checkbox',
+  'select-multiple-dropdown',
+  'select-multiple-checkbox-tree',
+]);
 
 /**
  * Get the default interface name for a given field type.
@@ -215,6 +234,62 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
     return component;
   }, [interfaceConfig.type]);
 
+  // Build props for interface component
+  // Merge interfaceConfig.props (from @buildpad/utils) with runtime props
+  // When nonEditable, suppress onChange and mark disabled+readonly
+  const isEffectivelyReadonly = readonly || nonEditable;
+
+  // DaaS omits hash field values (e.g. password) from API responses for security.
+  // DaaS uses a server-side 'conceal' transformer to return '**********' instead.
+  // Synthesize the same indicator so InputHash can detect an existing hashed value.
+  //
+  // Hoisted above the early returns below (loading skeleton / component-not-found alert)
+  // so every hook in this component runs unconditionally on every render. Previously this
+  // useMemo ran after those returns, so toggling `loading` or the interface resolving from
+  // unknown to known changed the hook count on the same instance, triggering React's
+  // "Rendered more hooks than during the previous render" crash.
+  const effectiveValue = useMemo(() => {
+    if (value !== undefined && value !== null) return value;
+    const isHashField = field.meta?.special?.includes?.('hash') || field.type === 'hash';
+    if (isHashField && interfaceConfig.type === 'input-hash') return '**********';
+    const isConcealField = field.meta?.special?.includes?.('conceal');
+    if (isConcealField && interfaceConfig.type === 'system-token') return '**********';
+    return value;
+  }, [value, field, interfaceConfig.type]);
+
+  const isMultiSelectInterface = MULTI_SELECT_INTERFACE_TYPES.has(interfaceConfig.type);
+
+  // Coerce a csv-stored string to an array before it reaches the leaf.
+  const normalizedMultiSelectValue = useMemo(() => {
+    if (!isMultiSelectInterface) return effectiveValue;
+    if (Array.isArray(effectiveValue)) return effectiveValue;
+    if (typeof effectiveValue === 'string') {
+      return effectiveValue.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return effectiveValue ?? [];
+  }, [isMultiSelectInterface, effectiveValue]);
+
+  // Whether this field's on-the-wire storage is a comma-string rather than a
+  // real array. `field.type === 'csv'` is the documented signal, but some
+  // DaaS backends report the underlying column type (e.g. "text") instead
+  // of the abstract "csv" type — so also trust what was actually observed:
+  // if the incoming value was a string, round-trip a string back out.
+  const isCsvStorage = field.type === 'csv' || typeof effectiveValue === 'string';
+
+  // Coerce the array a multi-select leaf emits back to a comma-string when
+  // the field's real storage is csv (leaves always emit arrays).
+  const handleMultiSelectChange = useCallback(
+    (next: unknown) => {
+      if (!onChange) return;
+      if (isCsvStorage && Array.isArray(next)) {
+        onChange(next.join(','));
+      } else {
+        onChange(next);
+      }
+    },
+    [onChange, isCsvStorage],
+  );
+
   // Show loading skeleton
   if (loading && !field.hideLoader) {
     return <Skeleton height={36} />;
@@ -234,26 +309,9 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
     );
   }
 
-  // Build props for interface component
-  // Merge interfaceConfig.props (from @buildpad/utils) with runtime props
-  // When nonEditable, suppress onChange and mark disabled+readonly
-  const isEffectivelyReadonly = readonly || nonEditable;
-
-  // DaaS omits hash field values (e.g. password) from API responses for security.
-  // DaaS uses a server-side 'conceal' transformer to return '**********' instead.
-  // Synthesize the same indicator so InputHash can detect an existing hashed value.
-  const effectiveValue = useMemo(() => {
-    if (value !== undefined && value !== null) return value;
-    const isHashField = field.meta?.special?.includes?.('hash') || field.type === 'hash';
-    if (isHashField && interfaceConfig.type === 'input-hash') return '**********';
-    const isConcealField = field.meta?.special?.includes?.('conceal');
-    if (isConcealField && interfaceConfig.type === 'system-token') return '**********';
-    return value;
-  }, [value, field, interfaceConfig.type]);
-
   const interfaceProps: any = {
-    value: effectiveValue,
-    onChange: nonEditable ? undefined : onChange,
+    value: isMultiSelectInterface ? normalizedMultiSelectValue : effectiveValue,
+    onChange: nonEditable ? undefined : (isMultiSelectInterface ? handleMultiSelectChange : onChange),
     disabled: disabled || isEffectivelyReadonly,
     readonly: isEffectivelyReadonly,
     required: nonEditable ? false : required,

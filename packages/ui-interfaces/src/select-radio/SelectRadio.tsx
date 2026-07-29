@@ -42,22 +42,26 @@ export function SelectRadio({
   const [otherValue, setOtherValue] = useState('');
   const [showOtherInput, setShowOtherInput] = useState(false);
 
-  // Determine if current value is in predefined choices
+  // Determine if current value is in predefined choices.
+  // Uses `value == null` (not `!value`) so falsy-but-real values like `0`
+  // and `false` aren't treated as "no value" — and stringifies both sides
+  // (like the highlight/emit logic below already does) so a choice
+  // authored as `'3'` still matches a stored integer `3`.
   const isValueInChoices = useMemo(() => {
-    if (!value || !choices || choices.length === 0) {
+    if (value == null || !choices || choices.length === 0) {
       return false;
     }
-    return choices.some(choice => choice.value === value);
+    return choices.some(choice => String(choice.value) === String(value));
   }, [value, choices]);
 
   // Check if we're using "other" option
   const usesOtherValue = useMemo(() => {
-    return allowOther && value !== null && !isValueInChoices;
+    return allowOther && value != null && !isValueInChoices;
   }, [allowOther, value, isValueInChoices]);
 
   // Initialize other value when component mounts with existing "other" value
   React.useEffect(() => {
-    if (usesOtherValue && value) {
+    if (usesOtherValue && value != null) {
       setOtherValue(String(value));
       setShowOtherInput(true);
     }
@@ -152,8 +156,11 @@ export function SelectRadio({
     );
   }
 
-  // Determine current value for radio group
-  const currentValue = usesOtherValue ? '__other__' : String(value || '');
+  // Determine current value for radio group.
+  // `value == null ? '' : String(value)` (not `String(value || '')`) so a
+  // stored `0` or `false` still stringifies to a real, matchable value
+  // instead of collapsing to the same empty string as "no value".
+  const currentValue = usesOtherValue ? '__other__' : (value == null ? '' : String(value));
 
   return (
     <Stack gap="xs" w={width}>
