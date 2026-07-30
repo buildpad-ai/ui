@@ -785,8 +785,18 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   };
 
   // Submit form (primary save)
+  //
+  // Callers like ListO2M/ListM2M/SelectDropdownM2O render this form inside a
+  // Mantine <Modal>, which portals its content outside the outer page form's
+  // DOM subtree. React's synthetic event system still bubbles the `submit`
+  // event along the *React* component tree (not the DOM tree) for portaled
+  // content, so without stopPropagation() this submit would also reach an
+  // ancestor page form's onSubmit — silently saving the parent record with a
+  // stale changeset (before this form's onSuccess has staged the new/edited
+  // item), even though the click only targeted this inner form.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     await handleSave();
   };
 

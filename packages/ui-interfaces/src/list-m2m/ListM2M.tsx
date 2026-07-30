@@ -754,15 +754,31 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     }, [valueProp, setLocalChanges, resetChanges]);
 
     // ── Notify parent of changes ────────────────────────────────────
+    // Tracks whether we've previously told the parent about a non-empty
+    // changeset, so that undoing every staged edit (e.g. removing the one
+    // item just added) can notify the parent with an empty payload too —
+    // otherwise the parent keeps holding the earlier non-empty changeset
+    // and Save persists edits the user explicitly reverted.
+    const hadChangesRef = useRef(false);
     useEffect(() => {
         const hasAnyChanges =
             changes.create.length > 0 ||
             changes.update.length > 0 ||
             changes.delete.length > 0;
-        if (onChangeRef.current && hasAnyChanges) {
-            const changesValue = { ...changes };
-            lastSentChangesJSON.current = JSON.stringify(changesValue);
-            onChangeRef.current(changesValue);
+        if (hasAnyChanges) {
+            hadChangesRef.current = true;
+            if (onChangeRef.current) {
+                const changesValue = { ...changes };
+                lastSentChangesJSON.current = JSON.stringify(changesValue);
+                onChangeRef.current(changesValue);
+            }
+        } else if (hadChangesRef.current) {
+            hadChangesRef.current = false;
+            if (onChangeRef.current) {
+                const emptyChanges: M2MChangesItem = { create: [], update: [], delete: [] };
+                lastSentChangesJSON.current = JSON.stringify(emptyChanges);
+                onChangeRef.current(emptyChanges);
+            }
         }
         // onChange accessed via ref — intentionally omitted from deps
         // to prevent infinite loop when parent re-renders with new closure
@@ -1000,8 +1016,20 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         return undefined;
     }, [relationInfo, currentlyEditing, isCreatingNew]);
 
-    const handleEditFormSuccess = useCallback(() => {
+    const handleEditFormSuccess = useCallback((data?: Record<string, unknown>) => {
         closeEditDrawer();
+
+        // "Create New" inserts the related item via CollectionForm's own API
+        // call, but never staged a junction row linking it to the parent —
+        // the hook's createItem()/selectItems() were never called, so the
+        // new item had no junction row and vanished on reload. The item
+        // already exists (CollectionForm just created it), so link it by id
+        // via selectItems rather than createItem (which would deep-create a
+        // second related item).
+        if (isCreatingNew && data?.id != null) {
+            selectItems([data.id as string | number]);
+        }
+
         // After editing a related item, reload to show updated data
         if (relationInfo && isParentSaved && !mockItems) {
             const queryFields = fields.map((f) =>
@@ -1020,6 +1048,8 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         }
     }, [
         closeEditDrawer,
+        isCreatingNew,
+        selectItems,
         relationInfo,
         isParentSaved,
         mockItems,
