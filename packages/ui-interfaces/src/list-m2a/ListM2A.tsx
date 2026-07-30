@@ -433,17 +433,28 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                 // loadItems enrichment replaces the flat junction ID with a nested
                 // object like { id: "uuid", title: "..." }. For locally-created
                 // items it's { id: "uuid" }. We need the flat ID for the backend.
-                let itemId: string | number | undefined;
+                let itemValue: unknown;
                 if (typeof junctionFieldValue === 'object' && junctionFieldValue !== null) {
                     const nested = junctionFieldValue as Record<string, unknown>;
-                    itemId = (nested.id ?? Object.values(nested)[0]) as string | number;
+                    const pkField = relationInfo.relationPrimaryKeyFields?.[collectionName]?.field || 'id';
+                    if (nested[pkField] != null) {
+                        itemValue = nested[pkField] as string | number;
+                    } else {
+                        // No resolvable PK — this is an inline "Create New" item that
+                        // was never assigned its own id (JunctionItemForm.handleSave
+                        // omits the PK key for new items). Grabbing the first object
+                        // value here used to return the collection-discriminator
+                        // string instead of an item id. Pass the whole nested object
+                        // through so the backend can deep-create the related item.
+                        itemValue = nested;
+                    }
                 } else {
-                    itemId = junctionFieldValue as string | number;
+                    itemValue = junctionFieldValue as string | number;
                 }
 
                 return {
                     [collField]: collectionName,
-                    [itemField]: itemId,
+                    [itemField]: itemValue,
                 };
             })
             .filter(entry => entry[collField] && entry[itemField]);
@@ -1082,9 +1093,30 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                             setSelectedCollection(null);
                         }}
                         onSave={(edits) => {
-                            if (isCreatingNew) {
-                                // Stage a junction create with the related item nested
-                                createItemWithData(selectedCollection || '', edits);
+                            if (isCreatingNew && relationInfo) {
+                                // `edits` is JunctionItemForm's combined payload:
+                                // { ...junctionEdits, [collectionField]: targetCollection,
+                                //   [junctionField]: relatedPayload }. createItemWithData
+                                // nests whatever it's given a second time under
+                                // junctionField, so passing `edits` itself (not just the
+                                // related item's own fields) doubly-wraps it — the emitted
+                                // junction value ends up keyed by collectionField first,
+                                // and reading its first value as "the item id" (elsewhere)
+                                // returned the collection name string, not an item id.
+                                // Pass only the nested related-item fields as itemData,
+                                // and any other junction-level edits as additionalData.
+                                const junctionFieldName = relationInfo.junctionField.field;
+                                const collectionFieldName = relationInfo.collectionField.field;
+                                const {
+                                    [junctionFieldName]: nestedItemData,
+                                    [collectionFieldName]: _collectionDiscriminator,
+                                    ...additionalJunctionData
+                                } = edits as Record<string, unknown>;
+                                createItemWithData(
+                                    selectedCollection || '',
+                                    (nestedItemData as Record<string, unknown>) ?? {},
+                                    additionalJunctionData,
+                                );
                             } else if (currentlyEditing) {
                                 // Stage an update to the junction row (includes nested related edits)
                                 updateItem(currentlyEditing, edits);

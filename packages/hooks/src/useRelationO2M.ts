@@ -3,6 +3,30 @@ import type { Field } from "@buildpad/types";
 import { useCallback, useEffect, useState } from "react";
 
 /**
+ * Resolve a collection's real primary key field (name + type), the same way
+ * useRelationM2A's detectPrimaryKeyFields does. Falls back to `id`/`uuid`
+ * when the schema can't be read or has no explicit PK, but no longer
+ * *assumes* every related/parent collection uses `id` — some (e.g.
+ * daas_scope_items.uri_path) don't.
+ */
+async function detectPrimaryKeyField(
+  collection: string,
+): Promise<{ field: string; type: string }> {
+  try {
+    const fieldsService = new FieldsService();
+    const fields = await fieldsService.readAll(collection);
+    const pkField = fields.find((f: Field) => f.schema?.is_primary_key === true);
+    if (pkField) {
+      return { field: pkField.field, type: pkField.type || "uuid" };
+    }
+    const idField = fields.find((f: Field) => f.field === "id");
+    return { field: idField?.field || "id", type: idField?.type || "uuid" };
+  } catch {
+    return { field: "id", type: "uuid" };
+  }
+}
+
+/**
  * Information about a One-to-Many relationship
  */
 export interface O2MRelationInfo {
@@ -234,6 +258,15 @@ export function useRelationO2M(collection: string, field: string) {
         // Use sort_field from relation as fallback
         const effectiveSortField = sortFieldName || sortFieldFromRelation || undefined;
 
+        // Resolve the related & parent collections' real primary keys —
+        // previously hardcoded to id/uuid, which breaks item identity
+        // (keys, unlink/delete/reorder, dedupe, edit-target) for any
+        // related collection whose PK isn't literally "id".
+        const [relatedPrimaryKeyField, parentPrimaryKeyField] = await Promise.all([
+          detectPrimaryKeyField(relatedCollectionName),
+          detectPrimaryKeyField(collection),
+        ]);
+
         // Build relation info
         const info: O2MRelationInfo = {
           relatedCollection: {
@@ -244,14 +277,8 @@ export function useRelationO2M(collection: string, field: string) {
             field: reverseFieldName,
             type: "uuid",
           },
-          relatedPrimaryKeyField: {
-            field: "id",
-            type: "uuid",
-          },
-          parentPrimaryKeyField: {
-            field: "id",
-            type: "uuid",
-          },
+          relatedPrimaryKeyField,
+          parentPrimaryKeyField,
           sortField: effectiveSortField,
           displayTemplate: fieldOptions?.template as string | undefined,
           relation: {
@@ -323,6 +350,14 @@ export function useRelationO2MItems(
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The related collection's real primary key column — not necessarily "id"
+  // (e.g. a slug-PK collection). Every read/write below must key items by
+  // this field; hardcoding `.id` silently no-ops removeItem/deleteItem/
+  // reorderItems (URL becomes `/api/items/{collection}/undefined`) and
+  // corrupts `setItems` filtering (every item's `.id` is `undefined`, so
+  // `i.id !== item.id` is false for all of them at once).
+  const pkField = relationInfo?.relatedPrimaryKeyField?.field || "id";
 
   // Load items from the related collection
   const loadItems = useCallback(
@@ -422,13 +457,13 @@ export function useRelationO2MItems(
         `/api/items/${collection}`,
         { method: "POST", body: JSON.stringify(itemData) },
       );
-      const id = created.data?.id;
+      const id = created.data?.[pkField];
       const fetched = await apiRequest<{ data: O2MItem }>(
         `/api/items/${collection}/${id}`,
       );
       return fetched.data as O2MItem;
     },
-    [relationInfo, parentPrimaryKey],
+    [relationInfo, parentPrimaryKey, pkField],
   );
 
   // Update an existing item
@@ -458,7 +493,7 @@ export function useRelationO2MItems(
       if (!relationInfo) return;
 
       await apiRequest(
-        `/api/items/${relationInfo.relatedCollection.collection}/${item.id}`,
+        `/api/items/${relationInfo.relatedCollection.collection}/${item[pkField]}`,
         {
           method: "PATCH",
           body: JSON.stringify({
@@ -466,10 +501,10 @@ export function useRelationO2MItems(
           }),
         },
       );
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      setItems((prev) => prev.filter((i) => i[pkField] !== item[pkField]));
       setTotalCount((prev) => Math.max(0, prev - 1));
     },
-    [relationInfo],
+    [relationInfo, pkField],
   );
 
   // Delete an item completely
@@ -478,13 +513,13 @@ export function useRelationO2MItems(
       if (!relationInfo) return;
 
       await apiRequest(
-        `/api/items/${relationInfo.relatedCollection.collection}/${item.id}`,
+        `/api/items/${relationInfo.relatedCollection.collection}/${item[pkField]}`,
         { method: "DELETE" },
       );
-      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      setItems((prev) => prev.filter((i) => i[pkField] !== item[pkField]));
       setTotalCount((prev) => Math.max(0, prev - 1));
     },
-    [relationInfo],
+    [relationInfo, pkField],
   );
 
   // Link existing items
@@ -515,7 +550,7 @@ export function useRelationO2MItems(
       const collection = relationInfo.relatedCollection.collection;
       await Promise.all(
         reorderedItems.map((item, index) =>
-          apiRequest(`/api/items/${collection}/${item.id}`, {
+          apiRequest(`/api/items/${collection}/${item[pkField]}`, {
             method: "PATCH",
             body: JSON.stringify({
               [relationInfo.sortField!]: index + 1,
@@ -525,7 +560,7 @@ export function useRelationO2MItems(
       );
       setItems(reorderedItems);
     },
-    [relationInfo],
+    [relationInfo, pkField],
   );
 
   // Move item up
