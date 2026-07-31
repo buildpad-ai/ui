@@ -115,6 +115,20 @@ const SYSTEM_FIELDS = [
   "sort",
 ];
 
+// Relational fields with no real flat column value — can't be requested as a
+// bare name in a fields= fetch (there's no single column to select), only
+// via a proper nested embed this form doesn't build. Matches the same
+// backend-agnostic signal used by CollectionList (some DaaS backends don't
+// mark these fields with column type "alias", so that alone isn't reliable).
+// select-dropdown-m2o is intentionally excluded from both sets: M2O fields
+// normally back a real FK column and fetch fine bare.
+const NON_FLAT_RELATIONAL_SPECIALS = new Set(["m2a", "m2m", "o2m"]);
+const NON_FLAT_RELATIONAL_INTERFACES = new Set([
+  "list-m2a",
+  "list-m2m",
+  "list-o2m",
+]);
+
 // Fields that are read-only by nature
 const READ_ONLY_FIELDS = [
   "id",
@@ -136,6 +150,31 @@ interface M2MJunctionInfo {
   reverseJunctionField: string;
   /** FK in junction pointing to the related collection (e.g. "tags_id") */
   junctionField: string;
+}
+
+/**
+ * Fields safe to request in a fields= param — excludes O2M/M2M/M2A (no flat
+ * column value, 500s the backend when requested bare) and always includes
+ * the resolved PK. Shared by the initial readOne fetch and the
+ * createOne/updateOne calls in handleSave, all of which hit the same
+ * "backend defaults to selecting everything" failure mode when fields= is
+ * omitted (see the readOne call site below for the full explanation).
+ */
+function computeFetchableFields(fieldList: Field[], pkField: string): string[] {
+  const fetchable = fieldList
+    .filter((f) => {
+      const special = f.meta?.special ?? [];
+      const isNonFlatRelational =
+        special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) ||
+        (!!f.meta?.interface &&
+          NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface));
+      return !isNonFlatRelational;
+    })
+    .map((f) => f.field);
+  if (!fetchable.includes(pkField)) {
+    fetchable.unshift(pkField);
+  }
+  return fetchable;
 }
 
 /** Narrow-check: is value a staged M2M changes object? */
@@ -411,7 +450,18 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // If editing, load the existing item
         if (mode === "edit" && id) {
           const itemsService = new ItemsService(collection);
-          const item = await itemsService.readOne(id);
+          // Fetch only flat fields — omitting `fields` entirely falls back to
+          // the backend's "select everything" default, which 500s on any
+          // O2M/M2M/M2A field requested bare (no single column to select;
+          // same failure CollectionList hits without its own exclusion).
+          // Safe to drop: ListO2M/ListM2M/ListM2A each load their own linked
+          // items independently via their relation hooks once mounted with
+          // the real primaryKey — they don't depend on this initial value.
+          const fetchableFields = computeFetchableFields(
+            editableFields,
+            schemaPk ?? "id",
+          );
+          const item = await itemsService.readOne(id, fetchableFields);
           initialData = { ...initialData, ...item };
         }
 
@@ -620,6 +670,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
       const itemsService = new ItemsService(collection);
 
+      // Restrict the create/update response representation to flat fields —
+      // same "backend defaults to selecting everything" 500 risk as the
+      // initial readOne fetch when the collection has an O2M/M2M/M2A field.
+      const saveFetchableFields = computeFetchableFields(fields, resolvedPk);
+
       // Helper: split dataToSave into scalar fields, M2M changes, and `extras`.
       // M2M changes ({create, update, delete}) are flushed via the junction
       // collection API rather than embedded in the parent PATCH body, because
@@ -654,8 +709,25 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
       if (mode === "edit" && id) {
         // Collect only changed fields, excluding self-persisting interfaces
-        // (e.g. "files" manages its own junction table independently)
-        const selfPersistingInterfaces = new Set(['files']);
+        // ("files" manages its own junction table independently) and O2M —
+        // O2M has no flat column to PATCH and no dedicated flush path
+        // (ListO2M persists linked/created/removed items directly via its
+        // own relation hooks, independent of this form's save; its onChange
+        // is never actually invoked). Sending whatever value happens to land
+        // in formData for an O2M field as a scalar PATCH value 500s the
+        // backend trying to write into an aliased relation.
+        //
+        // list-m2a is intentionally NOT in this set (a previous version of
+        // this fix wrongly included it, assuming ListM2A never calls
+        // onChange like ListO2M — it does: ListM2A's own effect emits a real
+        // {collection,item}[] replace-mode payload whenever its staged
+        // changes change, meant for exactly this scalar body. Excluding it
+        // silently discarded every M2A create/link/edit on save instead of
+        // persisting it — same 500 symptom gone, but the underlying write
+        // never happened either. The actual fix for that 500 is
+        // saveFetchableFields below (the fields= *response* representation),
+        // not stripping the field from the *request* body.
+        const selfPersistingInterfaces = new Set(['files', 'list-o2m']);
         const allChanged: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           if (initialFormData[key] === value) continue;
@@ -686,7 +758,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // round-trip (the backend skips the DB write and returns 200, but
         // the network call still costs latency).
         if (Object.keys(changedData).length > 0) {
-          await itemsService.updateOne(id, changedData);
+          await itemsService.updateOne(id, changedData, saveFetchableFields);
         }
 
         // Flush M2M changes via junction collection APIs
@@ -716,7 +788,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
           delete copyData[resolvedPk];
-          const copyResult = await itemsService.createOne(copyData);
+          const copyResult = await itemsService.createOne(copyData, saveFetchableFields);
           onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
           return;
         }
@@ -729,9 +801,10 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         onSuccess?.({ ...dataToSave, id });
       } else {
         // Create mode: split out M2M before creating the parent record.
-        // Also strip self-persisting interfaces (e.g. "files") that manage
-        // their own junction table persistence.
-        const selfPersistingInterfaces = new Set(['files']);
+        // Also strip self-persisting interfaces — "files" and O2M only (see
+        // the matching comment in the edit-mode branch above for why M2A is
+        // deliberately not in this set).
+        const selfPersistingInterfaces = new Set(['files', 'list-o2m']);
         const cleanedDataToSave: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           const fieldDef = fields.find(f => f.field === key);
@@ -752,7 +825,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           scalarData[EXTRAS_COLUMN] = createdExtras;
         }
 
-        const result = await itemsService.createOne(scalarData);
+        const result = await itemsService.createOne(scalarData, saveFetchableFields);
         const newId = result?.[resolvedPk] as string | number | undefined;
 
         // Flush M2M changes now that we have the parent PK
@@ -785,8 +858,18 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   };
 
   // Submit form (primary save)
+  //
+  // Callers like ListO2M/ListM2M/SelectDropdownM2O render this form inside a
+  // Mantine <Modal>, which portals its content outside the outer page form's
+  // DOM subtree. React's synthetic event system still bubbles the `submit`
+  // event along the *React* component tree (not the DOM tree) for portaled
+  // content, so without stopPropagation() this submit would also reach an
+  // ancestor page form's onSubmit — silently saving the parent record with a
+  // stale changeset (before this form's onSuccess has staged the new/edited
+  // item), even though the click only targeted this inner form.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     await handleSave();
   };
 
@@ -875,7 +958,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 collection={collection}
                 fields={fields}
                 modelValue={formData}
-                initialValues={defaultValues}
+                initialValues={initialFormData}
                 onUpdate={handleFormUpdate}
                 primaryKey={primaryKey}
                 disabled={saving || !saveAllowed}

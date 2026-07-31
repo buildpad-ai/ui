@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest, isValidPrimaryKey } from "./utils";
 
 // ---------------------------------------------------------------------------
@@ -313,8 +313,14 @@ export function useRelationM2OItem(
   // If value is already an object, use it as initial/edits data
   const inlineData = typeof value === "object" && value !== null ? value : null;
 
+  // Guards against out-of-order responses: only the most recent invocation's
+  // result is allowed to update state (e.g. rapid value A→B where A resolves last).
+  const requestIdRef = useRef(0);
+
   const loadItem = useCallback(
     async (params?: M2OQueryParams) => {
+      const requestId = ++requestIdRef.current;
+
       if (!relationInfo || !isValidPrimaryKey(primaryKey)) {
         // If we have inline data (object value) use it directly
         if (inlineData) {
@@ -356,6 +362,8 @@ export function useRelationM2OItem(
           fetched = (response.data?.[0] ?? null) as M2OItem | null;
         }
 
+        if (requestIdRef.current !== requestId) return; // superseded by a newer call
+
         // Merge inline edits on top of fetched data
         if (fetched && inlineData) {
           setItem({ ...fetched, ...inlineData });
@@ -363,13 +371,14 @@ export function useRelationM2OItem(
           setItem(fetched);
         }
       } catch (err) {
+        if (requestIdRef.current !== requestId) return;
         setError(
           err instanceof Error ? err.message : "Failed to load related item",
         );
         // Fall back to inline data if available
         setItem(inlineData);
       } finally {
-        setLoading(false);
+        if (requestIdRef.current === requestId) setLoading(false);
       }
     },
     [relationInfo, primaryKey, inlineData, templateFields],

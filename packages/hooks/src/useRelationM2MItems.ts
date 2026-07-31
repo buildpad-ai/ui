@@ -68,7 +68,7 @@ export function useRelationM2MItems(
 
       // Include related collection data
       const fieldsToFetch = [
-        'id',
+        relationInfo.junctionPrimaryKeyField.field,
         ...params.fields.map(f => f.includes('.') ? f : `${relationInfo.junctionField.field}.${f}`)
       ];
       queryParams.set('fields', fieldsToFetch.join(','));

@@ -6,7 +6,12 @@
  * Complete rewrite addressing P0 and P1 discrepancies with DaaS 11.14.0:
  *
  * P0 (Data Integrity):
- * - Local-first staged changes via useRelationMultipleM2M (no immediate API calls)
+ * - Local-first staged changes via useRelationMultipleM2M for junction-level
+ *   operations (link/unlink/reorder — no immediate API calls). NOTE: editing an
+ *   *existing* related item's own fields via the edit drawer goes through
+ *   CollectionForm(mode='edit'), which persists immediately — that edit is not
+ *   staged/reversible by cancelling the parent form. Only the junction
+ *   relationship itself (create/update/delete/reorder of the link) is local-first.
  * - Proper template rendering via shared renderTemplate utility
  * - Working enableLink with proper URL generation
  * - Working per-page selector
@@ -676,13 +681,23 @@ export const ListM2M: React.FC<ListM2MProps> = ({
 
     // Use mock items if provided (storybook/testing), otherwise hook items
     const displayItems = mockItems ?? hookDisplayItems;
-    // Filter out deleted items for display
-    const visibleItems = useMemo(
-        () => displayItems.filter((item) => item.$type !== "deleted"),
-        [displayItems],
-    );
     const totalCount = mockItems ? mockItems.length : hookTotalCount;
     const totalPages = currentLimit > 0 ? Math.ceil(totalCount / currentLimit) : 1;
+    // Filter out deleted items for display. displayItems appends ALL locally
+    // staged creates regardless of page (the hook has no page awareness —
+    // fetchedItems is whatever page was last loaded, changes.create is
+    // global), so without this they'd render on every page and a page could
+    // exceed the limit. Only show them on the last page — totalCount already
+    // includes them in its accounting, so that's where they'd land once saved.
+    const visibleItems = useMemo(
+        () =>
+            displayItems.filter((item) => {
+                if (item.$type === "deleted") return false;
+                if (item.$type === "created" && currentPage !== totalPages) return false;
+                return true;
+            }),
+        [displayItems, currentPage, totalPages],
+    );
 
     const loading = relationLoading || itemsLoading || fieldMetaLoading;
 
@@ -754,15 +769,31 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     }, [valueProp, setLocalChanges, resetChanges]);
 
     // ── Notify parent of changes ────────────────────────────────────
+    // Tracks whether we've previously told the parent about a non-empty
+    // changeset, so that undoing every staged edit (e.g. removing the one
+    // item just added) can notify the parent with an empty payload too —
+    // otherwise the parent keeps holding the earlier non-empty changeset
+    // and Save persists edits the user explicitly reverted.
+    const hadChangesRef = useRef(false);
     useEffect(() => {
         const hasAnyChanges =
             changes.create.length > 0 ||
             changes.update.length > 0 ||
             changes.delete.length > 0;
-        if (onChangeRef.current && hasAnyChanges) {
-            const changesValue = { ...changes };
-            lastSentChangesJSON.current = JSON.stringify(changesValue);
-            onChangeRef.current(changesValue);
+        if (hasAnyChanges) {
+            hadChangesRef.current = true;
+            if (onChangeRef.current) {
+                const changesValue = { ...changes };
+                lastSentChangesJSON.current = JSON.stringify(changesValue);
+                onChangeRef.current(changesValue);
+            }
+        } else if (hadChangesRef.current) {
+            hadChangesRef.current = false;
+            if (onChangeRef.current) {
+                const emptyChanges: M2MChangesItem = { create: [], update: [], delete: [] };
+                lastSentChangesJSON.current = JSON.stringify(emptyChanges);
+                onChangeRef.current(emptyChanges);
+            }
         }
         // onChange accessed via ref — intentionally omitted from deps
         // to prevent infinite loop when parent re-renders with new closure
@@ -772,10 +803,19 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     // ── Load items when parameters change ───────────────────────────
     useEffect(() => {
         if (relationInfo && isParentSaved && !mockItems) {
-            // Build fields for the query — prefix with junction field for related data
-            const queryFields = fields.map((f) =>
-                f.includes(".") ? f : `${relationInfo.junctionField.field}.${f}`,
-            );
+            // Build fields for the query — prefix with junction field for related data.
+            // `fields` defaults to DEFAULT_RELATIONAL_FIELDS (["id"]) as a bootstrap
+            // placeholder meaning "the primary key" — but taken literally, a bare "id"
+            // becomes `${junctionField}.id`, which 500s for any related collection whose
+            // real PK isn't literally "id" (e.g. labels.code). Resolve that specific
+            // bootstrap sentinel to the real related PK field; any other explicit bare
+            // field name is left as-is.
+            const relatedPkField = relationInfo.relatedPrimaryKeyField?.field || "id";
+            const queryFields = fields.map((f) => {
+                if (f.includes(".")) return f;
+                const resolved = f === "id" && relatedPkField !== "id" ? relatedPkField : f;
+                return `${relationInfo.junctionField.field}.${resolved}`;
+            });
             // Always include junction PK and sort field
             queryFields.push(relationInfo.junctionPrimaryKeyField.field);
             if (relationInfo.sortField) queryFields.push(relationInfo.sortField);
@@ -835,18 +875,24 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         [removeItem],
     );
 
+    // `index` from the row map is page-local (visibleItems is only the
+    // current page's items) — pass the page offset so moveItemUp/Down assign
+    // globally-unique sort values instead of colliding with every other
+    // page's 1..N (bug 3.3: reorder on page 2+ corrupted global order).
+    const pageOffset = (currentPage - 1) * currentLimit;
+
     const handleMoveUp = useCallback(
         (index: number) => {
-            moveItemUp(index);
+            moveItemUp(index, pageOffset);
         },
-        [moveItemUp],
+        [moveItemUp, pageOffset],
     );
 
     const handleMoveDown = useCallback(
         (index: number) => {
-            moveItemDown(index);
+            moveItemDown(index, pageOffset);
         },
-        [moveItemDown],
+        [moveItemDown, pageOffset],
     );
 
     // ── DnD drag-end handler ────────────────────────────────────────
@@ -1000,13 +1046,36 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         return undefined;
     }, [relationInfo, currentlyEditing, isCreatingNew]);
 
-    const handleEditFormSuccess = useCallback(() => {
+    const handleEditFormSuccess = useCallback((data?: Record<string, unknown>) => {
         closeEditDrawer();
+
+        // "Create New" inserts the related item via CollectionForm's own API
+        // call, but never staged a junction row linking it to the parent —
+        // the hook's createItem()/selectItems() were never called, so the
+        // new item had no junction row and vanished on reload. The item
+        // already exists (CollectionForm just created it), so link it by its
+        // real PK via selectItems rather than createItem (which would
+        // deep-create a second related item). `data` is CollectionForm's raw
+        // created-item response, keyed by the related collection's actual PK
+        // — not necessarily "id" (e.g. labels.code) — so read it dynamically
+        // the same way the fields-query fix below does.
+        if (isCreatingNew && relationInfo && data) {
+            const createdPk = data[relationInfo.relatedPrimaryKeyField?.field || "id"];
+            if (createdPk != null) {
+                selectItems([createdPk as string | number]);
+            }
+        }
+
         // After editing a related item, reload to show updated data
         if (relationInfo && isParentSaved && !mockItems) {
-            const queryFields = fields.map((f) =>
-                f.includes(".") ? f : `${relationInfo.junctionField.field}.${f}`,
-            );
+            // See the matching comment in the load-items effect above — "id" is a
+            // bootstrap placeholder for "the primary key", not a literal column name.
+            const relatedPkField = relationInfo.relatedPrimaryKeyField?.field || "id";
+            const queryFields = fields.map((f) => {
+                if (f.includes(".")) return f;
+                const resolved = f === "id" && relatedPkField !== "id" ? relatedPkField : f;
+                return `${relationInfo.junctionField.field}.${resolved}`;
+            });
             queryFields.push(relationInfo.junctionPrimaryKeyField.field);
             if (relationInfo.sortField) queryFields.push(relationInfo.sortField);
 
@@ -1020,6 +1089,8 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         }
     }, [
         closeEditDrawer,
+        isCreatingNew,
+        selectItems,
         relationInfo,
         isParentSaved,
         mockItems,
@@ -1169,20 +1240,30 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                             </Text>
                         )}
 
-                        {/* Batch edit toggle (table layout only) */}
+                        {/* Batch edit toggle (table layout only).
+                            Disabled rather than wired to openEditDrawer: that click
+                            handler never set currentlyEditing/isCreatingNew and never
+                            consumed selectedIds, so it opened CollectionForm(mode='edit',
+                            id=undefined) — a broken empty form with no batch-apply logic
+                            behind it. No real batch-edit flow exists yet (applying one
+                            set of edited values across N selected junction/related
+                            rows), so surface that honestly instead of opening something
+                            broken. */}
                         {!isEffectivelyNonEditable &&
                             enableBatchEdit &&
                             layout === "table" &&
                             selectedIds.size > 0 && (
-                                <Button
-                                    variant="light"
-                                    color="warning"
-                                    leftSection={<IconCheckbox size={16} />}
-                                    onClick={openEditDrawer}
-                                    size="sm"
-                                >
-                                    {interpolate(t.batch_edit_title, { count: String(selectedIds.size) })}
-                                </Button>
+                                <Tooltip label="Batch editing is not yet implemented">
+                                    <Button
+                                        variant="light"
+                                        color="warning"
+                                        leftSection={<IconCheckbox size={16} />}
+                                        disabled
+                                        size="sm"
+                                    >
+                                        {interpolate(t.batch_edit_title, { count: String(selectedIds.size) })}
+                                    </Button>
+                                </Tooltip>
                             )}
 
                         {!isEffectivelyNonEditable && enableSelect && selectAllowed && (

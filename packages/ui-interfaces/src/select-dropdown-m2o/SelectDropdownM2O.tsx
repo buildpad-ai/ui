@@ -160,6 +160,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     item: selectedItem,
     loading: itemLoading,
     loadItem,
+    clearItem,
   } = useRelationM2OItem(relationInfo, value ?? null);
 
   // State for dropdown
@@ -197,8 +198,13 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   useEffect(() => {
     if (relationInfo && value) {
       loadItem({ fields: resolvedFields });
+    } else {
+      // value went truthy → null/undefined (cleared, or an external reset).
+      // Without this, selectedItem keeps the previously-loaded item and the
+      // field shows a stale label even though its value is now empty.
+      clearItem();
     }
-  }, [relationInfo, value, resolvedFields, loadItem]);
+  }, [relationInfo, value, resolvedFields, loadItem, clearItem]);
 
   // Load available items for dropdown
   const loadAvailableItems = useCallback(
@@ -356,7 +362,17 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         <Combobox
           store={combobox}
           withinPortal={false}
-          onOptionSubmit={(val) => handleSelect(val)}
+          onOptionSubmit={(val) => {
+            // Mantine's Combobox always reports the stringified option
+            // `value`. Resolve back to the matching item so we emit its
+            // real (possibly numeric) key, not the string — otherwise a
+            // numeric FK gets stored as a string and `active` below
+            // (raw === raw) never matches it again.
+            const matched = availableItems.find(
+              (item) => String(item[relationKeyField]) === val,
+            );
+            handleSelect(matched ? (matched[relationKeyField] as string | number) : val);
+          }}
           disabled={disabled || readOnly}
         >
           <Combobox.Target>

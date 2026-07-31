@@ -144,15 +144,61 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
 
   // Convert choices to Mantine Select format with icon/color support
   const selectData = React.useMemo(() => {
-    return processedChoices.map((choice) => ({
-      value: String(choice.value),
-      label: choice.text,
-      disabled: choice.disabled || false,
-      // Store original choice for rendering
-      icon: choice.icon,
-      color: choice.color,
-    }));
-  }, [processedChoices]);
+    // Mantine's <Select> requires globally-unique string `value`s in `data`
+    // and throws "Duplicate options are not supported" otherwise. Choices
+    // with different typed values that stringify identically (e.g. number 1
+    // vs string '1') would collide here — drop the second occurrence so the
+    // field renders (matching handleChange below, which already resolves
+    // the *first* matching choice by stringified value, so the dropped
+    // choice was never independently selectable anyway).
+    const seen = new Set<string>();
+    const base: { value: string; label: string; disabled: boolean; icon: string | null | undefined; color: string | null | undefined }[] = [];
+    for (const choice of processedChoices) {
+      const strValue = String(choice.value);
+      if (seen.has(strValue)) continue;
+      seen.add(strValue);
+      base.push({
+        value: strValue,
+        label: choice.text,
+        disabled: choice.disabled || false,
+        // Store original choice for rendering
+        icon: choice.icon,
+        color: choice.color,
+      });
+    }
+
+    // allowOther: a previously-committed custom value won't be in `choices`,
+    // so Mantine's <Select> (which only highlights/displays values present
+    // in `data`) would otherwise show it blank. Inject it as a synthetic
+    // option so the current value round-trips correctly.
+    if (allowOther && value !== null && value !== undefined && value !== '') {
+      const strValue = String(value);
+      if (!seen.has(strValue)) {
+        return [...base, { value: strValue, label: strValue, disabled: false, icon: null, color: null }];
+      }
+    }
+
+    return base;
+  }, [processedChoices, allowOther, value]);
+
+  // allowOther: track the live search text so a typed value that matches no
+  // existing choice can be committed on Enter/blur. Mantine v8's <Select>
+  // has no built-in "creatable" mode, so this is done manually.
+  const [otherSearchValue, setOtherSearchValue] = React.useState('');
+
+  const commitOtherValue = React.useCallback(() => {
+    if (!allowOther || !onChange) return;
+    const trimmed = otherSearchValue.trim();
+    if (!trimmed) return;
+    // Only commit free text — an exact match to an existing choice's label
+    // was already handled by onChange via the normal option-select path.
+    const matchesExistingChoice = choices.some(
+      (choice) => choice.text === trimmed || String(choice.value) === trimmed,
+    );
+    if (!matchesExistingChoice) {
+      onChange(trimmed);
+    }
+  }, [allowOther, onChange, otherSearchValue, choices]);
 
   // Handle value changes
   const handleChange = React.useCallback(
@@ -171,7 +217,12 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
       if (originalChoice) {
         onChange(originalChoice.value);
       } else if (allowOther) {
-        // If allowing other values and not found in choices, treat as string
+        // Reachable when the user clicks the synthetic "current custom
+        // value" option injected into selectData above (re-selecting an
+        // already-committed other-value); new free text is committed via
+        // commitOtherValue (search + Enter/blur), not through this path,
+        // since Mantine's onChange never fires for text with no matching
+        // option.
         onChange(selectedValue);
       }
     },
@@ -253,8 +304,22 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
       nothingFoundMessage={allowOther ? undefined : 'No options found'}
       renderOption={renderOption}
       data-testid="select-dropdown"
-      // For allowOther functionality, we need to implement custom behavior
-      // since Mantine Select doesn't support creating new options directly
+      // allowOther: Mantine v8's <Select> has no built-in "creatable" mode,
+      // so free text is committed manually — track the live search text and
+      // emit it as the value on Enter or on blur when it matches no choice.
+      // Removed the old dead `else if (allowOther)` branch in handleChange:
+      // Mantine's onChange only ever fires with an existing option's value
+      // (or null), so typed-but-uncommitted text never reached it.
+      {...(allowOther
+        ? {
+            searchValue: otherSearchValue,
+            onSearchChange: setOtherSearchValue,
+            onBlur: commitOtherValue,
+            onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+              if (event.key === 'Enter') commitOtherValue();
+            },
+          }
+        : {})}
       {...selectProps}
     />
   );

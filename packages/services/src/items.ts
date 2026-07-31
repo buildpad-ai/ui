@@ -98,6 +98,14 @@ export class ItemsService {
 
   /**
    * Read a single item by primary key
+   *
+   * `fields`, when omitted, lets the backend fall back to selecting
+   * everything — which 500s if the collection has any O2M/M2M/M2A field,
+   * since those have no real flat column value and can't be resolved as a
+   * bare column name, only via a proper nested embed callers don't build
+   * here. Callers should pass an explicit flat-fields-only list (see
+   * CollectionForm's computeFetchableFields) whenever the target collection
+   * might have one.
    */
   async readOne(id: PrimaryKey, fields?: string[]): Promise<AnyItem> {
     const params = fields ? `?fields=${fields.join(",")}` : "";
@@ -119,10 +127,17 @@ export class ItemsService {
 
   /**
    * Create a new item
+   *
+   * `fields` restricts the returned representation of the created item —
+   * omitting it makes the backend fall back to selecting everything, which
+   * 500s if the collection has any O2M/M2M/M2A field (no flat column value
+   * to select bare; see readOne's doc comment for the full explanation).
+   * Pass the same flat-fields-only list callers already build for readOne.
    */
-  async createOne(data: Partial<AnyItem>): Promise<AnyItem> {
+  async createOne(data: Partial<AnyItem>, fields?: string[]): Promise<AnyItem> {
+    const params = fields ? `?fields=${fields.join(",")}` : "";
     const response = await apiRequest<{ data: AnyItem } | AnyItem>(
-      `/api/items/${this.collection}`,
+      `/api/items/${this.collection}${params}`,
       {
         method: "POST",
         body: JSON.stringify(data),
@@ -143,13 +158,19 @@ export class ItemsService {
 
   /**
    * Update an existing item (PATCH semantics — only changed fields)
+   *
+   * `fields` restricts the returned representation of the updated item —
+   * same "backend defaults to selecting everything" 500 risk as createOne
+   * when the collection has an O2M/M2M/M2A field. See readOne's doc comment.
    */
   async updateOne(
     id: PrimaryKey,
-    data: Partial<AnyItem>
+    data: Partial<AnyItem>,
+    fields?: string[]
   ): Promise<AnyItem> {
+    const params = fields ? `?fields=${fields.join(",")}` : "";
     const response = await apiRequest<{ data: AnyItem } | AnyItem>(
-      `/api/items/${this.collection}/${id}`,
+      `/api/items/${this.collection}/${id}${params}`,
       {
         method: "PATCH",
         body: JSON.stringify(data),

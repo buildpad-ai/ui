@@ -362,7 +362,8 @@ const ICON_CATEGORIES = [
 /**
  * Format icon name to display title (matching DaaS format-title behavior)
  */
-const formatTitle = (str: string): string => {
+const formatTitle = (str: unknown): string => {
+  if (typeof str !== 'string') return '';
   return str.replace(/[_-]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
@@ -697,6 +698,8 @@ export interface SelectIconProps {
   width?: string | number;
   /** Test ID for the component */
   'data-testid'?: string;
+  /** Accessible name for the trigger button, used when no visible `label` is set */
+  'aria-label'?: string;
 }
 
 /**
@@ -726,6 +729,7 @@ export function SelectIcon({
   error,
   width,
   'data-testid': testId,
+  'aria-label': ariaLabel,
 }: SelectIconProps) {
   const [searchValue, setSearchValue] = useState('');
   const [opened, setOpened] = useState(false);
@@ -791,8 +795,8 @@ export function SelectIcon({
   }, []);
 
   // Render icon component
-  const renderIcon = useCallback((iconName: string, size = 20) => {
-    const IconComponent = ICON_MAP[iconName];
+  const renderIcon = useCallback((iconName: unknown, size = 20) => {
+    const IconComponent = typeof iconName === 'string' ? ICON_MAP[iconName] : undefined;
     
     if (IconComponent) {
       return <IconComponent size={size} />;
@@ -841,6 +845,7 @@ export function SelectIcon({
               }
               disabled={disabled}
               data-testid="select-icon-trigger"
+              aria-label={!label ? (ariaLabel || 'Select an icon') : undefined}
               styles={{
                 root: {
                   fontWeight: 400,

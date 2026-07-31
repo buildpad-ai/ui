@@ -4,6 +4,7 @@ import React from 'react';
 import { Box, Text, Stack, Alert, Paper, Group, ActionIcon, Button } from '@mantine/core';
 import { IconAlertCircle, IconPlus, IconTrash, IconList } from '@tabler/icons-react';
 import type { M2MRelationInfo, M2MItem } from '@buildpad/hooks';
+import { renderTemplate } from '../list-m2a/render-template';
 
 /**
  * Render function types for customizing ListM2M display
@@ -211,7 +212,9 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
             {value.map((item, index) => (
               <Group key={item.id || index} justify="space-between">
                 <Text size="sm">
-                  {template || `Item ${item.id || index + 1}`}
+                  {template
+                    ? renderTemplate(template, item, { fallback: `Item ${item.id || index + 1}` })
+                    : `Item ${item.id || index + 1}`}
                 </Text>
                 {!disabled && (
                   <ActionIcon

@@ -16,11 +16,25 @@ import { IconPlus, IconX } from '@tabler/icons-react';
 export interface Option {
   text: string;
   value: string | number | boolean;
+  disabled?: boolean;
 }
 
 export interface SelectMultipleCheckboxProps {
-  value?: (string | number | boolean)[];
-  onChange?: (value: (string | number | boolean)[] | null) => void;
+  /**
+   * Registered for `types: ['json', 'csv']` — a `csv`-typed field delivers a
+   * raw comma-separated string, not an array. `type` lets this component
+   * normalize on read and re-serialize on write when used standalone
+   * (outside the FormFieldInterface pipeline, which already normalizes this
+   * for its own three multi-select leaves but can't help a direct consumer
+   * of this exported component). Without normalization a csv string breaks
+   * every operation below: substring-match reads via String.includes,
+   * character-spread on add ([...str, v]), TypeError on remove
+   * (str.filter is not a function), and a render crash in
+   * otherValuesInSelection's str.filter call.
+   */
+  type?: 'csv' | 'json';
+  value?: (string | number | boolean)[] | string;
+  onChange?: (value: (string | number | boolean)[] | string | null) => void;
   label?: string;
   disabled?: boolean;
   required?: boolean;
@@ -35,6 +49,7 @@ export interface SelectMultipleCheckboxProps {
 }
 
 export function SelectMultipleCheckbox({
+  type,
   value = [],
   onChange,
   label,
@@ -52,6 +67,27 @@ export function SelectMultipleCheckbox({
   const [showAll, setShowAll] = useState(false);
   const [otherValues, setOtherValues] = useState<{ key: string; value: string }[]>([]);
 
+  // Normalize a raw csv-string value to an array before anything below reads
+  // it. `type === 'csv'` is the documented signal, but also trust what was
+  // actually observed (a string) — some backends report the underlying
+  // column type instead of the abstract 'csv' interface type.
+  const normalizedValue = useMemo(() => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      return value.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return value ?? [];
+  }, [value]);
+  const isCsvStorage = type === 'csv' || typeof value === 'string';
+  // Emit an array or, for csv storage, join it back to a comma-string.
+  const emit = (next: (string | number | boolean)[] | null) => {
+    if (isCsvStorage && Array.isArray(next)) {
+      onChange?.(next.join(','));
+    } else {
+      onChange?.(next);
+    }
+  };
+
   // Parse color prop to work with Mantine's color system
   const mantineColor = useMemo(() => {
     if (color.startsWith('var(--mantine-color-')) {
@@ -59,6 +95,11 @@ export function SelectMultipleCheckbox({
     }
     return color;
   }, [color]);
+
+  // `mantineColor` is only a real Mantine palette name when it's not a raw
+  // hex/CSS-color literal — interpolating a hex into `var(--mantine-color-*)`
+  // produces an invalid custom-property name and silently drops the style.
+  const isHexOrRawColor = /^#|^rgb|^hsl/.test(mantineColor);
 
   // Handle displaying limited choices or all choices
   const hideChoices = useMemo(() => choices.length > itemsShown, [choices.length, itemsShown]);
@@ -104,7 +145,7 @@ export function SelectMultipleCheckbox({
       return;
     }
 
-    const currentValue = value || [];
+    const currentValue = normalizedValue;
     let newValue: (string | number | boolean)[];
 
     if (checked) {
@@ -119,7 +160,7 @@ export function SelectMultipleCheckbox({
       newValue = currentValue.filter(v => v !== optionValue);
     }
 
-    onChange?.(newValue.length > 0 ? newValue : null);
+    emit(newValue.length > 0 ? newValue : null);
   };
 
   // Handle other value changes
@@ -137,7 +178,7 @@ export function SelectMultipleCheckbox({
       return;
     }
 
-    const currentValue = value || [];
+    const currentValue = normalizedValue;
     let newValue: (string | number | boolean)[];
 
     if (checked) {
@@ -150,7 +191,7 @@ export function SelectMultipleCheckbox({
       newValue = currentValue.filter(v => v !== otherValue);
     }
 
-    onChange?.(newValue.length > 0 ? newValue : null);
+    emit(newValue.length > 0 ? newValue : null);
   };
 
   // Add new other value input
@@ -166,13 +207,13 @@ export function SelectMultipleCheckbox({
 
   // Get other values that are in the current selection
   const otherValuesInSelection = useMemo(() => {
-    if (!value || !allowOther) {
+    if (!allowOther) {
       return [];
     }
-    
+
     const choiceValues = choices.map(c => c.value);
-    return value.filter(v => !choiceValues.includes(v));
-  }, [value, choices, allowOther]);
+    return normalizedValue.filter(v => !choiceValues.includes(v));
+  }, [normalizedValue, choices, allowOther]);
 
   // Show choices validation message
   if (!choices || choices.length === 0) {
@@ -206,13 +247,18 @@ export function SelectMultipleCheckbox({
       )}
 
       <Grid gutter="md">
-        {choicesDisplayed.map((item) => (
-          <Grid.Col span={12 / gridColumns} key={String(item.value)}>
+        {choicesDisplayed.map((item, index) => (
+          // Index-qualified: choices whose values stringify identically
+          // (e.g. number 1 vs string '1') would otherwise collide on
+          // key={String(item.value)} — a React "duplicate key" warning.
+          // Selection state itself is unaffected (checked/onChange below
+          // compare item.value directly, not its string form).
+          <Grid.Col span={12 / gridColumns} key={`${index}-${String(item.value)}`}>
             <Checkbox
               label={item.text}
-              checked={(value || []).includes(item.value)}
+              checked={normalizedValue.includes(item.value)}
               onChange={(event) => handleCheckboxChange(item.value, event.currentTarget.checked)}
-              disabled={disabled}
+              disabled={disabled || item.disabled}
               size="sm"
               color={mantineColor}
               aria-label={`Select ${item.text}`}
@@ -224,7 +270,7 @@ export function SelectMultipleCheckbox({
                   border: '1px solid var(--mantine-color-gray-3)',
                   borderRadius: 'var(--mantine-radius-xs)', // Tokenized border radius
                   transition: 'all 200ms ease',
-                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  cursor: disabled || item.disabled ? 'not-allowed' : 'pointer',
                 },
               }}
             />
@@ -261,8 +307,8 @@ export function SelectMultipleCheckbox({
               wrapperProps={{
                 style: {
                   padding: '12px',
-                  backgroundColor: `var(--mantine-color-${mantineColor}-light)`,
-                  border: `1px solid var(--mantine-color-${mantineColor}-6)`,
+                  backgroundColor: isHexOrRawColor ? `${mantineColor}22` : `var(--mantine-color-${mantineColor}-light)`,
+                  border: isHexOrRawColor ? `1px solid ${mantineColor}` : `1px solid var(--mantine-color-${mantineColor}-6)`,
                   borderRadius: 'var(--mantine-radius-sm)',
                 },
               }}
@@ -273,7 +319,7 @@ export function SelectMultipleCheckbox({
           {otherValues.map((otherItem) => (
             <Group key={otherItem.key} gap="xs" align="flex-end">
               <Checkbox
-                checked={(value || []).includes(otherItem.value)}
+                checked={normalizedValue.includes(otherItem.value)}
                 onChange={(event) => handleOtherCheckboxChange(otherItem.value, event.currentTarget.checked)}
                 disabled={disabled || !otherItem.value.trim()}
                 size="sm"

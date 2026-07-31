@@ -8,7 +8,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useId } from 'react';
 import {
   Stack,
   Text,
@@ -28,6 +28,7 @@ export interface TreeChoice {
   text: string;
   value: string | number | boolean;
   children?: TreeChoice[];
+  disabled?: boolean;
 }
 
 export interface SelectMultipleCheckboxTreeProps {
@@ -118,6 +119,7 @@ export function SelectMultipleCheckboxTree({
   const [search, setSearch] = useState('');
   const [showSelectionOnly, setShowSelectionOnly] = useState(false);
   const [debouncedSearch] = useDebouncedValue(search, 250);
+  const labelId = useId();
 
   // Get children values for a specific parent
   const getChildrenValues = useCallback((choice: TreeChoice): (string | number | boolean)[] => {
@@ -331,7 +333,7 @@ export function SelectMultipleCheckboxTree({
           size="sm" 
           fw={500}
           component="label"
-          htmlFor={`checkbox-tree-${Math.random().toString(36).substr(2, 9)}`}
+          htmlFor={`checkbox-tree-${labelId}`}
         >
           {label}
           {required && <Text component="span" c="red" ml={4}>*</Text>}
@@ -370,9 +372,12 @@ export function SelectMultipleCheckboxTree({
         {/* Tree content */}
         <ScrollArea h="200px" p="sm">
           <Stack gap="xs">
-            {filteredChoices.map((choice) => (
+            {filteredChoices.map((choice, index) => (
+              // Index-qualified: see the matching comment at the recursive
+              // children.map below — choices whose values stringify
+              // identically would otherwise collide on key={String(value)}.
               <TreeNode
-                key={String(choice.value)}
+                key={`${index}-${String(choice.value)}`}
                 choice={choice}
                 selectedValues={value}
                 onToggle={handleToggle}
@@ -481,7 +486,8 @@ function TreeNode({
       return choice.text;
     }
     
-    const parts = choice.text.split(new RegExp(`(${searchQuery})`, 'gi'));
+    const escapedQuery = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const parts = choice.text.split(new RegExp(`(${escapedQuery})`, 'gi'));
     return (
       <span>
         {parts.map((part, index) =>
@@ -530,7 +536,7 @@ function TreeNode({
           checked={checked}
           indeterminate={indeterminate}
           onChange={handleCheckboxChange}
-          disabled={disabled}
+          disabled={disabled || choice.disabled}
           color={color}
           size="sm"
           label={highlightedText}
@@ -550,9 +556,13 @@ function TreeNode({
       {hasChildren && (
         <Collapse in={expanded}>
           <Stack gap="xs" ml="md" mt="xs">
-            {choice.children!.map((child) => (
+            {choice.children!.map((child, childIndex) => (
+              // Index-qualified for the same reason as the top-level
+              // filteredChoices.map above — colliding stringified values
+              // (e.g. 1 vs '1') within the same children array would
+              // otherwise produce a React duplicate-key warning.
               <TreeNode
-                key={String(child.value)}
+                key={`${childIndex}-${String(child.value)}`}
                 choice={child}
                 selectedValues={selectedValues}
                 onToggle={onToggle}
