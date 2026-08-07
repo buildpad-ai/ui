@@ -206,8 +206,13 @@ export function SelectMultipleCheckbox({
       )}
 
       <Grid gutter="md">
-        {choicesDisplayed.map((item) => (
-          <Grid.Col span={12 / gridColumns} key={String(item.value)}>
+        {choicesDisplayed.map((item, index) => (
+          // Index-qualified: choices whose values stringify identically
+          // (e.g. number 1 vs string '1') would otherwise collide on
+          // key={String(item.value)} — a React "duplicate key" warning.
+          // Selection state itself is unaffected (checked/onChange below
+          // compare item.value directly, not its string form).
+          <Grid.Col span={12 / gridColumns} key={`${index}-${String(item.value)}`}>
             <Checkbox
               label={item.text}
               checked={(value || []).includes(item.value)}

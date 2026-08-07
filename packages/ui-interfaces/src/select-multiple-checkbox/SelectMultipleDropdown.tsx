@@ -59,11 +59,24 @@ export function SelectMultipleDropdown({
       return [];
     }
 
-    return choices.map(choice => ({
-      value: String(choice.value),
-      label: choice.text,
-      disabled: choice.disabled || false,
-    }));
+    // Mantine's <MultiSelect> requires globally-unique string `value`s in
+    // `data` and throws "Duplicate options are not supported" otherwise.
+    // Choices with different typed values that stringify identically (e.g.
+    // number 1 vs string '1') would collide here — drop the second
+    // occurrence so the field renders, same fix as SelectDropdown.
+    const seen = new Set<string>();
+    const result: { value: string; label: string; disabled: boolean }[] = [];
+    for (const choice of choices) {
+      const strValue = String(choice.value);
+      if (seen.has(strValue)) continue;
+      seen.add(strValue);
+      result.push({
+        value: strValue,
+        label: choice.text,
+        disabled: choice.disabled || false,
+      });
+    }
+    return result;
   }, [choices]);
 
   // Handle value changes with proper sorting

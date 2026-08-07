@@ -370,9 +370,12 @@ export function SelectMultipleCheckboxTree({
         {/* Tree content */}
         <ScrollArea h="200px" p="sm">
           <Stack gap="xs">
-            {filteredChoices.map((choice) => (
+            {filteredChoices.map((choice, index) => (
+              // Index-qualified: see the matching comment at the recursive
+              // children.map below — choices whose values stringify
+              // identically would otherwise collide on key={String(value)}.
               <TreeNode
-                key={String(choice.value)}
+                key={`${index}-${String(choice.value)}`}
                 choice={choice}
                 selectedValues={value}
                 onToggle={handleToggle}
@@ -550,9 +553,13 @@ function TreeNode({
       {hasChildren && (
         <Collapse in={expanded}>
           <Stack gap="xs" ml="md" mt="xs">
-            {choice.children!.map((child) => (
+            {choice.children!.map((child, childIndex) => (
+              // Index-qualified for the same reason as the top-level
+              // filteredChoices.map above — colliding stringified values
+              // (e.g. 1 vs '1') within the same children array would
+              // otherwise produce a React duplicate-key warning.
               <TreeNode
-                key={String(child.value)}
+                key={`${childIndex}-${String(child.value)}`}
                 choice={child}
                 selectedValues={selectedValues}
                 onToggle={onToggle}
