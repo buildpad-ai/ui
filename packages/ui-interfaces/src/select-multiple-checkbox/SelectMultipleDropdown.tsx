@@ -19,8 +19,17 @@ export interface DropdownChoice {
 }
 
 export interface SelectMultipleDropdownProps {
-  value?: (string | number | boolean)[] | null;
-  onChange?: (value: (string | number | boolean)[] | null) => void;
+  /**
+   * Registered for `types: ['json', 'csv']` — a `csv`-typed field delivers a
+   * raw comma-separated string, not an array. `type` lets this component
+   * normalize on read and re-serialize on write when used standalone
+   * (outside the FormFieldInterface pipeline, which already normalizes this
+   * for its own three multi-select leaves but can't help a direct consumer
+   * of this exported component).
+   */
+  type?: 'csv' | 'json';
+  value?: (string | number | boolean)[] | string | null;
+  onChange?: (value: (string | number | boolean)[] | string | null) => void;
   label?: string;
   disabled?: boolean;
   required?: boolean;
@@ -37,6 +46,7 @@ export interface SelectMultipleDropdownProps {
 }
 
 export function SelectMultipleDropdown({
+  type,
   value = [],
   onChange,
   label,
@@ -53,6 +63,18 @@ export function SelectMultipleDropdown({
   width,
   color = 'blue',
 }: SelectMultipleDropdownProps) {
+  // Normalize a raw csv-string value to an array before anything below reads
+  // it. `type === 'csv'` is the documented signal, but also trust what was
+  // actually observed (a string) — some backends report the underlying
+  // column type instead of the abstract 'csv' interface type.
+  const normalizedValue = useMemo(() => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      return value.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return value ?? [];
+  }, [value]);
+  const isCsvStorage = type === 'csv' || typeof value === 'string';
   // Transform choices for Mantine MultiSelect
   const data = useMemo(() => {
     if (!choices || choices.length === 0) {
@@ -66,16 +88,27 @@ export function SelectMultipleDropdown({
     }));
   }, [choices]);
 
+  // Emit an array or, for csv storage, join it back to a comma-string —
+  // Mantine's MultiSelect always hands us an array regardless of how the
+  // value is actually stored.
+  const emit = (next: (string | number | boolean)[] | null) => {
+    if (isCsvStorage && Array.isArray(next)) {
+      onChange?.(next.join(','));
+    } else {
+      onChange?.(next);
+    }
+  };
+
   // Handle value changes with proper sorting
   const handleChange = (newValue: string[]) => {
     if (!newValue || newValue.length === 0) {
-      onChange?.(allowNone ? null : []);
+      emit(allowNone ? null : []);
       return;
     }
 
     // If no choices available, just pass through the values
     if (!choices || choices.length === 0) {
-      onChange?.(newValue);
+      emit(newValue);
       return;
     }
 
@@ -83,7 +116,7 @@ export function SelectMultipleDropdown({
     const sortedValue = newValue.sort((a, b) => {
       const indexA = choices.findIndex(choice => String(choice.value) === a);
       const indexB = choices.findIndex(choice => String(choice.value) === b);
-      
+
       // If not found in choices (custom values), put them at the end
       if (indexA === -1 && indexB === -1) {
         return 0;
@@ -94,7 +127,7 @@ export function SelectMultipleDropdown({
       if (indexB === -1) {
         return -1;
       }
-      
+
       return indexA - indexB;
     });
 
@@ -104,7 +137,7 @@ export function SelectMultipleDropdown({
       return originalChoice ? originalChoice.value : stringValue;
     });
 
-    onChange?.(convertedValue);
+    emit(convertedValue);
   };
 
   // Show choices validation message
@@ -130,7 +163,7 @@ export function SelectMultipleDropdown({
   }
 
   // Convert value to string array for Mantine
-  const stringValue = Array.isArray(value) ? value.map(v => String(v)) : [];
+  const stringValue = normalizedValue.map(v => String(v));
 
   return (
     <Stack gap="xs" style={{ width }}>
