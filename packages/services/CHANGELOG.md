@@ -1,5 +1,12 @@
 # @buildpad/services
 
+## 1.10.1
+
+### Patch Changes
+
+- @buildpad/types@1.10.1
+- @buildpad/utils@1.10.1
+
 ## 1.10.0
 
 ### Minor Changes
