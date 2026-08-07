@@ -676,13 +676,23 @@ export const ListM2M: React.FC<ListM2MProps> = ({
 
     // Use mock items if provided (storybook/testing), otherwise hook items
     const displayItems = mockItems ?? hookDisplayItems;
-    // Filter out deleted items for display
-    const visibleItems = useMemo(
-        () => displayItems.filter((item) => item.$type !== "deleted"),
-        [displayItems],
-    );
     const totalCount = mockItems ? mockItems.length : hookTotalCount;
     const totalPages = currentLimit > 0 ? Math.ceil(totalCount / currentLimit) : 1;
+    // Filter out deleted items for display. displayItems appends ALL locally
+    // staged creates regardless of page (the hook has no page awareness —
+    // fetchedItems is whatever page was last loaded, changes.create is
+    // global), so without this they'd render on every page and a page could
+    // exceed the limit. Only show them on the last page — totalCount already
+    // includes them in its accounting, so that's where they'd land once saved.
+    const visibleItems = useMemo(
+        () =>
+            displayItems.filter((item) => {
+                if (item.$type === "deleted") return false;
+                if (item.$type === "created" && currentPage !== totalPages) return false;
+                return true;
+            }),
+        [displayItems, currentPage, totalPages],
+    );
 
     const loading = relationLoading || itemsLoading || fieldMetaLoading;
 
@@ -835,18 +845,24 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         [removeItem],
     );
 
+    // `index` from the row map is page-local (visibleItems is only the
+    // current page's items) — pass the page offset so moveItemUp/Down assign
+    // globally-unique sort values instead of colliding with every other
+    // page's 1..N (bug 3.3: reorder on page 2+ corrupted global order).
+    const pageOffset = (currentPage - 1) * currentLimit;
+
     const handleMoveUp = useCallback(
         (index: number) => {
-            moveItemUp(index);
+            moveItemUp(index, pageOffset);
         },
-        [moveItemUp],
+        [moveItemUp, pageOffset],
     );
 
     const handleMoveDown = useCallback(
         (index: number) => {
-            moveItemDown(index);
+            moveItemDown(index, pageOffset);
         },
-        [moveItemDown],
+        [moveItemDown, pageOffset],
     );
 
     // ── DnD drag-end handler ────────────────────────────────────────
@@ -1169,20 +1185,30 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                             </Text>
                         )}
 
-                        {/* Batch edit toggle (table layout only) */}
+                        {/* Batch edit toggle (table layout only).
+                            Disabled rather than wired to openEditDrawer: that click
+                            handler never set currentlyEditing/isCreatingNew and never
+                            consumed selectedIds, so it opened CollectionForm(mode='edit',
+                            id=undefined) — a broken empty form with no batch-apply logic
+                            behind it. No real batch-edit flow exists yet (applying one
+                            set of edited values across N selected junction/related
+                            rows), so surface that honestly instead of opening something
+                            broken. */}
                         {!isEffectivelyNonEditable &&
                             enableBatchEdit &&
                             layout === "table" &&
                             selectedIds.size > 0 && (
-                                <Button
-                                    variant="light"
-                                    color="warning"
-                                    leftSection={<IconCheckbox size={16} />}
-                                    onClick={openEditDrawer}
-                                    size="sm"
-                                >
-                                    {interpolate(t.batch_edit_title, { count: String(selectedIds.size) })}
-                                </Button>
+                                <Tooltip label="Batch editing is not yet implemented">
+                                    <Button
+                                        variant="light"
+                                        color="warning"
+                                        leftSection={<IconCheckbox size={16} />}
+                                        disabled
+                                        size="sm"
+                                    >
+                                        {interpolate(t.batch_edit_title, { count: String(selectedIds.size) })}
+                                    </Button>
+                                </Tooltip>
                             )}
 
                         {!isEffectivelyNonEditable && enableSelect && selectAllowed && (
