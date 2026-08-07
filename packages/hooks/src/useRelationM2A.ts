@@ -563,7 +563,11 @@ export function useRelationM2AItems(
     const junctionPKField = relationInfo?.junctionPrimaryKeyField?.field ?? 'id';
 
     // ── load fetched items from server ──────────────────────────────
+    const requestIdRef = useRef(0);
+
     const loadItems = useCallback(async (params?: M2AQueryParams) => {
+        const requestId = ++requestIdRef.current;
+
         if (!relationInfo || isNewItem(parentPrimaryKey)) {
             setFetchedItems([]);
             setExistingItemCount(0);
@@ -698,16 +702,19 @@ export function useRelationM2AItems(
                 return jItem;
             });
 
+            if (requestIdRef.current !== requestId) return; // superseded by a newer call
+
             setFetchedItems(enrichedItems);
             setExistingItemCount(totalCount);
         } catch (err) {
+            if (requestIdRef.current !== requestId) return;
             const errorMessage = err instanceof Error ? err.message : 'Failed to load related items';
             setError(errorMessage);
             setFetchedItems([]);
             setExistingItemCount(0);
             console.error('Error loading M2A items:', err);
         } finally {
-            setLoading(false);
+            if (requestIdRef.current === requestId) setLoading(false);
         }
     }, [relationInfo, parentPrimaryKey]);
 

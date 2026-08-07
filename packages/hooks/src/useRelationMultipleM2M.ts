@@ -17,7 +17,7 @@
  * @module @buildpad/hooks/useRelationMultipleM2M
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { apiRequest, isNewItem } from './utils';
 import type { M2MRelationInfo } from './useRelationM2M';
 
@@ -126,8 +126,11 @@ export function useRelationMultipleM2M(
     const relatedPKField = relationInfo?.relatedPrimaryKeyField?.field ?? 'id';
 
     // ── Load items from server ──────────────────────────────────────
+    const requestIdRef = useRef(0);
 
     const loadItems = useCallback(async (params: M2MMultipleQueryParams) => {
+        const requestId = ++requestIdRef.current;
+
         if (!relationInfo || isNewItem(parentPrimaryKey)) {
             setFetchedItems([]);
             setExistingItemCount(0);
@@ -190,15 +193,18 @@ export function useRelationMultipleM2M(
                 total = response.meta?.total_count ?? response.meta?.filter_count ?? items.length;
             }
 
+            if (requestIdRef.current !== requestId) return; // superseded by a newer call
+
             setFetchedItems(items);
             setExistingItemCount(total);
         } catch (err) {
+            if (requestIdRef.current !== requestId) return;
             const errorMessage = err instanceof Error ? err.message : 'Failed to load related items';
             setError(errorMessage);
             setFetchedItems([]);
             setExistingItemCount(0);
         } finally {
-            setLoading(false);
+            if (requestIdRef.current === requestId) setLoading(false);
         }
     }, [relationInfo, parentPrimaryKey, junctionPKField, junctionFieldName, relatedPKField]);
 

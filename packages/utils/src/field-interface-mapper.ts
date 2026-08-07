@@ -466,7 +466,8 @@ function getExplicitInterface(
           allowDuplicates: options?.allowDuplicates === true,
           filter: options?.filter as Record<string, unknown>,
           // M2A-specific options
-          allowedCollections: options?.allowedCollections as string[],
+          allowedCollections: (options?.allowed_collections ??
+            options?.allowedCollections) as string[],
           ...options,
         },
       };

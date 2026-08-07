@@ -6,7 +6,12 @@
  * Complete rewrite addressing P0 and P1 discrepancies with DaaS 11.14.0:
  *
  * P0 (Data Integrity):
- * - Local-first staged changes via useRelationMultipleM2M (no immediate API calls)
+ * - Local-first staged changes via useRelationMultipleM2M for junction-level
+ *   operations (link/unlink/reorder — no immediate API calls). NOTE: editing an
+ *   *existing* related item's own fields via the edit drawer goes through
+ *   CollectionForm(mode='edit'), which persists immediately — that edit is not
+ *   staged/reversible by cancelling the parent form. Only the junction
+ *   relationship itself (create/update/delete/reorder of the link) is local-first.
  * - Proper template rendering via shared renderTemplate utility
  * - Working enableLink with proper URL generation
  * - Working per-page selector
