@@ -772,10 +772,19 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     // ── Load items when parameters change ───────────────────────────
     useEffect(() => {
         if (relationInfo && isParentSaved && !mockItems) {
-            // Build fields for the query — prefix with junction field for related data
-            const queryFields = fields.map((f) =>
-                f.includes(".") ? f : `${relationInfo.junctionField.field}.${f}`,
-            );
+            // Build fields for the query — prefix with junction field for related data.
+            // `fields` defaults to DEFAULT_RELATIONAL_FIELDS (["id"]) as a bootstrap
+            // placeholder meaning "the primary key" — but taken literally, a bare "id"
+            // becomes `${junctionField}.id`, which 500s for any related collection whose
+            // real PK isn't literally "id" (e.g. labels.code). Resolve that specific
+            // bootstrap sentinel to the real related PK field; any other explicit bare
+            // field name is left as-is.
+            const relatedPkField = relationInfo.relatedPrimaryKeyField?.field || "id";
+            const queryFields = fields.map((f) => {
+                if (f.includes(".")) return f;
+                const resolved = f === "id" && relatedPkField !== "id" ? relatedPkField : f;
+                return `${relationInfo.junctionField.field}.${resolved}`;
+            });
             // Always include junction PK and sort field
             queryFields.push(relationInfo.junctionPrimaryKeyField.field);
             if (relationInfo.sortField) queryFields.push(relationInfo.sortField);
@@ -1004,9 +1013,14 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         closeEditDrawer();
         // After editing a related item, reload to show updated data
         if (relationInfo && isParentSaved && !mockItems) {
-            const queryFields = fields.map((f) =>
-                f.includes(".") ? f : `${relationInfo.junctionField.field}.${f}`,
-            );
+            // See the matching comment in the load-items effect above — "id" is a
+            // bootstrap placeholder for "the primary key", not a literal column name.
+            const relatedPkField = relationInfo.relatedPrimaryKeyField?.field || "id";
+            const queryFields = fields.map((f) => {
+                if (f.includes(".")) return f;
+                const resolved = f === "id" && relatedPkField !== "id" ? relatedPkField : f;
+                return `${relationInfo.junctionField.field}.${resolved}`;
+            });
             queryFields.push(relationInfo.junctionPrimaryKeyField.field);
             if (relationInfo.sortField) queryFields.push(relationInfo.sortField);
 
