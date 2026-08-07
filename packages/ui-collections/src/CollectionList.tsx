@@ -157,6 +157,18 @@ const SYSTEM_FIELDS = [
   "date_updated",
 ];
 
+// Relational fields with no real flat column value — can't be requested as a
+// bare name in fields= (there's no single column to select), only via a
+// proper nested embed the list view doesn't build. select-dropdown-m2o is
+// intentionally excluded from both sets: M2O fields normally back a real FK
+// column and select fine bare.
+const NON_FLAT_RELATIONAL_SPECIALS = new Set(["m2a", "m2m", "o2m"]);
+const NON_FLAT_RELATIONAL_INTERFACES = new Set([
+  "list-m2a",
+  "list-m2m",
+  "list-o2m",
+]);
+
 // Row height per spacing preset
 const SPACING_HEIGHT: Record<string, number> = {
   compact: 32,
@@ -318,6 +330,20 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         let visible = fieldsResult.filter((f: Field) => {
           if (SYSTEM_FIELDS.includes(f.field)) return false;
           if (f.type === "alias") return false;
+          // Some DaaS backends don't mark O2M/M2M/M2A relational fields with
+          // type: "alias" even though they have no real flat column value —
+          // the reliable signal is meta.special / meta.interface instead.
+          // Requesting one of these bare in fields= (instead of as a proper
+          // nested embed the list view doesn't build) 500s the backend, e.g.
+          // "column pages_blocks_1.undefined does not exist" for an M2A
+          // field whose type happens to report as "text". select-dropdown-m2o
+          // is deliberately NOT excluded — M2O fields normally back a real FK
+          // column and select fine as a bare field.
+          const special = f.meta?.special ?? [];
+          const isNonFlatRelational =
+            special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) ||
+            (!!f.meta?.interface && NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface));
+          if (isNonFlatRelational) return false;
           const isHidden = f.meta?.hidden ?? (f as unknown as Record<string, unknown>).hidden;
           if (isHidden) return false;
           return true;
