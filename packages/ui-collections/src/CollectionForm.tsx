@@ -115,6 +115,20 @@ const SYSTEM_FIELDS = [
   "sort",
 ];
 
+// Relational fields with no real flat column value — can't be requested as a
+// bare name in a fields= fetch (there's no single column to select), only
+// via a proper nested embed this form doesn't build. Matches the same
+// backend-agnostic signal used by CollectionList (some DaaS backends don't
+// mark these fields with column type "alias", so that alone isn't reliable).
+// select-dropdown-m2o is intentionally excluded from both sets: M2O fields
+// normally back a real FK column and fetch fine bare.
+const NON_FLAT_RELATIONAL_SPECIALS = new Set(["m2a", "m2m", "o2m"]);
+const NON_FLAT_RELATIONAL_INTERFACES = new Set([
+  "list-m2a",
+  "list-m2m",
+  "list-o2m",
+]);
+
 // Fields that are read-only by nature
 const READ_ONLY_FIELDS = [
   "id",
@@ -411,7 +425,28 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // If editing, load the existing item
         if (mode === "edit" && id) {
           const itemsService = new ItemsService(collection);
-          const item = await itemsService.readOne(id);
+          // Fetch only flat fields — omitting `fields` entirely falls back to
+          // the backend's "select everything" default, which 500s on any
+          // O2M/M2M/M2A field requested bare (no single column to select;
+          // same failure CollectionList hits without its own exclusion).
+          // Safe to drop: ListO2M/ListM2M/ListM2A each load their own linked
+          // items independently via their relation hooks once mounted with
+          // the real primaryKey — they don't depend on this initial value.
+          const fetchableFields = editableFields
+            .filter((f) => {
+              const special = f.meta?.special ?? [];
+              const isNonFlatRelational =
+                special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) ||
+                (!!f.meta?.interface &&
+                  NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface));
+              return !isNonFlatRelational;
+            })
+            .map((f) => f.field);
+          const resolvedPkField = schemaPk ?? "id";
+          if (!fetchableFields.includes(resolvedPkField)) {
+            fetchableFields.unshift(resolvedPkField);
+          }
+          const item = await itemsService.readOne(id, fetchableFields);
           initialData = { ...initialData, ...item };
         }
 
