@@ -982,7 +982,7 @@ export function useRelationM2AItems(
      * Reorder all *visible* items by updating their sort fields locally.
      * Only items that actually change sort order get an update entry.
      */
-    const reorderItems = useCallback((reorderedItems: M2AItem[]): void => {
+    const reorderItems = useCallback((reorderedItems: M2AItem[], pageOffset = 0): void => {
         if (!relationInfo?.sortField) return;
         const sortKey = relationInfo.sortField;
 
@@ -992,7 +992,7 @@ export function useRelationM2AItems(
 
             for (let i = 0; i < reorderedItems.length; i++) {
                 const item = reorderedItems[i];
-                const newSort = i + 1;
+                const newSort = pageOffset + i + 1;
                 const currentSort = item[sortKey] as number | undefined;
 
                 // Skip if sort hasn't changed
@@ -1022,25 +1022,25 @@ export function useRelationM2AItems(
     /**
      * Move item up in the visible list (swap with previous).
      */
-    const moveItemUp = useCallback((index: number): void => {
+    const moveItemUp = useCallback((index: number, pageOffset = 0): void => {
         if (index <= 0 || !relationInfo?.sortField) return;
         const visible = displayItems.filter(i => i.$type !== 'deleted');
         if (index >= visible.length) return;
         const reordered = [...visible];
         [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
-        reorderItems(reordered);
+        reorderItems(reordered, pageOffset);
     }, [displayItems, relationInfo, reorderItems]);
 
     /**
      * Move item down in the visible list (swap with next).
      */
-    const moveItemDown = useCallback((index: number): void => {
+    const moveItemDown = useCallback((index: number, pageOffset = 0): void => {
         if (!relationInfo?.sortField) return;
         const visible = displayItems.filter(i => i.$type !== 'deleted');
         if (index >= visible.length - 1) return;
         const reordered = [...visible];
         [reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]];
-        reorderItems(reordered);
+        reorderItems(reordered, pageOffset);
     }, [displayItems, relationInfo, reorderItems]);
 
     /**

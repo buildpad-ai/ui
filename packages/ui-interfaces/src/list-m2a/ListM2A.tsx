@@ -46,6 +46,7 @@ import {
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
     useSortable,
+    arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useDisclosure } from "@mantine/hooks";
@@ -306,8 +307,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
         removeItem,
         updateItem,
         selectItems,
-        moveItemUp: hookMoveItemUp,
-        moveItemDown: hookMoveItemDown,
+        reorderItems: hookReorderItems,
         getSelectedPrimaryKeysByCollection,
         getChanges,
         hasChanges,
@@ -452,33 +452,10 @@ export const ListM2A: React.FC<ListM2AProps> = ({
         hasEmittedRef.current = true;
     }, [isDemoMode, relationInfo, getChanges, hasChanges, hookDisplayItems]);
 
-    // Functions that work for both demo and real mode
-    const moveItemUp = (index: number) => {
-        if (isDemoMode) {
-            if (index <= 0) return;
-            const newItems = [...internalMockItems];
-            [newItems[index - 1], newItems[index]] = [newItems[index], newItems[index - 1]];
-            setInternalMockItems(newItems);
-        } else {
-            hookMoveItemUp(index);
-        }
-    };
-
-    const moveItemDown = (index: number) => {
-        if (isDemoMode) {
-            if (index >= internalMockItems.length - 1) return;
-            const newItems = [...internalMockItems];
-            [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
-            setInternalMockItems(newItems);
-        } else {
-            hookMoveItemDown(index);
-        }
-    };
-
     // ── Drag & Drop (DnD) setup ──
-    // Drag is only allowed when: there's a sortField, not disabled, and all items fit on one page
+    // Drag is only allowed when: there's a sortField, not disabled, and all items (across all pages) fit on one page
     const hasSortField = !!relationInfo?.sortField;
-    const canDrag = hasSortField && !disabled && visibleItems.length <= limit;
+    const canDrag = hasSortField && !disabled && totalCount <= limit;
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -501,14 +478,16 @@ export const ListM2A: React.FC<ListM2AProps> = ({
             const newIndex = visibleItems.findIndex((i) => String(i.id) === String(over.id));
             if (oldIndex === -1 || newIndex === -1) return;
 
-            // Move item from oldIndex to newIndex using repeated up/down
-            if (oldIndex < newIndex) {
-                for (let i = oldIndex; i < newIndex; i++) moveItemDown(i);
+            const reordered = arrayMove(visibleItems, oldIndex, newIndex);
+
+            if (isDemoMode) {
+                setInternalMockItems(reordered);
             } else {
-                for (let i = oldIndex; i > newIndex; i--) moveItemUp(i);
+                const pageOffset = (currentPage - 1) * limit;
+                hookReorderItems(reordered, pageOffset);
             }
         },
-        [visibleItems, moveItemUp, moveItemDown],
+        [visibleItems, isDemoMode, currentPage, limit, hookReorderItems],
     );
 
     // Load items when parameters change (only for real mode)
