@@ -3,7 +3,7 @@ title: Files Module Recipe
 description: Drop a complete file manager into your app — drag-and-drop upload, folders, grid/list views, preview, and metadata editing — with one CLI command.
 ---
 
-import { Callout, Steps } from 'nextra/components'
+import { Callout, Steps } from "nextra/components";
 
 # Files Module Recipe
 
@@ -23,23 +23,20 @@ It gives you two screens:
 
 ## The pieces
 
-| Piece | Package | Role |
-|---|---|---|
-| `FileManager` | `@buildpad/ui-files` | The library view: upload, folders, grid/list, search, selection, bulk delete |
-| `FileDetail` | `@buildpad/ui-files` | The detail view: preview tabs + editable metadata form + delete |
-| `Upload` | `@buildpad/ui-interfaces` | The drag-and-drop / file-picker / import-from-URL affordance (reused by `FileManager`) |
-| `useFiles` | `@buildpad/hooks` | Upload, list, get, update, delete, and import-from-URL operations |
-| `useFolders` | `@buildpad/hooks` | List, create, rename, and delete folders |
+| Piece         | Package                   | Role                                                                                   |
+| ------------- | ------------------------- | -------------------------------------------------------------------------------------- |
+| `FileManager` | `@buildpad/ui-files`      | The library view: upload, folders, grid/list, search, selection, bulk delete           |
+| `FileDetail`  | `@buildpad/ui-files`      | The detail view: preview tabs + editable metadata form + delete                        |
+| `Upload`      | `@buildpad/ui-interfaces` | The drag-and-drop / file-picker / import-from-URL affordance (reused by `FileManager`) |
+| `useFiles`    | `@buildpad/hooks`         | Upload, list, get, update, delete, and import-from-URL operations                      |
+| `useFolders`  | `@buildpad/hooks`         | List, create, rename, and delete folders                                               |
 
 <Callout type="info">
-This recipe is **opt-in** — it is *not* part of `bootstrap`. Generate the
-`app/files/` module with `buildpad add files-routes`; it pulls in the
-`file-manager` component (which in turn pulls the `upload` component and the
-`types` / `hooks` / `services` lib modules). The code below is that generated
-module, shown so you understand the wiring. In a generated app the imports point
-at your local copies (`@/components/ui/file-manager`, `@/lib/buildpad/hooks`);
-when consuming the packages directly, import from `@buildpad/ui-files` and
-`@buildpad/hooks` instead.
+  This recipe is **opt-in** — it is *not* part of `bootstrap`. Generate the `app/files/` module with `buildpad add
+  files-routes`; it pulls in the `file-manager` component (which in turn pulls the `upload` component and the `types` /
+  `hooks` / `services` lib modules). The code below is that generated module, shown so you understand the wiring. In a
+  generated app the imports point at your local copies (`@/components/ui/file-manager`, `@/lib/buildpad/hooks`); when
+  consuming the packages directly, import from `@buildpad/ui-files` and `@buildpad/hooks` instead.
 </Callout>
 
 ## Install
@@ -66,9 +63,9 @@ buildpad add api-routes
 ```
 
 This includes the routes the module needs: `app/api/files/route.ts`,
-`app/api/files/[id]/route.ts`, `app/api/files/import/route.ts`,
-`app/api/folders/route.ts`, `app/api/folders/[id]/route.ts`, and
-`app/api/assets/[id]/route.ts`.
+`app/api/files/signed-url/route.ts`, `app/api/files/[id]/route.ts`,
+`app/api/files/import/route.ts`, `app/api/folders/route.ts`,
+`app/api/folders/[id]/route.ts`, and `app/api/assets/[id]/route.ts`.
 
 </Steps>
 
@@ -94,8 +91,8 @@ all built in.
 ```tsx filename="app/files/page.tsx" copy
 "use client";
 
-import { useRouter } from 'next/navigation';
-import { FileManager } from '@/components/ui/file-manager';
+import { useRouter } from "next/navigation";
+import { FileManager } from "@/components/ui/file-manager";
 
 export default function FilesPage() {
   const router = useRouter();
@@ -116,29 +113,195 @@ Preview/Details tabs, saves metadata, and handles deletion.
 ```tsx filename="app/files/[id]/page.tsx" copy
 "use client";
 
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
-import { FileDetail } from '@/components/ui/file-manager';
+import { use } from "react";
+import { useRouter } from "next/navigation";
+import { FileDetail } from "@/components/ui/file-manager";
 
-export default function FileDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function FileDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
 
-  return (
-    <FileDetail
-      id={id}
-      onBack={() => router.push('/files')}
-      onDeleted={() => router.push('/files')}
-    />
-  );
+  return <FileDetail id={id} onBack={() => router.push("/files")} onDeleted={() => router.push("/files")} />;
 }
 ```
 
 </Steps>
+
+## Upload flow (Presigned URL)
+
+File uploads bypass Next.js server memory and bandwidth limits by uploading binary payloads directly to Supabase Storage using temporary presigned signed URLs.
+
+```mermaid
+sequenceDiagram
+    participant Client as Client Browser
+    participant API_Sign as Next.js API (/api/files/signed-url)
+    participant Storage as Supabase Storage
+    participant API_Files as Next.js API (/api/files)
+    participant DB as Postgres Database (daas_files)
+
+    Client->>API_Sign: 1. POST small JSON metadata (filename, type, size)
+    Note over API_Sign: 2. Validate permissions & generate UUID
+    API_Sign->>Storage: 3. Request temporary signed upload URL
+    Storage-->>API_Sign: 4. Return Signed URL
+    API_Sign-->>Client: 5. Return Signed URL & UUID
+
+    Note over Client, Storage: Heavy binary upload bypasses Next.js completely!
+    Client->>Storage: 6. PUT file binary directly using Signed URL
+    Storage-->>Client: 7. Upload success (200 OK)
+
+    Client->>API_Files: 8. POST JSON metadata with UUID to register file
+    API_Files->>DB: 9. INSERT record into daas_files
+    DB-->>API_Files: Success
+    API_Files-->>Client: 10. File registration success (201 Created)
+```
+
+### How it works
+
+1.  **Request Signed URL (`POST /api/files/signed-url`)**: The client sends file metadata (e.g. filename, mime type, size). Next.js validates user authorization and generates a file UUID, then requests a temporary signed upload URL from Supabase Storage.
+2.  **Direct Binary Upload (`PUT <signed-url>`)**: The client uploads the raw binary file directly to Supabase Storage via HTTP `PUT`. The heavy file payload completely bypasses Next.js API servers, preventing memory bottlenecks and timeouts.
+3.  **Register Metadata (`POST /api/files`)**: Once the binary upload succeeds (200 OK), the client sends a lightweight JSON payload containing the UUID and metadata to register the file entry in the database (`daas_files`).
+
+### Component upload handler example
+
+Here is an example of implementing the presigned upload handler inside a custom component matching the API contracts (`uploadUrl`, `primaryKey`, `filenameDisk`, `storageBucket`):
+
+```tsx filename="components/CustomUpload.tsx" copy
+"use client";
+
+import { useState } from "react";
+import { Button, FileButton, Progress, Stack, Text } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+
+export function CustomUpload({
+  currentFolder,
+  onUploaded,
+}: {
+  currentFolder?: string | null;
+  onUploaded?: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleFileUpload = async (files: File[]) => {
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+    let completedFiles = 0;
+    const totalFiles = files.length;
+
+    for (const file of files) {
+      try {
+        // 1. Get signed upload URL from Next.js API
+        const signedUrlRes = await fetch("/api/files/signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename_download: file.name,
+            type: file.type || "application/octet-stream",
+            folder: currentFolder || undefined,
+          }),
+        });
+
+        if (!signedUrlRes.ok) {
+          const error = await signedUrlRes.json();
+          throw new Error(error.errors?.[0]?.message || "Failed to get upload URL");
+        }
+
+        const { data: signedData } = await signedUrlRes.json();
+
+        // 2. Upload file binary directly to Supabase Storage
+        const uploadRes = await fetch(signedData.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          let errorMsg = `Upload failed with status ${uploadRes.status}`;
+          try {
+            const errText = await uploadRes.text();
+            try {
+              const errJson = JSON.parse(errText);
+              errorMsg = errJson.message || errJson.error?.message || errJson.error || errText;
+            } catch {
+              errorMsg = errText || errorMsg;
+            }
+          } catch {}
+
+          if (
+            uploadRes.status === 413 ||
+            errorMsg.includes("exceeds") ||
+            errorMsg.includes("maximum allowed size") ||
+            errorMsg.includes("EntityTooLarge") ||
+            errorMsg.includes("Payload Too Large") ||
+            errorMsg.includes("exceeded")
+          ) {
+            errorMsg = "File size exceeds the maximum limit configured in Supabase Storage.";
+          }
+          throw new Error(errorMsg);
+        }
+
+        // 3. Register file metadata in database (daas_files)
+        const metadataRes = await fetch("/api/files", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: signedData.primaryKey,
+            filename_download: file.name,
+            type: file.type || "application/octet-stream",
+            folder: currentFolder || undefined,
+            filename_disk: signedData.filenameDisk,
+            storage: signedData.storageBucket,
+            filesize: file.size,
+          }),
+        });
+
+        if (!metadataRes.ok) {
+          const error = await metadataRes.json();
+          throw new Error(error.errors?.[0]?.message || "Failed to save file metadata");
+        }
+
+        completedFiles++;
+        setUploadProgress((completedFiles / totalFiles) * 100);
+      } catch (error) {
+        console.error("Upload error:", error);
+        notifications.show({
+          title: "Upload Failed",
+          message: error instanceof Error ? error.message : `Failed to upload ${file.name}`,
+          color: "red",
+        });
+      }
+    }
+
+    setUploading(false);
+    onUploaded?.();
+  };
+
+  return (
+    <Stack gap="sm">
+      <FileButton onChange={(file) => file && handleFileUpload([file])} disabled={uploading}>
+        {(props) => (
+          <Button {...props} loading={uploading}>
+            Upload via Presigned URL
+          </Button>
+        )}
+      </FileButton>
+
+      {uploading && (
+        <Stack gap="xs">
+          <Progress value={uploadProgress} animated />
+          <Text size="xs" c="dimmed">
+            Uploading directly to storage ({Math.round(uploadProgress)}%)...
+          </Text>
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+```
 
 ## The data layer
 
@@ -152,11 +315,11 @@ editable metadata set:
 const { updateFile } = useFiles();
 
 await updateFile(fileId, {
-  title: 'Cover image',
-  description: 'Homepage hero',
-  tags: ['marketing', 'hero'],
-  location: 'HQ',
-  filename_download: 'hero.png',
+  title: "Cover image",
+  description: "Homepage hero",
+  tags: ["marketing", "hero"],
+  location: "HQ",
+  filename_download: "hero.png",
 });
 ```
 
@@ -167,7 +330,7 @@ await updateFile(fileId, {
 const { fetchFolders, createFolder } = useFolders();
 
 const rootFolders = await fetchFolders({ parent: null });
-const folder = await createFolder({ name: 'Campaigns', parent: null });
+const folder = await createFolder({ name: "Campaigns", parent: null });
 ```
 
 <Callout type="info">
@@ -181,12 +344,12 @@ or `getAssetUrl(id, { download: true })` for a download link.
 
 The Preview tab renders inline based on MIME type:
 
-| Type | Behaviour |
-|---|---|
-| Image | `<img>` rendered inline |
-| Video | HTML5 `<video>` player |
-| Audio | HTML5 `<audio>` player |
-| PDF | Embedded `<iframe>` |
+| Type          | Behaviour                     |
+| ------------- | ----------------------------- |
+| Image         | `<img>` rendered inline       |
+| Video         | HTML5 `<video>` player        |
+| Audio         | HTML5 `<audio>` player        |
+| PDF           | Embedded `<iframe>`           |
 | Anything else | File icon + a download button |
 
 ## Prerequisites
