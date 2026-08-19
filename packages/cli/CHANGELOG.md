@@ -1,5 +1,60 @@
 # @buildpad/cli
 
+## 1.11.1
+
+### Patch Changes
+
+- 56c14ae: CLI: fix a broken relative import the transformer never rewrote, and an implicit-`any` in the external-OAuth callback template.
+
+  `normalizeImportPaths` only rewrote relative imports whose _first_ path
+  segment was PascalCase (e.g. `../Upload/Upload` → `./upload`). A sibling
+  import like `../select-icon/SelectIcon` — where the folder is already
+  kebab-case but the filename is still PascalCase — never matched, so it
+  shipped unrewritten even though `select-icon` is delivered as the flat
+  sibling `components/ui/select-icon.tsx`, not a `select-icon/SelectIcon.tsx`
+  directory. This broke every component that imports from `select-icon`:
+  `select-dropdown`, `select-multiple-checkbox`, `select-multiple-dropdown`,
+  and `select-radio` all shipped a `TS2307: Cannot find module
+'../select-icon/SelectIcon'` on a fresh install. Both the static
+  `from '../select-icon/SelectIcon'` and dynamic
+  `import('../select-icon/SelectIcon')` forms are now flattened to
+  `./select-icon`.
+
+  `auth-callback-oauth-route.ts` (installed by the `external-oauth` lib
+  module) left `setAll(cookiesToSet)` without the parameter type its sibling
+  templates (`lib/supabase/server.ts`, `lib/supabase/middleware.ts`) already
+  carry, producing three `TS7006`/`TS7031` implicit-`any` errors under strict
+  mode.
+
+- f4473b4: Fix `buildpad upgrade --all` (and bare `--force`) silently skipping installed lib modules.
+
+  `--all` only populated `targetComponents`, never `targetLibModules`, so lib-module files
+  (`lib/buildpad/utils/index.ts`, `lib/buildpad/types/index.ts`, `design-system`, etc.) were
+  never re-synced no matter what flags were passed — only named components were. This is why
+  running `upgrade --all --force` after a barrel-export fix landed upstream did not pick up
+  the fix: the export lives in a lib module, and `--all` never even attempted to touch it.
+
+  `--all` and bare `--force` now also resolve `targetLibModules` from `config.installedLib`,
+  matching how `--design` and the default (no-flag) outdated-detection path already do.
+
+- 89f532b: CLI: deliver `conceal.ts`, close the stranded utils exports, and make the registry hash platform-independent.
+
+  `utils/src/conceal.ts` was never registered as a `utils` lib file, so `buildpad add/upgrade utils` had no way to deliver it. Five registry-delivered files already imported it — `InputHash`, `SystemToken`, `FormFieldInterface`, `CollectionForm` and `FormField` — and failed to build in consumer projects. It is now registered as `lib/buildpad/conceal.ts` and re-exported from the utils barrel.
+
+  The barrel had also drifted across three separate commits, not one. Alongside conceal's members it now re-exports `getDefaultValuesFromFields`, `resolveChoiceLabel`, `parseChoiceValues`, `splitCsvValue`, `InterfaceChoice`, `MISSING_FIELD_MARKER`, the auto-generation helpers, and the `interface-types` / `interface-registry` / `define-interface` modules — all of which ship to consumers but had no reachable export path.
+
+  Also fixed, because the drift was undetectable rather than unlucky:
+
+  - `computeFileSha256` now hashes line-ending-normalised content, and a `.gitattributes` pins `eol=lf`. Hashing raw bytes made the registry platform-dependent: generated on a CRLF checkout, its hashes could never match an LF checkout, so `pnpm registry:check` failed permanently and its output was pure noise. `registry:check` now passes.
+  - CI runs build, typecheck and unit tests _before_ the registry check. Fail-fast meant the red check aborted the job before any of them ran.
+  - `collectUndeclaredImports` now scans `registry.lib`, resolving relative imports in target space. It previously covered components only, which is why a barrel could re-export a module that was not a registry file at all.
+  - `@buildpad/cli` is now a known package folder, so `cli/templates/*` files are no longer exempt from the version guard.
+  - `build-registry.mjs` only self-executes when invoked directly. The previous guard was always true, so importing it — as the test suite does — rewrote the checked-in `registry.json`.
+  - `buildpad upgrade <lib>` no longer reports "up to date" when a registered file is missing on disk. A module that gains a file could not be delivered by version comparison alone, because the version cannot move until a release.
+  - `buildpad add` no longer rewrites existing lib files when a module gains one. Adding a file made the "already installed" check fail, and every consumer's customised copies were silently overwritten.
+  - The CLI now verifies fetched sources against the registry's `sourceSha256` and warns on mismatch. The field was written but never read.
+  - `useModuleAccessKeys` and `module-access-keys` are registered and exported, and the types barrel re-exports `module-access`. `buildpad add users-management` previously produced a project that could not build.
+
 ## 1.10.0
 
 ### Minor Changes

@@ -1,5 +1,22 @@
 # @buildpad/ui-table
 
+## 1.11.1
+
+### Patch Changes
+
+- Updated dependencies [585362e]
+- Updated dependencies [4a53873]
+- Updated dependencies [2b8413c]
+- Updated dependencies [12f823c]
+- Updated dependencies [2be8218]
+- Updated dependencies [1226ec5]
+- Updated dependencies [944c25c]
+- Updated dependencies [1523349]
+- Updated dependencies [925e201]
+  - @buildpad/hooks@1.11.1
+  - @buildpad/services@1.11.1
+  - @buildpad/types@1.11.1
+
 ## 1.10.0
 
 ### Patch Changes

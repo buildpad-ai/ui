@@ -1,5 +1,76 @@
 # @buildpad/ui-users
 
+## 1.11.1
+
+### Patch Changes
+
+- 5802243: SelectIcon: forward extra props safely, accept both `autoFocus` spellings, and unify the unknown-icon fallback (S5.5, S5.7).
+
+  **Prop forwarding (S5.5).** `SelectIcon` now forwards extra props to its trigger `<Button>`, so a consumer can pass `data-*` attributes and event handlers. Note this is a _new_ capability rather than parity: of the selection leaves, `SelectDropdown`, `SelectRadio`, `SelectMultipleCheckbox` and `SelectMultipleDropdown` take no rest props at all, and `Boolean`/`Toggle` forward a rest that is closed at the type level.
+
+  Because `FormFieldInterface` passes DaaS schema metadata to every leaf — `type`, `collection`, `field`, `primaryKey`, `maxLength`, `nullable`, `defaultValue` — plus admin-authored `meta.options` spread unfiltered, forwarding has to be guarded:
+
+  - Those metadata props are declared and destructured-and-discarded, mirroring the existing guard in `input/Input.tsx`, so none reach the DOM as invalid attributes.
+  - `type` matters most. Mantine's `UnstyledButton` applies its `type: "button"` default _before_ its own rest spread, so a forwarded `type` wins — and `field.type` is a DaaS abstract type (`string`, `uuid`, …), never a valid button type. An invalid `button@type` falls back to `submit`, and `CollectionForm` renders fields inside `<form onSubmit={handleSave}>`, so the trigger would have saved the record when the user clicked merely to open the picker. `type="button"` is now pinned, and the forwarded value discarded.
+  - The rest spread is declared first, so component-owned props always win: rest may add, never override.
+  - The rest is typed (`SelectIconTriggerProps`) rather than an `[key: string]: unknown` index signature. An index signature would have disabled excess-property checking on every call site — `valeu`, `onChagne` would compile and ship to the DOM. `data-*` never needed it: TypeScript always permits non-identifier JSX attribute names.
+
+  **Autofocus (S5.5).** Both `autoFocus` and `autofocus` are accepted. The form pipeline (`VForm` → `FormField` → `FormFieldInterface`) sends the lowercase spelling, so a camelCase-only prop would never have fired for the only in-repo caller.
+
+  **Fallback glyph (S5.7).** The trigger's `renderIcon` and the read-only `IconDisplay` companion used different glyphs for the same "stored name with no `ICON_MAP` entry" condition. Both now use `DEFAULT_UNKNOWN_ICON` (`IconQuestionMark`) _with the same stroke and `aria-hidden`_ — sharing the component alone still left them at different stroke weights. The constant is exported from the package barrel so the two can't drift again. The trigger also surfaces the raw stored name via the icon's own SVG `<title>` (Tabler's built-in `title` prop, which reaches assistive tech) instead of a bare `?`; the picker grid does not, since its cells already carry a formatted title.
+
+  **`@buildpad/ui-users`.** `IconDisplay`'s default fallback changed, and `RolesManager` was the one caller relying on it — every role with no icon would have rendered a question mark instead of a users-group glyph. It now passes `fallback={IconUsersGroup}` explicitly, matching how the policy surfaces already pass `fallback={IconShield}`.
+
+- Updated dependencies [585362e]
+- Updated dependencies [6d724ee]
+- Updated dependencies [565448a]
+- Updated dependencies [b8b5344]
+- Updated dependencies [a22729a]
+- Updated dependencies [50a4057]
+- Updated dependencies [08127f0]
+- Updated dependencies [d5c9eee]
+- Updated dependencies [577eda9]
+- Updated dependencies [c6baa06]
+- Updated dependencies [4a53873]
+- Updated dependencies [27a2515]
+- Updated dependencies [6375036]
+- Updated dependencies [2b8413c]
+- Updated dependencies [0408b2c]
+- Updated dependencies [12f823c]
+- Updated dependencies [594c277]
+- Updated dependencies [2be8218]
+- Updated dependencies [1226ec5]
+- Updated dependencies [1bf1731]
+- Updated dependencies [46afe83]
+- Updated dependencies [5056ef3]
+- Updated dependencies [7b415ad]
+- Updated dependencies [944c25c]
+- Updated dependencies [1523349]
+- Updated dependencies [ad9c415]
+- Updated dependencies [1f2bcff]
+- Updated dependencies [925e201]
+- Updated dependencies [4a31fb5]
+- Updated dependencies [24ebfc2]
+- Updated dependencies [0ad17fc]
+- Updated dependencies [432125d]
+- Updated dependencies [2f6ad88]
+- Updated dependencies [4becd38]
+- Updated dependencies [5802243]
+- Updated dependencies [4355c8e]
+- Updated dependencies [79c22f7]
+- Updated dependencies [af56a74]
+- Updated dependencies [eb662e3]
+- Updated dependencies [ee5bbd6]
+- Updated dependencies [4aad6ac]
+- Updated dependencies [a5478f4]
+- Updated dependencies [e078a74]
+- Updated dependencies [4355f4d]
+  - @buildpad/hooks@1.11.1
+  - @buildpad/ui-interfaces@1.11.1
+  - @buildpad/ui-table@1.11.1
+  - @buildpad/services@1.11.1
+  - @buildpad/types@1.11.1
+
 ## 1.10.0
 
 ### Minor Changes

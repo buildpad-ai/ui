@@ -1,5 +1,18 @@
 # @buildpad/services
 
+## 1.11.1
+
+### Patch Changes
+
+- Updated dependencies [585362e]
+- Updated dependencies [89f532b]
+- Updated dependencies [c67c651]
+- Updated dependencies [ddbc1bd]
+- Updated dependencies [50a4057]
+- Updated dependencies [577eda9]
+  - @buildpad/utils@1.11.1
+  - @buildpad/types@1.11.1
+
 ## 1.10.0
 
 ### Minor Changes
