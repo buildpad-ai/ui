@@ -5,10 +5,10 @@
  * Mocks @buildpad/services, @buildpad/ui-form (VForm), and @buildpad/ui-table.
  */
 
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MantineProvider } from "@mantine/core";
 
 // -------------------------------------------------------------------
@@ -135,6 +135,10 @@ function renderForm(props: Partial<React.ComponentProps<typeof CollectionForm>> 
 // -------------------------------------------------------------------
 // Tests
 // -------------------------------------------------------------------
+afterEach(() => {
+  cleanup();
+});
+
 describe("CollectionForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -638,6 +642,182 @@ describe("edit fetch relational-field exclusion", () => {
     expect(fields).toContain("title");
     expect(fields).not.toContain("blocks");
     expect(fields).not.toContain("comments");
+  });
+});
+
+// =====================================================================
+// Manual primary key handling
+//
+// Regression coverage for a bug where SYSTEM_FIELDS/READ_ONLY_FIELDS
+// matched the PK purely by name ("id"), so a collection whose PK type is
+// "manually entered string" (schema.is_primary_key: true,
+// has_auto_increment: false, no uuid special) had its id field silently
+// dropped from the form and stripped from the save payload — causing a
+// NOT NULL constraint violation on create, and (when the PK was the only
+// non-system field) a permanently empty, permanently-disabled form.
+// =====================================================================
+describe("manual primary key handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  const MANUAL_STRING_PK_FIELD = {
+    field: "id",
+    type: "string",
+    schema: { is_primary_key: true, has_auto_increment: false },
+    meta: { interface: "input", sort: 1, readonly: false, hidden: false },
+  };
+
+  const AUTO_INCREMENT_PK_FIELD = {
+    field: "id",
+    type: "integer",
+    schema: { is_primary_key: true, has_auto_increment: true },
+    meta: { interface: "input", sort: 1, readonly: true, hidden: true },
+  };
+
+  const UUID_PK_FIELD = {
+    field: "id",
+    type: "uuid",
+    schema: { is_primary_key: true, has_auto_increment: false },
+    meta: { interface: "input", sort: 1, special: ["uuid"], readonly: true, hidden: true },
+  };
+
+  it("renders a manually-entered string PK as an editable field on create", async () => {
+    mockFieldsReadAll.mockResolvedValue([MANUAL_STRING_PK_FIELD, ...SAMPLE_FIELDS]);
+
+    renderForm({ mode: "create" });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("field-id")).toBeInTheDocument();
+    });
+  });
+
+  it("includes a typed manual PK value in the create payload", async () => {
+    mockFieldsReadAll.mockResolvedValue([MANUAL_STRING_PK_FIELD, ...SAMPLE_FIELDS]);
+    mockItemsCreateOne.mockResolvedValueOnce({ id: "vessel-01" });
+
+    renderForm({ mode: "create" });
+    await waitFor(() => {
+      expect(screen.getByTestId("field-id")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId("field-id"), {
+      target: { value: "vessel-01" },
+    });
+    fireEvent.change(screen.getByTestId("field-title"), {
+      target: { value: "New Post" },
+    });
+    fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+    await waitFor(() => {
+      expect(mockItemsCreateOne).toHaveBeenCalled();
+    });
+    expect(mockItemsCreateOne.mock.calls[0][0]).toMatchObject({
+      id: "vessel-01",
+    });
+  });
+
+  it("still hides an auto-increment PK on create (no regression)", async () => {
+    mockFieldsReadAll.mockResolvedValue([AUTO_INCREMENT_PK_FIELD, ...SAMPLE_FIELDS]);
+
+    renderForm({ mode: "create" });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("field-title")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("field-id")).not.toBeInTheDocument();
+  });
+
+  it("still hides a generated UUID PK on create (no regression)", async () => {
+    mockFieldsReadAll.mockResolvedValue([UUID_PK_FIELD, ...SAMPLE_FIELDS]);
+
+    renderForm({ mode: "create" });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("field-title")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("field-id")).not.toBeInTheDocument();
+  });
+
+  it("does not drop an auto-increment PK from the create payload's exclusion list (still stripped)", async () => {
+    mockFieldsReadAll.mockResolvedValue([AUTO_INCREMENT_PK_FIELD, ...SAMPLE_FIELDS]);
+    mockItemsCreateOne.mockResolvedValueOnce({ id: 42 });
+
+    renderForm({ mode: "create" });
+    await waitFor(() => {
+      expect(screen.getByTestId("field-title")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId("field-title"), {
+      target: { value: "New Post" },
+    });
+    fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+    await waitFor(() => {
+      expect(mockItemsCreateOne).toHaveBeenCalled();
+    });
+    expect(mockItemsCreateOne.mock.calls[0][0]).not.toHaveProperty("id");
+  });
+
+  // Reproduces the exact reported scenario: a collection with a manual
+  // string PK and otherwise only system fields (user_created, etc.) —
+  // previously the PK was the sole field wrongly filtered out, leaving
+  // zero editable fields and a permanently disabled submit button.
+  it("shows the form (not the empty-fields message) when the manual PK is the only non-system field", async () => {
+    mockFieldsReadAll.mockResolvedValue([
+      MANUAL_STRING_PK_FIELD,
+      { field: "user_created", type: "uuid", meta: { special: ["user-created"] } },
+      { field: "user_updated", type: "uuid", meta: { special: ["user-updated"] } },
+      { field: "date_created", type: "timestamp", meta: { special: ["date-created"] } },
+      { field: "date_updated", type: "timestamp", meta: { special: ["date-updated"] } },
+    ]);
+
+    renderForm({ mode: "create" });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("field-id")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/no editable fields found/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId("form-submit-btn")).not.toBeDisabled();
+  });
+
+  it("keeps user_created/date_created hidden even though the manual PK is now shown", async () => {
+    mockFieldsReadAll.mockResolvedValue([
+      MANUAL_STRING_PK_FIELD,
+      { field: "user_created", type: "uuid", meta: { special: ["user-created"] } },
+      { field: "date_created", type: "timestamp", meta: { special: ["date-created"] } },
+    ]);
+
+    renderForm({ mode: "create" });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("field-id")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("field-user_created")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("field-date_created")).not.toBeInTheDocument();
+  });
+
+  it("includes an edited manual PK value in the update payload", async () => {
+    mockFieldsReadAll.mockResolvedValue([MANUAL_STRING_PK_FIELD, ...SAMPLE_FIELDS]);
+    mockItemsReadOne.mockResolvedValue({ id: "old-id", title: "Existing", body: "Body" });
+    mockItemsUpdateOne.mockResolvedValueOnce({ id: "new-id" });
+
+    renderForm({ mode: "edit", id: "old-id" });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("field-id")).toHaveValue("old-id");
+    });
+
+    fireEvent.change(screen.getByTestId("field-id"), {
+      target: { value: "new-id" },
+    });
+    fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+    await waitFor(() => {
+      expect(mockItemsUpdateOne).toHaveBeenCalled();
+    });
+    expect(mockItemsUpdateOne.mock.calls[0][1]).toMatchObject({ id: "new-id" });
   });
 });
 
