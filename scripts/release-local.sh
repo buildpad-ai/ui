@@ -149,18 +149,32 @@ else
   warn "resuming a partially-completed release of ${CURRENT}"
 fi
 
-# npm auth. Never read, print, or write the token — just confirm a session exists.
-if ! NPM_USER="$(npm whoami 2>/dev/null)"; then
-  die "npm is not authenticated.
+# npm auth.
+#
+# `npm whoami` is a HINT, not the gate. A granular access token can carry
+# publish rights to @buildpad/* while lacking the user-read scope `whoami`
+# needs, so whoami returns 401 for a token that publishes perfectly well —
+# gating on it would refuse to release for a correctly-configured operator.
+# npm itself is the authority, and it decides at step 6.
+#
+# Token VALUES are never read or printed here; only the presence of a config
+# line is checked. (npm 10+ also redacts auth keys from `npm config get`.)
+if NPM_USER="$(npm whoami 2>/dev/null)"; then
+  ok "npm authenticated as ${NPM_USER}"
+elif grep -qs "_authToken" "${HOME}/.npmrc" "${ROOT}/.npmrc" 2>/dev/null || [[ -n "${NPM_TOKEN:-}" ]]; then
+  warn "an npm auth token is configured, but \`npm whoami\` returned 401"
+  warn "typical of a granular access token; npm will verify publish rights at step 6"
+else
+  die "npm has no credentials configured.
 
-    Log in yourself (this script will not handle your credentials):
+    Set them up yourself (this script never handles your token):
       npm login
-    or export a granular access token in your shell:
-      export NPM_TOKEN=...   # then: npm config set //registry.npmjs.org/:_authToken \$NPM_TOKEN
+    or, for a granular access token:
+      npm config set //registry.npmjs.org/:_authToken <token>
 
-    Then re-run this script."
+    Then re-run. Note that \`npm whoami\` failing is NOT on its own a problem —
+    granular tokens often cannot answer it."
 fi
-ok "npm authenticated as ${NPM_USER}"
 
 # ─────────────────────────────────────────────────────────────────────────
 step "Verifying the tree builds and is self-consistent"
