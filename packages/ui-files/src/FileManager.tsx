@@ -15,6 +15,7 @@ import {
   Text,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
+import { readUrlIntParam, readUrlParam, useUrlListParams } from '@buildpad/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   useFiles,
@@ -43,6 +44,15 @@ export interface FileManagerProps {
   enableFolders?: boolean;
   /** DaaS collection used for RBAC checks. */
   filesCollection?: string;
+  /**
+   * Persist search, the open folder, and the page in the URL query string
+   * (`?search=…&folder=…&page=…`) so the library view is shareable and
+   * reload-safe. Writes use `history.replaceState` and ride the existing
+   * 300 ms search debounce. Set `false` for embedded surfaces. Default: true.
+   */
+  urlParams?: boolean;
+  /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
+  urlParamPrefix?: string;
 }
 
 /**
@@ -58,10 +68,12 @@ export const FileManager: React.FC<FileManagerProps> = ({
   defaultView = 'grid',
   enableFolders = true,
   filesCollection = 'daas_files',
+  urlParams = true,
+  urlParamPrefix = '',
 }) => {
   const { uploadFiles, fetchFiles, importFromUrl, deleteFile, deleteFiles, getDownloadUrl } =
     useFiles();
-  const { fetchFolders, createFolder, updateFolder, deleteFolder } = useFolders();
+  const { fetchFolders, fetchFolder, createFolder, updateFolder, deleteFolder } = useFolders();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [filesCollection],
   });
@@ -71,17 +83,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const updateAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'update');
   const deleteAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'delete');
 
+  const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
+
   const [view, setView] = useState<FilesView>(defaultView);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
   const [debouncedSearch] = useDebouncedValue(search, 300);
 
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  // A folder from the URL arrives as a bare id; its breadcrumb path is
+  // reconstructed by the effect below once fetchFolder can walk the parents.
+  const [currentFolder, setCurrentFolder] = useState<string | null>(() =>
+    urlParams && enableFolders ? readUrlParam(param('folder')) : null,
+  );
   const [path, setPath] = useState<FolderPathItem[]>([]);
 
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [listLoading, setListLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
@@ -176,10 +194,82 @@ export const FileManager: React.FC<FileManagerProps> = ({
     void load();
   }, [load]);
 
-  // Reset to first page whenever the search term or folder changes.
+  // Reset to first page whenever the search term or folder CHANGES — not on
+  // mount, or a ?page=2 restored from the URL would be clobbered.
+  const filtersMountedRef = React.useRef(false);
   useEffect(() => {
+    if (!filtersMountedRef.current) {
+      filtersMountedRef.current = true;
+      return;
+    }
     setPage(1);
   }, [debouncedSearch, currentFolder]);
+
+  /**
+   * Rebuild the breadcrumb for a folder that arrived as a bare id (deep link,
+   * Back/Forward, or a bridge-driven URL rewrite) by walking `parent` links.
+   * An unreadable folder (deleted, or no permission) falls back to the root
+   * rather than stranding the view.
+   */
+  const rebuildPath = useCallback(
+    async (folderId: string) => {
+      try {
+        const chain: FolderPathItem[] = [];
+        let cursor: string | null = folderId;
+        for (let depth = 0; cursor && depth < 15; depth += 1) {
+          const folder = await fetchFolder(cursor);
+          chain.unshift({ id: folder.id, name: folder.name });
+          cursor = folder.parent;
+        }
+        setPath(chain);
+      } catch {
+        setPath([]);
+        setCurrentFolder(null);
+      }
+    },
+    [fetchFolder],
+  );
+
+  // The URL-restored folder has no path yet; rebuild it once on mount.
+  const initialFolderRef = React.useRef(currentFolder);
+  useEffect(() => {
+    if (initialFolderRef.current) void rebuildPath(initialFolderRef.current);
+  }, [rebuildPath]);
+
+  // Keep the URL following the settled state, and the state following the URL
+  // on Back/Forward or a bridge-driven rewrite (see useUrlListParams).
+  useUrlListParams({
+    enabled: urlParams,
+    params: {
+      [param('search')]: debouncedSearch || null,
+      [param('folder')]: enableFolders ? currentFolder : null,
+      [param('page')]: page > 1 ? String(page) : null,
+    },
+    onExternalChange: useCallback(
+      (get: (name: string) => string | null) => {
+        const nextSearch = get(param('search')) ?? '';
+        setSearch((current) => (current === nextSearch ? current : nextSearch));
+
+        if (enableFolders) {
+          const nextFolder = get(param('folder'));
+          setCurrentFolder((current) => {
+            if (current === nextFolder) return current;
+            if (nextFolder) void rebuildPath(nextFolder);
+            else setPath([]);
+            return nextFolder;
+          });
+        }
+
+        const rawPage = get(param('page'));
+        const nextPage = (() => {
+          const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
+          return Number.isInteger(value) && value > 0 ? value : 1;
+        })();
+        setPage((current) => (current === nextPage ? current : nextPage));
+      },
+      [param, enableFolders, rebuildPath],
+    ),
+  });
 
   const openFolder = useCallback((folder: Folder) => {
     setPath((prev) => [...prev, { id: folder.id, name: folder.name }]);

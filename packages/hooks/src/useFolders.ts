@@ -73,6 +73,15 @@ export function useFolders() {
   }, []);
 
   /**
+   * Fetch one folder by id — used to rebuild a breadcrumb path when a folder
+   * arrives from a deep link (`?folder=<id>`) rather than from navigation.
+   */
+  const fetchFolder = useCallback(async (id: string): Promise<Folder> => {
+    const result = await apiRequest<{ data: Folder }>(`/api/folders/${encodeURIComponent(id)}`);
+    return result.data;
+  }, []);
+
+  /**
    * Create a folder.
    */
   const createFolder = useCallback(async (
@@ -145,6 +154,7 @@ export function useFolders() {
     loading,
     error,
     fetchFolders,
+    fetchFolder,
     createFolder,
     updateFolder,
     deleteFolder,

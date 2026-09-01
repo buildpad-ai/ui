@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-08-31T08:48:44.911Z",
+  "generatedAt": "2026-09-01T03:18:56.977Z",
   "version": "2.0.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -361,7 +361,7 @@
         {
           "source": "hooks/src/useFolders.ts",
           "target": "lib/buildpad/hooks/useFolders.ts",
-          "sourceSha256": "b0e0e0dda9991b53a5afc1323f55bc12cef8405399124402851e23220a39e32a"
+          "sourceSha256": "b8e1b48172bb90b2e1aedf60c58d225115fd1a493b1d4f25a9258bb02431e4ce"
         },
         {
           "source": "hooks/src/useRelationM2M.ts",
@@ -509,6 +509,11 @@
           "sourceSha256": "65e32c4d4f6ae544335c297948c6181511c3eaaa29e88f4791818f94fd9b558e"
         },
         {
+          "source": "hooks/src/useUrlListParams.ts",
+          "target": "lib/buildpad/hooks/useUrlListParams.ts",
+          "sourceSha256": "fd43cd720ab34472a151b4121acd156c1289a1d34064a7d5ad5c82cd3c7a4d4f"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
           "sourceSha256": "16c43c0b313e49c7b2c481b31967288d81dec729996ef5df63481ad726a51e2d"
@@ -520,7 +525,7 @@
       ],
       "sourcePackage": "@buildpad/hooks",
       "version": "2.0.0",
-      "lastChangedIn": "1.11.0"
+      "lastChangedIn": "2.0.0"
     },
     "api-routes": {
       "name": "api-routes",
@@ -2749,7 +2754,7 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "43962bd0c860c0b2e6e689d552f24ac0087840e627e071406c64263c416d9410"
+          "sourceSha256": "7b6692e7256bb0cd156c858445fb8c81560f9e601201d568db1330b29dfef121"
         },
         {
           "source": "ui-collections/src/extras-storage.ts",
@@ -2772,7 +2777,7 @@
       ],
       "sourcePackage": "@buildpad/ui-collections",
       "version": "2.0.0",
-      "lastChangedIn": "1.11.0"
+      "lastChangedIn": "2.0.0"
     },
     {
       "name": "vtable",
@@ -3121,7 +3126,7 @@
         {
           "source": "ui-files/src/FileManager.tsx",
           "target": "components/ui/file-manager/file-manager.tsx",
-          "sourceSha256": "2906c047bd4c8476981821add34fbe7aef323927f897ea0b759e84bcdb2798f8"
+          "sourceSha256": "aa2a4baf78359a67a505515e607cf9a2ca358a45cc3cf6f27e9051131391c617"
         },
         {
           "source": "ui-files/src/FileManager.css",
@@ -3197,6 +3202,11 @@
           "source": "ui-files/src/index.ts",
           "target": "components/ui/file-manager/index.ts",
           "sourceSha256": "cbbb64708de3afe29ce07b2c8ce583333c1cdee4f1919a35c37257a3c0ff0b68"
+        },
+        {
+          "source": "hooks/src/useUrlListParams.ts",
+          "target": "lib/buildpad/hooks/useUrlListParams.ts",
+          "sourceSha256": "fd43cd720ab34472a151b4121acd156c1289a1d34064a7d5ad5c82cd3c7a4d4f"
         }
       ],
       "dependencies": [
@@ -3215,7 +3225,7 @@
       ],
       "sourcePackage": "@buildpad/ui-files",
       "version": "2.0.0",
-      "lastChangedIn": "1.10.0"
+      "lastChangedIn": "2.0.0"
     },
     {
       "name": "users-management",
@@ -3227,7 +3237,7 @@
         {
           "source": "ui-users/src/UsersManager.tsx",
           "target": "components/ui/users-management/users-manager.tsx",
-          "sourceSha256": "f9be8c05f02d6e9cefed21ee49d7e3536cf2ffba460108d202f6861abe5031ce"
+          "sourceSha256": "3ce4f9e20c365f0c7a61a97c925fee78293f3694157b946e859ff751f35db17f"
         },
         {
           "source": "ui-users/src/UsersManager.css",
@@ -3252,7 +3262,7 @@
         {
           "source": "ui-users/src/RolesManager.tsx",
           "target": "components/ui/users-management/roles-manager.tsx",
-          "sourceSha256": "7798e81b8b2f71472d9684df4fb43e377b2524f089157382c6d8a352d6aa1377"
+          "sourceSha256": "69ec77aaf64734bd071138c084874989604f5ea161a237d31d928215018e5731"
         },
         {
           "source": "ui-users/src/RoleDetail.tsx",
@@ -3272,7 +3282,7 @@
         {
           "source": "ui-users/src/PoliciesManager.tsx",
           "target": "components/ui/users-management/policies-manager.tsx",
-          "sourceSha256": "ba93c7c6d3fb61496ee29a64b846a9636bb0f47aee252b9b3538a78a39e130a9"
+          "sourceSha256": "aae1f8d4d2cc16a69b6d0c0c6ba13b9b9761ef0837c74d51e849c9179720e5f8"
         },
         {
           "source": "ui-users/src/PolicyDetail.tsx",
@@ -3363,6 +3373,11 @@
           "source": "ui-users/src/index.ts",
           "target": "components/ui/users-management/index.ts",
           "sourceSha256": "bc68c830d67f9b32be6b2e51ec1da02c2a3aacecae63fefc1b651820ec2969f1"
+        },
+        {
+          "source": "hooks/src/useUrlListParams.ts",
+          "target": "lib/buildpad/hooks/useUrlListParams.ts",
+          "sourceSha256": "fd43cd720ab34472a151b4121acd156c1289a1d34064a7d5ad5c82cd3c7a4d4f"
         }
       ],
       "dependencies": [
@@ -3383,7 +3398,7 @@
       ],
       "sourcePackage": "@buildpad/ui-users",
       "version": "2.0.0",
-      "lastChangedIn": "1.11.0"
+      "lastChangedIn": "2.0.0"
     },
     {
       "name": "form-builder",

@@ -13,7 +13,7 @@ import {
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconUsersGroup } from '@tabler/icons-react';
-import { usePermissions, useRoles } from '@buildpad/hooks';
+import { readUrlIntParam, readUrlParam, usePermissions, useRoles, useUrlListParams } from '@buildpad/hooks';
 import type { Role } from '@buildpad/types';
 import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { VTable } from '@buildpad/ui-table';
@@ -50,6 +50,14 @@ export interface RolesManagerProps {
   hideHeader?: boolean;
   /** DaaS collection used for RBAC checks. Default: 'daas_roles'. */
   rolesCollection?: string;
+  /**
+   * Persist search and page in the URL query string so the list is
+   * shareable and reload-safe (`history.replaceState`, riding the 300 ms search
+   * debounce). Set `false` for embedded surfaces. Default: true.
+   */
+  urlParams?: boolean;
+  /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
+  urlParamPrefix?: string;
 }
 
 /**
@@ -69,6 +77,8 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   hideHeader = false,
   rolesCollection = 'daas_roles',
+  urlParams = true,
+  urlParamPrefix = '',
 }) => {
   const { fetchRoles, deleteRole } = useRoles();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
@@ -82,13 +92,37 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
+  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
   const [debouncedSearch] = useDebouncedValue(search, 300);
+
+  // URL persistence — see useUrlListParams. Defaults serialize to null so they
+  // stay off the URL; Back/Forward and bridge rewrites flow back in below.
+  useUrlListParams({
+    enabled: urlParams,
+    params: {
+      [param('search')]: debouncedSearch || null,
+      [param('page')]: page > 1 ? String(page) : null,
+    },
+    onExternalChange: useCallback(
+      (get: (name: string) => string | null) => {
+        const nextSearch = get(param('search')) ?? '';
+        setSearch((current) => (current === nextSearch ? current : nextSearch));
+        const rawPage = get(param('page'));
+        const nextPage = (() => {
+          const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
+          return Number.isInteger(value) && value > 0 ? value : 1;
+        })();
+        setPage((current) => (current === nextPage ? current : nextPage));
+      },
+      [param],
+    ),
+  });
 
   const [deleteModal, setDeleteModal] = useState<{ opened: boolean; id: string }>({
     opened: false,
@@ -127,7 +161,13 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
     void load();
   }, [load]);
 
+  // Only on CHANGES — not mount, or a ?page= restored from the URL is clobbered.
+  const filtersMountedRef = React.useRef(false);
   useEffect(() => {
+    if (!filtersMountedRef.current) {
+      filtersMountedRef.current = true;
+      return;
+    }
     setPage(1);
   }, [debouncedSearch, limit]);
 
