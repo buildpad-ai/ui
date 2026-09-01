@@ -15,12 +15,13 @@ const meta: MetaRecord = {
   },
   architecture: 'Architecture',
   'design-system': 'Design System',
-  styleguide: 'Styleguide',
   distribution: 'Distribution',
+  'promoting-changes-between-environments': 'Promoting Changes Between Environments',
   '--- reference': {
     type: 'separator',
     title: 'Reference',
   },
+
   components: 'Component Map',
   'app-shell': 'App Shell Recipe',
   files: 'Files Module Recipe',
