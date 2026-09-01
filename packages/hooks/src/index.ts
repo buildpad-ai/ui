@@ -201,6 +201,8 @@ export { apiRequest, isValidPrimaryKey } from './utils';
 export {
   readUrlIntParam,
   readUrlParam,
+  registerUrlStateWriter,
   URL_STATE_EVENT,
+  urlStateEventSearch,
   useUrlListParams,
 } from './useUrlListParams';

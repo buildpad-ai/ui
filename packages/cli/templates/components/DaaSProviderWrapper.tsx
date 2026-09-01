@@ -20,9 +20,22 @@
 
 import { DaaSProvider } from "@/lib/buildpad/services";
 import { createClient } from "@/lib/supabase/client";
-import { useMemo, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { registerUrlStateWriter } from "@/lib/buildpad/hooks";
+import { useEffect, useMemo, type ReactNode } from "react";
 
 export function DaaSProviderWrapper({ children }: { children: ReactNode }) {
+  // Route the URL-state writes of Buildpad's list managers through the App
+  // Router. Native history.replaceState is invisible to useSearchParams AND is
+  // re-asserted away by the router's own stale state (observed on Next 16);
+  // registering router.replace keeps the two in agreement. Cleared on unmount
+  // so a logout/login cycle re-registers the fresh router.
+  const router = useRouter();
+  useEffect(() => {
+    registerUrlStateWriter((url) => router.replace(url, { scroll: false }));
+    return () => registerUrlStateWriter(null);
+  }, [router]);
+
   const config = useMemo(
     () => ({
       url: process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL ?? "",

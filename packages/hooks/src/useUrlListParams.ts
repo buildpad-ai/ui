@@ -38,13 +38,40 @@ import { useEffect, useRef } from 'react';
 
 /**
  * Dispatched after ANY programmatic URL rewrite that others should re-read:
- * this hook dispatches it after each of its own writes (native `replaceState`
- * fires no event, and app routers do not surface it), and external actors —
+ * this hook dispatches it after each of its own writes, and external actors —
  * e.g. a micro-frontend bridge applying a host-driven `SET_QUERY_PARAMS` —
- * dispatch it after theirs. Listeners re-read the URL; equality guards make
+ * dispatch it after theirs. Dispatch it as a `CustomEvent` whose
+ * `detail.search` is the query string just written (no leading `?`): router
+ * writes commit asynchronously, so `location.search` may still be stale when
+ * listeners run — the detail is the truth. Listeners fall back to
+ * `location.search` for plain-Event dispatchers. Equality guards make
  * self-echo harmless.
  */
 export const URL_STATE_EVENT = 'buildpad:urlchange';
+
+/** Read the query string a URL_STATE_EVENT announced, or the live URL. */
+export function urlStateEventSearch(event: Event): string {
+  const detail = (event as CustomEvent<{ search?: string }>).detail;
+  if (detail && typeof detail.search === 'string') return detail.search;
+  return typeof window === 'undefined' ? '' : window.location.search.replace(/^\?/, '');
+}
+
+type UrlStateWriter = (url: string) => void;
+let urlStateWriter: UrlStateWriter | null = null;
+
+/**
+ * Install the URL writer for this runtime. REQUIRED inside a Next.js App
+ * Router app: register `(url) => router.replace(url, { scroll: false })`
+ * (the CLI's `DaaSProviderWrapper` does this). Without it the hook falls back
+ * to native `history.replaceState`, which the App Router both ignores
+ * (`useSearchParams` never updates) and actively FIGHTS — the router
+ * re-asserts its own stale URL on the next render, silently stripping the
+ * parameters (observed on Next 16). The native fallback exists for
+ * router-less runtimes such as Storybook.
+ */
+export function registerUrlStateWriter(writer: UrlStateWriter | null): void {
+  urlStateWriter = writer;
+}
 
 /** SSR-safe read of a single query parameter from the current URL. */
 export function readUrlParam(name: string): string | null {
@@ -115,31 +142,40 @@ export function useUrlListParams({ enabled = true, params, onExternalChange }: U
 
     const url =
       window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + window.location.hash;
-    // Preserve the existing history state: Next.js stores router state there,
-    // and replacing it with null corrupts app-router navigation.
-    window.history.replaceState(window.history.state, '', url);
-    // Announce the write. replaceState fires no event of its own, and (verified
-    // on Next 16) the app router does NOT feed native replaceState back into
-    // useSearchParams — so anything mirroring this URL (another list on the
-    // page, a micro-frontend bridge posting it to a host) must be told
-    // explicitly. Self-echo is benign: listeners re-read the URL and every
-    // setter is equality-guarded.
-    window.dispatchEvent(new Event(URL_STATE_EVENT));
+    if (urlStateWriter) {
+      // App-registered writer (Next: router.replace) — keeps the router's
+      // internal URL state consistent so it cannot re-assert a stale URL over
+      // this write.
+      urlStateWriter(url);
+    } else {
+      // Router-less runtime (Storybook). Preserve the existing history state:
+      // Next.js stores router state there, and replacing it with null corrupts
+      // app-router navigation.
+      window.history.replaceState(window.history.state, '', url);
+    }
+    // Announce the write, carrying the written query string: router writes
+    // commit asynchronously, so listeners must not trust location.search yet.
+    window.dispatchEvent(new CustomEvent(URL_STATE_EVENT, { detail: { search: nextQuery } }));
   }, [enabled, serialized]);
 
   /* ------------------------------ URL → state ------------------------------ */
   useEffect(() => {
     if (!enabled || typeof window === 'undefined' || !onExternalChange) return;
 
-    const notify = () => {
-      const current = new URLSearchParams(window.location.search);
+    const notify = (event?: Event) => {
+      const source =
+        event && event.type === URL_STATE_EVENT
+          ? urlStateEventSearch(event)
+          : window.location.search;
+      const current = new URLSearchParams(source);
       onExternalChange((name) => current.get(name));
     };
 
-    window.addEventListener('popstate', notify);
+    const onPop = () => notify();
+    window.addEventListener('popstate', onPop);
     window.addEventListener(URL_STATE_EVENT, notify);
     return () => {
-      window.removeEventListener('popstate', notify);
+      window.removeEventListener('popstate', onPop);
       window.removeEventListener(URL_STATE_EVENT, notify);
     };
   }, [enabled, onExternalChange]);
