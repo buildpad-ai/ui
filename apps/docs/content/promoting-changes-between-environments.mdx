@@ -1,0 +1,211 @@
+---
+title: Promoting Changes Between Environments
+description: Learn how to migrate and promote data models and schemas between development, staging, and production environments in BuildPad DaaS.
+---
+
+import { Callout, Steps, Tabs } from 'nextra/components'
+
+# Promoting Changes Between Environments
+
+In BuildPad DaaS, different environments (Development, Staging, and Production) are managed as separate project instances. This guide explains how to safely migrate and promote data model changes between these environments using the **Schema Migration API**.
+
+<Callout type="info">
+  All Schema Migration endpoints require **Admin privileges** (`isAdmin`). Always verify changes in a staging environment before applying them to production.
+</Callout>
+
+---
+
+## The Migration Lifecycle
+
+The promotion workflow consists of three main steps:
+
+```
+[Development (Base)]                              [Staging / Production (Target)]
+        │                                                         │
+        ├──────── 1. GET /api/schema/snapshot ───────────────────►│
+        │            Capture data model snapshot                  │
+        │                                                         │
+        ├──────── 2. POST /api/schema/diff ──────────────────────►│
+        │            Calculate drift & target schema hash         │
+        │                                                         │
+        ├──────── 3. POST /api/schema/apply ─────────────────────►│
+        │            Validate hash, apply DDL & update metadata   │
+        │            Returns 204 No Content                       │
+```
+
+1. **Snapshot (`GET /api/schema/snapshot`)**: Export the collection, field, and relation metadata from the base (source/dev) environment.
+2. **Diff (`POST /api/schema/diff`)**: Compare the snapshot against the target environment's live schema, generating the exact delta alongside a target schema safety `hash`.
+3. **Apply (`POST /api/schema/apply`)**: Apply the structured diff to the target environment to execute DDL operations and synchronize system metadata atomically.
+
+---
+
+## Step-by-Step Tutorial
+
+<Steps>
+
+### Retrieve Data Model Snapshot from Base (Dev)
+
+Perform a `GET` request to `/api/schema/snapshot` on your development environment:
+
+```http
+GET /api/schema/snapshot
+Authorization: Bearer <DEV_ADMIN_TOKEN>
+```
+
+To promote only specific collections, pass the `includeCollections` query parameter:
+
+```http
+GET /api/schema/snapshot?includeCollections=articles,authors,categories
+Authorization: Bearer <DEV_ADMIN_TOKEN>
+```
+
+<Callout>
+  Scoped snapshots marked with `includeCollections` or `excludeCollections` produce `version: 2`. Applying a partial snapshot ensures only the specified collections are modified without affecting unrelated collections on the target.
+</Callout>
+
+### Retrieve Data Model Diff on Target (Staging/Prod)
+
+Send the JSON snapshot captured in Step 1 to the target environment's `/api/schema/diff` endpoint:
+
+```http
+POST /api/schema/diff?mode=merge
+Authorization: Bearer <TARGET_ADMIN_TOKEN>
+Content-Type: application/json
+
+{
+  "version": 1,
+  "collections": [ ... ],
+  "fields": [ ... ],
+  "relations": [ ... ]
+}
+```
+
+#### Migration Modes:
+
+| Mode | Parameter | Description |
+|---|---|---|
+| **Mirror** (Default) | `mode=mirror` | Strict mirror: collections/fields that exist on target but NOT in snapshot are marked for deletion. |
+| **Merge** (Additive) | `mode=merge` | Preserves extra target tables/columns; only applies additions and modifications. |
+
+The endpoint returns a diff payload containing a cryptographic `hash`:
+
+```json
+{
+  "data": {
+    "hash": "8f3b20755919e17b8893d39572b9a7852c0049281729da842b1fe186e80b2713",
+    "collections": [
+      {
+        "collection": "articles",
+        "diff": { "kind": "N", "rhs": { "collection": "articles", ... } }
+      }
+    ],
+    "fields": [ ... ],
+    "relations": [ ... ]
+  }
+}
+```
+
+### Apply Diff to Target Environment
+
+Send the exact diff output from Step 2 to `/api/schema/apply` on the target project:
+
+```http
+POST /api/schema/apply
+Authorization: Bearer <TARGET_ADMIN_TOKEN>
+Content-Type: application/json
+
+{
+  "hash": "8f3b20755919e17b8893d39572b9a7852c0049281729da842b1fe186e80b2713",
+  "collections": [ ... ],
+  "fields": [ ... ],
+  "relations": [ ... ]
+}
+```
+
+A response status of **`204 No Content`** indicates that the schema changes and internal metadata (`daas_collections`, `daas_fields`, `daas_relations`) were applied successfully.
+
+<Callout type="warning">
+  If the target database schema was modified after the diff was generated, the endpoint returns **`409 Conflict` (`SCHEMA_MODIFIED`)** to prevent race condition corruption. In this case, simply regenerate the diff and re-apply.
+</Callout>
+
+</Steps>
+
+---
+
+## Code Examples
+
+<Tabs items={['Node.js Script', 'cURL / Bash']}>
+
+<Tabs.Tab>
+
+```javascript filename="migrate.mjs"
+import axios from 'axios';
+
+const DEV_URL = 'https://dev-daas.example.com';
+const PROD_URL = 'https://prod-daas.example.com';
+
+const DEV_TOKEN = process.env.DEV_ADMIN_TOKEN;
+const PROD_TOKEN = process.env.PROD_ADMIN_TOKEN;
+
+async function runMigration() {
+  console.log('1. Exporting snapshot from Dev...');
+  const { data: snapshotRes } = await axios.get(`${DEV_URL}/api/schema/snapshot`, {
+    headers: { Authorization: `Bearer ${DEV_TOKEN}` },
+    params: {
+      // includeCollections: 'articles,authors' // Optional scoping
+    }
+  });
+  const snapshot = snapshotRes.data;
+
+  console.log('2. Generating schema diff on Prod...');
+  const { data: diffRes } = await axios.post(`${PROD_URL}/api/schema/diff`, snapshot, {
+    headers: {
+      Authorization: `Bearer ${PROD_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    params: { mode: 'merge', force: true }
+  });
+  const diff = diffRes.data;
+  console.log(`Diff generated with safety hash: ${diff.hash}`);
+
+  console.log('3. Applying schema diff to Prod...');
+  const applyRes = await axios.post(`${PROD_URL}/api/schema/apply`, diff, {
+    headers: {
+      Authorization: `Bearer ${PROD_TOKEN}`,
+      'Content-Type': 'application/json',
+    }
+  });
+
+  if (applyRes.status === 204) {
+    console.log('🎉 Schema changes successfully promoted!');
+  }
+}
+
+runMigration().catch(console.error);
+```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+
+```bash filename="migrate.sh"
+# 1. Capture snapshot from Dev
+curl -s "https://dev-daas.example.com/api/schema/snapshot" \
+  -H "Authorization: Bearer $DEV_ADMIN_TOKEN" > snapshot.json
+
+# 2. Generate diff on Prod
+curl -s -X POST "https://prod-daas.example.com/api/schema/diff?mode=merge" \
+  -H "Authorization: Bearer $PROD_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @snapshot.json > diff.json
+
+# 3. Apply diff to Prod
+curl -i -X POST "https://prod-daas.example.com/api/schema/apply" \
+  -H "Authorization: Bearer $PROD_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @diff.json
+```
+
+</Tabs.Tab>
+
+</Tabs>
