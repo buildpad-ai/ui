@@ -37,9 +37,12 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Dispatched (by external actors — this hook never dispatches it) after a
- * programmatic URL rewrite that components should re-read. The micro-frontend
- * bridge dispatches it after applying a host-driven `SET_QUERY_PARAMS`.
+ * Dispatched after ANY programmatic URL rewrite that others should re-read:
+ * this hook dispatches it after each of its own writes (native `replaceState`
+ * fires no event, and app routers do not surface it), and external actors —
+ * e.g. a micro-frontend bridge applying a host-driven `SET_QUERY_PARAMS` —
+ * dispatch it after theirs. Listeners re-read the URL; equality guards make
+ * self-echo harmless.
  */
 export const URL_STATE_EVENT = 'buildpad:urlchange';
 
@@ -115,6 +118,13 @@ export function useUrlListParams({ enabled = true, params, onExternalChange }: U
     // Preserve the existing history state: Next.js stores router state there,
     // and replacing it with null corrupts app-router navigation.
     window.history.replaceState(window.history.state, '', url);
+    // Announce the write. replaceState fires no event of its own, and (verified
+    // on Next 16) the app router does NOT feed native replaceState back into
+    // useSearchParams — so anything mirroring this URL (another list on the
+    // page, a micro-frontend bridge posting it to a host) must be told
+    // explicitly. Self-echo is benign: listeners re-read the URL and every
+    // setter is equality-guarded.
+    window.dispatchEvent(new Event(URL_STATE_EVENT));
   }, [enabled, serialized]);
 
   /* ------------------------------ URL → state ------------------------------ */
