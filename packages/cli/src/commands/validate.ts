@@ -670,13 +670,44 @@ export async function validate(options: {
     const errors = [...untransformedErrors, ...brokenImportErrors, ...libModuleErrors, ...tsErrors];
     const warnings = [...missingCssWarnings, ...ssrWarnings, ...apiRouteWarnings, ...react19Warnings, ...duplicateExportWarnings];
 
-    // v2 schema checks: warn when packageVersions is missing on a v2 config
-    if ((config.schemaVersion ?? 1) >= 2) {
-      if (!config.packageVersions || Object.keys(config.packageVersions).length === 0) {
+    // Schema checks. v3 decides staleness by comparing each file's recorded
+    // upstream hash with the registry's, so a manifest without those hashes
+    // cannot answer "is this outdated?" at all — surface that as a warning
+    // rather than letting `outdated` quietly report everything as fine.
+    const schemaVersion = config.schemaVersion ?? 1;
+    if (schemaVersion < 3) {
+      warnings.push({
+        file: 'buildpad.json',
+        message:
+          `Manifest is schema v${schemaVersion}. Run 'npx buildpad migrate' to record upstream ` +
+          'file hashes, without which update detection cannot run.',
+        code: 'OUTDATED_MANIFEST_SCHEMA',
+      } as any);
+    } else {
+      const missingHashes: string[] = [];
+      const pending: string[] = [];
+      for (const [name, record] of Object.entries(config.components ?? {})) {
+        for (const file of record.files ?? []) {
+          if (!file.sourceSha256) missingHashes.push(`${name}: ${file.target}`);
+          else if (file.state === 'pending') pending.push(`${name}: ${file.target}`);
+        }
+      }
+      if (missingHashes.length > 0) {
         warnings.push({
           file: 'buildpad.json',
-          message: 'packageVersions is missing or empty. Run \'npx buildpad migrate\' to populate it.',
-          code: 'MISSING_PACKAGE_VERSIONS',
+          message:
+            `${missingHashes.length} file(s) have no upstream hash recorded. ` +
+            "Run 'npx buildpad migrate'.",
+          code: 'MISSING_SOURCE_HASHES',
+        } as any);
+      }
+      if (pending.length > 0) {
+        warnings.push({
+          file: 'buildpad.json',
+          message:
+            `${pending.length} file(s) are pending — a previous upgrade did not write them. ` +
+            "Resolve any .new files, then run 'npx buildpad upgrade'.",
+          code: 'PENDING_FILES',
         } as any);
       }
     }

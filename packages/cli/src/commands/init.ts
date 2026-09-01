@@ -12,24 +12,65 @@ import {
 import { copyLibModule } from './add.js';
 
 /**
- * Per-file checksum recorded in buildpad.json.
- * The sha256 is computed over the TRANSFORMED file content with the
- * origin-header stripped, line endings normalised to LF, and a trailing
- * newline appended — see `hashTransformed()` in transformer.ts.
+ * Per-file state (v3).
+ *
+ * `pending` means the last upgrade did NOT write this file — the user skipped
+ * it, a `.new` file was written instead, or the diff3 base was unreachable.
+ * A pending file is stale until it is actually written, so `outdated` keeps
+ * reporting it. Before v3 the upgrade advanced the component version anyway
+ * and the skipped file silently disappeared from the report forever.
+ */
+export type FileState = 'clean' | 'pending';
+
+/**
+ * Per-file record in buildpad.json.
+ *
+ * Two hashes, deliberately:
+ *   - `sourceSha256` is the registry's hash of the UNTRANSFORMED upstream
+ *     source at install time. Comparing it with the current registry hash is
+ *     how staleness is decided (v3) — no version arithmetic, no git history.
+ *   - `sha256` is the hash of the TRANSFORMED content the CLI wrote, with the
+ *     origin header stripped, line endings normalised to LF, and a trailing
+ *     newline appended (see `hashTransformed()` in transformer.ts). Comparing
+ *     it with the file on disk is how LOCAL modification is detected.
  */
 export interface FileChecksum {
   /** Consumer-relative target path, e.g. "components/ui/input.tsx" */
   target: string;
+  /**
+   * v3: the registry's `sourceSha256` for this file at install time.
+   * Absent on v2 manifests — run `buildpad migrate`.
+   */
+  sourceSha256?: string;
   /** SHA-256 of the transformed content (minus origin header). */
   sha256: string;
+  /**
+   * v3: git ref the bytes were fetched from, e.g. `v2.0.0`. This is the exact
+   * diff3 base for the next upgrade — not a version the CLI has to guess a tag
+   * from. `local` when installed from a monorepo checkout, `url:<base>` when
+   * `BUILDPAD_REGISTRY_URL` was in play.
+   */
+  ref?: string;
+  /** v3: `clean` (written as recorded) or `pending` (upgrade did not write it). */
+  state?: FileState;
 }
 
 /**
- * Per-component (or per-lib-module) installation record (Config v2).
+ * Per-component (or per-lib-module) installation record.
  */
 export interface ComponentInstall {
-  /** Semver of the source package at install time, e.g. "1.4.2" */
-  version: string;
+  /**
+   * v3: the lockstep release this record was last synced to, e.g. "2.0.0".
+   * Display only — staleness is decided per file, by hash.
+   */
+  release?: string;
+  /** v3: git ref the component's files were fetched from. */
+  ref?: string;
+  /**
+   * @deprecated v2 — semver of the source package at install time.
+   * Read for migration; never written by v3.
+   */
+  version?: string;
   /** Source package name, e.g. "@buildpad/ui-interfaces" */
   sourcePackage: string;
   /** ISO 8601 timestamp of the installation */
@@ -64,9 +105,16 @@ export interface Config {
   /**
    * Manifest schema version.
    * - 1 (or absent): legacy format — componentVersions + registryVersion
-   * - 2: v2 format — components/lib maps with per-file sha256 + packageVersions
+   * - 2: components/lib maps with per-file sha256 + packageVersions
+   * - 3: adds per-file sourceSha256 / ref / state and a single `release`;
+   *      drops per-component `version` and `packageVersions`
    */
-  schemaVersion?: 1 | 2;
+  schemaVersion?: 1 | 2 | 3;
+  /**
+   * v3: the lockstep release the project was last synced to, e.g. "2.0.0".
+   * Replaces `packageVersions` — under lockstep every package shares it.
+   */
+  release?: string;
   /** Distribution model - always 'copy-own' */
   model: 'copy-own';
   /** Use TypeScript (.tsx) or JavaScript (.jsx) */
@@ -98,8 +146,8 @@ export interface Config {
    */
   lib?: Record<string, ComponentInstall>;
   /**
-   * v2: snapshot of source-package semver at the time of the last install/upgrade.
-   * e.g. `packageVersions["@buildpad/ui-interfaces"] = "1.4.2"`.
+   * @deprecated v2 — snapshot of source-package semver at the last install.
+   * Superseded by `release`; kept so v2 manifests still parse.
    */
   packageVersions?: Record<string, string>;
 
@@ -111,9 +159,12 @@ export interface Config {
   registryVersion?: string;
 }
 
+/** The manifest schema version this CLI writes. */
+export const CURRENT_SCHEMA_VERSION = 3;
+
 const DEFAULT_CONFIG: Config = {
   $schema: 'https://buildpad.dev/schema.json',
-  schemaVersion: 2,
+  schemaVersion: 3,
   model: 'copy-own',
   tsx: true,
   srcDir: true,
@@ -125,7 +176,6 @@ const DEFAULT_CONFIG: Config = {
   installedComponents: [],
   components: {},
   lib: {},
-  packageVersions: {},
 };
 
 const TEMPLATES_ROOT = getTemplatesRoot();
@@ -508,12 +558,27 @@ export async function loadConfig(cwd: string): Promise<Config | null> {
   }
   const config = await fs.readJSON(configPath) as Config;
 
-  if (!config.schemaVersion) {
-    // v1 config — print a one-time hint, then return for backward compat
+  const schemaVersion = config.schemaVersion ?? 1;
+
+  if (schemaVersion > CURRENT_SCHEMA_VERSION) {
+    // Written by a newer CLI. Its records may carry fields this build does not
+    // understand, and writing the file back would silently drop them.
+    console.error(
+      chalk.red(
+        `\n✗ buildpad.json is schema v${schemaVersion}; this CLI understands up to ` +
+        `v${CURRENT_SCHEMA_VERSION}.\n  Upgrade the CLI: npx @buildpad/cli@latest\n`
+      )
+    );
+    process.exit(1);
+  }
+
+  if (schemaVersion < CURRENT_SCHEMA_VERSION) {
+    // v1 has no per-file records at all; v2 has local hashes but no upstream
+    // baseline, so hash-based staleness cannot be computed for it.
     console.warn(
       chalk.yellow(
-        '\n⚠ buildpad.json is v1 (no schemaVersion). ' +
-        'Run \'npx buildpad migrate\' to enable safe per-file update tracking.\n'
+        `\n⚠ buildpad.json is schema v${schemaVersion} (current: v${CURRENT_SCHEMA_VERSION}). ` +
+        'Run \'npx buildpad migrate\' to enable content-based update tracking.\n'
       )
     );
   }

@@ -5,11 +5,12 @@
  * This file is copied to your project by the Buildpad CLI.
  * 
  * @buildpad/origin: supabase/middleware
- * @buildpad/version: 1.0.0
+ * @buildpad/version: 1.1.0
  */
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { publicOrigin } from '@/lib/origin';
 
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -57,8 +58,11 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect unauthenticated users to login (except for public and API routes)
   if (!user && !isPublicRoute && !isApiRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    // Built from the resolved public origin, not `request.nextUrl`: behind a
+    // proxy the latter names the server process (localhost), and middleware
+    // redirects emit an absolute Location header. See lib/origin.ts.
+    const url = new URL('/login', publicOrigin(request));
+    url.search = request.nextUrl.search;
     return NextResponse.redirect(url);
   }
 

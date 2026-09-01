@@ -1,10 +1,10 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microbuild-ui/ui/refs/heads/main/packages/registry.json",
-  "version": "1.10.0",
+  "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
+  "version": "1.11.1",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
   "license": "MIT",
-  "repository": "https://github.com/microbuild-ui/ui",
+  "repository": "https://github.com/buildpad-ai/ui",
   "meta": {
     "model": "copy-own",
     "framework": "react",
@@ -651,6 +651,10 @@
         "@supabase/supabase-js"
       ],
       "files": [
+        {
+          "source": "cli/templates/lib/origin.ts",
+          "target": "lib/origin.ts"
+        },
         {
           "source": "cli/templates/supabase/client.ts",
           "target": "lib/supabase/client.ts"
@@ -2155,6 +2159,8 @@
       "dependencies": [
         "@mantine/core",
         "@mantine/tiptap",
+        "@tabler/icons-react",
+        "@tiptap/core",
         "@tiptap/react",
         "@tiptap/starter-kit",
         "@tiptap/extension-link",

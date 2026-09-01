@@ -224,10 +224,23 @@ The validate command checks for:
 
 ### Task 8: Check for component updates
 ```bash
-# See which installed components have newer versions
+# See which installed FILES changed upstream since they were installed
 buildpad outdated
 buildpad outdated --json
 ```
+
+`outdated` compares content, not versions: each file's registry `sourceSha256`
+against the hash recorded in `buildpad.json` at install time. A lockstep release
+that leaves a component's files byte-identical produces no report for it, and a
+file a previous `upgrade` left unwritten (`state: "pending"`) keeps reporting
+until it is actually written. The output names the file and the reason —
+`changed upstream`, `pending`, `new file`, or `removed upstream`.
+
+Because the CLI fetches its sources from the release tag matching its own
+version, "up to date" means "up to date with the release this CLI ships
+against". `outdated` also checks npm's `latest` dist-tag and prints a hint when
+the CLI itself is behind; that check is advisory and is skipped silently when
+npm is unreachable.
 
 ### Task 9: Upgrade components safely
 ```bash
@@ -246,9 +259,13 @@ buildpad upgrade --all --three-way
 # Write .new files for modified files (keep originals)
 buildpad upgrade --all --strategy=new-file
 
-# Re-sync even when already at the latest version (bypasses the version
-# gate, still honours --strategy). Default target is all installed components.
+# Re-sync every file even when its upstream content is unchanged (bypasses
+# the staleness gate, still honours --strategy). Default target is all
+# installed components.
 buildpad upgrade --force --three-way
+
+# Read unreleased sources from a branch instead of the pinned release tag
+buildpad upgrade --all --ref main
 
 # Upgrade ONLY the design system (tokens, globals, theme, app shell)
 buildpad upgrade --design
@@ -257,7 +274,7 @@ buildpad upgrade --design --three-way   # merge local token edits instead of ove
 
 `upgrade` handles **lib modules** (not just components). The `design-system` module —
 scaffolded by `init` and tracked in `buildpad.json` — is refreshed with `--design`, or
-automatically when you run a bare `buildpad upgrade` and it's behind. Because design-token
+automatically when you run a bare `buildpad upgrade` and its files changed upstream. Because design-token
 files are meant to be customized, modified files are three-way merged (or written as `.new`),
 never silently clobbered. You can also name it explicitly: `buildpad upgrade design-system`.
 If a project has the design files but no tracking record (installed before this feature),
@@ -277,34 +294,44 @@ buildpad changelog input
 
 ### Task 11: Migrate config schema
 ```bash
-# Migrate buildpad.json from v1 to v2 (enables per-file update tracking)
+# Bring buildpad.json up to schema v3 (required for content-based updates)
 buildpad migrate
 
 # Preview migration
 buildpad migrate --dry-run
 ```
 
-`migrate` baselines every component to the **current** registry version — v1 `buildpad.json`
-never recorded per-package versions, so the original install version cannot be reconstructed.
-Right after migrating, `outdated`/`upgrade` will therefore report everything up to date.
-To re-sync a freshly-migrated (pre-v2) project to current source, follow up with a forced
-upgrade, then verify:
+**v2 → v3.** A v2 manifest records the hash of each file the CLI *wrote*, but
+never the upstream hash it came from — so there is nothing for v3 to compare
+against. `migrate` fetches `registry.json` at `v<recorded version>` (the release
+the component was installed from) and copies each file's real `sourceSha256` out
+of it, recording that tag as the file's `ref`.
+
+Where that tag is unreachable, the file takes the *current* upstream hash and is
+marked `pending` instead. That is deliberate: a pending file keeps showing up in
+`outdated` until a real `upgrade` writes it, so a guessed baseline can never pass
+unnoticed. Follow up with:
 
 ```bash
-buildpad upgrade --force --three-way   # re-sync all components, merging local edits
-buildpad status                        # confirm files are pristine
+buildpad upgrade --three-way   # write the pending files, merging local edits
+buildpad status                # confirm files are pristine
 ```
 
-From the next release onward, `outdated`/`upgrade` work normally with no `--force` needed.
+**v1 → v3.** A v1 manifest has no per-file records at all, so `migrate` re-derives
+the local hashes by transforming the current sources the way `add` would, and
+baselines everything to the current release.
 
 ### Task 12: Check if config needs migration
 ```bash
-# status command will prompt if schemaVersion is missing
+# Any command warns when the manifest is older than the CLI's schema
 buildpad status
 
-# If you see "Run 'npx buildpad migrate' to enable safe updates", run migrate
+# If you see "Run 'npx buildpad migrate'", run it
 buildpad migrate
 ```
+
+A CLI refuses to run against a manifest written by a *newer* CLI rather than
+silently dropping fields it does not understand — upgrade the CLI in that case.
 
 ## Registry Schema
 
@@ -362,7 +389,7 @@ interface ComponentEntry {
   category: string;           // e.g., "input", "collection"
   sourcePackage: string;      // e.g., "@buildpad/ui-interfaces"
   version: string;            // inherited from sourcePackage
-  lastChangedIn?: string;     // semver of last actual file change (for outdated optimization)
+  lastChangedIn?: string;     // DISPLAY ONLY since manifest v3 — no CLI decision reads it
   files: FileMapping[];       // source → target mappings
   dependencies: string[];     // npm packages
   internalDependencies: string[];    // lib modules
@@ -372,9 +399,80 @@ interface ComponentEntry {
 interface FileMapping {
   source: string;             // e.g., "ui-interfaces/src/input/Input.tsx"
   target: string;             // e.g., "components/ui/input.tsx"
-  sourceSha256?: string;      // SHA256 of untransformed source (registry v2)
+  sourceSha256?: string;      // SHA256 of untransformed source — the value
+                              // `outdated` compares against buildpad.json
 }
 ```
+
+## Manifest Schema (`buildpad.json`, v3)
+
+The consumer-side manifest. `add`, `upgrade`, and `migrate` write it; `outdated`,
+`status`, and `validate` read it.
+
+```typescript
+interface Manifest {
+  schemaVersion: 3;
+  release: string;            // lockstep release last synced to, e.g. "2.0.0"
+  model: "copy-own";
+  tsx: boolean;
+  srcDir: boolean;
+  aliases: { components: string; lib: string };
+  installedComponents: string[];
+  installedLib: string[];
+  components: Record<string, Install>;
+  lib: Record<string, Install>;
+}
+
+interface Install {
+  release: string;            // display only — staleness is decided per file
+  ref: string;                // git ref the files were fetched from
+  sourcePackage: string;      // e.g. "@buildpad/ui-interfaces"
+  installedAt: string;        // ISO-8601
+  files: FileRecord[];
+}
+
+interface FileRecord {
+  target: string;             // e.g. "components/ui/input.tsx"
+  sourceSha256: string;       // registry hash of the UNTRANSFORMED upstream
+                              // source at install time → detects UPSTREAM change
+  sha256: string;             // hash of the TRANSFORMED bytes the CLI wrote,
+                              // origin header stripped → detects LOCAL change
+  ref: string;                // git ref this file came from — the exact diff3
+                              // base for the next upgrade. "local" in a
+                              // monorepo checkout; "url:<base>" under
+                              // BUILDPAD_REGISTRY_URL
+  state: "clean" | "pending"; // "pending" = the last upgrade did not write it
+}
+```
+
+### Why two hashes
+
+They answer independent questions. `sourceSha256` says whether **upstream**
+moved; `sha256` says whether the **consumer** edited the file. Keeping them
+separate is what lets `upgrade` apply this matrix:
+
+| Upstream changed | Local modified | Action |
+|---|---|---|
+| no | no | nothing |
+| no | yes | nothing — no prompt |
+| yes | no | overwrite, silent |
+| yes | yes | diff3 against `ref`, else the chosen `--strategy` |
+| added upstream | – | add |
+| removed upstream | – | keep on disk, warn, stop tracking |
+
+The row that matters most in practice is "upstream unchanged, locally modified".
+Before v3 the CLI had no way to see it, so editing one file in a component meant
+being prompted to overwrite it every time any *sibling* file changed upstream.
+
+### Why `ref` is per file
+
+`upgrade` needs the common ancestor for a three-way merge. Deriving it from a
+version number required guessing a tag name, which failed whenever the guess was
+wrong (`@buildpad/cli` and `@buildpad/mcp` were untagged at several releases) or
+whenever the install came from `main` between releases. Recording where the bytes
+actually came from removes the guess. When a recorded ref is unreachable the CLI
+writes a `.new` file and marks the entry `pending` — it never merges against a
+substitute ancestor.
 
 ## Troubleshooting
 
@@ -406,13 +504,16 @@ cat packages/ui-interfaces/src/input/Input.tsx
 cat packages/ui-form/src/VForm.tsx
 ```
 
-### "Schema v1 detected" Warning
+### "buildpad.json is schema v1/v2" Warning
 ```bash
-# Migrate to v2 to enable safe per-file updates
+# Migrate to v3 to enable content-based update detection
 buildpad migrate
 # Or with preview
 buildpad migrate --dry-run
 ```
+
+Until this is done, `outdated` cannot determine staleness for those entries and
+says so rather than guessing.
 
 ### "Component is locally modified" During Upgrade
 ```bash

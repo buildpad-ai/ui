@@ -7,7 +7,7 @@
  * also returns / redirects to the IdP end-session URL (Single Logout / SLO).
  *
  * @buildpad/origin: api-routes/auth-logout
- * @buildpad/version: 1.1.0
+ * @buildpad/version: 1.2.0
  *
  * ## POST /api/auth/logout
  * JSON response — backward compatible. Includes `idpLogoutUrl` when the user
@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { getProviderConfig, buildLogoutUrl } from '@/lib/oauth/config';
+import { publicOrigin } from '@/lib/origin';
 
 const PROVIDER_COOKIE_NAME = 'oauth_provider';
 
@@ -86,7 +87,7 @@ async function performLogout(
  */
 export async function POST(request: NextRequest) {
   try {
-    const origin = request.nextUrl.origin;
+    const origin = publicOrigin(request);
     const { idpLogoutUrl, error } = await performLogout(origin);
 
     if (error) {
@@ -125,20 +126,25 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const origin = request.nextUrl.origin;
+    const origin = publicOrigin(request);
     const { idpLogoutUrl, error } = await performLogout(origin);
 
     if (error) {
+      // Redirect targets are built from the resolved public `origin`, never
+      // from `request.url` — see lib/origin.ts for why.
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(error)}`, request.url)
+        new URL(`/login?error=${encodeURIComponent(error)}`, origin)
       );
     }
 
-    // Redirect to IdP end-session endpoint (SLO) or fall back to /login
-    const destination = idpLogoutUrl ?? `${origin}/login`;
-    return NextResponse.redirect(destination);
+    // IdP end-session hand-off genuinely needs an absolute URL (it leaves
+    // this app); the ordinary case redirects to `/login` on our own origin.
+    if (idpLogoutUrl) {
+      return NextResponse.redirect(idpLogoutUrl);
+    }
+    return NextResponse.redirect(new URL('/login', origin));
   } catch (error) {
     console.error('Unexpected logout error:', error);
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/login', publicOrigin(request)));
   }
 }

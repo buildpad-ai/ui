@@ -12,7 +12,12 @@ import { type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  const response = await updateSession(request);
+  // Every response here depends on session state, so it must never be
+  // stored by a shared cache (e.g. CloudFront) — otherwise one user's
+  // authenticated page can be served to the next visitor.
+  response.headers.set('Cache-Control', 'private, no-store, must-revalidate');
+  return response;
 }
 
 export const config = {

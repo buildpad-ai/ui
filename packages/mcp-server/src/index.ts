@@ -78,9 +78,46 @@ function compareSemver(a: string, b: string): number {
   return 0;
 }
 
+/**
+ * Files of one installed component that are out of sync with the registry.
+ *
+ * Mirrors `computeEntryStaleness` in the CLI (packages/cli/src/utils/staleness.ts):
+ * a file is stale when the registry's `sourceSha256` differs from the hash
+ * recorded at install time, when the last upgrade left it `pending`, or when
+ * the registry has added or removed it. Version numbers are not consulted.
+ *
+ * A manifest older than schema v3 has no per-file `sourceSha256`; those files
+ * are reported as `needs-migrate` rather than guessed at.
+ */
+function staleFilesOf(
+  regComp: { files?: Array<{ target: string; sourceSha256?: string }> },
+  installed: { files?: Array<{ target: string; sourceSha256?: string; state?: string }> }
+): Array<{ target: string; reason: string }> {
+  const stale: Array<{ target: string; reason: string }> = [];
+  const recorded = new Map((installed.files ?? []).map(f => [f.target, f]));
+
+  for (const rf of regComp.files ?? []) {
+    const rec = recorded.get(rf.target);
+    if (!rec) { stale.push({ target: rf.target, reason: 'added' }); continue; }
+    if (rec.state === 'pending') { stale.push({ target: rf.target, reason: 'pending' }); continue; }
+    if (!rec.sourceSha256) { stale.push({ target: rf.target, reason: 'needs-migrate' }); continue; }
+    if (!rf.sourceSha256) continue;
+    if (rec.sourceSha256 !== rf.sourceSha256) {
+      stale.push({ target: rf.target, reason: 'upstream-changed' });
+    }
+  }
+
+  const registryTargets = new Set((regComp.files ?? []).map(f => f.target));
+  for (const target of recorded.keys()) {
+    if (!registryTargets.has(target)) stale.push({ target, reason: 'removed' });
+  }
+
+  return stale;
+}
+
 const CHANGELOG_RAW_BASE =
   process.env.BUILDPAD_CHANGELOG_URL?.replace(/\/?$/, '/') ??
-  'https://raw.githubusercontent.com/microbuild-ui/ui/main/packages/';
+  'https://raw.githubusercontent.com/buildpad-ai/ui/main/packages/';
 
 /** Fetch raw CHANGELOG.md content; returns null on network error. */
 async function fetchChangelogContent(changelogUrl: string): Promise<string | null> {
@@ -1251,30 +1288,25 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         const registry = getRegistry();
         const registryPackages: Record<string, { version: string; changelogUrl?: string }> =
           (registry as any).packages ?? {};
-        const installedVersions: Record<string, string> = config.packageVersions ?? {};
         const components: Record<string, any> = config.components ?? {};
         const allComps = getAllComponents() as any[];
+        const release: string | undefined = config.release ?? (registry as any).version;
 
         const outdated: object[] = [];
         for (const [name, comp] of Object.entries(components)) {
           const sourcePackage: string | undefined = (comp as any).sourcePackage;
-          if (!sourcePackage) continue;
-          const installedVersion = installedVersions[sourcePackage];
-          if (!installedVersion) continue;
-          const pkg = registryPackages[sourcePackage];
-          if (!pkg) continue;
           const regComp = allComps.find(c => c.name === name);
-          const lastChangedIn: string | undefined = regComp?.lastChangedIn;
-          // Skip if this component hasn't actually changed since installed version
-          if (lastChangedIn && compareSemver(installedVersion, lastChangedIn) >= 0) continue;
-          if (compareSemver(installedVersion, pkg.version) >= 0) continue;
+          if (!regComp) continue;
+          const staleFiles = staleFilesOf(regComp, comp);
+          if (staleFiles.length === 0) continue;
+          const pkg = sourcePackage ? registryPackages[sourcePackage] : undefined;
           outdated.push({
             name,
-            sourcePackage,
-            installedVersion,
-            latestVersion: pkg.version,
-            lastChangedIn: lastChangedIn ?? null,
-            changelogUrl: pkg.changelogUrl ?? null,
+            sourcePackage: sourcePackage ?? null,
+            installedRelease: (comp as any).release ?? (comp as any).version ?? null,
+            latestRelease: release ?? null,
+            staleFiles,
+            changelogUrl: pkg?.changelogUrl ?? null,
           });
         }
         return {
@@ -1331,11 +1363,9 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         }
         const config = JSON.parse(readFileSync(configPath, 'utf-8'));
         const registry = getRegistry();
-        const registryPackages: Record<string, { version: string; changelogUrl?: string }> =
-          (registry as any).packages ?? {};
-        const installedVersions: Record<string, string> = config.packageVersions ?? {};
         const components: Record<string, any> = config.components ?? {};
         const allComps = getAllComponents() as any[];
+        const release: string | undefined = config.release ?? (registry as any).version;
         // Honour the consumer's srcDir layout — files live at `<projectPath>/src/<target>`
         // when srcDir=true, otherwise `<projectPath>/<target>`.
         const fileRoot = config.srcDir ? join(projectPath, 'src') : projectPath;
@@ -1346,17 +1376,10 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
             continue;
           }
           const sourcePackage: string | undefined = (comp as any).sourcePackage;
-          if (!sourcePackage) continue;
-          const installedVersion = installedVersions[sourcePackage];
-          if (!installedVersion) continue;
-          const pkg = registryPackages[sourcePackage];
-          if (!pkg) continue;
           const regComp = allComps.find(c => c.name === compName);
-          const lastChangedIn: string | undefined = regComp?.lastChangedIn;
-
-          const isOutdated =
-            (lastChangedIn ? compareSemver(installedVersion, lastChangedIn) < 0 : true) &&
-            compareSemver(installedVersion, pkg.version) < 0;
+          if (!regComp) continue;
+          const staleFiles = staleFilesOf(regComp, comp);
+          const isOutdated = staleFiles.length > 0;
 
           // Per-file modification check (paths honour srcDir)
           const files: Array<{ target: string; sha256: string }> = (comp as any).files ?? [];
@@ -1380,11 +1403,11 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
 
           plan.push({
             name: compName,
-            sourcePackage,
-            installedVersion,
-            latestVersion: pkg.version,
-            lastChangedIn: lastChangedIn ?? null,
+            sourcePackage: sourcePackage ?? null,
+            installedRelease: (comp as any).release ?? (comp as any).version ?? null,
+            latestRelease: release ?? null,
             isOutdated,
+            staleFiles,
             modifiedLocally,
             recommendedAction,
             files: fileStatuses,

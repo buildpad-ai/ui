@@ -27,6 +27,7 @@ import { bootstrap } from './commands/bootstrap.js';
 import { upgrade } from './commands/upgrade.js';
 import { changelog } from './commands/changelog.js';
 import { migrate } from './commands/migrate.js';
+import { setSourceRef, getSourceRef } from './resolver.js';
 
 // Read the version from package.json so it never drifts from the published version
 const require = createRequire(import.meta.url);
@@ -37,7 +38,16 @@ const program = new Command();
 program
   .name('buildpad')
   .description('Copy & Own CLI - Add Buildpad components to your project')
-  .version(cliVersion);
+  .version(cliVersion)
+  // Every remote fetch is pinned to the release tag matching this CLI version,
+  // so `npx @buildpad/cli@X.Y.Z` resolves the same bytes on any day. --ref is
+  // the development escape hatch (e.g. --ref main to read unreleased content);
+  // whatever it resolves to is recorded in buildpad.json as the diff3 base.
+  .option('--ref <git-ref>', `Fetch sources from this git ref instead of the pinned release (default: ${getSourceRef()})`)
+  .hook('preAction', (thisCommand) => {
+    const ref = thisCommand.opts().ref;
+    if (ref) setSourceRef(ref);
+  });
 
 program
   .command('init')
@@ -126,7 +136,7 @@ program
 
 program
   .command('outdated')
-  .description('Check for component updates (compares installed versions to registry)')
+  .description('Check for component updates (compares installed file hashes to the registry)')
   .option('--json', 'Output as JSON')
   .option('--cwd <path>', 'Project directory', process.cwd())
   .action(async (options) => {
@@ -136,12 +146,12 @@ program
 
 program
   .command('upgrade')
-  .description('Upgrade installed components to the latest registry versions')
+  .description('Upgrade installed components to the release this CLI ships against')
   .argument('[components...]', 'Specific components to upgrade (default: all outdated)')
   .option('--all', 'Upgrade every installed component')
   .option('--package <name>', 'Upgrade all components from a specific source package')
   .option('--design', 'Upgrade only the design-system module (tokens, globals, theme, app shell)')
-  .option('--force', 'Re-sync components even when already at the latest version (default target: all installed)')
+  .option('--force', 'Re-sync every file even when upstream is unchanged (default target: all installed)')
   .option('-n, --dry-run', 'Show what would change without writing files')
   .option('-y, --yes', 'Shorthand for --strategy=overwrite')
   .option('--three-way', 'Shorthand for --strategy=three-way')
@@ -185,7 +195,7 @@ program
 
 program
   .command('migrate')
-  .description('Migrate buildpad.json from schema v1 to v2 (enables per-file update tracking)')
+  .description('Migrate buildpad.json to schema v3 (enables content-based update tracking)')
   .option('-n, --dry-run', 'Preview migration without writing files')
   .option('--cwd <path>', 'Project directory', process.cwd())
   .action(async (options) => {

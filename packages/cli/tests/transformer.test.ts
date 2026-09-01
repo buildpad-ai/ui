@@ -142,6 +142,21 @@ describe("normalizeImportPaths", () => {
     expect(normalizeImportPaths(input)).toBe(expected);
   });
 
+  test("flattens a kebab-case folder + PascalCase file import to the folder's own flat target", () => {
+    // The source layout is ui-interfaces/src/select-icon/SelectIcon.tsx, but
+    // select-icon is delivered as the flat sibling components/ui/select-icon.tsx —
+    // so the PascalCase filename must be dropped, not kebab-cased.
+    const input = `import { paletteNameFromColor } from '../select-icon/SelectIcon';`;
+    const expected = `import { paletteNameFromColor } from './select-icon';`;
+    expect(normalizeImportPaths(input)).toBe(expected);
+  });
+
+  test("flattens a kebab-case folder dynamic import the same way", () => {
+    const input = `import('../select-icon/SelectIcon').then((m) => ({ default: m.IconDisplay }))`;
+    const expected = `import('./select-icon').then((m) => ({ default: m.IconDisplay }))`;
+    expect(normalizeImportPaths(input)).toBe(expected);
+  });
+
   test("preserves kebab-case imports", () => {
     const input = `import { Input } from './input';`;
     expect(normalizeImportPaths(input)).toBe(input);

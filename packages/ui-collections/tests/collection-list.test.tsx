@@ -1115,3 +1115,180 @@ describe("relational-field exclusion in the items query", () => {
     expect(screen.queryByText("Blocks")).not.toBeInTheDocument();
   });
 });
+
+// -------------------------------------------------------------------
+// Estimated totals (meta.total_estimated)
+//
+// On large collections DaaS reports the query planner's estimate as
+// meta.total and marks it total_estimated: true; a page that disproves the
+// estimate comes back with the exact total and total_estimated: false. The
+// component must step off pages that turn out not to exist, and must pin a
+// proven total so estimates cannot resurrect phantom pages afterwards.
+// -------------------------------------------------------------------
+describe("CollectionList estimated totals", () => {
+  /**
+   * Simulates the server behavior: planner estimate 40, real total 23,
+   * page size 10. Pages 1–2 are full and carry the estimate; page 3 is the
+   * real last page (short, so the server proves 23 exact); anything past it
+   * is empty with the recounted exact total.
+   */
+  function largeCollectionApi(url: string) {
+    if (String(url).includes("aggregate")) {
+      return Promise.resolve(makeCountResponse(23));
+    }
+    const page = Number(
+      new URLSearchParams(String(url).split("?")[1] ?? "").get("page") ?? 1,
+    );
+    const row = (i: number) => ({
+      id: i,
+      title: `Post ${i}`,
+      status: "published",
+      body: `Body ${i}`,
+    });
+    if (page <= 2) {
+      return Promise.resolve({
+        data: Array.from({ length: 10 }, (_, i) => row((page - 1) * 10 + i + 1)),
+        meta: { page, limit: 10, total: 40, total_estimated: true },
+      });
+    }
+    if (page === 3) {
+      return Promise.resolve({
+        data: [row(21), row(22), row(23)],
+        meta: { page, limit: 10, total: 23, total_estimated: false },
+      });
+    }
+    return Promise.resolve({
+      data: [],
+      meta: { page, limit: 10, total: 23, total_estimated: false },
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFieldsReadAll.mockResolvedValue(SAMPLE_FIELDS);
+    mockPermissionsGetAccess.mockResolvedValue({});
+    mockApiRequest.mockImplementation(largeCollectionApi);
+  });
+
+  it("steps back off a phantom page and shows the corrected total", async () => {
+    renderList({ limit: 10 });
+
+    // The estimate builds 4 pages (40 / 10).
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "1–10 of 40 items",
+      );
+    });
+    expect(screen.getByTestId("collection-list-pagination-control")).toHaveAttribute(
+      "data-total",
+      "4",
+    );
+
+    // Page 4 does not exist: the server answers it with the exact total, and
+    // the component must land the user on the real last page instead.
+    fireEvent.click(screen.getByTestId("pagination-page-4"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "21–23 of 23 items",
+      );
+    });
+    expect(screen.getByTestId("cell-0-title")).toHaveTextContent("Post 21");
+    expect(screen.getByTestId("collection-list-pagination-control")).toHaveAttribute(
+      "data-total",
+      "3",
+    );
+    expect(screen.queryByTestId("pagination-page-4")).not.toBeInTheDocument();
+  });
+
+  it("pins a proven total so estimates cannot resurrect phantom pages", async () => {
+    renderList({ limit: 10 });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "1–10 of 40 items",
+      );
+    });
+
+    // Visiting the real last page proves the total is 23.
+    fireEvent.click(screen.getByTestId("pagination-page-3"));
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "21–23 of 23 items",
+      );
+    });
+
+    // Going back to page 1 returns the stale estimate (40) — the pinned
+    // proof must win, keeping the pager at 3 pages.
+    fireEvent.click(screen.getByTestId("pagination-page-1"));
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "1–10 of 23 items",
+      );
+    });
+    expect(screen.getByTestId("collection-list-pagination-control")).toHaveAttribute(
+      "data-total",
+      "3",
+    );
+    expect(screen.queryByTestId("pagination-page-4")).not.toBeInTheDocument();
+  });
+
+  it("drops the pinned total on manual refresh", async () => {
+    renderList({ limit: 10 });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "1–10 of 40 items",
+      );
+    });
+
+    // Pin via the real last page, then return to page 1 with the pin held.
+    fireEvent.click(screen.getByTestId("pagination-page-3"));
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "21–23 of 23 items",
+      );
+    });
+    fireEvent.click(screen.getByTestId("pagination-page-1"));
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "1–10 of 23 items",
+      );
+    });
+
+    // Refresh is the escape hatch: it re-syncs with the server, estimate and
+    // all, until a page proves the total again.
+    fireEvent.click(screen.getByTestId("collection-list-refresh"));
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "1–10 of 40 items",
+      );
+    });
+  });
+
+  it("ignores a non-finite total instead of building page math on it", async () => {
+    mockApiRequest.mockImplementation((url: string) => {
+      if (String(url).includes("aggregate")) {
+        return Promise.resolve(makeCountResponse(3));
+      }
+      return Promise.resolve({
+        data: [
+          { id: 1, title: "Post 1", status: "published", body: "" },
+          { id: 2, title: "Post 2", status: "draft", body: "" },
+          { id: 3, title: "Post 3", status: "published", body: "" },
+        ],
+        meta: { page: 1, limit: 10, total: Number.NaN },
+      });
+    });
+
+    renderList({ limit: 10 });
+
+    // Falls back to counting the rows it received — no crash, no NaN pages.
+    await waitFor(() => {
+      expect(screen.getByTestId("collection-list-footer-count")).toHaveTextContent(
+        "3 items",
+      );
+    });
+    expect(screen.getByTestId("cell-0-title")).toHaveTextContent("Post 1");
+  });
+});

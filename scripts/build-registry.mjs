@@ -57,6 +57,31 @@ function sha256(data) {
   return createHash('sha256').update(data).digest('hex');
 }
 
+/**
+ * The lockstep release version.
+ *
+ * Every @buildpad package is in one `fixed` changesets group, so they always
+ * share a version. `@buildpad/cli` is the canonical reader of it because the
+ * same value has to agree in three places or the release breaks:
+ *
+ *   1. this registry's `version`  → recorded as `release` in buildpad.json
+ *   2. packages/cli/package.json  → the ref the CLI pins its fetches to
+ *   3. the `v<version>` git tag   → created by publish.yml from (2)
+ *
+ * Deriving (1) from (2) makes them agree by construction. It used to be a
+ * hand-edited field in registry.template.json that `changeset version` never
+ * touched, so a release could ship a registry stamped with the PREVIOUS
+ * version — consumers would then record that stale release in their manifest.
+ */
+function getReleaseVersion(template) {
+  const cliPkg = join(PACKAGES_DIR, 'cli', 'package.json');
+  if (existsSync(cliPkg)) {
+    const { version } = JSON.parse(readFileSync(cliPkg, 'utf8'));
+    if (version) return version;
+  }
+  return template.version;
+}
+
 function getPackageVersion(folder) {
   const pkgPath = join(PACKAGES_DIR, folder, 'package.json');
   if (!existsSync(pkgPath)) return '0.1.18';
@@ -253,6 +278,7 @@ function buildRegistry() {
     process.exit(1);
   }
   const template = JSON.parse(readFileSync(templatePath, 'utf8'));
+  const releaseVersion = getReleaseVersion(template);
 
   // ─── Enrich components ─────────────────────────────────────────
   const enrichedComponents = (template.components ?? []).map((component) => {
@@ -305,7 +331,7 @@ function buildRegistry() {
       const sourcePackage = firstSource
         ? inferSourcePackage(firstSource)
         : '@buildpad/cli';
-      const version = packagesMap[sourcePackage]?.version ?? template.version;
+      const version = packagesMap[sourcePackage]?.version ?? releaseVersion;
 
       // lastChangedIn: the release that first shipped the latest change to ANY
       // of the module's source files (and its single-file `path`). Untagged
@@ -337,8 +363,9 @@ function buildRegistry() {
     $schema: template.$schema,
     schemaVersion: 2,
     generatedAt: new Date().toISOString(),
-    // Legacy v1 field kept for backward compat with older CLI versions
-    version: template.version,
+    // The lockstep release. Derived from packages/cli/package.json so it can
+    // never disagree with the CLI version or the v<version> tag.
+    version: releaseVersion,
     name: template.name,
     description: template.description,
     license: template.license,

@@ -773,53 +773,77 @@ The CLI tracks per-file SHA256 checksums so upgrades only overwrite files the co
 │                  Upgrade Flow (buildpad upgrade)                      │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                        │
-│  $ buildpad upgrade --all                                           │
+│  $ buildpad upgrade --all                                             │
 │                                                                        │
-│  Step 1: Compare (per-component)                                       │
-│  ┌─────────────────────────────────────────┐                         │
-│  │ • installed.version                     │                         │
-│  │ • registry.packages[sourcePackage].version                        │
-│  │ • Skip if installed >= lastChangedIn   │                         │
-│  └─────────────────────┬───────────────────┘                         │
-│                        ▼                                              │
-│  Step 2: Fetch fresh source (per file)                                 │
-│  ┌─────────────────────────────────────────┐                         │
-│  │ • Fetch from GitHub raw CDN at registry │                         │
-│  │   version (or local registry in monorepo)                         │
-│  │ • Transform imports per consumer alias cfg                         │
-│  └─────────────────────┬───────────────────┘                         │
-│                        ▼                                              │
-│  Step 3: Per-file decision                                              │
-│  ┌─────────────────────────────────────────┐                         │
-│  │ disk_sha == recorded_sha?               │                         │
-│  │   YES → Silent overwrite                │                         │
-│  │   NO  → Prompt: [s]kip [o]verwrite      │                         │
-│  │          [w]rite .new [3]way-merge      │                         │
-│  └─────────────────────┬───────────────────┘                         │
-│                        ▼                                              │
-│  Step 4: Record new state                                               │
-│  ┌─────────────────────────────────────────┐                         │
-│  │ • Update component.version              │                         │
-│  │ • Update file.sha256 for overwritten files                         │
-│  │ • Update packageVersions map            │                         │
-│  └─────────────────────────────────────────┘                         │
+│  Step 1: Compare CONTENT (per file, not per version)                   │
+│  ┌─────────────────────────────────────────┐                          │
+│  │ registry.file.sourceSha256              │                          │
+│  │        !=                               │                          │
+│  │ manifest.file.sourceSha256   → stale    │                          │
+│  │ manifest.file.state == pending → stale  │                          │
+│  │ file added / removed upstream  → stale  │                          │
+│  └─────────────────────┬───────────────────┘                          │
+│                        ▼                                               │
+│  Step 2: Fetch fresh source (per stale file)                           │
+│  ┌─────────────────────────────────────────┐                          │
+│  │ • Fetch at v<cli version> on the raw CDN│                          │
+│  │   (or the local registry in a monorepo) │                          │
+│  │ • Transform imports per consumer aliases│                          │
+│  └─────────────────────┬───────────────────┘                          │
+│                        ▼                                               │
+│  Step 3: Per-file decision                                             │
+│  ┌─────────────────────────────────────────┐                          │
+│  │ disk_sha == recorded sha256?            │                          │
+│  │   YES → Silent overwrite                │                          │
+│  │   NO  → Prompt: [s]kip [o]verwrite      │                          │
+│  │          [w]rite .new [3]way-merge      │                          │
+│  └─────────────────────┬───────────────────┘                          │
+│                        ▼                                               │
+│  Step 4: Record the TRUE new state                                     │
+│  ┌─────────────────────────────────────────┐                          │
+│  │ written  → sourceSha256 = new, ref =    │                          │
+│  │            fetch ref, state = clean     │                          │
+│  │ NOT written (skip / .new / no base)     │                          │
+│  │          → keep OLD sourceSha256 + ref, │                          │
+│  │            state = pending  ⇒ stays     │                          │
+│  │            stale on the next run        │                          │
+│  └─────────────────────────────────────────┘                          │
 │                                                                        │
 │  Three-Way Merge (--three-way):                                        │
-│  ┌─────────────────────────────────────────┐                         │
-│  │ base = source at installed-version     │                         │
-│  │ (fetched from GitHub raw at prior tag)  │                         │
-│  │ ours = consumer's modified file         │                         │
-│  │ theirs = fresh source at latest version │                         │
-│  │ → diff3(ours, base, theirs)             │                         │
-│  │ → On network failure: fall back to .new │                         │
-│  └─────────────────────────────────────────┘                         │
+│  ┌─────────────────────────────────────────┐                          │
+│  │ base = source at manifest.file.ref      │                          │
+│  │        (the EXACT bytes installed)      │                          │
+│  │ ours = consumer's modified file         │                          │
+│  │ theirs = fresh source at the fetch ref  │                          │
+│  │ → diff3(ours, base, theirs)             │                          │
+│  │ → ref unreachable: .new + state pending │                          │
+│  └─────────────────────────────────────────┘                          │
 │                                                                        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-**`--force`:** skips the Step 1 version check, so components already at `lastChangedIn` are still processed. Steps 2–4 are unchanged — per-file decisions and `--strategy` handling still apply, so local edits are merged rather than clobbered. This is the intended path for re-syncing a freshly-migrated (pre-v2) project, whose components are all baselined to the current version and would otherwise be skipped.
+**Why content, not versions.** Staleness used to be `semverGte(installed.version,
+component.lastChangedIn)`. `lastChangedIn` is derived at registry-build time from
+full git history plus whatever tags exist then, so a missing tag, a shallow
+clone, or a release-PR step run in the wrong order silently produced wrong
+answers. Comparing hashes removes every one of those inputs: the same manifest
+and registry give the same verdict on any machine on any day. `lastChangedIn`
+remains in the registry as display data only.
 
-**Lib modules:** the same flow applies to lib modules tracked in `config.lib` (with per-file checksums and a registry `lastChangedIn`), not just components. The **`design-system`** module (design tokens, globals, theme, app shell) is the primary case: `buildpad upgrade --design` scopes to it, a bare `buildpad upgrade` includes it when behind, and `buildpad outdated` reports it. Build-registry stamps each lib module with `version`/`lastChangedIn` (CLI-owned templates resolve to `@buildpad/cli`).
+**Why the fetch is pinned.** Sources are fetched from `v<cli version>`, not
+`main`. `main` moves between releases, so an unpinned `add` copied post-release
+content while recording the previous release — and the three-way base was then
+older than what was actually installed. See docs/PUBLISHING.md.
+
+**`--force`:** processes every file even when its upstream content is unchanged.
+Steps 2–4 are unchanged — per-file decisions and `--strategy` handling still
+apply, so local edits are merged rather than clobbered.
+
+**Lib modules:** the same flow applies to lib modules tracked in `config.lib`,
+not just components. The **`design-system`** module (design tokens, globals,
+theme, app shell) is the primary case: `buildpad upgrade --design` scopes to it,
+a bare `buildpad upgrade` includes it when its files changed upstream, and
+`buildpad outdated` reports it.
 
 ## MCP RBAC Pattern Tool
 

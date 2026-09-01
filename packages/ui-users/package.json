@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-users",
-  "version": "1.10.0",
+  "version": "2.1.0",
   "description": "Users, roles, and policies administration UI (RBAC management) for Buildpad projects",
   "type": "module",
   "main": "./dist/index.js",
@@ -84,6 +84,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/microbuild-ui/ui"
+    "url": "https://github.com/buildpad-ai/ui"
   }
 }

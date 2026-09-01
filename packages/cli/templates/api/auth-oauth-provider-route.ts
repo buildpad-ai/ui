@@ -15,7 +15,7 @@
  *   - returnTo: URL to redirect after successful auth (default: '/')
  *
  * @buildpad/origin: api-routes/auth-oauth-provider
- * @buildpad/version: 1.0.0
+ * @buildpad/version: 1.1.0
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,6 +30,7 @@ import {
   encryptState,
   generateCodeChallenge,
 } from '@/lib/oauth/pkce';
+import { publicOrigin } from '@/lib/origin';
 
 const SUPPORTED_PROVIDERS: SupportedProvider[] = [
   'generic',
@@ -74,7 +75,10 @@ export async function GET(
 
   try {
     const config = getProviderConfig(provider);
-    const origin = request.nextUrl.origin;
+    // Must be the app's real public origin: this exact string is sent to the
+    // IdP as `redirect_uri`, is matched against the registered URI, and must
+    // byte-match the one the callback route sends during token exchange.
+    const origin = publicOrigin(request);
     const redirectUri = `${origin}/api/auth/callback`;
     const returnTo = request.nextUrl.searchParams.get('returnTo') || '/';
 

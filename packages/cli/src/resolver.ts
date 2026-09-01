@@ -4,58 +4,139 @@
  * Abstracts file fetching so the CLI works in two modes:
  *
  * 1. **Remote mode** (default when installed via npm / npx)
- *    Fetches registry.json and component source files from the GitHub raw CDN.
+ *    Fetches registry.json and component source files from the GitHub raw CDN,
+ *    pinned to the release tag that matches this CLI's own version.
  *
  * 2. **Local mode** (when running from the monorepo checkout)
  *    Reads files directly from the `packages/` directory on disk.
  *
  * The mode is determined automatically:
  *   - If `PACKAGES_ROOT/registry.json` exists on disk → local mode
- *   - Otherwise → remote mode (uses REGISTRY_BASE_URL)
+ *   - Otherwise → remote mode (uses the pinned ref)
+ *
+ * ## Why the fetch is pinned
+ *
+ * The CLI used to read registry.json and every source file from `main`, while
+ * the registry it read declared a single release version. `main` moves between
+ * releases, so `add` copied post-release content and recorded it under the
+ * previous release's version — and `upgrade --three-way` then fetched a diff3
+ * base that predated what the consumer actually had on disk. Merges ran against
+ * the wrong ancestor.
+ *
+ * Under lockstep releases the CLI version *is* the release version, so the CLI
+ * pins every fetch to `v<its own version>`. `npx @buildpad/cli@2.0.0` resolves
+ * the same bytes on any day; tags are immutable, so no CDN cache can serve
+ * something newer. To pin the components, pin the CLI.
  */
 
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ─── Configuration ───────────────────────────────────────────────
 
-/**
- * Base URL for fetching files remotely.
- * Points to the raw GitHub content of the `main` branch.
- *
- * Override at runtime with the `BUILDPAD_REGISTRY_URL` env var.
- *
- * ⚠️  REPLACE the placeholder below with your actual GitHub org/repo.
- */
-const DEFAULT_REGISTRY_URL =
-  'https://raw.githubusercontent.com/microbuild-ui/ui/main/packages';
+/** Raw-CDN root for the repository that hosts the registry and sources. */
+const REPO_RAW_BASE = 'https://raw.githubusercontent.com/buildpad-ai/ui';
 
 /**
- * Runtime-configurable registry URL.
+ * This CLI's own version, read from its package.json — the same source
+ * `buildpad --version` uses, so the pinned ref can never drift from the
+ * published version.
  */
-export const REGISTRY_BASE_URL =
-  process.env.BUILDPAD_REGISTRY_URL ?? DEFAULT_REGISTRY_URL;
+function readCliVersion(): string {
+  try {
+    const require = createRequire(import.meta.url);
+    const pkg = require('../package.json') as { version?: string };
+    if (pkg.version) return pkg.version;
+  } catch {
+    /* fall through */
+  }
+  return 'main';
+}
+
+const CLI_VERSION = readCliVersion();
+
+/** This CLI's own semver — `main` when the package.json could not be read. */
+export function getCliVersion(): string {
+  return CLI_VERSION;
+}
+
+/** The release tag this CLI version corresponds to, e.g. `v2.0.0`. */
+const DEFAULT_REF = CLI_VERSION === 'main' ? 'main' : `v${CLI_VERSION}`;
+
+/**
+ * Explicit ref override from `--ref <git-ref>`. Set once by the command layer
+ * before any fetch happens.
+ */
+let _refOverride: string | undefined;
+
+/**
+ * Override the git ref every remote fetch resolves against (`--ref`).
+ * Development escape hatch: `--ref main` reads unreleased content.
+ */
+export function setSourceRef(ref: string): void {
+  _refOverride = ref;
+  _registryCache = null; // a different ref is a different registry
+}
+
+/**
+ * The git ref remote fetches resolve against.
+ * Precedence: `--ref` → `BUILDPAD_REF` → `v<cli version>`.
+ */
+export function getSourceRef(): string {
+  return _refOverride ?? process.env.BUILDPAD_REF ?? DEFAULT_REF;
+}
+
+/**
+ * The ref to record in buildpad.json for files fetched now. This is what a
+ * later `upgrade` uses as the exact diff3 base, so it must describe where the
+ * bytes actually came from — including the escape hatches.
+ */
+export function getRecordedRef(): string {
+  if (process.env.BUILDPAD_REGISTRY_URL) return `url:${process.env.BUILDPAD_REGISTRY_URL}`;
+  if (isLocalMode()) return 'local';
+  return getSourceRef();
+}
+
+/**
+ * Percent-encode a git ref for a raw-CDN path. `/` is left intact so branch
+ * names like `feat/foo` still resolve; `@` and other specials are encoded.
+ */
+export function encodeRef(ref: string): string {
+  return encodeURIComponent(ref).replace(/%2F/g, '/');
+}
+
+/**
+ * Base URL for fetching packages-relative files at the current ref.
+ * `BUILDPAD_REGISTRY_URL` overrides it wholesale (points at a mirror or a
+ * local static server); the ref is then not ours to reason about.
+ */
+export function registryBaseUrl(): string {
+  return (
+    process.env.BUILDPAD_REGISTRY_URL ??
+    `${REPO_RAW_BASE}/${encodeRef(getSourceRef())}/packages`
+  );
+}
 
 /**
  * Base URL for fetching CHANGELOG.md files. Override via env var.
- * Defaults to the same repo as the registry, on the `main` branch.
+ * Changelogs are cumulative, so they are read from `main` rather than the
+ * pinned ref — a consumer wants to see what shipped *after* their version too.
  */
 export const CHANGELOG_BASE_URL =
-  process.env.BUILDPAD_CHANGELOG_URL ??
-  'https://raw.githubusercontent.com/microbuild-ui/ui/main/packages';
+  process.env.BUILDPAD_CHANGELOG_URL ?? `${REPO_RAW_BASE}/main/packages`;
 
 /**
- * Build the URL to a versioned source file on GitHub raw CDN.
- * `ref` should already be encoded (or URL-safe).
+ * Build the URL to a source file at a specific git ref on the raw CDN.
+ * `ref` is encoded here — pass the plain ref.
  */
 export function buildVersionedSourceUrl(ref: string, source: string): string {
-  return `https://raw.githubusercontent.com/microbuild-ui/ui/${ref}/packages/${source}`;
+  return `${REPO_RAW_BASE}/${encodeRef(ref)}/packages/${source}`;
 }
-
 // Local packages root (only valid when running from monorepo)
 // From dist/index.js → packages/cli/dist → needs ../../ to reach packages/
 const LOCAL_PACKAGES_ROOT = path.resolve(__dirname, '../..');
@@ -163,7 +244,7 @@ export async function getRegistry(): Promise<Registry> {
     const registryPath = path.join(LOCAL_PACKAGES_ROOT, 'registry.json');
     _registryCache = await fs.readJSON(registryPath) as Registry;
   } else {
-    const url = `${REGISTRY_BASE_URL}/registry.json`;
+    const url = `${registryBaseUrl()}/registry.json`;
     _registryCache = await fetchJSON<Registry>(url);
   }
 
@@ -186,7 +267,7 @@ export async function resolveSourceFile(source: string): Promise<string> {
   }
 
   // Remote mode
-  const url = `${REGISTRY_BASE_URL}/${source}`;
+  const url = `${registryBaseUrl()}/${source}`;
   return fetchText(url);
 }
 
@@ -292,31 +373,52 @@ export function buildPackageTag(sourcePackage: string, version: string): string 
 }
 
 /**
- * Fetch a specific version of a source file from GitHub raw CDN.
+ * Fetch registry.json as it stood at an exact git ref.
  *
- * Used by `upgrade --three-way` to obtain the "base" (common ancestor)
- * for three-way merging.  Falls back gracefully — callers should catch
- * errors and degrade to a 2-way `.new` flow when the network is unavailable.
+ * Used by `migrate` to recover the upstream hashes a v2 manifest never
+ * recorded: the registry published with release `vX.Y.Z` states the
+ * `sourceSha256` of every file that release shipped.
  *
- * Tries two ref formats in order:
- *   1. `${sourcePackage}@${version}` (changesets-style; works for per-package releases)
- *   2. bare `${version}` (legacy / lockstep releases)
+ * Throws when the ref has no registry (releases before the `v<version>` tags
+ * were created) — callers fall back rather than guessing.
+ */
+export async function fetchRegistryAtRef(ref: string): Promise<Registry> {
+  const url = `${REPO_RAW_BASE}/${encodeRef(ref)}/packages/registry.json`;
+  return fetchJSON<Registry>(url);
+}
+
+/**
+ * Fetch a source file at an exact git ref.
  *
- * @param source         - registry-relative source path, e.g. "ui-interfaces/src/input/Input.tsx"
- * @param sourcePackage  - e.g. "@buildpad/ui-interfaces"
- * @param version        - semver string, e.g. "1.4.2"
+ * Used by `upgrade` to obtain the diff3 base: the manifest records the ref each
+ * file was installed from, so the base is the bytes the consumer actually
+ * started from rather than a guess derived from a version number.
+ *
+ * Throws when the ref is unreachable — callers degrade to a `.new` file and
+ * mark the entry `pending`.
+ */
+export async function fetchSourceAtRef(source: string, ref: string): Promise<string> {
+  return fetchText(buildVersionedSourceUrl(ref, source));
+}
+
+/**
+ * Legacy diff3-base lookup for manifests written before per-file refs existed
+ * (schema v2). Tries the changesets per-package tag, then the plain release
+ * tag, then a bare semver.
+ *
+ * Prefer `fetchSourceAtRef` with `manifest.file.ref`. This exists only so a
+ * v2 manifest that has not been migrated still gets a usable base.
  */
 export async function fetchSourceAtVersion(
   source: string,
   sourcePackage: string,
   version: string
 ): Promise<string> {
-  const refs = [buildPackageTag(sourcePackage, version), version];
+  const refs = [buildPackageTag(sourcePackage, version), `v${version}`, version];
   let lastErr: unknown;
   for (const ref of refs) {
-    const url = buildVersionedSourceUrl(encodeURIComponent(ref), source);
     try {
-      return await fetchText(url);
+      return await fetchSourceAtRef(source, ref);
     } catch (err) {
       lastErr = err;
     }

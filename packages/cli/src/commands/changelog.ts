@@ -77,10 +77,16 @@ export async function changelog(options: {
 
   if (!changelogUrl) {
     const config = await loadConfig(cwd);
-    const hint =
-      config?.packageVersions
-        ? '\n  Known packages: ' + Object.keys(config.packageVersions).join(', ')
-        : '';
+    // v3 drops `packageVersions`; the installed records still name their
+    // source package, which is what the user needs to see here.
+    const known = new Set<string>();
+    for (const record of Object.values(config?.components ?? {})) {
+      if (record.sourcePackage) known.add(record.sourcePackage);
+    }
+    for (const record of Object.values(config?.lib ?? {})) {
+      if (record.sourcePackage) known.add(record.sourcePackage);
+    }
+    const hint = known.size > 0 ? '\n  Known packages: ' + [...known].join(', ') : '';
     console.error(
       chalk.red(
         `\n✗ Cannot find changelog for '${target}'.${hint}\n` +

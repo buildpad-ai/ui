@@ -175,7 +175,44 @@ const MantineProvider = ({ children }: Record<string, unknown>) => (
 const Alert = makeComponent("Alert");
 const Badge = makeComponent("Badge");
 const GroupComp = makeComponent("Group");
-const PaginationComp = makeComponent("Pagination");
+
+// Interactive pagination — renders one button per page so tests can navigate
+// through the same control users click, mirroring the Mantine <Pagination>
+// props the components rely on (value/onChange/total).
+const PaginationComp = React.forwardRef<HTMLDivElement, Record<string, unknown>>(
+  ({ value, onChange, total, ...props }, ref) => {
+    const testProps: Record<string, unknown> = {};
+    for (const key of Object.keys(props)) {
+      if (key.startsWith("data-") || key === "role" || key === "id" || key === "className") {
+        testProps[key] = props[key];
+      }
+    }
+    // Cap the rendered buttons so a huge page count cannot bloat the test DOM.
+    const pageCount = Math.min(Number(total) || 0, 50);
+    return (
+      <div
+        ref={ref}
+        data-component="Pagination"
+        data-current={String(value ?? "")}
+        data-total={String(total ?? "")}
+        {...testProps}
+      >
+        {Array.from({ length: pageCount }, (_, i) => (
+          <button
+            key={i + 1}
+            type="button"
+            data-testid={`pagination-page-${i + 1}`}
+            data-active={value === i + 1 ? "true" : undefined}
+            onClick={() => (onChange as ((page: number) => void) | undefined)?.(i + 1)}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
+    );
+  }
+);
+PaginationComp.displayName = "Pagination";
 const Paper = makeComponent("Paper");
 const StackComp = makeComponent("Stack");
 const TextComp = makeComponent("Text");

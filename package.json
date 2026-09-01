@@ -7,6 +7,7 @@
     "build": "pnpm build:registry && pnpm --filter @buildpad/utils build && pnpm --filter @buildpad/ui-form build && pnpm -r --filter '!@buildpad/utils' --filter '!@buildpad/ui-form' build",
     "build:cli": "pnpm --filter @buildpad/cli build",
     "build:registry": "node scripts/build-registry.mjs",
+    "version:packages": "changeset version && pnpm build:registry",
     "registry:check": "node scripts/build-registry.mjs --check",
     "build:host": "pnpm --filter storybook-host build",
     "build:mcp": "pnpm --filter @buildpad/mcp build",

@@ -25,14 +25,15 @@ npx @buildpad/cli@latest add button
 │                    @buildpad/cli (npm)                          │
 │                                                                  │
 │  1. Loads registry.json (local if in monorepo, remote otherwise) │
-│  2. Fetches source files from GitHub raw CDN                     │
+│  2. Fetches source files from GitHub raw CDN, PINNED to the      │
+│     `v<its own version>` release tag                             │
 │  3. Transforms imports & copies to user's project                │
 └────────────────┬─────────────────────────────────────────────────┘
                  │ fetch()
                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │      GitHub raw.githubusercontent.com                            │
-│      microbuild-ui/ui/main/packages/…                            │
+│      buildpad-ai/ui/v<cli version>/packages/…                    │
 │                                                                  │
 │  registry.json        ← component manifest                      │
 │  types/src/core.ts    ← source files                             │
@@ -81,7 +82,7 @@ main  ←── stable, always publishable
 
 ### 1. Replace placeholder repository URL
 
-Search for `microbuild-ui/ui` across:
+Search for `buildpad-ai/ui` across:
 - [packages/mcp-server/package.json](packages/mcp-server/package.json) → `repository.url` (package name: `@buildpad/mcp`)
 - [packages/cli/src/resolver.ts](packages/cli/src/resolver.ts) → `DEFAULT_REGISTRY_URL`
 - [.github/workflows/publish.yml](.github/workflows/publish.yml)
@@ -151,10 +152,42 @@ pnpm changeset
 
 This prompts you to:
 1. Select changed packages (`@buildpad/cli`, `@buildpad/mcp`)
-2. Pick bump type: `patch` (bug fix), `minor` (new feature), `major` (breaking)
+2. Pick a bump type — see the table below
 3. Write a summary
 
 A `.changeset/<random-name>.md` file is created — commit it.
+
+#### Bump types
+
+Pick by **what changed**, not by how the change feels:
+
+| bump | when |
+|---|---|
+| `major` | a breaking change to a published API or a consumer-visible contract |
+| `minor` | any release that changes component source — **the default** |
+| `patch` | docs, templates, MCP server, or CLI fixes only; no component source change |
+
+`minor` is the default because it is the signal consumers read. A bug fix in
+`packages/ui-collections/src/CollectionForm.tsx` is still `minor` — the
+severity of the change does not matter, only whether there is new component
+source to pull. This is the one place the convention departs from ordinary
+semver habit, where a bug fix would be `patch`.
+
+Two facts make the bump type a labelling decision rather than a functional
+one, so getting it wrong is cheap to correct but easy to let drift:
+
+- All 13 packages ship in lockstep (a single `fixed` group in
+  `.changeset/config.json`), so every release moves every package to the same
+  version. Changesets takes the **maximum** bump across all pending
+  changesets — one `minor` in the queue makes the whole release a minor.
+- Staleness is content-based, not version-based. `buildpad outdated` compares
+  each file's `sourceSha256` against the manifest (see
+  `packages/cli/src/utils/staleness.ts`); `lastChangedIn` in the registry is
+  display data only. Consumers get the right answer regardless of what the
+  version number says.
+
+Nothing enforces this yet — the `registry:check` bump-type guard is deferred —
+so it is applied by hand at review time.
 
 ### Step 3: Push and open a PR
 
@@ -176,7 +209,15 @@ After review, merge the PR. The Changesets GitHub Action will:
 
 When you merge this PR:
 - Changesets publishes to npm automatically
-- Git tags are created (e.g., `@buildpad/cli@0.2.0`)
+- Changesets creates one tag per package (e.g. `@buildpad/cli@2.0.0`)
+- The workflow then creates **one plain `v<version>` tag** for the release
+  (e.g. `v2.0.0`)
+
+That plain tag is not cosmetic. The CLI pins every source fetch to
+`v<its own version>`, so without it a published release is unreachable:
+`add` cannot resolve its own sources and `upgrade` cannot resolve a diff3 base.
+If a publish ever succeeds and the tag step does not, create the tag by hand at
+the release commit before anyone installs that version.
 
 ---
 
@@ -208,30 +249,21 @@ pnpm changeset publish
 git push --follow-tags
 ```
 
-### Quick publish (skip changesets)
+### Never publish outside this flow
 
-For a one-off publish without the changeset flow, use a granular access token:
+There used to be a "quick publish" recipe here that ran `npm publish` directly
+with a granular token. Do not do that, and do not reintroduce it.
 
-```bash
-# Build
-pnpm build
+A publish outside the workflow produces no `v<version>` tag, no changesets
+tags, no CHANGELOG entry, and no commit that records the version. That is not
+an inconvenience — it makes the release **unusable**. `@buildpad/cli@1.11.0`
+was published this way: it exists on npm and nowhere in this repository, so
+every consumer that installed it recorded `1.11.0` in `buildpad.json`, and
+every three-way merge those consumers attempted degraded to a `.new` file
+because no ref by that name could ever be found.
 
-# Publish CLI
-cd packages/cli
-echo "//registry.npmjs.org/:_authToken=YOUR_GRANULAR_TOKEN" > .npmrc
-npm publish --access public
-rm .npmrc
-
-# Publish MCP server
-cd ../mcp-server
-echo "//registry.npmjs.org/:_authToken=YOUR_GRANULAR_TOKEN" > .npmrc
-npm publish --access public
-rm .npmrc
-```
-
-> **Note:** Always clean up `.npmrc` files after publishing to avoid committing tokens.
->
-> The packages are published as `@buildpad/cli` and `@buildpad/mcp` on npmjs.com under the `@buildpad` organization.
+If a release must go out urgently, use the workflow_dispatch trigger on the
+Publish workflow. It runs the same steps, tag included.
 
 ---
 
@@ -302,10 +334,17 @@ packages/registry.json            ← Generated artifact (includes versions,
 The generator (`scripts/build-registry.mjs`):
 1. Reads all `packages/*/package.json` → produces a `packages` map with current semver and `changelogUrl`
 2. For each component file, computes `sha256(source)` — the canonical hash of **untransformed** source bytes
-3. Sets `lastChangedIn` from git history (so `outdated` can skip "package bumped but file is byte-identical" cases)
+3. Sets `lastChangedIn` from git history — **display data only** since manifest
+   v3; no CLI decision reads it
 4. Writes `packages/registry.json` with `schemaVersion: 2`
 
-**Why SHA256 on untransformed source:** The CLI transforms imports based on each consumer's alias config. By hashing the raw source in the registry and letting the CLI hash the transformed local file, we avoid per-consumer hash drift while still detecting local modifications.
+**Why SHA256 on untransformed source:** The CLI transforms imports based on each
+consumer's alias config, so a hash of the *transformed* file differs per
+consumer. The registry therefore hashes the raw source, and the CLI records
+both: the registry's `sourceSha256` (to detect that **upstream** changed) and
+its own hash of the transformed file (to detect that the **consumer** changed
+it). Those two questions are independent, which is what lets `upgrade` leave a
+locally-edited file alone when upstream did not move.
 
 The root `package.json` wires this into the build (`ui-form` builds first — other packages need its `.d.ts`):
 ```json
@@ -325,18 +364,53 @@ The root `package.json` wires this into the build (`ui-form` builds first — ot
 When `@buildpad/cli` is installed via npm (not running from the monorepo), it:
 
 1. **Detects remote mode** — no `registry.json` exists next to the built CLI
-2. **Fetches `registry.json`** from GitHub raw URL:
+2. **Resolves its ref** — `v<its own package.json version>`
+3. **Fetches `registry.json`** from that ref:
    ```
-   https://raw.githubusercontent.com/microbuild-ui/ui/main/packages/registry.json
+   https://raw.githubusercontent.com/buildpad-ai/ui/v2.0.0/packages/registry.json
    ```
-3. **Fetches individual source files** (e.g., `types/src/core.ts`) from the same base URL
-4. **Transforms imports** and writes files to the user's project
+4. **Fetches individual source files** (e.g., `types/src/core.ts`) from the same ref
+5. **Transforms imports** and writes files to the user's project, recording the
+   ref in `buildpad.json`
 
-### Overriding the registry URL
+### Why the fetch is pinned to a tag
+
+The CLI used to read everything from `main`. The registry it read declared one
+release version, but `main` moves between releases — so `add` copied
+post-release content and recorded it under the *previous* release's version,
+and `upgrade --three-way` then fetched a diff3 base older than what the
+consumer actually had on disk. Merges ran against the wrong ancestor. Between
+`1.10.0` and `1.11.1` that window covered 119 component and lib source files.
+
+Pinning removes the window entirely:
+
+- **Reproducible.** `npx @buildpad/cli@2.0.0 add input` resolves the same bytes
+  on any day, on any machine.
+- **Self-consistent.** The registry the CLI reads is always the registry built
+  with that CLI, so schema compatibility holds by construction.
+- **Cache-safe.** Tags are immutable, so no CDN cache can serve newer content.
+- **Pin components by pinning the CLI.** There is no second version to manage.
+
+`buildpad outdated` also asks npm for the `latest` dist-tag and prints a hint
+when the running CLI is behind it — otherwise a pinned old CLI would honestly
+report "up to date" against its own pinned registry forever. The check is
+advisory and is skipped silently when npm is unreachable.
+
+### Overriding the ref or the registry URL
 
 ```bash
+# Read unreleased content from a branch (records ref: main in buildpad.json)
+npx @buildpad/cli add input --ref main
+
+# Same, via the environment
+BUILDPAD_REF=main npx @buildpad/cli add input
+
+# Point at a mirror or a local static server entirely
 BUILDPAD_REGISTRY_URL=https://your-cdn.com/packages npx @buildpad/cli add input
 ```
+
+Whatever a fetch actually resolved to is what gets recorded per file in
+`buildpad.json`, so the next `upgrade` uses the true common ancestor.
 
 ### Local mode (development)
 
@@ -365,11 +439,24 @@ All 10 `@buildpad/*` packages release **in lockstep** — same version, every re
 @buildpad/hooks@1.1.0           ←  useAuth, usePermissions, …
 ```
 
-Lockstep does **not** make `buildpad outdated` noisy: each component's `lastChangedIn` is derived from git tags by `scripts/build-registry.mjs`, so components whose files didn't change keep their older `lastChangedIn` and consumers stay "up to date".
+Lockstep does **not** make `buildpad outdated` noisy. Since manifest v3 the CLI
+decides staleness by **content**, not by version: it compares the registry's
+per-file `sourceSha256` with the hash recorded in `buildpad.json` at install
+time. A lockstep bump that leaves a component's files byte-identical produces
+no report for that component, whatever the version numbers say.
 
-> **⚠️ Version floor: never release below `1.1.0`.** Consumer `buildpad.json` manifests written before per-package versioning recorded every component at `1.0.0`, and the CLI's outdated check is `semverGte(installed, lastChangedIn)`. The `0.1.x`–`0.2.0` series was therefore invisible to all existing consumers — upgrades silently never triggered. Versions must only move forward from `1.1.0`.
+> **The old "version floor: never release below 1.1.0" rule is gone.** It
+> existed only because staleness used to be `semverGte(installed, lastChangedIn)`,
+> which made correctness depend on version arithmetic and on git tags being
+> present when the registry was built. Nothing in the v3 path reads a version,
+> a tag, or git history, so there is no floor to protect.
 
-Also bump the top-level `"version"` in `packages/registry.template.json` to the release version — v1 manifests compare against it directly, and `changeset version` does not touch it.
+`lastChangedIn` is still written into the registry, but as **display data
+only** — no CLI decision reads it.
+
+Also bump the top-level `"version"` in `packages/registry.template.json` to the
+release version. It is the registry's `release`, which the CLI records in
+`buildpad.json` and shows in `outdated`; `changeset version` does not touch it.
 
 ### Changesets configuration
 
@@ -397,7 +484,7 @@ All 10 packages (publishable **and** private) are in one `fixed` group in change
 
 ## Checklist Before First Publish
 
-- [ ] Replace `microbuild-ui/ui` with actual repo path (if different)
+- [x] Repository URL points at `buildpad-ai/ui` (no rename redirect)
 - [x] Create `@buildpad` org on npmjs.com
 - [ ] Generate a **Granular Access Token** on npmjs.com (see "Generate a Granular Access Token" above)
 - [ ] Add `NPM_TOKEN` secret to GitHub repo (using the granular token)

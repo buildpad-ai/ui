@@ -15,7 +15,7 @@ This guide covers how to set up and run **Buildpad UI Packages** on Windows.
 npm install -g pnpm
 
 # Clone and install
-git clone https://github.com/microbuild-ui/ui.git
+git clone https://github.com/buildpad-ai/ui.git
 cd buildpad-ui
 pnpm install
 
@@ -56,7 +56,7 @@ For the best compatibility, use Windows Subsystem for Linux:
 wsl --install
 
 # In WSL, follow the standard Linux setup
-git clone https://github.com/microbuild-ui/ui.git
+git clone https://github.com/buildpad-ai/ui.git
 cd buildpad-ui
 pnpm install
 ```

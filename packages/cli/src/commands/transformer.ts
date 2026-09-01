@@ -267,36 +267,54 @@ export function normalizeImportPaths(content: string, targetPath?: string): stri
     return content;
   }
   
+  // Pattern matches relative imports into a sibling component's own folder,
+  // e.g. '../select-icon/SelectIcon'. The folder segment is already the kebab
+  // name the CLI flattens that component to (components/ui/select-icon.tsx),
+  // so the PascalCase filename is dropped entirely rather than kebab-cased —
+  // keeping it (e.g. './select-icon-select-icon') would point at a file that
+  // was never delivered. Handled separately because the PascalCase pattern
+  // below requires the *first* path segment to start uppercase, so an
+  // already-kebab-case folder like 'select-icon' never matches it.
+  const kebabFolderImportPattern = /from\s+['"]\.\.\/([a-z][a-zA-Z0-9-]*)\/[A-Z][a-zA-Z0-9]*['"]/g;
+  let result = content.replace(kebabFolderImportPattern, (_match, folder) => {
+    return `from './${folder}'`;
+  });
+
+  const kebabFolderDynamicImportPattern = /import\s*\(\s*['"]\.\.\/([a-z][a-zA-Z0-9-]*)\/[A-Z][a-zA-Z0-9]*['"]\s*\)/g;
+  result = result.replace(kebabFolderDynamicImportPattern, (_match, folder) => {
+    return `import('./${folder}')`;
+  });
+
   // Pattern matches relative imports with PascalCase filenames
   // e.g., from './InputBlockEditor' or from '../Upload/Upload'
   const pascalCaseImportPattern = /from\s+['"](\.\.\/?|\.\/)([A-Z][a-zA-Z0-9]*(?:\/[A-Z][a-zA-Z0-9]*)?)['"]/g;
-  
-  let result = content.replace(pascalCaseImportPattern, (_match, prefix, importPath) => {
+
+  result = result.replace(pascalCaseImportPattern, (_match, prefix, importPath) => {
     // Extract the last component (filename) from the path
     const parts = importPath.split('/');
     const fileName = parts[parts.length - 1];
-    
+
     // Convert to kebab-case
     const kebabFileName = toKebabCase(fileName);
-    
+
     // If it was a nested path like '../Upload/Upload', flatten to './upload'
     if (prefix === '../' && parts.length >= 1) {
       return `from './${kebabFileName}'`;
     }
-    
+
     // Otherwise, just convert the filename
     return `from '${prefix}${kebabFileName}'`;
   });
-  
+
   // Handle dynamic imports: import('./InputBlockEditor') → import('./input-block-editor')
   // This pattern matches: import('./ComponentName') or import("./ComponentName")
   const dynamicImportPattern = /import\s*\(\s*['"](\.\/)([A-Z][a-zA-Z0-9]*)['"]\s*\)/g;
-  
+
   result = result.replace(dynamicImportPattern, (_match, prefix, componentName) => {
     const kebabName = toKebabCase(componentName);
     return `import('${prefix}${kebabName}')`;
   });
-  
+
   return result;
 }
 

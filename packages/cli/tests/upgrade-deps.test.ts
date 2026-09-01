@@ -75,14 +75,23 @@ vi.mock('../src/resolver.js', () => ({
     throw new Error(`unexpected source: ${source}`);
   }),
   sourceFileExists: vi.fn(async () => true),
+  fetchSourceAtRef: vi.fn(async () => {
+    throw new Error('network unavailable');
+  }),
   fetchSourceAtVersion: vi.fn(async () => {
     throw new Error('network unavailable');
   }),
+  fetchRegistryAtRef: vi.fn(async () => MOCK_REGISTRY),
+  getRecordedRef: () => 'v2.0.0',
+  getSourceRef: () => 'v2.0.0',
+  setSourceRef: vi.fn(),
+  getCliVersion: () => '2.0.0',
+  encodeRef: (r: string) => r,
+  registryBaseUrl: () => 'https://x.test/packages',
   buildPackageTag: (p: string, v: string) => `${p}@${v}`,
   buildVersionedSourceUrl: (r: string, s: string) =>
     `https://x.test/${r}/packages/${s}`,
   CHANGELOG_BASE_URL: 'https://x.test/packages',
-  REGISTRY_BASE_URL: 'https://x.test/packages',
   getTemplatesRoot: () => '/tmp/mock-templates',
   getLocalPackagesRoot: () => '/tmp/mock-packages',
   getBundledRegistry: vi.fn(async () => MOCK_REGISTRY),
@@ -109,7 +118,12 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
-async function setupConsumer(opts: { installedVersion: string; withLib?: boolean }) {
+async function setupConsumer(opts: {
+  installedVersion: string;
+  withLib?: boolean;
+  /** Record the registry's own upstream hash, i.e. nothing changed upstream. */
+  upToDate?: boolean;
+}) {
   const targetRel = 'components/ui/rich-text-markdown.tsx';
   const targetAbs = path.join(tmpdir, targetRel);
   const body = `export function RichTextMarkdown() { return 'v1'; }\n`;
@@ -123,9 +137,14 @@ async function setupConsumer(opts: { installedVersion: string; withLib?: boolean
     await fs.writeFile(libAbs, `export const supabase = 'v1';\n`);
   }
 
+  // v3 staleness is a hash comparison: recording the registry's own hash
+  // ('stub') means nothing changed upstream; anything else means it did.
+  const recordedSourceSha = opts.upToDate ? 'stub' : 'stub-v1';
+
   await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), {
     $schema: 'https://buildpad.dev/schema.json',
-    schemaVersion: 2,
+    schemaVersion: 3,
+    release: opts.installedVersion,
     model: 'copy-own',
     tsx: true,
     srcDir: false,
@@ -134,23 +153,36 @@ async function setupConsumer(opts: { installedVersion: string; withLib?: boolean
     installedComponents: ['rich-text-markdown'],
     components: {
       'rich-text-markdown': {
-        version: opts.installedVersion,
+        release: opts.installedVersion,
+        ref: `v${opts.installedVersion}`,
         sourcePackage: '@buildpad/ui-interfaces',
         installedAt: '2026-01-01T00:00:00Z',
-        files: [{ target: targetRel, sha256: hashTransformed(body) }],
+        files: [{
+          target: targetRel,
+          sourceSha256: recordedSourceSha,
+          sha256: hashTransformed(body),
+          ref: `v${opts.installedVersion}`,
+          state: 'clean',
+        }],
       },
     },
     lib: opts.withLib
       ? {
           'supabase-auth': {
-            version: opts.installedVersion,
+            release: opts.installedVersion,
+            ref: `v${opts.installedVersion}`,
             sourcePackage: '@buildpad/cli',
             installedAt: '2026-01-01T00:00:00Z',
-            files: [{ target: libRel, sha256: hashTransformed(`export const supabase = 'v1';\n`) }],
+            files: [{
+              target: libRel,
+              sourceSha256: recordedSourceSha,
+              sha256: hashTransformed(`export const supabase = 'v1';\n`),
+              ref: `v${opts.installedVersion}`,
+              state: 'clean',
+            }],
           },
         }
       : {},
-    packageVersions: { '@buildpad/ui-interfaces': opts.installedVersion },
   });
 }
 
@@ -192,7 +224,9 @@ describe('upgrade installs newly-introduced deps', () => {
   });
 
   test('everything up to date → no dependency check', async () => {
-    await setupConsumer({ installedVersion: '1.8.0' });
+    // "Up to date" is now a content fact, not a version fact: the recorded
+    // upstream hash equals the registry's.
+    await setupConsumer({ installedVersion: '1.8.0', upToDate: true });
 
     await upgrade({
       components: [],

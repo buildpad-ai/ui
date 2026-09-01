@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-forms",
-  "version": "1.10.0",
+  "version": "2.1.0",
   "description": "Dynamic form builder (design-time authoring + runtime renderer) for Buildpad projects",
   "type": "module",
   "main": "./dist/index.js",
@@ -235,6 +235,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/microbuild-ui/ui"
+    "url": "https://github.com/buildpad-ai/ui"
   }
 }

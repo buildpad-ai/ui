@@ -58,7 +58,7 @@ import {
   IconSortDescending,
   IconX,
 } from "@tabler/icons-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CollectionListFooter } from "./CollectionListFooter";
 import { CollectionListToolbar } from "./CollectionListToolbar";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
@@ -264,6 +264,21 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     Record<string, Partial<HeaderRaw>>
   >({});
 
+  // Identifies the newest list request, so responses that arrive out of order
+  // can be dropped instead of overwriting fresher state.
+  const loadRequestRef = useRef(0);
+
+  // Best known total for the current query (collection + search + filters).
+  // On a large collection DaaS reports the planner's estimate and only proves
+  // the real total when a page contradicts it (meta.total_estimated: false).
+  // That proof is pinned here so later estimated responses cannot resurrect
+  // pages the server already disproved — without it, walking back to page 1
+  // brings the estimate, and its phantom tail of page buttons, straight back.
+  // A ref rather than state: loadItems reads it when a response lands, and
+  // routing it through state would put it in loadItems' dependency list,
+  // refiring the fetch effect on every pin update.
+  const exactTotalRef = useRef<number | null>(null);
+
   // ----- Computed row height -----
   const rowHeight = rowHeightProp ?? SPACING_HEIGHT[tableSpacing] ?? 48;
 
@@ -456,11 +471,29 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     setPage(1);
   }, [collection]);
 
+  // A pinned exact total describes one specific set of matching rows — any
+  // change to what matches invalidates it. Deletes through this list clear it
+  // in handleDeleteConfirm; the refresh button clears it in handleRefresh, as
+  // the escape hatch for rows added or removed outside this component.
+  useEffect(() => {
+    exactTotalRef.current = null;
+  }, [collection, search, mergedFilter, archiveField, archiveFilterMode, archiveValue]);
+
   // =========================================================================
   // Load items (page data only — counts are fetched separately)
   // =========================================================================
   const loadItems = useCallback(async () => {
     if (visibleFieldKeys.length === 0) return;
+    // Responses are not cancelled, so a slow one can land after the user has
+    // already moved on. Ignoring anything but the newest matters more now that
+    // a response can move the page itself: a stale one would otherwise drag the
+    // user off the page they just chose.
+    const requestId = ++loadRequestRef.current;
+    const isStale = () => requestId !== loadRequestRef.current;
+    // Set when this load ends by moving to a different page: the refetch that
+    // follows owns the loading state, so releasing it here would blink the
+    // table between the two.
+    let steppedBack = false;
     try {
       setLoading(true);
       setError(null);
@@ -517,27 +550,62 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       ).toString();
 
       const rawResponse = await apiRequest<
-        { data: Record<string, unknown>[]; meta?: { page?: number; limit?: number; total?: number } } | Record<string, unknown>[]
+        { data: Record<string, unknown>[]; meta?: { page?: number; limit?: number; total?: number; total_estimated?: boolean } } | Record<string, unknown>[]
       >(`/api/items/${collection}${queryString ? `?${queryString}` : ""}`);
+
+      if (isStale()) return;
 
       if (Array.isArray(rawResponse)) {
         setItems(rawResponse);
         setFilterCount(rawResponse.length);
       } else {
-        setItems(rawResponse.data || []);
         // DaaS returns meta.total = total matching rows (ignoring pagination)
-        if (rawResponse.meta?.total != null) {
-          setFilterCount(rawResponse.meta.total);
-        } else {
-          setFilterCount(rawResponse.data?.length ?? 0);
+        const reported = rawResponse.meta?.total;
+        const fetched =
+          typeof reported === "number" && Number.isFinite(reported)
+            ? reported
+            : null;
+
+        // total_estimated: false is the server's guarantee that this total is
+        // exact, so it outranks every estimate that follows: pin it, and while
+        // a pin exists ignore estimated totals entirely — they come from the
+        // same stale statistics the pin already corrected. Exact responses
+        // keep refreshing the pin (the last page, any short page, every small
+        // collection), so it tracks the freshest proven number. A server that
+        // never sends the flag never pins, and behaves exactly as before.
+        if (fetched !== null && rawResponse.meta?.total_estimated === false) {
+          exactTotalRef.current = fetched;
         }
+        const total = exactTotalRef.current ?? fetched;
+
+        // The total can shrink under us — rows deleted since the page was
+        // rendered, or, on a large collection where DaaS reports the planner's
+        // estimate, a total the server has just corrected downwards. Either way
+        // the current page can end up past the end of the collection, showing
+        // an empty table beneath a footer that claims rows. Step back to the
+        // last page that exists instead of stranding the user there.
+        //
+        // Only a total we can actually count pages from may move the user, and
+        // the overshot page is never painted: the refetch is already on its way,
+        // so committing its empty rows would flash the very state this avoids.
+        const lastPage = total === null ? page : Math.max(1, Math.ceil(total / limit));
+        if (page > lastPage) {
+          steppedBack = true;
+          setFilterCount(total ?? 0);
+          setPage(lastPage);
+          return;
+        }
+
+        setItems(rawResponse.data || []);
+        setFilterCount(total ?? rawResponse.data?.length ?? 0);
       }
     } catch (err) {
+      if (isStale()) return;
       console.error("Error loading items:", err);
       setError(err instanceof Error ? err.message : "Failed to load items");
       setItems([]);
     } finally {
-      setLoading(false);
+      if (!steppedBack && !isStale()) setLoading(false);
     }
   }, [
     collection,
@@ -1081,6 +1149,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       setDeletingIds([]);
       setSelectedItems([]);
       onDeleteSuccess?.(deletingIds);
+      // The rows just changed under the pinned total, so drop it — the refetch
+      // below re-establishes whichever total the server can now prove.
+      exactTotalRef.current = null;
       // Refresh list and counts (loadItems also updates filterCount via meta.total)
       loadItems();
       getTotalCount();
@@ -1092,6 +1163,14 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       setDeleteLoading(false);
     }
   }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess]);
+
+  // Manual refresh is the user saying "re-sync with the server" — which
+  // includes rows other people added or removed since the pinned total was
+  // proven, so the pin goes first.
+  const handleRefresh = useCallback(() => {
+    exactTotalRef.current = null;
+    loadItems();
+  }, [loadItems]);
 
   const handleDeleteCancel = useCallback(() => {
     setDeleteConfirmOpen(false);
@@ -1150,7 +1229,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         archiveField={archiveField}
         archiveFilterMode={archiveFilterMode}
         onArchiveFilterChange={setArchiveFilterMode}
-        onRefresh={loadItems}
+        onRefresh={handleRefresh}
         enableSelection={enableSelection}
         selectedIds={selectedIds}
         selectedRows={selectedItems as Record<string, unknown>[]}

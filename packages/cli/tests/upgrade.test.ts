@@ -77,6 +77,16 @@ export function Demo() {
 
 const NEW_GLOBALS = `body { color: green; }\n/* globals v2 */\n`;
 
+/**
+ * Refs the mocked `fetchSourceAtRef` was asked for, so tests can assert that
+ * the diff3 base is fetched at the ref recorded per file (Issue 10) rather
+ * than at a tag guessed from a version number.
+ */
+const baseFetches: Array<{ source: string; ref: string }> = [];
+
+/** Content the mock serves as the diff3 base, keyed by ref. Missing ref → throws. */
+const baseByRef = new Map<string, string>();
+
 vi.mock('../src/resolver.js', () => ({
   getRegistry: vi.fn(async () => MOCK_REGISTRY),
   resolveSourceFile: vi.fn(async (source: string) => {
@@ -85,15 +95,27 @@ vi.mock('../src/resolver.js', () => ({
     throw new Error(`unexpected source: ${source}`);
   }),
   sourceFileExists: vi.fn(async () => true),
+  fetchSourceAtRef: vi.fn(async (source: string, ref: string) => {
+    baseFetches.push({ source, ref });
+    const content = baseByRef.get(ref);
+    // Default: simulate an unreachable ref — upgrade should degrade to .new.
+    if (content === undefined) throw new Error(`unreachable ref: ${ref}`);
+    return content;
+  }),
   fetchSourceAtVersion: vi.fn(async () => {
-    // Simulate "no network" — upgrade should degrade to .new
     throw new Error('network unavailable');
   }),
+  fetchRegistryAtRef: vi.fn(async () => MOCK_REGISTRY),
+  getRecordedRef: () => 'v2.0.0',
+  getSourceRef: () => 'v2.0.0',
+  setSourceRef: vi.fn(),
+  getCliVersion: () => '2.0.0',
+  encodeRef: (r: string) => r,
+  registryBaseUrl: () => 'https://x.test/packages',
   buildPackageTag: (p: string, v: string) => `${p}@${v}`,
   buildVersionedSourceUrl: (r: string, s: string) =>
     `https://x.test/${r}/packages/${s}`,
   CHANGELOG_BASE_URL: 'https://x.test/packages',
-  REGISTRY_BASE_URL: 'https://x.test/packages',
   // init.ts calls this at module load time — must be present in the mock
   getTemplatesRoot: () => '/tmp/mock-templates',
   getLocalPackagesRoot: () => '/tmp/mock-packages',
@@ -119,15 +141,29 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await fs.remove(tmpdir);
+  baseFetches.length = 0;
+  baseByRef.clear();
   vi.clearAllMocks();
 });
 
+/** The registry's hash for demo.tsx. Anything else means upstream moved. */
+const UPSTREAM_SHA = 'stub';
+/** An older upstream revision — a record holding this is stale. */
+const OLD_UPSTREAM_SHA = 'stub-v1';
+
 interface SetupOpts {
+  /** Release recorded on the component (display only in v3). */
   installedVersion: string;
   fileBody: string;
   /** When provided, this is the sha recorded in the manifest. Otherwise
    *  it's derived from `fileBody` (i.e. file is "pristine"). */
   recordedSha?: string;
+  /** Upstream hash recorded at install. Defaults to an older revision, so
+   *  the component reads as stale. Pass UPSTREAM_SHA for "already current". */
+  recordedSourceSha?: string;
+  /** Ref recorded for the file — the diff3 base `upgrade` must fetch at. */
+  recordedRef?: string;
+  state?: 'clean' | 'pending';
 }
 
 async function setupConsumer(opts: SetupOpts) {
@@ -141,7 +177,8 @@ async function setupConsumer(opts: SetupOpts) {
 
   await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), {
     $schema: 'https://buildpad.dev/schema.json',
-    schemaVersion: 2,
+    schemaVersion: 3,
+    release: opts.installedVersion,
     model: 'copy-own',
     tsx: true,
     srcDir: false,
@@ -153,16 +190,20 @@ async function setupConsumer(opts: SetupOpts) {
     installedComponents: ['demo'],
     components: {
       demo: {
-        version: opts.installedVersion,
+        release: opts.installedVersion,
+        ref: opts.recordedRef ?? `v${opts.installedVersion}`,
         sourcePackage: '@buildpad/ui-interfaces',
         installedAt: '2026-01-01T00:00:00Z',
-        files: [{ target: targetRel, sha256: recordedSha }],
+        files: [{
+          target: targetRel,
+          sourceSha256: opts.recordedSourceSha ?? OLD_UPSTREAM_SHA,
+          sha256: recordedSha,
+          ref: opts.recordedRef ?? `v${opts.installedVersion}`,
+          state: opts.state ?? 'clean',
+        }],
       },
     },
     lib: {},
-    packageVersions: {
-      '@buildpad/ui-interfaces': opts.installedVersion,
-    },
   });
 
   return { targetAbs, targetRel };
@@ -189,8 +230,11 @@ describe('upgrade — pristine file', () => {
     expect(await fs.pathExists(targetAbs + '.new')).toBe(false);
 
     const manifest = await readManifest();
-    expect(manifest.components.demo.version).toBe('2.0.0');
-    expect(manifest.packageVersions['@buildpad/ui-interfaces']).toBe('2.0.0');
+    expect(manifest.components.demo.release).toBe('2.0.0');
+    expect(manifest.release).toBe('2.0.0');
+    // The file now carries the registry's upstream hash and is clean.
+    expect(manifest.components.demo.files[0].sourceSha256).toBe(UPSTREAM_SHA);
+    expect(manifest.components.demo.files[0].state).toBe('clean');
   });
 });
 
@@ -243,7 +287,7 @@ describe('upgrade --strategy=three-way', () => {
 
     await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'three-way' });
 
-    // Original kept, .new created (because mock fetchSourceAtVersion throws)
+    // Original kept, .new created (the recorded ref is unreachable in the mock)
     expect(await fs.readFile(targetAbs, 'utf8')).toContain('customisation');
     expect(await fs.pathExists(targetAbs + '.new')).toBe(true);
   });
@@ -307,7 +351,8 @@ async function setupDesignConsumer(opts: DesignSetupOpts) {
 
   await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), {
     $schema: 'https://buildpad.dev/schema.json',
-    schemaVersion: 2,
+    schemaVersion: 3,
+    release: opts.installedVersion,
     model: 'copy-own',
     tsx: true,
     srcDir: false,
@@ -317,17 +362,59 @@ async function setupDesignConsumer(opts: DesignSetupOpts) {
     components: {},
     lib: {
       'design-system': {
-        version: opts.installedVersion,
+        release: opts.installedVersion,
+        ref: `v${opts.installedVersion}`,
         sourcePackage: '@buildpad/cli',
         installedAt: '2026-01-01T00:00:00Z',
-        files: [{ target: targetRel, sha256: recordedSha }],
+        files: [{
+          target: targetRel,
+          sourceSha256: OLD_UPSTREAM_SHA,
+          sha256: recordedSha,
+          ref: `v${opts.installedVersion}`,
+          state: 'clean',
+        }],
       },
     },
-    packageVersions: { '@buildpad/cli': opts.installedVersion },
   });
 
   return { targetAbs, targetRel };
 }
+
+describe('upgrade --all', () => {
+  test('also re-syncs installed lib modules, not just components', async () => {
+    // Consumer has both a component and a lib module installed.
+    await setupConsumer({ installedVersion: '1.0.0', fileBody: 'export const old = 1;\n' });
+
+    const manifest = await readManifest();
+    manifest.installedLib = ['design-system'];
+    manifest.lib['design-system'] = {
+      release: '1.1.0',
+      ref: 'v1.1.0',
+      sourcePackage: '@buildpad/cli',
+      installedAt: '2026-01-01T00:00:00Z',
+      files: [{
+        target: 'app/globals.css',
+        sourceSha256: OLD_UPSTREAM_SHA,
+        sha256: 'stale-hash',
+        ref: 'v1.1.0',
+        state: 'clean',
+      }],
+    };
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), manifest);
+
+    const globalsAbs = path.join(tmpdir, 'app/globals.css');
+    await fs.ensureDir(path.dirname(globalsAbs));
+    await fs.writeFile(globalsAbs, 'body { color: red; }\n');
+
+    await upgrade({ components: [], all: true, force: true, cwd: tmpdir, strategy: 'overwrite' });
+
+    // The lib module must be re-synced too — this used to be silently skipped
+    // because `--all` only populated targetComponents, never targetLibModules.
+    expect(await fs.readFile(globalsAbs, 'utf8')).toContain('globals v2');
+    const after = await readManifest();
+    expect(after.lib['design-system'].release).toBe('2.0.0');
+  });
+});
 
 describe('upgrade --design', () => {
   test('overwrites a pristine design file and bumps the module version', async () => {
@@ -344,8 +431,8 @@ describe('upgrade --design', () => {
     expect(await fs.pathExists(targetAbs + '.new')).toBe(false);
 
     const manifest = await readManifest();
-    expect(manifest.lib['design-system'].version).toBe('2.0.0');
-    expect(manifest.packageVersions['@buildpad/cli']).toBe('2.0.0');
+    expect(manifest.lib['design-system'].release).toBe('2.0.0');
+    expect(manifest.release).toBe('2.0.0');
   });
 
   test('preserves local edits via .new when base is unavailable (three-way)', async () => {
@@ -372,10 +459,17 @@ describe('upgrade --design', () => {
     const manifest = await readManifest();
     manifest.installedComponents = ['demo'];
     manifest.components.demo = {
-      version: '1.0.0',
+      release: '1.0.0',
+      ref: 'v1.0.0',
       sourcePackage: '@buildpad/ui-interfaces',
       installedAt: '2026-01-01T00:00:00Z',
-      files: [{ target: 'components/ui/demo.tsx', sha256: 'whatever' }],
+      files: [{
+        target: 'components/ui/demo.tsx',
+        sourceSha256: OLD_UPSTREAM_SHA,
+        sha256: 'whatever',
+        ref: 'v1.0.0',
+        state: 'clean',
+      }],
     };
     await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), manifest);
     const demoAbs = path.join(tmpdir, 'components/ui/demo.tsx');
@@ -386,9 +480,9 @@ describe('upgrade --design', () => {
 
     // demo component left untouched (still v1, file unchanged)
     const after = await readManifest();
-    expect(after.components.demo.version).toBe('1.0.0');
+    expect(after.components.demo.release).toBe('1.0.0');
     expect(await fs.readFile(demoAbs, 'utf8')).toContain('old = 1');
-    expect(after.lib['design-system'].version).toBe('2.0.0');
+    expect(after.lib['design-system'].release).toBe('2.0.0');
   });
 
   test('adopts an untracked design-system (no lib record) by installing it', async () => {
@@ -399,7 +493,7 @@ describe('upgrade --design', () => {
     await fs.writeFile(targetAbs, 'body { color: red; }\n');
     await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), {
       $schema: 'https://buildpad.dev/schema.json',
-      schemaVersion: 2,
+      schemaVersion: 3,
       model: 'copy-own',
       tsx: true,
       srcDir: false,
@@ -408,14 +502,218 @@ describe('upgrade --design', () => {
       installedComponents: [],
       components: {},
       lib: {},
-      packageVersions: {},
     });
 
     await upgrade({ components: [], design: true, cwd: tmpdir, strategy: 'overwrite' });
 
     const manifest = await readManifest();
     expect(manifest.installedLib).toContain('design-system');
-    expect(manifest.lib['design-system'].version).toBe('2.0.0');
+    expect(manifest.lib['design-system'].release).toBe('2.0.0');
     expect(await fs.readFile(targetAbs, 'utf8')).toContain('globals v2');
+  });
+});
+
+// ── v3 behaviour: what the upgrade records, and what it refuses to touch ────
+
+describe('upgrade — pending state (Issue 3)', () => {
+  test('a .new file leaves the entry stale instead of marking it upgraded', async () => {
+    // Pre-v3 the upgrade wrote `version: latest` after writing a .new file, so
+    // the next `outdated` reported the component as current and the unresolved
+    // file never surfaced again.
+    const MODIFIED = 'export const my = "customisation";\n';
+    await setupConsumer({
+      installedVersion: '1.0.0',
+      fileBody: MODIFIED,
+      recordedSha: 'different-hash-than-modified',
+    });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'new-file' });
+
+    const file = (await readManifest()).components.demo.files[0];
+    expect(file.state).toBe('pending');
+    // The OLD upstream hash is kept, so the next run still sees a difference.
+    expect(file.sourceSha256).toBe(OLD_UPSTREAM_SHA);
+    expect(file.ref).toBe('v1.0.0');
+  });
+
+  test('re-running after a .new still reports the component as stale', async () => {
+    const MODIFIED = 'export const my = "customisation";\n';
+    await setupConsumer({
+      installedVersion: '1.0.0',
+      fileBody: MODIFIED,
+      recordedSha: 'different-hash-than-modified',
+    });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'new-file' });
+    // Second run with no explicit target: default targeting must still pick it.
+    await upgrade({ components: [], cwd: tmpdir, strategy: 'new-file' });
+
+    expect((await readManifest()).components.demo.files[0].state).toBe('pending');
+  });
+
+  test('an overwrite clears pending and adopts the new upstream hash', async () => {
+    const MODIFIED = 'export const my = "customisation";\n';
+    await setupConsumer({
+      installedVersion: '1.0.0',
+      fileBody: MODIFIED,
+      recordedSha: 'different-hash-than-modified',
+      state: 'pending',
+    });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'overwrite' });
+
+    const file = (await readManifest()).components.demo.files[0];
+    expect(file.state).toBe('clean');
+    expect(file.sourceSha256).toBe(UPSTREAM_SHA);
+    expect(file.ref).toBe('v2.0.0');
+  });
+});
+
+describe('upgrade — upstream unchanged (Issue 8)', () => {
+  test('leaves a locally-modified file alone when upstream did not move', async () => {
+    // The old behaviour prompted for every locally-modified file in a stale
+    // component, offering to overwrite the user's edits with identical content.
+    const MODIFIED = 'export const my = "customisation";\n';
+    const { targetAbs } = await setupConsumer({
+      installedVersion: '2.0.0',
+      fileBody: MODIFIED,
+      recordedSha: 'different-hash-than-modified',
+      recordedSourceSha: UPSTREAM_SHA, // upstream is exactly what we installed
+    });
+
+    // strategy 'prompt' would hang on a prompt if the file were considered.
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'prompt' });
+
+    expect(await fs.readFile(targetAbs, 'utf8')).toBe(MODIFIED);
+    expect(await fs.pathExists(targetAbs + '.new')).toBe(false);
+    expect((await readManifest()).components.demo.files[0].state).toBe('clean');
+  });
+
+  test('--force re-syncs even an unchanged file', async () => {
+    const PRISTINE = 'export const old = 1;\n';
+    const { targetAbs } = await setupConsumer({
+      installedVersion: '2.0.0',
+      fileBody: PRISTINE,
+      recordedSourceSha: UPSTREAM_SHA,
+    });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, force: true, strategy: 'overwrite' });
+
+    expect(await fs.readFile(targetAbs, 'utf8')).toContain('Demo v2');
+  });
+});
+
+describe('upgrade — removed upstream', () => {
+  test('keeps the file on disk and stops tracking it', async () => {
+    const { targetAbs } = await setupConsumer({
+      installedVersion: '1.0.0',
+      fileBody: 'export const old = 1;\n',
+    });
+
+    // Manifest records a second file the registry no longer ships.
+    const manifest = await readManifest();
+    const goneRel = 'components/ui/demo-legacy.tsx';
+    manifest.components.demo.files.push({
+      target: goneRel,
+      sourceSha256: OLD_UPSTREAM_SHA,
+      sha256: 'whatever',
+      ref: 'v1.0.0',
+      state: 'clean',
+    });
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), manifest);
+    const goneAbs = path.join(tmpdir, goneRel);
+    await fs.ensureDir(path.dirname(goneAbs));
+    await fs.writeFile(goneAbs, 'export const legacy = 1;\n');
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'overwrite' });
+
+    // Copy-and-own: the file is the consumer's, so it survives.
+    expect(await fs.pathExists(goneAbs)).toBe(true);
+    // But it is no longer tracked, so it does not report stale forever.
+    const after = await readManifest();
+    expect(after.components.demo.files.map((f: any) => f.target)).toEqual([
+      'components/ui/demo.tsx',
+    ]);
+    expect(await fs.readFile(targetAbs, 'utf8')).toContain('Demo v2');
+  });
+});
+
+describe('upgrade — diff3 base (Issue 10)', () => {
+  test('fetches the base at the ref recorded for the file, not a guessed tag', async () => {
+    // The recorded ref (v1.4.2) is deliberately unrelated to both the CLI's own
+    // ref (v2.0.0) and any changesets-style tag the old code would have built
+    // from the version, so only the manifest's ref can produce this call.
+    baseByRef.set('v1.4.2', 'export const old = 1;\n');
+
+    await setupConsumer({
+      installedVersion: '1.4.2',
+      fileBody: 'export const old = 1;\n// my edit\n',
+      recordedSha: 'different-hash-than-modified',
+      recordedRef: 'v1.4.2',
+    });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'three-way' });
+
+    expect(baseFetches).toEqual([
+      { source: 'ui-interfaces/src/demo/Demo.tsx', ref: 'v1.4.2' },
+    ]);
+    // The legacy version-guessing path must not be consulted for a v3 record.
+    const { fetchSourceAtVersion } = await import('../src/resolver.js');
+    expect(fetchSourceAtVersion).not.toHaveBeenCalled();
+  });
+
+  test('a locally-modified file is never silently clobbered by the merge', async () => {
+    baseByRef.set('v1.4.2', 'export const old = 1;\n');
+
+    const { targetAbs } = await setupConsumer({
+      installedVersion: '1.4.2',
+      fileBody: 'export const old = 1;\n// my edit\n',
+      recordedSha: 'different-hash-than-modified',
+      recordedRef: 'v1.4.2',
+    });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'three-way' });
+
+    // Whether diff3 merges cleanly or conflicts depends on the content; either
+    // way the edit must survive — in place, or in the file left on disk beside
+    // a .new.
+    const onDisk = await fs.readFile(targetAbs, 'utf8');
+    const newSibling = (await fs.pathExists(targetAbs + '.new'))
+      ? await fs.readFile(targetAbs + '.new', 'utf8')
+      : '';
+    expect(onDisk + newSibling).toContain('my edit');
+  });
+
+  test('honours a non-tag ref recorded by --ref main', async () => {
+    const BASE = 'export const old = 1;\n';
+    baseByRef.set('main', BASE);
+
+    await setupConsumer({
+      installedVersion: '1.4.2',
+      fileBody: BASE + '// my edit\n',
+      recordedSha: 'different-hash-than-modified',
+      recordedRef: 'main',
+    });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'three-way' });
+
+    expect(baseFetches).toEqual([
+      { source: 'ui-interfaces/src/demo/Demo.tsx', ref: 'main' },
+    ]);
+  });
+
+  test('an unreachable ref degrades to .new and marks the file pending', async () => {
+    // baseByRef is empty, so the mock throws for any ref.
+    const { targetAbs } = await setupConsumer({
+      installedVersion: '1.4.2',
+      fileBody: 'export const old = 1;\n// my edit\n',
+      recordedSha: 'different-hash-than-modified',
+      recordedRef: 'v1.4.2',
+    });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'three-way' });
+
+    expect(await fs.pathExists(targetAbs + '.new')).toBe(true);
+    expect((await readManifest()).components.demo.files[0].state).toBe('pending');
   });
 });

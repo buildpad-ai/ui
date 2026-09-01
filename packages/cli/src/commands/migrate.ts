@@ -1,16 +1,25 @@
 /**
  * Buildpad CLI - Migrate Command
  *
- * One-shot v1 → v2 migration of buildpad.json.
+ * Brings buildpad.json up to schema v3.
  *
- * What it does:
- *   1. Reads the existing buildpad.json
- *   2. Fetches the registry to get per-package versions
- *   3. For each installed component: re-fetches source files, transforms them
- *      in-memory, computes sha256 via hashTransformed(), and records in config.components
- *   4. Writes schemaVersion: 2 back to buildpad.json
+ * v1 → v3: the manifest has no per-file records at all. Every installed
+ *   component's sources are re-fetched, transformed in memory, and hashed so
+ *   local modifications become detectable.
  *
- * Safe to re-run — already-populated v2 entries are refreshed, not duplicated.
+ * v2 → v3: the manifest has local hashes but no UPSTREAM hashes, so the v3
+ *   content comparison has nothing to compare against. For each component the
+ *   registry is fetched at `v<recorded version>` — the release the component
+ *   was installed from — and each file's `sourceSha256` is copied out of it,
+ *   with `ref` set to that tag and `state` to `clean`.
+ *
+ *   When that tag is unreachable (releases before the `v<version>` tags
+ *   existed, or the two releases that shipped with no tag at all), the file
+ *   takes the CURRENT registry hash and is marked `pending` instead. Pending
+ *   is deliberately pessimistic: `outdated` keeps reporting the file until a
+ *   real `upgrade` writes it, so a wrong baseline cannot go unnoticed.
+ *
+ * Safe to re-run — already-populated entries are refreshed, not duplicated.
  */
 
 import path from 'path';
@@ -27,6 +36,8 @@ import {
   getRegistry as fetchRegistry,
   resolveSourceFile,
   sourceFileExists,
+  fetchRegistryAtRef,
+  getRecordedRef,
   type Registry,
 } from '../resolver.js';
 import {
@@ -37,7 +48,7 @@ import {
   addOriginHeader,
   hashTransformed,
 } from './transformer.js';
-import { inferSourcePackage, resolvePackageVersion } from '../utils/checksum.js';
+import { registryFilesOf } from '../utils/staleness.js';
 
 async function getRegistry(): Promise<Registry> {
   try {
@@ -46,6 +57,88 @@ async function getRegistry(): Promise<Registry> {
     console.error(chalk.red('Failed to load registry:', err.message));
     process.exit(1);
   }
+}
+
+/**
+ * Per-file `sourceSha256` from the registry as it stood at `ref`, keyed by
+ * target path. Returns null when that ref has no reachable registry — the
+ * caller then falls back to the current hashes and marks the files pending.
+ *
+ * Cached per ref: a project typically has every component installed from the
+ * same release, so this is one fetch, not one per component.
+ */
+const historicRegistryCache = new Map<string, Registry | null>();
+
+async function historicRegistry(ref: string): Promise<Registry | null> {
+  if (historicRegistryCache.has(ref)) return historicRegistryCache.get(ref)!;
+  let result: Registry | null = null;
+  try {
+    result = await fetchRegistryAtRef(ref);
+  } catch {
+    result = null;
+  }
+  historicRegistryCache.set(ref, result);
+  return result;
+}
+
+/** Upstream hashes for one entry, taken from a historic registry. */
+function hashesFromRegistry(
+  registry: Registry,
+  kind: 'component' | 'lib',
+  name: string
+): Map<string, string> {
+  const entry =
+    kind === 'component'
+      ? registry.components?.find(c => c.name === name)
+      : registry.lib?.[name];
+  const map = new Map<string, string>();
+  if (!entry) return map;
+  for (const f of registryFilesOf(entry as any)) {
+    if (f.sourceSha256) map.set(f.target, f.sourceSha256);
+  }
+  return map;
+}
+
+interface BackfillOutcome {
+  files: FileChecksum[];
+  /** Files that could not be given a trustworthy upstream baseline. */
+  pending: number;
+}
+
+/**
+ * Give an existing v2 record its v3 fields, per §5.7 of the redesign.
+ * Local `sha256` values are preserved — they still describe the bytes on disk.
+ */
+async function backfillRecord(
+  record: ComponentInstall,
+  kind: 'component' | 'lib',
+  name: string,
+  currentHashes: Map<string, string>
+): Promise<BackfillOutcome> {
+  const installedVersion = record.release ?? record.version;
+  const ref = installedVersion ? `v${installedVersion}` : undefined;
+  const historic = ref ? await historicRegistry(ref) : null;
+  const historicHashes = historic ? hashesFromRegistry(historic, kind, name) : null;
+
+  let pending = 0;
+  const files = (record.files ?? []).map((file): FileChecksum => {
+    // Already migrated — leave it alone.
+    if (file.sourceSha256 && file.state) return file;
+
+    const exact = historicHashes?.get(file.target);
+    if (exact && ref) {
+      return { ...file, sourceSha256: exact, ref, state: 'clean' };
+    }
+    pending++;
+    return {
+      ...file,
+      sourceSha256: currentHashes.get(file.target),
+      ref: file.ref ?? ref,
+      state: 'pending',
+    };
+  });
+
+  return { files, pending };
 }
 
 export async function migrate(options: {
@@ -61,12 +154,18 @@ export async function migrate(options: {
     process.exit(1);
   }
 
-  if ((config.schemaVersion ?? 1) >= 2 && !dryRun) {
-    console.log(chalk.green('\n✓ buildpad.json is already v2. Nothing to migrate.\n'));
-    return;
+  const from = config.schemaVersion ?? 1;
+  if (from > 3) {
+    console.error(
+      chalk.red(
+        `\n✗ buildpad.json is schema v${from}, which this CLI does not understand.\n` +
+        '  Upgrade the CLI: npx @buildpad/cli@latest migrate\n'
+      )
+    );
+    process.exit(1);
   }
 
-  console.log(chalk.bold('\n🔄 Migrating buildpad.json to schema v2...\n'));
+  console.log(chalk.bold(`\n🔄 Migrating buildpad.json (v${from} → v3)...\n`));
   if (dryRun) {
     console.log(chalk.yellow('  (dry run — no files will be written)\n'));
   }
@@ -75,18 +174,11 @@ export async function migrate(options: {
   const registry = await getRegistry();
   spinner.succeed('Registry loaded');
 
-  // Build packageVersions from registry
-  const packageVersions: Record<string, string> = {};
-  if (registry.packages) {
-    for (const [pkgName, info] of Object.entries(registry.packages)) {
-      packageVersions[pkgName] = info.version;
-    }
-  } else {
-    // v1 registry — all packages at the same global version
-    packageVersions['@buildpad/ui-interfaces'] = registry.version;
-  }
+  const release = registry.version;
+  const ref = getRecordedRef();
+  let pendingTotal = 0;
 
-  // Migrate components
+  // ── Components ─────────────────────────────────────────────────────────
   const components: Record<string, ComponentInstall> = { ...config.components };
   const failed: string[] = [];
 
@@ -103,12 +195,30 @@ export async function migrate(options: {
     }
 
     const sourcePackage = regComponent.sourcePackage ?? '@buildpad/ui-interfaces';
-    const version = packageVersions[sourcePackage] ?? registry.version;
-    const installedAt =
-      config.componentVersions?.[componentName]?.installedAt ?? new Date().toISOString();
+    const currentHashes = new Map(
+      regComponent.files.filter(f => f.sourceSha256).map(f => [f.target, f.sourceSha256!])
+    );
+    const existing = config.components?.[componentName];
 
+    if (existing?.files?.length) {
+      // v2 → v3: keep the local hashes, backfill the upstream baseline.
+      const { files, pending } = await backfillRecord(
+        existing, 'component', componentName, currentHashes
+      );
+      pendingTotal += pending;
+      components[componentName] = {
+        release: existing.release ?? existing.version,
+        ref: existing.ref ?? (existing.version ? `v${existing.version}` : ref),
+        sourcePackage: existing.sourcePackage ?? sourcePackage,
+        installedAt: existing.installedAt,
+        files,
+      };
+      continue;
+    }
+
+    // v1 → v3: no per-file record at all. Re-derive the local hashes by
+    // transforming the current sources exactly as `add` would.
     const files: FileChecksum[] = [];
-
     for (const file of regComponent.files) {
       try {
         if (!(await sourceFileExists(file.source))) {
@@ -129,9 +239,15 @@ export async function migrate(options: {
           content = transformVFormImports(content, file.source, file.target);
         }
 
-        content = addOriginHeader(content, componentName, sourcePackage, version);
+        content = addOriginHeader(content, componentName, sourcePackage, release);
 
-        files.push({ target: file.target, sha256: hashTransformed(content) });
+        files.push({
+          target: file.target,
+          sourceSha256: file.sourceSha256,
+          sha256: hashTransformed(content),
+          ref,
+          state: 'clean',
+        });
       } catch {
         componentSpinner.warn(`    Failed to process: ${file.source}`);
       }
@@ -139,9 +255,11 @@ export async function migrate(options: {
 
     if (files.length > 0) {
       components[componentName] = {
-        version,
+        release,
+        ref,
         sourcePackage,
-        installedAt,
+        installedAt:
+          config.componentVersions?.[componentName]?.installedAt ?? new Date().toISOString(),
         files,
       };
     }
@@ -149,7 +267,7 @@ export async function migrate(options: {
 
   componentSpinner.succeed(`Migrated ${config.installedComponents.length - failed.length} components`);
 
-  // ── Migrate lib modules ────────────────────────────────────────────────
+  // ── Lib modules ────────────────────────────────────────────────────────
   const lib: Record<string, ComponentInstall> = { ...(config.lib ?? {}) };
   const libFailed: string[] = [];
 
@@ -165,51 +283,57 @@ export async function migrate(options: {
         continue;
       }
 
-      const files: FileChecksum[] = [];
-      let primarySource: string | undefined;
+      const sourcePackage = libModule.sourcePackage ?? '@buildpad/cli';
+      const registryFiles = registryFilesOf(libModule);
+      const currentHashes = new Map(
+        registryFiles.filter(f => f.sourceSha256).map(f => [f.target, f.sourceSha256!])
+      );
+      const existing = config.lib?.[libName];
 
-      // Single-file lib (e.g. utils legacy shape)
-      if (libModule.path && libModule.target) {
-        primarySource = libModule.path;
-        try {
-          if (await sourceFileExists(libModule.path)) {
-            const sp = inferSourcePackage(libModule.path);
-            const v = resolvePackageVersion(registry, sp);
-            let content = await resolveSourceFile(libModule.path);
-            content = transformImports(content, config);
-            content = addOriginHeader(content, libName, sp, v);
-            files.push({ target: libModule.target, sha256: hashTransformed(content) });
-          }
-        } catch {
-          /* ignore individual file failure */
-        }
+      if (existing?.files?.length) {
+        const { files, pending } = await backfillRecord(
+          existing, 'lib', libName, currentHashes
+        );
+        pendingTotal += pending;
+        lib[libName] = {
+          release: existing.release ?? existing.version,
+          ref: existing.ref ?? (existing.version ? `v${existing.version}` : ref),
+          sourcePackage: existing.sourcePackage ?? sourcePackage,
+          installedAt: existing.installedAt,
+          files,
+        };
+        continue;
       }
 
-      // Multi-file lib
-      for (const file of (libModule.files ?? [])) {
+      const files: FileChecksum[] = [];
+      for (const file of registryFiles) {
         try {
           if (!(await sourceFileExists(file.source))) continue;
-          if (!primarySource) primarySource = file.source;
-          const sp = inferSourcePackage(file.source);
-          const v = resolvePackageVersion(registry, sp);
           let content = await resolveSourceFile(file.source);
           content = transformImports(content, config);
           const fileName = path.basename(file.source, path.extname(file.source));
-          content = addOriginHeader(content, `${libName}/${fileName}`, sp, v);
-          files.push({ target: file.target, sha256: hashTransformed(content) });
+          content = addOriginHeader(content, `${libName}/${fileName}`, sourcePackage, release);
+          files.push({
+            target: file.target,
+            sourceSha256: file.sourceSha256,
+            sha256: hashTransformed(content),
+            ref,
+            state: 'clean',
+          });
         } catch {
           /* ignore individual file failure */
         }
       }
 
-      if (files.length > 0 && primarySource) {
-        const sp = inferSourcePackage(primarySource);
-        const v = resolvePackageVersion(registry, sp);
-        const installedAt =
-          config.componentVersions?.[`lib/${libName}`]?.installedAt ?? new Date().toISOString();
-        lib[libName] = { version: v, sourcePackage: sp, installedAt, files };
-        // Make sure the package version is in the map
-        if (!packageVersions[sp]) packageVersions[sp] = v;
+      if (files.length > 0) {
+        lib[libName] = {
+          release,
+          ref,
+          sourcePackage,
+          installedAt:
+            config.componentVersions?.[`lib/${libName}`]?.installedAt ?? new Date().toISOString(),
+          files,
+        };
       } else {
         libFailed.push(libName);
       }
@@ -219,33 +343,48 @@ export async function migrate(options: {
     );
   }
 
-  // Update config
+  // `packageVersions` and per-component `version` are superseded by `release`.
+  const { packageVersions: _dropped, ...rest } = config;
   const updatedConfig: Config = {
-    ...config,
-    schemaVersion: 2,
+    ...rest,
+    schemaVersion: 3,
+    release: config.release ?? release,
     components,
     lib,
-    packageVersions,
   };
 
   if (!dryRun) {
     await saveConfig(cwd, updatedConfig);
-    console.log(chalk.green('\n✓ buildpad.json upgraded to schema v2\n'));
+    console.log(chalk.green('\n✓ buildpad.json upgraded to schema v3\n'));
   } else {
-    console.log('\n  Would write schemaVersion: 2 with:');
-    console.log(`    packageVersions: ${JSON.stringify(packageVersions, null, 2)}`);
+    console.log('\n  Would write schemaVersion: 3 with:');
+    console.log(`    release: ${updatedConfig.release}`);
     console.log(`    components: ${Object.keys(components).join(', ')}`);
+  }
+
+  if (pendingTotal > 0) {
+    console.log(
+      chalk.yellow(
+        `  ⚠ ${pendingTotal} file(s) had no reachable release tag for their recorded version,`
+      )
+    );
+    console.log(
+      chalk.dim(
+        '    so their upstream baseline could not be established exactly. They are marked\n' +
+        "    'pending' and will be reported by 'outdated' until you run: npx buildpad upgrade\n"
+      )
+    );
   }
 
   if (failed.length > 0) {
     console.log(chalk.yellow(`\n  ⚠ ${failed.length} component(s) could not be migrated (not in registry):`));
     failed.forEach(n => console.log(chalk.dim(`    - ${n}`)));
-    console.log(chalk.dim('  These will remain as v1 entries.\n'));
+    console.log(chalk.dim('  These will remain as legacy entries.\n'));
   }
 
   if (libFailed.length > 0) {
     console.log(chalk.yellow(`\n  ⚠ ${libFailed.length} lib module(s) could not be migrated (not in registry or unreadable):`));
     libFailed.forEach(n => console.log(chalk.dim(`    - ${n}`)));
-    console.log(chalk.dim('  These will remain untracked in v2.\n'));
+    console.log(chalk.dim('  These will remain untracked.\n'));
   }
 }

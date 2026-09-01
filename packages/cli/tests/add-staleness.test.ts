@@ -2,12 +2,12 @@
  * Add Command — Staleness Detection Tests
  *
  * Unit tests for the already-installed handling in `add`:
- * - getInstalledStaleness: installed version vs the registry's lastChangedIn
+ * - getInstalledStaleness: registry sourceSha256 vs the hash recorded at install
  * - isInstallPristine: recorded sha256 manifest vs on-disk content
  *
- * Together these drive the self-heal behavior: an outdated component whose
- * copies are unmodified is refreshed in place; an outdated component with
- * local edits is kept and a `buildpad upgrade` hint is emitted.
+ * Together these drive the self-heal behavior: a component whose upstream
+ * content changed and whose copies are unmodified is refreshed in place; one
+ * with local edits is kept and a `buildpad upgrade` hint is emitted.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -19,14 +19,20 @@ import { hashTransformed, addOriginHeader } from "../src/commands/transformer.js
 import type { Config } from "../src/commands/init.js";
 import type { ComponentEntry, Registry } from "../src/resolver.js";
 
+const TARGET = "components/ui/system-permissions.tsx";
+const SOURCE = "ui-interfaces/src/system-permissions/SystemPermissions.tsx";
+
+/** Registry hash of the upstream source, as build-registry.mjs would record it. */
+const UPSTREAM_SHA = "a".repeat(64);
+/** A different upstream revision of the same file. */
+const UPSTREAM_SHA_NEW = "b".repeat(64);
+
 const COMPONENT: ComponentEntry = {
   name: "system-permissions",
   title: "SystemPermissions",
   description: "",
   category: "relational",
-  files: [
-    { source: "ui-interfaces/src/system-permissions/SystemPermissions.tsx", target: "components/ui/system-permissions.tsx" },
-  ],
+  files: [{ source: SOURCE, target: TARGET, sourceSha256: UPSTREAM_SHA }],
   dependencies: [],
   internalDependencies: ["services"],
   sourcePackage: "@buildpad/ui-interfaces",
@@ -43,17 +49,22 @@ const REGISTRY = {
   lib: {},
 } as unknown as Registry;
 
-function makeConfig(overrides: Partial<Config> = {}): Config {
+/** A v3 install record whose file is at `sourceSha256`. */
+function makeConfig(overrides: Partial<Config> = {}, sourceSha256 = UPSTREAM_SHA): Config {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
+    release: "1.6.0",
     installedComponents: ["system-permissions"],
     installedLib: [],
     components: {
       "system-permissions": {
-        version: "1.5.0",
+        release: "1.6.0",
+        ref: "v1.6.0",
         sourcePackage: "@buildpad/ui-interfaces",
         installedAt: "2026-01-01T00:00:00.000Z",
-        files: [],
+        files: [
+          { target: TARGET, sourceSha256, sha256: "deadbeef", ref: "v1.6.0", state: "clean" },
+        ],
       },
     },
     ...overrides,
@@ -61,34 +72,50 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
 }
 
 describe("getInstalledStaleness", () => {
-  test("flags installed version older than lastChangedIn", () => {
-    const result = getInstalledStaleness(COMPONENT, REGISTRY, makeConfig());
-    expect(result).toEqual({ stale: true, installedVersion: "1.5.0", lastChangedIn: "1.6.0" });
-  });
-
-  test("not stale when installed version equals lastChangedIn", () => {
-    const config = makeConfig();
-    config.components!["system-permissions"].version = "1.6.0";
-    expect(getInstalledStaleness(COMPONENT, REGISTRY, config).stale).toBe(false);
-  });
-
-  test("not stale when installed version is newer", () => {
-    const config = makeConfig();
-    config.components!["system-permissions"].version = "1.7.0";
-    expect(getInstalledStaleness(COMPONENT, REGISTRY, config).stale).toBe(false);
-  });
-
-  test("component untouched since an older release is not stale (lastChangedIn semantics)", () => {
-    // Installed at 1.5.0; package is now 1.6.0 but this component last changed in 1.4.0.
-    const component = { ...COMPONENT, lastChangedIn: "1.4.0" };
-    expect(getInstalledStaleness(component, REGISTRY, makeConfig()).stale).toBe(false);
-  });
-
-  test("falls back to the package version when lastChangedIn is missing", () => {
-    const component = { ...COMPONENT, lastChangedIn: undefined };
+  test("flags a file whose upstream hash moved", () => {
+    // Installed at UPSTREAM_SHA; the registry now ships UPSTREAM_SHA_NEW.
+    const component = {
+      ...COMPONENT,
+      files: [{ source: SOURCE, target: TARGET, sourceSha256: UPSTREAM_SHA_NEW }],
+    };
     const result = getInstalledStaleness(component, REGISTRY, makeConfig());
-    expect(result.stale).toBe(true);
-    expect(result.lastChangedIn).toBe("1.6.0");
+    expect(result).toEqual({
+      stale: true,
+      installedRelease: "1.6.0",
+      latestRelease: "1.6.0",
+    });
+  });
+
+  test("not stale when the upstream hash is unchanged", () => {
+    expect(getInstalledStaleness(COMPONENT, REGISTRY, makeConfig()).stale).toBe(false);
+  });
+
+  test("a lockstep bump with byte-identical files is not stale", () => {
+    // The whole point of hash-based detection: the release moved, the file did not.
+    const registry = { ...REGISTRY, version: "1.9.0" } as unknown as Registry;
+    expect(getInstalledStaleness(COMPONENT, registry, makeConfig()).stale).toBe(false);
+  });
+
+  test("flags a file the registry has added since install", () => {
+    const component = {
+      ...COMPONENT,
+      files: [
+        { source: SOURCE, target: TARGET, sourceSha256: UPSTREAM_SHA },
+        { source: "ui-interfaces/src/system-permissions/styles.css", target: "components/ui/system-permissions.css", sourceSha256: UPSTREAM_SHA_NEW },
+      ],
+    };
+    expect(getInstalledStaleness(component, REGISTRY, makeConfig()).stale).toBe(true);
+  });
+
+  test("flags a file the registry no longer ships", () => {
+    const component = { ...COMPONENT, files: [] };
+    expect(getInstalledStaleness(component, REGISTRY, makeConfig()).stale).toBe(true);
+  });
+
+  test("flags a file a previous upgrade left pending", () => {
+    const config = makeConfig();
+    config.components!["system-permissions"].files[0].state = "pending";
+    expect(getInstalledStaleness(COMPONENT, REGISTRY, config).stale).toBe(true);
   });
 
   test("never stale for v1 configs (no schemaVersion tracking)", () => {
@@ -101,15 +128,22 @@ describe("getInstalledStaleness", () => {
     expect(getInstalledStaleness(COMPONENT, REGISTRY, config).stale).toBe(false);
   });
 
-  test("never stale for v1 registries (no packages map)", () => {
-    const registry = { ...REGISTRY, packages: undefined } as unknown as Registry;
-    expect(getInstalledStaleness(COMPONENT, registry, makeConfig()).stale).toBe(false);
+  test("a v2 record with no upstream hash is not reported stale — migrate handles it", () => {
+    // Comparing against `undefined` would mark every file stale on the first
+    // v3 run; `migrate` backfills the baseline instead.
+    const config = makeConfig();
+    delete (config.components!["system-permissions"].files[0] as any).sourceSha256;
+    expect(getInstalledStaleness(COMPONENT, REGISTRY, config).stale).toBe(false);
+  });
+
+  test("a registry with no file hashes (v1) cannot decide, so is not stale", () => {
+    const component = { ...COMPONENT, files: [{ source: SOURCE, target: TARGET }] };
+    expect(getInstalledStaleness(component, REGISTRY, makeConfig()).stale).toBe(false);
   });
 });
 
 describe("isInstallPristine", () => {
   let tmpDir: string;
-  const TARGET = "components/ui/system-permissions.tsx";
   const CONTENT = "export const SystemPermissions = () => null;\n";
 
   beforeEach(async () => {
@@ -122,7 +156,9 @@ describe("isInstallPristine", () => {
 
   function configWithManifest(sha256: string): Config {
     const config = makeConfig();
-    config.components!["system-permissions"].files = [{ target: TARGET, sha256 }];
+    config.components!["system-permissions"].files = [
+      { target: TARGET, sourceSha256: UPSTREAM_SHA, sha256, ref: "v1.6.0", state: "clean" },
+    ];
     return config;
   }
 
@@ -157,7 +193,8 @@ describe("isInstallPristine", () => {
   });
 
   test("not pristine without a file manifest (cannot verify)", () => {
-    const config = makeConfig(); // files: []
+    const config = makeConfig();
+    config.components!["system-permissions"].files = [];
     expect(isInstallPristine("system-permissions", config, tmpDir)).toBe(false);
   });
 });

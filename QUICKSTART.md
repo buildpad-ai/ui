@@ -347,7 +347,7 @@ buildpad migrate
 buildpad migrate --dry-run
 ```
 
-`migrate` baselines every component to the current registry version, so `outdated`/`upgrade` will report everything up to date right after. To re-sync a freshly-migrated project to current source, run `buildpad upgrade --force --three-way`, then `buildpad status` to confirm.
+`migrate` brings `buildpad.json` up to schema v3, recording the upstream hash and the source ref for every installed file. Where the release a file was installed from can no longer be reached, it is marked `pending` and keeps showing in `outdated` until a real upgrade writes it — run `buildpad upgrade --three-way`, then `buildpad status` to confirm.
 
 ## 🧪 Testing the Setup
 

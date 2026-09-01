@@ -22,13 +22,15 @@ import {
   addOriginHeader,
   hashTransformed
 } from './transformer.js';
-import { inferSourcePackage, resolvePackageVersion, semverGte, verifySourceSha256 } from '../utils/checksum.js';
+import { verifySourceSha256 } from '../utils/checksum.js';
+import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
 import { validate } from './validate.js';
 import {
   getRegistry as fetchRegistry,
   resolveSourceFile,
   sourceFileExists,
+  getRecordedRef,
   type Registry,
   type ComponentEntry,
   type LibModule,
@@ -244,6 +246,31 @@ export async function copyLibModule(
   const writtenFiles: FileChecksum[] = [];
   let primarySource: string | undefined;
 
+  // The registry states the owning package — the CLI must not re-derive it.
+  // A second copy of that mapping lived in checksum.ts and had already drifted
+  // (it was missing ui-forms/ and ui-users/).
+  const libSourcePackage = libModule.sourcePackage ?? '@buildpad/cli';
+  const release = registry.version;
+  const ref = getRecordedRef();
+  const existingRecord = config.lib?.[moduleName];
+
+  /**
+   * Record for a file the install deliberately left alone (the adopt-once nav
+   * config, or a file that is already present). Carry forward whatever upstream
+   * baseline it had; with none, mark it `pending` so `upgrade` re-baselines it
+   * rather than claiming it matches the current upstream content.
+   */
+  const keepExisting = (file: { target: string }, existing: string): FileChecksum => {
+    const prior = existingRecord?.files?.find(f => f.target === file.target);
+    return {
+      target: file.target,
+      sourceSha256: prior?.sourceSha256,
+      sha256: hashTransformed(existing),
+      ref: prior?.ref,
+      state: prior?.sourceSha256 ? 'clean' : 'pending',
+    };
+  };
+
   // Handle single file module (like utils)
   if (libModule.path && libModule.target) {
     const targetPath = path.join(
@@ -252,15 +279,19 @@ export async function copyLibModule(
     );
 
     if (await checkSource(libModule.path)) {
-      const sourcePackage = inferSourcePackage(libModule.path);
-      const version = resolvePackageVersion(registry, sourcePackage);
       let content = await readSource(libModule.path);
       verifySourceSha256(libModule.path, content, libModule.sourceSha256);
       content = transformImports(content, config);
-      content = addOriginHeader(content, moduleName, sourcePackage, version);
+      content = addOriginHeader(content, moduleName, libSourcePackage, release);
       await fs.ensureDir(path.dirname(targetPath));
       await fs.writeFile(targetPath, content);
-      writtenFiles.push({ target: libModule.target, sha256: hashTransformed(content) });
+      writtenFiles.push({
+        target: libModule.target,
+        sourceSha256: libModule.sourceSha256,
+        sha256: hashTransformed(content),
+        ref,
+        state: 'clean',
+      });
       primarySource = libModule.path;
     }
   }
@@ -280,7 +311,7 @@ export async function copyLibModule(
         fs.existsSync(targetPath)
       ) {
         const existing = await fs.readFile(targetPath, 'utf-8');
-        writtenFiles.push({ target: file.target, sha256: hashTransformed(existing) });
+        writtenFiles.push(keepExisting(file, existing));
         continue;
       }
 
@@ -291,22 +322,26 @@ export async function copyLibModule(
       // what is genuinely missing unless an overwrite was asked for.
       if (!overwrite && fs.existsSync(targetPath)) {
         const existing = await fs.readFile(targetPath, 'utf-8');
-        writtenFiles.push({ target: file.target, sha256: hashTransformed(existing) });
+        writtenFiles.push(keepExisting(file, existing));
         continue;
       }
 
       if (await checkSource(file.source)) {
-        const sourcePackage = inferSourcePackage(file.source);
-        const version = resolvePackageVersion(registry, sourcePackage);
         let content = await readSource(file.source);
         verifySourceSha256(file.source, content, file.sourceSha256);
         content = transformImports(content, config);
         // Extract filename for origin tracking
         const fileName = path.basename(file.source, path.extname(file.source));
-        content = addOriginHeader(content, `${moduleName}/${fileName}`, sourcePackage, version);
+        content = addOriginHeader(content, `${moduleName}/${fileName}`, libSourcePackage, release);
         await fs.ensureDir(path.dirname(targetPath));
         await fs.writeFile(targetPath, content);
-        writtenFiles.push({ target: file.target, sha256: hashTransformed(content) });
+        writtenFiles.push({
+          target: file.target,
+          sourceSha256: file.sourceSha256,
+          sha256: hashTransformed(content),
+          ref,
+          state: 'clean',
+        });
         if (!primarySource) primarySource = file.source;
       } else {
         spinner.warn(`Source file not found: ${file.source}`);
@@ -318,19 +353,17 @@ export async function copyLibModule(
     config.installedLib.push(moduleName);
   }
 
-  // v2: record per-file checksums in `config.lib[moduleName]`
-  if (config.schemaVersion === 2 && writtenFiles.length > 0 && primarySource) {
-    const sourcePackage = inferSourcePackage(primarySource);
-    const version = resolvePackageVersion(registry, sourcePackage);
+  // v3: record per-file checksums in `config.lib[moduleName]`
+  if ((config.schemaVersion ?? 1) >= 2 && writtenFiles.length > 0 && primarySource) {
     if (!config.lib) config.lib = {};
     config.lib[moduleName] = {
-      version,
-      sourcePackage,
-      installedAt: new Date().toISOString(),
+      release,
+      ref,
+      sourcePackage: libSourcePackage,
+      installedAt: existingRecord?.installedAt ?? new Date().toISOString(),
       files: writtenFiles,
     };
-    if (!config.packageVersions) config.packageVersions = {};
-    config.packageVersions[sourcePackage] = version;
+    config.release = release;
   }
 
   spinner.succeed(`Installed lib: ${moduleName}`);
@@ -439,24 +472,27 @@ interface DryRunInfo {
  * Copy and transform a component
  */
 /**
- * Staleness of an already-installed component vs the registry (Config v2 only).
- * A component is stale when the version recorded at install time predates the
- * last registry version that changed the component's files (`lastChangedIn`).
+ * Staleness of an already-installed component vs the registry.
+ *
+ * v3: decided by comparing the registry's per-file `sourceSha256` with the hash
+ * recorded at install time (see utils/staleness.ts). A v2 record has no
+ * upstream hashes and is left alone — `migrate` populates them.
  */
 export function getInstalledStaleness(
   component: ComponentEntry,
   registry: Registry,
   config: Config
-): { stale: boolean; installedVersion?: string; lastChangedIn?: string } {
-  if ((config.schemaVersion ?? 1) < 2 || !registry.packages) return { stale: false };
+): { stale: boolean; installedRelease?: string; latestRelease?: string } {
+  if ((config.schemaVersion ?? 1) < 2) return { stale: false };
   const record = config.components?.[component.name];
-  if (!record?.version) return { stale: false }; // pre-tracking install — leave alone
-  const sourcePackage =
-    component.sourcePackage ?? inferSourcePackage(component.files[0]?.source ?? '');
-  const latest = resolvePackageVersion(registry, sourcePackage, registry.version);
-  const lastChangedIn = component.lastChangedIn ?? latest;
-  if (semverGte(record.version, lastChangedIn)) return { stale: false };
-  return { stale: true, installedVersion: record.version, lastChangedIn };
+  if (!record) return { stale: false }; // pre-tracking install — leave alone
+  const staleness = computeEntryStaleness(registryFilesOf(component), record);
+  if (!staleness.stale) return { stale: false };
+  return {
+    stale: true,
+    installedRelease: record.release ?? record.version,
+    latestRelease: registry.version,
+  };
 }
 
 /**
@@ -548,14 +584,14 @@ async function copyComponent(
       // Outdated but unmodified since install — re-copying cannot lose user
       // edits, so self-heal instead of silently keeping stale code.
       spinner.info(
-        `${component.title} ${staleness.installedVersion} is outdated (changed in ${staleness.lastChangedIn}) — refreshing unmodified copy`
+        `${component.title} (${staleness.installedRelease ?? 'unknown'}) is behind ${staleness.latestRelease} — refreshing unmodified copy`
       );
       spinner.start(`Adding ${component.title}...`);
       reinstall = true;
     } else if (staleness.stale) {
       // Outdated AND locally modified — never clobber silently.
       spinner.warn(
-        `${component.title} is outdated (${staleness.installedVersion} → ${staleness.lastChangedIn}) but has local edits — keeping yours. Merge updates with: npx buildpad upgrade ${component.name}`
+        `${component.title} is outdated (${staleness.installedRelease ?? 'unknown'} → ${staleness.latestRelease}) but has local edits — keeping yours. Merge updates with: npx buildpad upgrade ${component.name}`
       );
       if (!nonInteractive) {
         spinner.stop();
@@ -665,15 +701,13 @@ async function copyComponent(
       content = transformVFormImports(content, file.source, file.target);
     }
     
-    // Determine source package for this component (v2 registry supplies it, fallback for v1)
+    // The registry states the owning package; the release is the lockstep
+    // version the whole registry was built at.
     const sourcePackage = component.sourcePackage ?? '@buildpad/ui-interfaces';
-    // Determine version: prefer per-package version from v2 registry, fallback to global
-    const regV2 = registry;
-    const componentVersion =
-      regV2.packages?.[sourcePackage]?.version ?? component.version ?? registry.version;
+    const release = registry.version;
 
     // Add origin header for maintainability
-    content = addOriginHeader(content, component.name, sourcePackage, componentVersion);
+    content = addOriginHeader(content, component.name, sourcePackage, release);
 
     // Ensure directory exists
     await fs.ensureDir(path.dirname(targetPath));
@@ -683,12 +717,15 @@ async function copyComponent(
     const finalPath = targetPath.replace(/\.tsx?$/, ext);
     await fs.writeFile(finalPath, content);
 
-    // v2: record per-file sha256 (computed over content without the origin header)
-    if (config.schemaVersion === 2) {
+    // v3: record the upstream hash, the local hash, the ref, and the state.
+    // `sourceSha256` is what a later `outdated` compares against; `ref` is the
+    // exact diff3 base for a later `upgrade`.
+    if ((config.schemaVersion ?? 1) >= 2) {
       if (!config.components) config.components = {};
       if (!config.components[component.name]) {
         config.components[component.name] = {
-          version: componentVersion,
+          release,
+          ref: getRecordedRef(),
           sourcePackage,
           installedAt: new Date().toISOString(),
           files: [],
@@ -697,7 +734,13 @@ async function copyComponent(
       // Use relative target path for portability
       const relTarget = file.target;
       const existingIdx = config.components[component.name].files.findIndex(f => f.target === relTarget);
-      const checksum = { target: relTarget, sha256: hashTransformed(content) };
+      const checksum: FileChecksum = {
+        target: relTarget,
+        sourceSha256: file.sourceSha256,
+        sha256: hashTransformed(content),
+        ref: getRecordedRef(),
+        state: 'clean',
+      };
       if (existingIdx >= 0) {
         config.components[component.name].files[existingIdx] = checksum;
       } else {
@@ -706,11 +749,9 @@ async function copyComponent(
     }
   }
 
-  // Determine source package / version once for the whole component
+  // Determine source package / release once for the whole component
   const sourcePackageFinal = component.sourcePackage ?? '@buildpad/ui-interfaces';
-  const regV2Final = registry;
-  const installVersion =
-    regV2Final.packages?.[sourcePackageFinal]?.version ?? component.version ?? registry.version;
+  const installRelease = registry.version;
 
   // Track installation with version info
   if (!config.installedComponents.includes(component.name)) {
@@ -722,20 +763,22 @@ async function copyComponent(
     config.componentVersions = {};
   }
   config.componentVersions[component.name] = {
-    version: installVersion,
+    version: installRelease,
     installedAt: new Date().toISOString(),
     source: sourcePackageFinal,
   };
 
-  // v2: update components map installedAt + packageVersions
-  if (config.schemaVersion === 2) {
+  // v3: update the components map installedAt + the project-level release
+  if ((config.schemaVersion ?? 1) >= 2) {
     if (!config.components) config.components = {};
-    if (config.components[component.name]) {
-      config.components[component.name].installedAt = new Date().toISOString();
-      config.components[component.name].version = installVersion;
+    const record = config.components[component.name];
+    if (record) {
+      record.installedAt = new Date().toISOString();
+      record.release = installRelease;
+      record.ref = getRecordedRef();
+      delete record.version;
     }
-    if (!config.packageVersions) config.packageVersions = {};
-    config.packageVersions[sourcePackageFinal] = installVersion;
+    config.release = installRelease;
   }
 
   spinner.succeed(`Added ${component.title}`);

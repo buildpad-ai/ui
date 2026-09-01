@@ -50,15 +50,59 @@ jobs:
       # Changesets will either:
       # - open a "Version Packages" PR (if there are unreleased changesets), or
       # - publish to npm (if that PR was just merged and versions were bumped)
+      #
+      # `version` regenerates packages/registry.json in the SAME step that bumps
+      # the package versions, so the bot's "version packages" commit carries a
+      # registry that matches them. Previously a human had to remember to run
+      # `pnpm build:registry` inside the release PR; forgetting it failed
+      # `registry:check`, and running it before the bump wrote the wrong
+      # `lastChangedIn` values.
+      #
+      # The chain lives in the `version:packages` script, NOT inline here:
+      # changesets/action splits this input on whitespace and execs it directly
+      # rather than through a shell, so an inline `a && b` is passed to
+      # `changeset` as arguments ("Too many arguments passed to changesets").
       - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@v1
         with:
           publish: pnpm changeset publish
-          version: pnpm changeset version
+          version: pnpm version:packages
           title: 'chore: version packages'
           commit: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # One plain, unambiguous tag per release, next to the changesets
+      # per-package tags.
+      #
+      # The CLI pins every source fetch to `v<its own version>`, so this tag is
+      # what makes a release reachable at all: without it `add` cannot resolve
+      # its own sources and `upgrade` cannot resolve a diff3 base. The
+      # changesets tags cannot serve that purpose — their names contain `/` and
+      # `@`, which are ambiguous in a raw-CDN path, and they were incomplete in
+      # practice (@buildpad/cli and @buildpad/mcp went untagged at 1.9.3 and
+      # 1.11.1, and 1.11.0 shipped to npm with no tag or commit at all).
+      - name: Tag the release
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./packages/cli/package.json').version")
+          TAG="v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag ${TAG} already exists locally — nothing to do."
+            exit 0
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists on the remote — nothing to do."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" -m "Release ${VERSION}"
+          git push origin "${TAG}"
+          echo "Pushed ${TAG}"

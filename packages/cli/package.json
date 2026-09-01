@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/cli",
-  "version": "1.10.0",
+  "version": "2.1.0",
   "description": "CLI tool for adding Buildpad components to your project - like shadcn/ui",
   "type": "module",
   "main": "dist/index.js",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/microbuild-ui/ui.git",
+    "url": "https://github.com/buildpad-ai/ui.git",
     "directory": "packages/cli"
   },
   "scripts": {

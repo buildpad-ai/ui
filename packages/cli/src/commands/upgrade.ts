@@ -1,20 +1,19 @@
 /**
  * Buildpad CLI - Upgrade Command
  *
- * Upgrade installed components (and lib modules) to the latest registry versions.
+ * Upgrade installed components (and lib modules) to the release this CLI ships
+ * against. Staleness is decided by content hash, not by version — see
+ * utils/staleness.ts.
  *
  * Flags:
- *   [components...]              Specific components to upgrade (default: all outdated)
+ *   [components...]              Specific components to upgrade (default: all stale)
  *   --all                        Upgrade every installed component
  *   --package <name>             Upgrade all components from a specific source package
  *   --design                     Upgrade only the design-system module (tokens, globals,
  *                                theme, app shell). Shorthand scope for the lib module.
- *   --force                      Re-sync even when already at the latest version.
- *                                Bypasses the version gate but still honours --strategy,
+ *   --force                      Re-sync every file even when upstream is unchanged.
+ *                                Bypasses the staleness gate but still honours --strategy,
  *                                so locally-modified files are merged, not clobbered.
- *                                Default target with --force is all installed components.
- *                                Intended for freshly-migrated (pre-0.2.0) projects whose
- *                                components were baselined to the current version.
  *   --dry-run                    Show what would change without writing files
  *   --yes                        Shorthand for --strategy=overwrite (overwrites modified files)
  *   --three-way                  Shorthand for --strategy=three-way
@@ -24,9 +23,22 @@
  *                                  "three-way"  – attempt diff3 merge; on conflict write .new
  *                                  "prompt"     – ask the user (default for TTY)
  *
- * Per-file behaviour:
- *   • Pristine file (sha256 matches manifest) → silently overwrite.
- *   • Modified file (sha256 differs) → behaviour controlled by strategy.
+ * Per-file behaviour (§4 of the versioning redesign):
+ *
+ *   upstream changed | local modified | action
+ *   -----------------+----------------+---------------------------------------
+ *   no               | no             | none
+ *   no               | yes            | none — no prompt
+ *   yes              | no             | overwrite, silent
+ *   yes              | yes            | strategy; diff3 base = the exact bytes
+ *                    |                | installed, fetched at the recorded ref
+ *   added upstream   | -              | add
+ *   removed upstream | -              | keep on disk, warn, stop tracking
+ *
+ * Anything the CLI does not actually write is recorded `state: "pending"` with
+ * its OLD upstream hash and ref, so the next `outdated` still reports it. The
+ * pre-v3 upgrade wrote `version: latest` unconditionally, which made a skipped
+ * file vanish from the report permanently.
  */
 
 import fs from 'fs-extra';
@@ -36,6 +48,7 @@ import ora, { type Ora } from 'ora';
 import prompts from 'prompts';
 import {
   type Config,
+  type ComponentInstall,
   type FileChecksum,
   loadConfig,
   saveConfig,
@@ -44,7 +57,9 @@ import {
   getRegistry as fetchRegistry,
   resolveSourceFile,
   sourceFileExists,
+  fetchSourceAtRef,
   fetchSourceAtVersion,
+  getRecordedRef,
   type Registry,
   type ComponentEntry,
   type LibModule,
@@ -57,6 +72,11 @@ import {
   addOriginHeader,
   hashTransformed,
 } from './transformer.js';
+import {
+  computeEntryStaleness,
+  registryFilesOf,
+  type RegistryFileEntry,
+} from '../utils/staleness.js';
 import { threeWayMerge } from '../utils/three-way-merge.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
 import { applyNavItems } from './add.js';
@@ -68,18 +88,6 @@ async function getRegistry(): Promise<Registry> {
     console.error(chalk.red('Failed to load registry:', err.message));
     process.exit(1);
   }
-}
-
-/** Compare semver: a >= b */
-function semverGte(a: string, b: string): boolean {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
-  for (let i = 0; i < 3; i++) {
-    const na = pa[i] ?? 0;
-    const nb = pb[i] ?? 0;
-    if (na !== nb) return na > nb;
-  }
-  return true;
 }
 
 /**
@@ -161,6 +169,8 @@ function resolveStrategy(options: {
 interface ProcessFileResult {
   record: FileChecksum;
   conflict: boolean;
+  /** False when the CLI did not write the new upstream content. */
+  written: boolean;
 }
 
 /**
@@ -173,23 +183,50 @@ async function processModifiableFile(args: {
   finalPath: string;
   relativeTarget: string;
   newContent: string;
-  currentSha256: string | undefined;
+  /** Registry hash of the untransformed upstream source we are moving to. */
+  newSourceSha256?: string;
+  /** Ref `newContent` was fetched from — recorded as the next diff3 base. */
+  ref: string;
+  /** Manifest record for this file, if any. */
+  installed?: FileChecksum;
   strategy: UpgradeStrategy;
   dryRun: boolean;
   fileSpinner: Ora;
   getBaseContent: () => Promise<string | null>;
 }): Promise<ProcessFileResult> {
   const {
-    finalPath, relativeTarget, newContent, currentSha256,
+    finalPath, relativeTarget, newContent, newSourceSha256, ref, installed,
     strategy, dryRun, fileSpinner, getBaseContent,
   } = args;
+  const currentSha256 = installed?.sha256;
   const newSha256 = hashTransformed(newContent);
   const base = path.basename(relativeTarget);
+
+  /** Record for a file we successfully brought to the new upstream content. */
+  const clean = (sha256: string): FileChecksum => ({
+    target: relativeTarget,
+    sourceSha256: newSourceSha256,
+    sha256,
+    ref,
+    state: 'clean',
+  });
+
+  /**
+   * Record for a file we did NOT write: keep the OLD upstream hash and ref so
+   * the next run still sees it as stale and still knows its true diff3 base.
+   */
+  const pending = (): FileChecksum => ({
+    target: relativeTarget,
+    sourceSha256: installed?.sourceSha256,
+    sha256: currentSha256 ?? newSha256,
+    ref: installed?.ref ?? ref,
+    state: 'pending',
+  });
 
   if (dryRun) {
     const pristine = currentSha256 === undefined || currentSha256 === newSha256;
     fileSpinner.info(`    ${base} — ${pristine ? 'clean overwrite' : 'has local modifications'}`);
-    return { record: { target: relativeTarget, sha256: newSha256 }, conflict: false };
+    return { record: clean(newSha256), conflict: false, written: true };
   }
 
   // Pristine = disk content matches the recorded baseline (or no baseline / no file yet).
@@ -206,15 +243,15 @@ async function processModifiableFile(args: {
   const writeOverwrite = async (): Promise<ProcessFileResult> => {
     await fs.ensureDir(path.dirname(finalPath));
     await fs.writeFile(finalPath, newContent);
-    return { record: { target: relativeTarget, sha256: newSha256 }, conflict: false };
+    return { record: clean(newSha256), conflict: false, written: true };
   };
   const writeNewFile = async (content: string): Promise<ProcessFileResult> => {
     const newFilePath = finalPath + '.new';
     await fs.ensureDir(path.dirname(newFilePath));
     await fs.writeFile(newFilePath, content);
-    // Preserve the recorded sha so the file stays "pristine" relative to the
-    // manifest; the user resolves the .new file out-of-band.
-    return { record: { target: relativeTarget, sha256: currentSha256 ?? newSha256 }, conflict: true };
+    // The user's file is untouched, so the upgrade is not done: stay pending
+    // until they resolve the .new file and re-run.
+    return { record: pending(), conflict: true, written: false };
   };
 
   if (isPristine) {
@@ -238,7 +275,9 @@ async function processModifiableFile(args: {
         await fs.ensureDir(path.dirname(finalPath));
         await fs.writeFile(finalPath, merged.text);
         fileSpinner.succeed(`    ${base} — merged cleanly`);
-        return { record: { target: relativeTarget, sha256: hashTransformed(merged.text) }, conflict: false };
+        // The merge integrated the new upstream content, so this file IS at
+        // the new upstream revision even though its bytes differ from it.
+        return { record: clean(hashTransformed(merged.text)), conflict: false, written: true };
       }
       fileSpinner.warn(`    ${base} — merge conflict → writing .new`);
       return writeNewFile(merged.text);
@@ -277,8 +316,32 @@ async function processModifiableFile(args: {
     return r;
   }
   fileSpinner.info(`    Skipped: ${base}`);
-  // Keep file untouched — preserve the recorded sha.
-  return { record: { target: relativeTarget, sha256: currentSha256 ?? newSha256 }, conflict: false };
+  // File untouched — keep the old baseline so it stays stale.
+  return { record: pending(), conflict: false, written: false };
+}
+
+/**
+ * Files the registry no longer ships. Deleting them would remove code the
+ * consumer's app may still import — this is a copy-and-own model, the files
+ * are theirs. Warn, leave them on disk, and stop tracking them so they do not
+ * report as stale forever.
+ */
+function reportRemovedFiles(
+  entryName: string,
+  registryFiles: RegistryFileEntry[],
+  installedFiles: FileChecksum[]
+): FileChecksum[] {
+  const registryTargets = new Set(registryFiles.map(f => f.target));
+  const removed = installedFiles.filter(f => !registryTargets.has(f.target));
+  for (const file of removed) {
+    console.log(
+      chalk.yellow(`    ⚠ ${file.target} is no longer shipped by '${entryName}'.`)
+    );
+    console.log(
+      chalk.dim('      Kept on disk and no longer tracked — delete it yourself if unused.')
+    );
+  }
+  return removed;
 }
 
 export async function upgrade(options: UpgradeOptions) {
@@ -318,6 +381,21 @@ export async function upgrade(options: UpgradeOptions) {
   const registry = await getRegistry();
   spinner.succeed('Registry loaded');
 
+  const release = registry.version;
+  const ref = getRecordedRef();
+
+  /** Staleness for one installed component, computed once and reused. */
+  const componentStaleness = (name: string) => {
+    const reg = registry.components.find(c => c.name === name);
+    if (!reg) return null;
+    return computeEntryStaleness(registryFilesOf(reg), config.components?.[name]);
+  };
+  const libStaleness = (name: string) => {
+    const mod = registry.lib?.[name];
+    if (!mod) return null;
+    return computeEntryStaleness(registryFilesOf(mod), config.lib?.[name]);
+  };
+
   // ── Resolve targets ───────────────────────────────────────────────
   // `--design` scopes strictly to the design-system lib module (no components).
   let targetComponents: string[] = [];
@@ -327,10 +405,12 @@ export async function upgrade(options: UpgradeOptions) {
     targetLibModules = ['design-system'];
   } else if (all) {
     targetComponents = config.installedComponents;
+    targetLibModules = config.installedLib;
   } else if (packageFilter) {
     targetComponents = config.installedComponents.filter(name => {
-      const rec = config.components?.[name];
-      return rec?.sourcePackage === packageFilter;
+      const reg = registry.components.find(c => c.name === name);
+      const declared = reg?.sourcePackage ?? config.components?.[name]?.sourcePackage;
+      return declared === packageFilter;
     });
   } else if (requestedComponents.length > 0) {
     // Allow naming a lib module (e.g. "design-system") explicitly.
@@ -340,21 +420,18 @@ export async function upgrade(options: UpgradeOptions) {
     }
   } else if (force) {
     targetComponents = config.installedComponents;
+    targetLibModules = config.installedLib;
   } else {
-    // Default: all outdated components AND all outdated lib modules.
+    // Default: everything whose upstream content changed, plus anything a
+    // previous run left pending. A v2 record has no upstream hash to compare,
+    // so it is included too — the upgrade re-baselines it into v3.
     targetComponents = config.installedComponents.filter(name => {
-      const regComp = registry.components.find(c => c.name === name);
-      if (!regComp) return false;
-      const sourcePackage = regComp.sourcePackage ?? '@buildpad/ui-interfaces';
-      const lastChangedIn = regComp.lastChangedIn ?? registry.packages?.[sourcePackage]?.version ?? registry.version;
-      const installedVersion = config.components?.[name]?.version ?? '0.0.0';
-      return !semverGte(installedVersion, lastChangedIn);
+      const s = componentStaleness(name);
+      return !!s && (s.stale || s.needsMigrate || s.untracked);
     });
     targetLibModules = config.installedLib.filter(name => {
-      const mod = registry.lib[name];
-      if (!mod?.lastChangedIn) return false;
-      const installedVersion = config.lib?.[name]?.version ?? '0.0.0';
-      return !semverGte(installedVersion, mod.lastChangedIn);
+      const s = libStaleness(name);
+      return !!s && (s.stale || s.needsMigrate || s.untracked);
     });
   }
 
@@ -386,21 +463,36 @@ export async function upgrade(options: UpgradeOptions) {
     }
 
     const sourcePackage = regComponent.sourcePackage ?? '@buildpad/ui-interfaces';
-    const latestVersion = registry.packages?.[sourcePackage]?.version ?? registry.version;
-    const lastChangedIn = regComponent.lastChangedIn ?? latestVersion;
     const installedRecord = config.components?.[componentName];
-    const installedVersion = installedRecord?.version ?? '0.0.0';
+    const staleness = computeEntryStaleness(registryFilesOf(regComponent), installedRecord);
 
-    const upToDate = semverGte(installedVersion, lastChangedIn);
-    if (upToDate && !force) {
-      console.log(chalk.dim(`  ${componentName} — already up to date (${installedVersion})`));
+    if (!staleness.stale && !staleness.needsMigrate && !staleness.untracked && !force) {
+      console.log(chalk.dim(`  ${componentName} — already up to date`));
       skipped++;
       continue;
     }
 
+    // Files whose upstream hash is unchanged need no action at all — not even
+    // a prompt. Prompting on them offered to overwrite a user's edits with
+    // byte-identical old content.
+    //
+    // A record with no upstream hashes (v2, or none at all) cannot be compared
+    // file by file, so every file is in scope: this run re-baselines it to v3.
+    const staleTargets = staleness.needsMigrate || staleness.untracked
+      ? new Set(regComponent.files.map(f => f.target))
+      : new Set(staleness.files.filter(f => f.reason !== 'removed').map(f => f.target));
+
+    const from = installedRecord?.release ?? installedRecord?.version ?? 'unknown';
     console.log(
       chalk.cyan(`  ${componentName}`) +
-      chalk.dim(upToDate ? ` re-sync @ ${latestVersion} (--force)` : ` ${installedVersion} → ${latestVersion}`)
+      chalk.dim(force ? ` re-sync @ ${release} (--force)` : ` ${from} → ${release}`)
+    );
+
+    // Removals are reported here and then simply absent from `newFiles`.
+    reportRemovedFiles(
+      componentName,
+      registryFilesOf(regComponent),
+      installedRecord?.files ?? []
     );
 
     const fileSpinner = ora('').start();
@@ -413,31 +505,42 @@ export async function upgrade(options: UpgradeOptions) {
       const targetPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
       const ext = config.tsx ? '.tsx' : '.jsx';
       const finalPath = targetPath.replace(/\.tsx?$/, ext);
+      const installed = installedRecord?.files.find(f => f.target === file.target);
+
+      // Upstream unchanged and the file is present → leave it alone entirely,
+      // modified or not. Missing on disk still self-heals.
+      const onDisk = await fs.pathExists(finalPath);
+      if (!force && !staleTargets.has(file.target) && onDisk && installed) {
+        newFiles.push(installed);
+        continue;
+      }
 
       if (!(await sourceFileExists(file.source))) {
         fileSpinner.warn(`    Source not found: ${file.source}`);
+        if (installed) newFiles.push(installed);
         continue;
       }
 
       const rawContent = await resolveSourceFile(file.source);
-      const newContent = await transformContent(rawContent, file, regComponent, config, sourcePackage, latestVersion);
-      const currentSha256 = installedRecord?.files.find(f => f.target === file.target)?.sha256;
+      const newContent = await transformContent(rawContent, file, regComponent, config, sourcePackage, release);
 
       const { record, conflict } = await processModifiableFile({
         finalPath,
         relativeTarget: file.target,
         newContent,
-        currentSha256,
+        newSourceSha256: file.sourceSha256,
+        ref,
+        installed,
         strategy,
         dryRun,
         fileSpinner,
         getBaseContent: async () => {
-          try {
-            const baseRaw = await fetchSourceAtVersion(file.source, sourcePackage, installedVersion);
-            return await transformContent(baseRaw, file, regComponent, config, sourcePackage, installedVersion);
-          } catch {
-            return null;
-          }
+          const baseRaw = await fetchBaseSource(file.source, installed, sourcePackage, installedRecord?.version);
+          if (baseRaw === null) return null;
+          return transformContent(
+            baseRaw, file, regComponent, config, sourcePackage,
+            installed?.ref ?? installedRecord?.release ?? release
+          );
         },
       });
       newFiles.push(record);
@@ -450,30 +553,27 @@ export async function upgrade(options: UpgradeOptions) {
     // the new imports) — make sure its declared npm deps get installed.
     regComponent.dependencies?.forEach(dep => externalDeps.add(dep));
 
+    const pendingCount = newFiles.filter(f => f.state === 'pending').length;
+
     if (!dryRun) {
       if (!config.components) config.components = {};
-      config.components[componentName] = {
-        version: latestVersion,
+      const record: ComponentInstall = {
+        release,
+        ref,
         sourcePackage,
         installedAt: installedRecord?.installedAt ?? new Date().toISOString(),
         files: newFiles,
       };
-      if (!config.packageVersions) config.packageVersions = {};
-      config.packageVersions[sourcePackage] = latestVersion;
-      if (!config.componentVersions) config.componentVersions = {};
-      config.componentVersions[componentName] = {
-        version: latestVersion,
-        installedAt: config.components[componentName].installedAt,
-        source: sourcePackage,
-      };
+      config.components[componentName] = record;
       dirty = true;
     }
 
-    const verb = upToDate ? 're-synced at' : 'upgraded to';
-    if (!componentHadConflict) {
-      console.log(chalk.green(`  ✓ ${componentName} ${verb} ${latestVersion}`));
+    if (componentHadConflict) {
+      console.log(chalk.yellow(`  ⚠ ${componentName} → ${release} (conflicts — resolve .new files, then re-run)`));
+    } else if (pendingCount > 0) {
+      console.log(chalk.yellow(`  ⚠ ${componentName} → ${release} (${pendingCount} file(s) still pending)`));
     } else {
-      console.log(chalk.yellow(`  ⚠ ${componentName} ${verb} ${latestVersion} (with conflicts — resolve .new files)`));
+      console.log(chalk.green(`  ✓ ${componentName} upgraded to ${release}`));
     }
     upgraded++;
   }
@@ -492,57 +592,65 @@ export async function upgrade(options: UpgradeOptions) {
     }
 
     const sourcePackage = mod.sourcePackage ?? '@buildpad/cli';
-    const latestVersion = mod.version ?? registry.packages?.[sourcePackage]?.version ?? registry.version;
-    const lastChangedIn = mod.lastChangedIn ?? latestVersion;
     const installedRecord = config.lib?.[moduleName];
-    const installedVersion = installedRecord?.version ?? '0.0.0';
     const isAdoption = !installedRecord;
+    // Iterate the same list staleness is computed from. Older lib modules
+    // declare a single file as `path`/`target` rather than in `files`; counting
+    // it as stale but never writing it would leave the module permanently
+    // outdated with no way to resolve it.
+    const modFiles = registryFilesOf(mod);
+    const staleness = computeEntryStaleness(modFiles, installedRecord);
 
-    // A module gains files over time. Comparing versions alone means a
-    // consumer whose recorded version already equals `lastChangedIn` is told
-    // "up to date" and never receives a newly added file — the version can't
-    // move until a release, so the gap is invisible. Treat any registered
-    // file that is absent on disk as work to do, regardless of version.
+    // A module gains files over time, and a file registered upstream but absent
+    // on disk is work to do regardless of hashes.
     const libSrcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
-    const missingFiles = (mod.files ?? []).filter(
+    const missingFiles = modFiles.filter(
       (f: { target: string }) => !fs.existsSync(path.join(libSrcDir, f.target))
     );
 
-    const upToDate =
-      !isAdoption && missingFiles.length === 0 && semverGte(installedVersion, lastChangedIn);
-    if (upToDate && !force) {
-      console.log(chalk.dim(`  ${moduleName} — already up to date (${installedVersion})`));
+    const needsWork =
+      isAdoption || missingFiles.length > 0 || staleness.stale || staleness.needsMigrate;
+    if (!needsWork && !force) {
+      console.log(chalk.dim(`  ${moduleName} — already up to date`));
       skipped++;
       continue;
     }
 
+    const staleTargets = staleness.needsMigrate || staleness.untracked
+      ? new Set(modFiles.map(f => f.target))
+      : new Set(staleness.files.filter(f => f.reason !== 'removed').map(f => f.target));
+
+    const from = installedRecord?.release ?? installedRecord?.version ?? 'unknown';
     console.log(
       chalk.cyan(`  ${moduleName}`) +
-      chalk.dim(isAdoption ? ` install @ ${latestVersion}` : ` ${installedVersion} → ${latestVersion}`)
+      chalk.dim(isAdoption ? ` install @ ${release}` : ` ${from} → ${release}`)
     );
+
+    if (!isAdoption) {
+      reportRemovedFiles(moduleName, modFiles, installedRecord!.files ?? []);
+    }
 
     // Detect first-time adoption of the CLI-managed nav file — when this
     // upgrade CREATES components/layout/navigation.ts, seed it afterwards
     // with the nav entries of route modules that are already installed.
     // (Existing nav files are never re-seeded: removals are user intent.)
-    const navFile = (mod.files ?? []).find(f =>
+    const navFile = modFiles.find(f =>
       f.target.endsWith('components/layout/navigation.ts')
     );
     const navExistedBefore = navFile
-      ? fs.existsSync(
-          path.join(config.srcDir ? path.join(cwd, 'src') : cwd, navFile.target)
-        )
+      ? fs.existsSync(path.join(libSrcDir, navFile.target))
       : true;
 
     const fileSpinner = ora('').start();
     const newFiles: FileChecksum[] = [];
     let moduleHadConflict = false;
 
-    for (const file of mod.files ?? []) {
+    for (const file of modFiles) {
       fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
 
       // Lib targets are literal paths (no .tsx/.jsx ext swap) — must match copyLibModule.
-      const finalPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
+      const finalPath = path.join(libSrcDir, file.target);
+      const installed = installedRecord?.files.find(f => f.target === file.target);
 
       // The nav config is adopt-once: it accumulates user edits and
       // CLI-inserted route-module entries — upgrades create it when missing
@@ -552,35 +660,49 @@ export async function upgrade(options: UpgradeOptions) {
         fs.existsSync(finalPath)
       ) {
         const existing = await fs.readFile(finalPath, 'utf-8');
-        newFiles.push({ target: file.target, sha256: hashTransformed(existing) });
+        newFiles.push({
+          target: file.target,
+          sourceSha256: file.sourceSha256,
+          sha256: hashTransformed(existing),
+          ref,
+          state: 'clean',
+        });
+        continue;
+      }
+
+      const onDisk = await fs.pathExists(finalPath);
+      if (!force && !staleTargets.has(file.target) && onDisk && installed) {
+        newFiles.push(installed);
         continue;
       }
 
       if (!(await sourceFileExists(file.source))) {
         fileSpinner.warn(`    Source not found: ${file.source}`);
+        if (installed) newFiles.push(installed);
         continue;
       }
 
       const rawContent = await resolveSourceFile(file.source);
-      const newContent = transformLibContent(rawContent, file, moduleName, config, sourcePackage, latestVersion);
-      const currentSha256 = installedRecord?.files.find(f => f.target === file.target)?.sha256;
+      const newContent = transformLibContent(rawContent, file, moduleName, config, sourcePackage, release);
 
       const { record, conflict } = await processModifiableFile({
         finalPath,
         relativeTarget: file.target,
         newContent,
-        currentSha256,
+        newSourceSha256: file.sourceSha256,
+        ref,
+        installed,
         strategy,
         dryRun,
         fileSpinner,
         getBaseContent: async () => {
           if (isAdoption) return null; // no baseline to merge against
-          try {
-            const baseRaw = await fetchSourceAtVersion(file.source, sourcePackage, installedVersion);
-            return transformLibContent(baseRaw, file, moduleName, config, sourcePackage, installedVersion);
-          } catch {
-            return null;
-          }
+          const baseRaw = await fetchBaseSource(file.source, installed, sourcePackage, installedRecord?.version);
+          if (baseRaw === null) return null;
+          return transformLibContent(
+            baseRaw, file, moduleName, config, sourcePackage,
+            installedRecord?.release ?? release
+          );
         },
       });
       newFiles.push(record);
@@ -593,17 +715,18 @@ export async function upgrade(options: UpgradeOptions) {
     // to the bare name, matching add.ts.
     mod.dependencies?.forEach(dep => externalDeps.add(dep.replace(/@[^@/]*$/, '')));
 
+    const pendingCount = newFiles.filter(f => f.state === 'pending').length;
+
     if (!dryRun) {
       if (!config.lib) config.lib = {};
       config.lib[moduleName] = {
-        version: latestVersion,
+        release,
+        ref,
         sourcePackage,
         installedAt: installedRecord?.installedAt ?? new Date().toISOString(),
         files: newFiles,
       };
       if (!config.installedLib.includes(moduleName)) config.installedLib.push(moduleName);
-      if (!config.packageVersions) config.packageVersions = {};
-      config.packageVersions[sourcePackage] = latestVersion;
       dirty = true;
 
       // Seed the freshly-adopted nav file from already-installed route
@@ -621,15 +744,23 @@ export async function upgrade(options: UpgradeOptions) {
     }
 
     const verb = isAdoption ? 'installed at' : 'upgraded to';
-    if (!moduleHadConflict) {
-      console.log(chalk.green(`  ✓ ${moduleName} ${verb} ${latestVersion}`));
+    if (moduleHadConflict) {
+      console.log(chalk.yellow(`  ⚠ ${moduleName} ${verb} ${release} (conflicts — resolve .new files, then re-run)`));
+    } else if (pendingCount > 0) {
+      console.log(chalk.yellow(`  ⚠ ${moduleName} ${verb} ${release} (${pendingCount} file(s) still pending)`));
     } else {
-      console.log(chalk.yellow(`  ⚠ ${moduleName} ${verb} ${latestVersion} (with conflicts — resolve .new files)`));
+      console.log(chalk.green(`  ✓ ${moduleName} ${verb} ${release}`));
     }
     upgraded++;
   }
 
   if (!dryRun && dirty) {
+    config.release = release;
+    // Only claim v3 once EVERY record actually carries upstream hashes. A
+    // targeted `upgrade input` on a v2 manifest re-baselines that one component
+    // and leaves the rest v2; stamping v3 there would silence loadConfig's
+    // migrate hint while most of the manifest still cannot be compared.
+    if (allRecordsAreV3(config)) config.schemaVersion = 3;
     await saveConfig(cwd, config);
   }
 
@@ -652,4 +783,52 @@ export async function upgrade(options: UpgradeOptions) {
     console.log(chalk.yellow(`  Conflicts: ${conflicts} (.new files written — please review)`));
   }
   console.log('');
+}
+
+/**
+ * The exact bytes this consumer installed, for use as the diff3 base.
+ *
+ * v3 records the ref each file came from, so the base is fetched from that ref
+ * — the true common ancestor. Before v3 the CLI guessed a tag from the recorded
+ * version, which was wrong whenever the install came from `main` between
+ * releases, or whenever the guessed tag did not exist (the CLI and MCP packages
+ * were untagged at several releases). That path remains only for manifests that
+ * have not been migrated yet.
+ *
+ * Returns null when no base is reachable — the caller writes a `.new` file and
+ * marks the entry pending.
+ */
+async function fetchBaseSource(
+  source: string,
+  installed: FileChecksum | undefined,
+  sourcePackage: string,
+  legacyVersion: string | undefined
+): Promise<string | null> {
+  if (installed?.ref && !installed.ref.startsWith('url:') && installed.ref !== 'local') {
+    try {
+      return await fetchSourceAtRef(source, installed.ref);
+    } catch {
+      return null;
+    }
+  }
+  // Legacy v2 record: no ref was stored. Fall back to the version guess.
+  if (!legacyVersion) return null;
+  try {
+    return await fetchSourceAtVersion(source, sourcePackage, legacyVersion);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when every installed component and lib module records an upstream hash
+ * for every file — i.e. the whole manifest can answer the v3 staleness question.
+ */
+function allRecordsAreV3(config: Config): boolean {
+  const records = [
+    ...Object.values(config.components ?? {}),
+    ...Object.values(config.lib ?? {}),
+  ];
+  if (records.length === 0) return false;
+  return records.every(r => (r.files ?? []).every(f => !!f.sourceSha256));
 }

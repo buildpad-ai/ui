@@ -18,7 +18,7 @@
  *   Falls back to supabase.auth.exchangeCodeForSession() for magic links / native OAuth.
  *
  * @buildpad/origin: external-oauth/auth-callback
- * @buildpad/version: 2.0.0
+ * @buildpad/version: 2.1.0
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,6 +37,7 @@ import {
   type IdTokenClaims,
 } from '@/lib/oauth/validate';
 import { findOrCreateUser } from '@/lib/supabase/admin';
+import { publicOrigin, safeRelativePath } from '@/lib/origin';
 
 const STATE_COOKIE_NAME = 'oauth_state';
 
@@ -52,6 +53,9 @@ interface TokenResponse {
 }
 
 export async function GET(request: NextRequest) {
+  // Redirect targets and the OAuth `redirect_uri` must be built from the
+  // app's real public origin, never from `request.url` — see lib/origin.ts.
+  const origin = publicOrigin(request);
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
   const state = searchParams.get('state');
@@ -62,7 +66,7 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error('OAuth error from provider:', error, errorDescription);
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(errorDescription || error)}`, request.url)
+      new URL(`/login?error=${encodeURIComponent(errorDescription || error)}`, origin)
     );
   }
 
@@ -73,11 +77,11 @@ export async function GET(request: NextRequest) {
   if (!encryptedState) {
     // No external OAuth state cookie → Supabase native magic link / OAuth flow
     console.log('No oauth_state cookie — falling back to Supabase native callback');
-    return handleSupabaseCallback(request, code);
+    return handleSupabaseCallback(request, code, origin);
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL('/login?error=missing_code_or_state', request.url));
+    return NextResponse.redirect(new URL('/login?error=missing_code_or_state', origin));
   }
 
   // ─── Decrypt + validate state (CSRF + expiry) ──────────────────────────
@@ -85,23 +89,23 @@ export async function GET(request: NextRequest) {
   try {
     oauthState = decryptState<OAuthStateData>(encryptedState);
   } catch {
-    return NextResponse.redirect(new URL('/login?error=invalid_state', request.url));
+    return NextResponse.redirect(new URL('/login?error=invalid_state', origin));
   }
 
   if (oauthState.state !== state) {
     console.error('State mismatch — possible CSRF attack');
-    return NextResponse.redirect(new URL('/login?error=state_mismatch', request.url));
+    return NextResponse.redirect(new URL('/login?error=state_mismatch', origin));
   }
 
   if (isStateExpired(oauthState)) {
-    return NextResponse.redirect(new URL('/login?error=state_expired', request.url));
+    return NextResponse.redirect(new URL('/login?error=state_expired', origin));
   }
 
   cookieStore.delete(STATE_COOKIE_NAME);
 
   try {
     const config = getProviderConfig(oauthState.provider);
-    const redirectUri = `${request.nextUrl.origin}/api/auth/callback`;
+    const redirectUri = `${origin}/api/auth/callback`;
 
     // ─── Token exchange ───────────────────────────────────────────────────
     console.log(`OAuth: Exchanging code for tokens (${oauthState.provider})`);
@@ -130,7 +134,7 @@ export async function GET(request: NextRequest) {
           `/login?error=${encodeURIComponent(
             tokens.error_description || tokens.error || 'token_exchange_failed'
           )}`,
-          request.url
+          origin
         )
       );
     }
@@ -193,7 +197,7 @@ export async function GET(request: NextRequest) {
 
     if (!allClaims.sub) {
       console.error('No subject (sub) claim found in any token');
-      return NextResponse.redirect(new URL('/login?error=no_subject_claim', request.url));
+      return NextResponse.redirect(new URL('/login?error=no_subject_claim', origin));
     }
 
     const userInfo = normalizeUserClaims(allClaims as IdTokenClaims);
@@ -203,7 +207,7 @@ export async function GET(request: NextRequest) {
         'No email found in any token claims. Available claims:',
         Object.keys(allClaims).join(', ')
       );
-      return NextResponse.redirect(new URL('/login?error=no_email_claim', request.url));
+      return NextResponse.redirect(new URL('/login?error=no_email_claim', origin));
     }
 
     console.log(`OAuth: User authenticated — ${userInfo.email} (${oauthState.provider})`);
@@ -228,7 +232,7 @@ export async function GET(request: NextRequest) {
     // CRITICAL: use supabase.auth.setSession() from @supabase/ssr createServerClient.
     // Do NOT set sb-access-token / sb-refresh-token cookies manually —
     // the SSR middleware expects a specific format that only setSession() provides.
-    const redirectUrl = new URL(oauthState.returnTo || '/', request.url);
+    const redirectUrl = new URL(safeRelativePath(oauthState.returnTo), origin);
     let response = NextResponse.redirect(redirectUrl);
 
     const supabase = createServerClient(
@@ -239,7 +243,7 @@ export async function GET(request: NextRequest) {
           getAll() {
             return request.cookies.getAll();
           },
-          setAll(cookiesToSet) {
+          setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options)
             );
@@ -258,7 +262,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         new URL(
           `/login?error=${encodeURIComponent(setSessionError.message)}`,
-          request.url
+          origin
         )
       );
     }
@@ -282,7 +286,7 @@ export async function GET(request: NextRequest) {
         `/login?error=${encodeURIComponent(
           error instanceof Error ? error.message : 'callback_error'
         )}`,
-        request.url
+        origin
       )
     );
   }
@@ -294,10 +298,11 @@ export async function GET(request: NextRequest) {
  */
 async function handleSupabaseCallback(
   request: NextRequest,
-  code: string | null
+  code: string | null,
+  origin: string
 ): Promise<NextResponse> {
   if (!code) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/login', origin));
   }
 
   const { createClient } = await import('@/lib/supabase/server');
@@ -306,10 +311,12 @@ async function handleSupabaseCallback(
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url)
+      new URL(`/login?error=${encodeURIComponent(error.message)}`, origin)
     );
   }
 
-  const next = request.nextUrl.searchParams.get('next') ?? '/';
-  return NextResponse.redirect(new URL(next, request.url));
+  // `next` is attacker-supplied: constrain it to a path on this app, or
+  // `?next=https://evil.example` becomes an open redirect.
+  const next = safeRelativePath(request.nextUrl.searchParams.get('next'));
+  return NextResponse.redirect(new URL(next, origin));
 }

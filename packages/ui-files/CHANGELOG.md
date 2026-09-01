@@ -1,5 +1,76 @@
 # @buildpad/ui-files
 
+## 2.1.0
+
+### Patch Changes
+
+- @buildpad/ui-interfaces@2.1.0
+- @buildpad/hooks@2.1.0
+- @buildpad/services@2.1.0
+- @buildpad/types@2.1.0
+
+## 2.0.0
+
+### Patch Changes
+
+- @buildpad/hooks@2.0.0
+- @buildpad/services@2.0.0
+- @buildpad/types@2.0.0
+- @buildpad/ui-interfaces@2.0.0
+
+## 1.11.1
+
+### Patch Changes
+
+- Updated dependencies [585362e]
+- Updated dependencies [6d724ee]
+- Updated dependencies [565448a]
+- Updated dependencies [b8b5344]
+- Updated dependencies [a22729a]
+- Updated dependencies [50a4057]
+- Updated dependencies [08127f0]
+- Updated dependencies [d5c9eee]
+- Updated dependencies [577eda9]
+- Updated dependencies [c6baa06]
+- Updated dependencies [4a53873]
+- Updated dependencies [27a2515]
+- Updated dependencies [6375036]
+- Updated dependencies [2b8413c]
+- Updated dependencies [0408b2c]
+- Updated dependencies [12f823c]
+- Updated dependencies [594c277]
+- Updated dependencies [2be8218]
+- Updated dependencies [1226ec5]
+- Updated dependencies [1bf1731]
+- Updated dependencies [46afe83]
+- Updated dependencies [5056ef3]
+- Updated dependencies [7b415ad]
+- Updated dependencies [944c25c]
+- Updated dependencies [1523349]
+- Updated dependencies [ad9c415]
+- Updated dependencies [1f2bcff]
+- Updated dependencies [925e201]
+- Updated dependencies [4a31fb5]
+- Updated dependencies [24ebfc2]
+- Updated dependencies [0ad17fc]
+- Updated dependencies [432125d]
+- Updated dependencies [2f6ad88]
+- Updated dependencies [4becd38]
+- Updated dependencies [5802243]
+- Updated dependencies [4355c8e]
+- Updated dependencies [79c22f7]
+- Updated dependencies [af56a74]
+- Updated dependencies [eb662e3]
+- Updated dependencies [ee5bbd6]
+- Updated dependencies [4aad6ac]
+- Updated dependencies [a5478f4]
+- Updated dependencies [e078a74]
+- Updated dependencies [4355f4d]
+  - @buildpad/hooks@1.11.1
+  - @buildpad/ui-interfaces@1.11.1
+  - @buildpad/services@1.11.1
+  - @buildpad/types@1.11.1
+
 ## 1.10.0
 
 ### Patch Changes

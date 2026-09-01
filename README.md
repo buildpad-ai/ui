@@ -669,14 +669,14 @@ Buildpad uses a **per-file checksum** system so updates only touch files you hav
 
 | Command                          | Description                                                                                      |
 | -------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `buildpad outdated`            | Check which installed components have newer versions                                             |
+| `buildpad outdated`            | Check which installed files changed upstream since they were installed                           |
 | `buildpad upgrade`             | Upgrade components — silent overwrite for pristine files, interactive prompt for modified files |
 | `buildpad upgrade --three-way` | 3-way merge (diff3) for conflict resolution on modified files                                    |
 | `buildpad upgrade --force`     | Re-sync components even when already at the latest version (honours`--strategy`)               |
 | `buildpad changelog <pkg>`     | View changelog slices between installed and latest versions                                      |
 | `buildpad migrate`             | Migrate`buildpad.json` from schema v1 to v2 (enables per-file update tracking)                 |
 
-**How it works:** Each component file copied to your project has an SHA256 checksum recorded in `buildpad.json`. On upgrade, pristine files (disk matches recorded hash) are silently overwritten. Customized files trigger an interactive prompt with skip/overwrite/.new/three-way merge options. Components carry per-package semver (e.g. `@buildpad/ui-interfaces@1.4.2`), so `outdated` only flags files from packages that actually changed. See [docs/PUBLISHING.md](docs/PUBLISHING.md) for the versioning and release workflow.
+**How it works:** `buildpad.json` records two hashes per copied file: the registry's hash of the upstream source it came from, and the hash of the transformed bytes the CLI wrote. The first detects that *upstream* changed, the second that *you* changed it. `outdated` flags only files whose upstream content actually moved — a release that leaves a file byte-identical is silent, whatever the version numbers say. On upgrade, pristine files are silently overwritten; customized files trigger a prompt with skip/overwrite/.new/three-way merge, and a file whose upstream is unchanged is left alone with no prompt at all. Anything the CLI does not write stays marked stale rather than being recorded as upgraded. Sources are fetched from the release tag matching your CLI version, so `npx @buildpad/cli@X.Y.Z` is reproducible. See [docs/PUBLISHING.md](docs/PUBLISHING.md) for the versioning and release workflow.
 
 ## 🔧 Workspace Commands
 
