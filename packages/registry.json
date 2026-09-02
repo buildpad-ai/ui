@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-02T04:39:14.222Z",
+  "generatedAt": "2026-09-02T08:40:49.336Z",
   "version": "2.2.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -137,7 +137,7 @@
   "lib": {
     "utils": {
       "name": "utils",
-      "description": "Utility functions (cn, formatFileSize, field interface mapper, etc.)",
+      "description": "Utility functions (cn, formatFileSize, field interface mapper, component i18n core, etc.)",
       "files": [
         {
           "source": "cli/templates/lib/common-utils.ts",
@@ -190,9 +190,54 @@
           "sourceSha256": "ec60890733f96d71e1265e8dead9a65d440d85df19fdd6d1764a7cabae135e55"
         },
         {
+          "source": "utils/src/i18n/types.ts",
+          "target": "lib/buildpad/i18n/types.ts",
+          "sourceSha256": "18b8fa23d779388c47499d5ea114e17f8e93fab7291a766628d6a5e635924830"
+        },
+        {
+          "source": "utils/src/i18n/defaults.ts",
+          "target": "lib/buildpad/i18n/defaults.ts",
+          "sourceSha256": "b2961318581eb0734e52ffba78c3417334ed5a7ebd5198464718089e60eda3f4"
+        },
+        {
+          "source": "utils/src/i18n/merge.ts",
+          "target": "lib/buildpad/i18n/merge.ts",
+          "sourceSha256": "8184a98301002c85c4c5cb1d96b9c6cf59b048205dcee799b4b2cefe25d9a287"
+        },
+        {
+          "source": "utils/src/i18n/interpolate.ts",
+          "target": "lib/buildpad/i18n/interpolate.ts",
+          "sourceSha256": "79f4b662b47622945de980f358d4cad713b14875a6275a39500dc61c214ec4e8"
+        },
+        {
+          "source": "utils/src/i18n/plural.ts",
+          "target": "lib/buildpad/i18n/plural.ts",
+          "sourceSha256": "906334caa4e23cbd480a9ea38b2f19b833ff880f759a794388ab060371251ae7"
+        },
+        {
+          "source": "utils/src/i18n/locale.ts",
+          "target": "lib/buildpad/i18n/locale.ts",
+          "sourceSha256": "10c7f66e179a7fac37bfa266638e9ae4e5d033f1ff3dfbb262d919fa81cd398e"
+        },
+        {
+          "source": "utils/src/i18n/locales/id.ts",
+          "target": "lib/buildpad/i18n/locales/id.ts",
+          "sourceSha256": "cd5eaaebb40226c18c1e8f44ac5085e65ffeea8b6aa2f19e0a2bcd3bc70ab24a"
+        },
+        {
+          "source": "utils/src/i18n/locales/index.ts",
+          "target": "lib/buildpad/i18n/locales/index.ts",
+          "sourceSha256": "d8fb47f0f56376a18df8d34fa6f29bc9407d0f8c69487b507339265a6fcf257c"
+        },
+        {
+          "source": "utils/src/i18n/index.ts",
+          "target": "lib/buildpad/i18n/index.ts",
+          "sourceSha256": "04b79b5859236d34de67111ec9a728f9ebf5ab54cdcab35a82fa287a967ccaa8"
+        },
+        {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "a0bda1d5db242d6ea3fc3644cfd0df341ebd43916e386c255c27cfb0c84c8b02"
+          "sourceSha256": "26862501edb7aef3ff3606058bebe6984e11b23c867463d6c03a9b2f19ccc99f"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -210,7 +255,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.2.0",
-      "lastChangedIn": "1.11.0"
+      "lastChangedIn": "2.2.0"
     },
     "types": {
       "name": "types",
@@ -301,6 +346,11 @@
           "sourceSha256": "ed3223a1b50997081f6a620ddbcaa459851a205d2b4c4b421017003762c02bf0"
         },
         {
+          "source": "services/src/buildpad-i18n-context.tsx",
+          "target": "lib/buildpad/services/buildpad-i18n-context.tsx",
+          "sourceSha256": "9b9daff9bc0c00ef84dd5a22efde4b2438c79cefab9cfa30c1eaebedf3327665"
+        },
+        {
           "source": "services/src/auth/index.ts",
           "target": "lib/buildpad/services/auth/index.ts",
           "sourceSha256": "861bb2c7ff9383147c959fd04f0fe8fcb2a713c1a16440870fa0b76fd4b8fc89"
@@ -328,7 +378,7 @@
         {
           "source": "cli/templates/lib/services/index.ts",
           "target": "lib/buildpad/services/index.ts",
-          "sourceSha256": "4fddf4275e9422b4804a682600ac5d43f2a399692cd98e8ef9231c2d4dba3679"
+          "sourceSha256": "65d7dc85ee119c57ecbbe042bfd0a16e1f71dae82981d0347823793eb711428d"
         }
       ],
       "internalDependencies": [
@@ -337,7 +387,7 @@
       ],
       "sourcePackage": "@buildpad/services",
       "version": "2.2.0",
-      "lastChangedIn": "1.11.0"
+      "lastChangedIn": "2.2.0"
     },
     "hooks": {
       "name": "hooks",
@@ -514,9 +564,14 @@
           "sourceSha256": "09db04aec3c8193b0a49f638687e0b5ff9b30925fdf9a0db9d38831cfcb3fe43"
         },
         {
+          "source": "hooks/src/useBuildpadI18n.ts",
+          "target": "lib/buildpad/hooks/useBuildpadI18n.ts",
+          "sourceSha256": "c75ce952252b836f165e0c47c5231cedaf2bfc854f9d18b09bd1be74760f70ee"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "4d9d9c47e467bce998506a40ddb255a6148b43e58368003accd28b95d6656793"
+          "sourceSha256": "6fd55cfed126fe862237f6784440d6a8a7705512514e4802c3bc56afdc351421"
         }
       ],
       "internalDependencies": [
@@ -527,9 +582,77 @@
       "version": "2.2.0",
       "lastChangedIn": "2.2.0"
     },
+    "i18n": {
+      "name": "i18n",
+      "description": "Locale routing for app/[lang]: locale config, Accept-Language negotiation for middleware, server-loaded dictionaries, the app I18nProvider (which also mounts BuildpadI18nProvider), locale-aware navigation hooks, content-translation query helpers, and the LanguageSwitcher.",
+      "dependencies": [
+        "negotiator",
+        "@formatjs/intl-localematcher",
+        "server-only",
+        "@types/negotiator"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/lib/i18n/config.ts",
+          "target": "lib/i18n/config.ts",
+          "sourceSha256": "a1ef96d19823417e9a1f9a0b71d63fcb726cb5fb896b68e68330e415287ac513"
+        },
+        {
+          "source": "cli/templates/lib/i18n/negotiate.ts",
+          "target": "lib/i18n/negotiate.ts",
+          "sourceSha256": "9146b115225084e19abfd722ffe6f5d2e9ab7f6467c334fe2829b8dd25e8d41a"
+        },
+        {
+          "source": "cli/templates/lib/i18n/types.ts",
+          "target": "lib/i18n/types.ts",
+          "sourceSha256": "41c200261afcb7efed85dd570dd278c09e99542c3edfed736cc5a697bfa1fcc4"
+        },
+        {
+          "source": "cli/templates/lib/i18n/dictionaries.ts",
+          "target": "lib/i18n/dictionaries.ts",
+          "sourceSha256": "68567179b52d3539c090ee0fd20d798d7fe574dcd678b0b00be988561e5d30b7"
+        },
+        {
+          "source": "cli/templates/lib/i18n/dictionaries/en.json",
+          "target": "lib/i18n/dictionaries/en.json",
+          "sourceSha256": "0f394293d7264c0cb15fb1311f1bcc998c05967cd73b5d845affafaa40ac5908"
+        },
+        {
+          "source": "cli/templates/lib/i18n/provider.tsx",
+          "target": "lib/i18n/provider.tsx",
+          "sourceSha256": "f33a5bbfd89dfa4f2f6c2f4024d448beac3ffb092a48bdda982a1f5ba481ad8f"
+        },
+        {
+          "source": "cli/templates/lib/i18n/navigation.ts",
+          "target": "lib/i18n/navigation.ts",
+          "sourceSha256": "f5a2e8f2c1b801ccad77598bdfe00036812ce48f3188c1c8f40708c7dec2713f"
+        },
+        {
+          "source": "cli/templates/lib/i18n/content.ts",
+          "target": "lib/i18n/content.ts",
+          "sourceSha256": "dccc25f3f0cd5bd5236b9b2a8ad5f0f66502e9aee2a2752d8a63bfce0b902f67"
+        },
+        {
+          "source": "cli/templates/lib/i18n/index.ts",
+          "target": "lib/i18n/index.ts",
+          "sourceSha256": "9ac36c016d8b9733f83023532b13ff020e0214fcea73622ee585e3fd63159712"
+        },
+        {
+          "source": "cli/templates/components/LanguageSwitcher.tsx",
+          "target": "components/LanguageSwitcher.tsx",
+          "sourceSha256": "1a9999133dd2e546fa7b2cee0a8085a2e307b207563daa9975570cf276963321"
+        }
+      ],
+      "internalDependencies": [
+        "services"
+      ],
+      "sourcePackage": "@buildpad/cli",
+      "version": "2.2.0",
+      "lastChangedIn": "2.2.0"
+    },
     "api-routes": {
       "name": "api-routes",
-      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout",
+      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout, all under app/[lang]",
       "files": [
         {
           "source": "cli/templates/api/auth-login-route.ts",
@@ -553,8 +676,8 @@
         },
         {
           "source": "cli/templates/api/login-page.tsx",
-          "target": "app/login/page.tsx",
-          "sourceSha256": "8face67ab32708a7b432d6870c2f9c78ce6eb7fcc51b8e487c62cf36b003162e"
+          "target": "app/[lang]/login/page.tsx",
+          "sourceSha256": "83638970880cbe325df52612bc435ae0ccec56a86deb4564d8e4c2f3af0f35ab"
         },
         {
           "source": "cli/templates/lib/api-auth-headers.ts",
@@ -643,12 +766,13 @@
         },
         {
           "source": "cli/templates/app/authenticated-layout.tsx",
-          "target": "app/(authenticated)/layout.tsx",
+          "target": "app/[lang]/(authenticated)/layout.tsx",
           "sourceSha256": "f2e8681c78d308f8402a879162154f1ed525a385a758570fd6c108350c2b54b2"
         }
       ],
       "internalDependencies": [
         "supabase-auth",
+        "i18n",
         "design-system"
       ],
       "sourcePackage": "@buildpad/cli",
@@ -661,23 +785,23 @@
       "files": [
         {
           "source": "cli/templates/app/content/layout.tsx",
-          "target": "app/content/layout.tsx",
-          "sourceSha256": "de692931420f236801892e2337b945f5f6298e2fc1e659a667a9d026cf3b0e40"
+          "target": "app/[lang]/content/layout.tsx",
+          "sourceSha256": "56bed14a31da50a38c464756bb1ad4e553fef84a86ac237d0aa11f2fedcee38b"
         },
         {
           "source": "cli/templates/app/content/page.tsx",
-          "target": "app/content/page.tsx",
-          "sourceSha256": "76f0147df59407db3b0150be5173312f86e3d99fd759522a4948c8781d2b13f9"
+          "target": "app/[lang]/content/page.tsx",
+          "sourceSha256": "72079297a3dfcaf5b112b8064fdebade272b27dd8a68781d8750d5fb344006e8"
         },
         {
           "source": "cli/templates/app/content/[collection]/page.tsx",
-          "target": "app/content/[collection]/page.tsx",
-          "sourceSha256": "eceee12bca8b3159b3c639f71bc36a1f7c2e825816518c5e0158270389cb0bd9"
+          "target": "app/[lang]/content/[collection]/page.tsx",
+          "sourceSha256": "2004ac43357541e36b342d04a54512e7a495861b2d1d167aeb0ce178267ec71e"
         },
         {
           "source": "cli/templates/app/content/[collection]/[id]/page.tsx",
-          "target": "app/content/[collection]/[id]/page.tsx",
-          "sourceSha256": "ef9eb2f3d9c00349bd8870202a85671c02b4c11577412b6aaadd6fdb18c1279f"
+          "target": "app/[lang]/content/[collection]/[id]/page.tsx",
+          "sourceSha256": "0712cbaeeeebe0610e4f29b59bb9a5f587db2aa0d12595c3d14639c57d225977"
         }
       ],
       "internalDependencies": [
@@ -686,7 +810,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.2.0",
-      "lastChangedIn": "1.2.0"
+      "lastChangedIn": "2.2.0"
     },
     "files-routes": {
       "name": "files-routes",
@@ -694,13 +818,13 @@
       "files": [
         {
           "source": "cli/templates/app/files/page.tsx",
-          "target": "app/(authenticated)/files/page.tsx",
-          "sourceSha256": "b3c331be7112a71a37aef712ac2c1f90003713630c21ccc39395630929e63866"
+          "target": "app/[lang]/(authenticated)/files/page.tsx",
+          "sourceSha256": "d67a70bf883beec04b66b38fc3515f394af0dc9d1a18e4b0dac771b4fea09581"
         },
         {
           "source": "cli/templates/app/files/[id]/page.tsx",
-          "target": "app/(authenticated)/files/[id]/page.tsx",
-          "sourceSha256": "4e92795e4774928fcc4ace3628bc0900b775b2a544a5c2b3aab4171e4a42d584"
+          "target": "app/[lang]/(authenticated)/files/[id]/page.tsx",
+          "sourceSha256": "913f9cee388023782ac6d45cc2c2e19ee0d4e20e7c1e7ecec686d123507596f5"
         }
       ],
       "internalDependencies": [
@@ -714,12 +838,13 @@
         {
           "label": "Files",
           "href": "/files",
-          "icon": "IconFolders"
+          "icon": "IconFolders",
+          "labelKey": "app.nav.files"
         }
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.2.0",
-      "lastChangedIn": "1.5.0"
+      "lastChangedIn": "2.2.0"
     },
     "users-routes": {
       "name": "users-routes",
@@ -727,37 +852,37 @@
       "files": [
         {
           "source": "cli/templates/app/users/page.tsx",
-          "target": "app/(authenticated)/users/page.tsx",
-          "sourceSha256": "2c9dd8b1b6fd69fdd7e1b2520e9f887871bdd4da0bb1bed63511db530d39000d"
+          "target": "app/[lang]/(authenticated)/users/page.tsx",
+          "sourceSha256": "fd680b96be85bd1f6f2197d673f903797567f1f9f4dff243a3f4bd196dc02a8f"
         },
         {
           "source": "cli/templates/app/users/[id]/page.tsx",
-          "target": "app/(authenticated)/users/[id]/page.tsx",
-          "sourceSha256": "ca1979db1a18fc9b67eec2e1f6919e5d7c8388e384ae0032a37abbcd82961406"
+          "target": "app/[lang]/(authenticated)/users/[id]/page.tsx",
+          "sourceSha256": "4319ec2077451145ef66169dc14d76082b80ffd86b09d76b790d97b546f22035"
         },
         {
           "source": "cli/templates/app/roles/page.tsx",
-          "target": "app/(authenticated)/roles/page.tsx",
-          "sourceSha256": "1e159e931d3fcb9b4bd261461dd3f18d7c4bf246795750e2c79da5bbfa944cc9"
+          "target": "app/[lang]/(authenticated)/roles/page.tsx",
+          "sourceSha256": "f9620d7d021c4b36299fa12ac4b528882dce586215d5fee172b55f461a1e3a2b"
         },
         {
           "source": "cli/templates/app/roles/[id]/page.tsx",
-          "target": "app/(authenticated)/roles/[id]/page.tsx",
-          "sourceSha256": "218a2fb150450b364c264f5f5c1c6f4e0c1dc1e212f6b5f7b6e620f72f4a29f7"
+          "target": "app/[lang]/(authenticated)/roles/[id]/page.tsx",
+          "sourceSha256": "726d88d740fd539e79591cd7bb9768c5388471855266e22ea5bafc42cd4daf82"
         },
         {
           "source": "cli/templates/app/policies/page.tsx",
-          "target": "app/(authenticated)/policies/page.tsx",
-          "sourceSha256": "dca5a5a685f44507330344f116c604a5c242b55cca3997c18c92b436c494b062"
+          "target": "app/[lang]/(authenticated)/policies/page.tsx",
+          "sourceSha256": "b925bd56bdcddb994a0220fdf43955d8e3e95dcaf954bd461d0241e95ea978d6"
         },
         {
           "source": "cli/templates/app/policies/[id]/page.tsx",
-          "target": "app/(authenticated)/policies/[id]/page.tsx",
-          "sourceSha256": "0c5367719efd8918c26d0ee7ad143bee6a369d14315efdeca0b6799326376017"
+          "target": "app/[lang]/(authenticated)/policies/[id]/page.tsx",
+          "sourceSha256": "4c3a0f740458fa6c1e749283c83f8821cada7fc1a612fc0884ede1d16d51b992"
         },
         {
           "source": "cli/templates/app/module-access-keys/page.tsx",
-          "target": "app/(authenticated)/module-access-keys/page.tsx",
+          "target": "app/[lang]/(authenticated)/module-access-keys/page.tsx",
           "sourceSha256": "1671cdf6728a96210c12e57acbecbed19815a0dfcd87da06c2fd6d74fa6682b5"
         }
       ],
@@ -773,24 +898,30 @@
           "label": "Users",
           "href": "/users",
           "icon": "IconUsers",
-          "section": "Administration"
+          "section": "Administration",
+          "labelKey": "app.nav.users",
+          "sectionKey": "app.nav.administration"
         },
         {
           "label": "Roles",
           "href": "/roles",
           "icon": "IconUsersGroup",
-          "section": "Administration"
+          "section": "Administration",
+          "labelKey": "app.nav.roles",
+          "sectionKey": "app.nav.administration"
         },
         {
           "label": "Policies",
           "href": "/policies",
           "icon": "IconShieldLock",
-          "section": "Administration"
+          "section": "Administration",
+          "labelKey": "app.nav.policies",
+          "sectionKey": "app.nav.administration"
         }
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.2.0",
-      "lastChangedIn": "1.10.0"
+      "lastChangedIn": "2.2.0"
     },
     "forms-routes": {
       "name": "forms-routes",
@@ -798,23 +929,23 @@
       "files": [
         {
           "source": "cli/templates/app/forms/page.tsx",
-          "target": "app/(authenticated)/forms/page.tsx",
-          "sourceSha256": "95a50a2fe1889ac83f9ca672f869d349700a0abba8b52141be0d2b8403bbe1a5"
+          "target": "app/[lang]/(authenticated)/forms/page.tsx",
+          "sourceSha256": "66783a0d4d612d761f8d1025255250734f9968af8a86f4c6eb0f83434560c6fa"
         },
         {
           "source": "cli/templates/app/forms/new/page.tsx",
-          "target": "app/(authenticated)/forms/new/page.tsx",
-          "sourceSha256": "ba9ed55d022686daf54f1824acc58113fbaffbd37d165f347d7fc8151eb90db1"
+          "target": "app/[lang]/(authenticated)/forms/new/page.tsx",
+          "sourceSha256": "63307103c35776160a30bd3b5c36e08b86c2c398a75cbe0ddef6fc0be33e60fe"
         },
         {
           "source": "cli/templates/app/forms/[id]/page.tsx",
-          "target": "app/(authenticated)/forms/[id]/page.tsx",
-          "sourceSha256": "812f5b589ddc8ba9779b465af0fa24c7d775461b3cd255ef5763b4b8b1b6fb91"
+          "target": "app/[lang]/(authenticated)/forms/[id]/page.tsx",
+          "sourceSha256": "c0b7b776a9dd46d867b81b77f1c18d37f491c906cbef0c172ac4244108964b1d"
         },
         {
           "source": "cli/templates/app/forms/[id]/fill/page.tsx",
-          "target": "app/(authenticated)/forms/[id]/fill/page.tsx",
-          "sourceSha256": "0f1b4ee8d968c4b174484d8fa4d277f7ac3f5eaad56f1ec1a9467b743b1f2153"
+          "target": "app/[lang]/(authenticated)/forms/[id]/fill/page.tsx",
+          "sourceSha256": "a0c59f9c69b7487ddd68fca3a47138ae484dc8df5af387464f01c321dcccba37"
         }
       ],
       "internalDependencies": [
@@ -828,16 +959,17 @@
         {
           "label": "Forms",
           "href": "/forms",
-          "icon": "IconForms"
+          "icon": "IconForms",
+          "labelKey": "app.nav.forms"
         }
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.2.0",
-      "lastChangedIn": "1.6.0"
+      "lastChangedIn": "2.2.0"
     },
     "supabase-auth": {
       "name": "supabase-auth",
-      "description": "Supabase authentication clients and middleware for Next.js",
+      "description": "Supabase authentication clients and locale-aware middleware for Next.js (redirects unprefixed requests to the negotiated locale before refreshing the session)",
       "dependencies": [
         "@supabase/ssr",
         "@supabase/supabase-js"
@@ -861,7 +993,7 @@
         {
           "source": "cli/templates/supabase/middleware.ts",
           "target": "lib/supabase/middleware.ts",
-          "sourceSha256": "b0c3f1d255100de81f5aa10ceb58b9bd06d89837be258aa9da9a02a51b9ed95d"
+          "sourceSha256": "56d026d23a9b1f0debfd097c48e90fa6f989aada5598aed7dd234289c8a73809"
         },
         {
           "source": "cli/templates/supabase/admin.ts",
@@ -871,12 +1003,15 @@
         {
           "source": "cli/templates/middleware/middleware.ts",
           "target": "middleware.ts",
-          "sourceSha256": "70fe395d22de166a1a7c3ed1b5939fa4f71bfa6671a8b8102c7230a10475cd06"
+          "sourceSha256": "b7b4ccea0b4d4ee7fbf39f87750fc52e62b70f871c37832e9f02ed49437bd1aa"
         }
+      ],
+      "internalDependencies": [
+        "i18n"
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.2.0",
-      "lastChangedIn": "1.11.1"
+      "lastChangedIn": "2.2.0"
     },
     "external-oauth": {
       "name": "external-oauth",
@@ -954,21 +1089,21 @@
         {
           "source": "cli/templates/components/scope-switcher.tsx",
           "target": "components/ScopeSwitcher.tsx",
-          "sourceSha256": "6e882279c4e62f464401f138f63dc96656fb334a988d4397cef71c2b2588306e"
+          "sourceSha256": "3eb3414614b9e1ccf6e363eee6b7fbff8678df11517dc8213a5821106f7179fb"
         },
         {
           "source": "cli/templates/app/select-scope/page.tsx",
-          "target": "app/select-scope/page.tsx",
-          "sourceSha256": "4f6f421fb384fbb0445fc45e604b0236e58e2f9ece2946ed336e10a48dd339a8"
+          "target": "app/[lang]/select-scope/page.tsx",
+          "sourceSha256": "0b76f855fc0c1c560466c37dad320fd68a3de3dab081e78ae4d16e450b20bfe6"
         }
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.2.0",
-      "lastChangedIn": "1.2.0"
+      "lastChangedIn": "2.2.0"
     },
     "design-system": {
       "name": "design-system",
-      "description": "Design tokens, global styles, Mantine theme, and the app shell (ColorSchemeToggle, AuthenticatedShell). Scaffolded by init and refreshable via `upgrade --design`.",
+      "description": "Design tokens, global styles, Mantine theme, and the locale-aware app shell (ColorSchemeToggle, AuthenticatedShell with LanguageSwitcher). Scaffolded by init and refreshable via `upgrade --design`.",
       "files": [
         {
           "source": "cli/templates/app/design-tokens.css",
@@ -988,22 +1123,25 @@
         {
           "source": "cli/templates/components/ColorSchemeToggle.tsx",
           "target": "components/ColorSchemeToggle.tsx",
-          "sourceSha256": "927cd205a4e4a6fe2b4adb4e9b3f74be993e38a3c368786860f97970bf8a7a00"
+          "sourceSha256": "8c0e46f9388fa40bde6886b1ea219d756f7bf3f6bad95141cc7beac176c0d026"
         },
         {
           "source": "cli/templates/components/layout/navigation.ts",
           "target": "components/layout/navigation.ts",
-          "sourceSha256": "1100e9609012fc3a0ca7b95d3a2ab5c1384e258153d7e69bbe2e385f054e18d0"
+          "sourceSha256": "e561cad5c4563aa98fbb49f76d937e20ae0bdce516083b4f06a13f5922891ccb"
         },
         {
           "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
           "target": "components/layout/AuthenticatedShell.tsx",
-          "sourceSha256": "24cbeafe514b9ac89b0c8f82d1fce5b212bf579a3aa0b3111792f820f8c72d74"
+          "sourceSha256": "9dabc8d3725c35117f2d7e25cdbbb132b176638ccd801b6663a8972989a6ef27"
         }
+      ],
+      "internalDependencies": [
+        "i18n"
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.2.0",
-      "lastChangedIn": "1.10.0"
+      "lastChangedIn": "2.2.0"
     }
   },
   "components": [
@@ -2061,7 +2199,7 @@
         {
           "source": "ui-interfaces/src/list-m2m/translations.ts",
           "target": "components/ui/list-m2m/translations.ts",
-          "sourceSha256": "e1a8e65a398fa7bced5b5e01de93b21cad0ee3c5d8efd8c71c612c23b39808c7"
+          "sourceSha256": "7f437d25498365ad0f87bb4679280ca481d00eecc31d153823ea12786834abba"
         }
       ],
       "dependencies": [
@@ -2097,7 +2235,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.2.0",
-      "lastChangedIn": "1.11.0"
+      "lastChangedIn": "2.2.0"
     },
     {
       "name": "select-dropdown-m2o",
