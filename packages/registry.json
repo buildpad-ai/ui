@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-02T08:56:26.920Z",
+  "generatedAt": "2026-09-02T09:00:25.045Z",
   "version": "2.2.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -212,17 +212,217 @@
         {
           "source": "utils/src/i18n/namespaces/interfaces.ts",
           "target": "lib/buildpad/i18n/namespaces/interfaces.ts",
-          "sourceSha256": "ee8b73ecf777ac2a8fc016753ca41060d4dd59eca409bc668ad18cafe7a07855"
+          "sourceSha256": "8e936f8dc7987477099fdc27595f1486d8f8e6679104cfd62d89aa54e4a41bdf"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/collections.ts",
+          "target": "lib/buildpad/i18n/namespaces/collections.ts",
+          "sourceSha256": "97e5b09ef65e1f47cdaeaf964ad4a065b8f8ca217d441278c8e1800e5b055589"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/files.ts",
+          "target": "lib/buildpad/i18n/namespaces/files.ts",
+          "sourceSha256": "77457022ca0b10e1474fc12602b12d29c7028b3363b1040926be4d809a1a2386"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/users.ts",
+          "target": "lib/buildpad/i18n/namespaces/users.ts",
+          "sourceSha256": "738dc06c10027047660f261b678eaeb4f110f8e81fc4b00727702b0fd8047848"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/forms.ts",
+          "target": "lib/buildpad/i18n/namespaces/forms.ts",
+          "sourceSha256": "21486803a4bcf547ba812d416ad937cbc9311d1ba2adac18398d36edfc5b249e"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/autocomplete-api.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/autocomplete-api.ts",
+          "sourceSha256": "ea204232d60a174be4988c5b9b5322f865eb600a51705ea99b3f4249b771eab8"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/boolean.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/boolean.ts",
+          "sourceSha256": "1c7de50d60b2ab8779a1f474f8be10adc27675f8211a354d8f7f64768d92432a"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/collection-item-dropdown.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/collection-item-dropdown.ts",
+          "sourceSha256": "b4008f413f026169fd88884e057e40f25d852aee1ed9f8919077e29074bb2603"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/color.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/color.ts",
+          "sourceSha256": "e4d822a2355c0b23a16beda9f3e5420331463beb32aaea2c69891fa122ae07c9"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/datetime.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/datetime.ts",
+          "sourceSha256": "bc9b4113ca02c459babab53f2cc94c14c1fd10f6c814e90f63acc9d9e87e245a"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/divider.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/divider.ts",
+          "sourceSha256": "d7d5e4d4103a923e100be76a9a61b19292540f8710a4c25c3919d41684f30807"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/file.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/file.ts",
+          "sourceSha256": "9450339f47b2cf1203f95be3a63da7c4a02ac23a5f3b6922fdd1771b53d138c1"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/file-image.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/file-image.ts",
+          "sourceSha256": "f9484eeff9b07e1b19eaacc1b2d06462f0a306235020d5f19b7c52bf669d1797"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/files.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/files.ts",
+          "sourceSha256": "87818cb4717beef91127a635b7858c303b44fae0bdaa4e127d3e00be3c3bd87e"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/group-accordion.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/group-accordion.ts",
+          "sourceSha256": "016dd7e598daec0f43ad8e877873b4a8026af2d33f42b73fecbd33c916166bd1"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/group-detail.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/group-detail.ts",
+          "sourceSha256": "114732b8671541153577d58fef017a39b2ff8398596f6c10322f81bfeaa1b612"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/group-raw.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/group-raw.ts",
+          "sourceSha256": "0b233362e66c94cb0586e8f0125be9fefc7f13d0afc50a02aaff6e8b14ac2517"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/input.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/input.ts",
+          "sourceSha256": "44e69b852901019c5abe6db39d409fc82d96a4e6b52c1aed58a594cc846c105c"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/input-block-editor.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/input-block-editor.ts",
+          "sourceSha256": "52f6d152faf7422fb844595a96498aa9706c05cc1f88cb908355182276a987ef"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/input-code.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/input-code.ts",
+          "sourceSha256": "28774d691f37d0d4f46f99d8189317ea0dbf1f1fe6756a6733e26cfcc347d038"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/input-hash.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/input-hash.ts",
+          "sourceSha256": "a279e46a7f3be23c3536c8676b5c170c89ddd24fc52026af23aa1bff8f6c4779"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/list-m2a.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/list-m2a.ts",
+          "sourceSha256": "0c16b5ae0c62074789903ea7fdb069b3b45ff070354edbc3d00b2179b39b6d54"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/list-m2m.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/list-m2m.ts",
+          "sourceSha256": "ee786af89b670761e858daa482020869fa94e601b7b9c8c2209ed8ba8a246eec"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/list-o2m.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/list-o2m.ts",
+          "sourceSha256": "600791155e963ad08326bba386dc792c0771a053229893b8d4b01aaf76a6128e"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/map.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/map.ts",
+          "sourceSha256": "2a60a43421fc90d747f744b7dadb1ced03632f06326dabf2248ed5bf3767c2db"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/notice.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/notice.ts",
+          "sourceSha256": "244d6074a4f1242b09ac6e34e0f2676c8d6009c5ff47b220920c7e8d69fcdde4"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/rich-text-html.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/rich-text-html.ts",
+          "sourceSha256": "81acbf835093ca45c6bb86293a26e4392dbb76438a86bbf0cf1da3f87412bd8f"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/rich-text-markdown.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/rich-text-markdown.ts",
+          "sourceSha256": "0c9a1988806745cba7840745e32f37fb75e48672297258b828bb90d360f7881d"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-dropdown.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-dropdown.ts",
+          "sourceSha256": "ae54b90ce81f0c15d0b699006e7f8ad3b911b8cea4dc147b775eef9dc512e297"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-dropdown-m2o.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-dropdown-m2o.ts",
+          "sourceSha256": "e8a6ef463c4ad4fe5b8dc0214ab89342312a542ae4c2fb8b3c7375dac63eb97d"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-icon.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-icon.ts",
+          "sourceSha256": "4b3ede60e3266a204872f364c4f7c6e5b4371bdaa2378d7c4b580a228a5006fe"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-multiple-checkbox.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-multiple-checkbox.ts",
+          "sourceSha256": "50bfc87c3b8eff3f84de715288e012153f03531b4381c218c5a937cd734a4a45"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-radio.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-radio.ts",
+          "sourceSha256": "3d71f212b82ee1da81def180dc6fecfe5b6d26fcadfe354ac6bd865ceaa89d86"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/slider.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/slider.ts",
+          "sourceSha256": "f6d1e4a595ffa4f2dc1cf827ad316a62dbfd95cad5b7467e84894029083c3970"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/system-permissions.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/system-permissions.ts",
+          "sourceSha256": "2d51a4ac689d82111ce6e908de1fc73955cb814ecaefa2d68e432e94cd6c4746"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/system-token.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/system-token.ts",
+          "sourceSha256": "806b66dea9bfe8215839658ffda3d150faf0d1743ec42ef60224443c04a516d4"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/tags.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/tags.ts",
+          "sourceSha256": "9169eff7b94adb228023ca9488817f337fec51a4cb8f614710b969da93ffd463"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/textarea.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/textarea.ts",
+          "sourceSha256": "198dceb38f0bbd1ed84e569cab8a3ec2ec236dd3faa8ef38de7cbb52cb1361ef"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/toggle.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/toggle.ts",
+          "sourceSha256": "38bcf7a66e27438f1297cd0efe4e5cdd25b2a9ee1f781eee277bf03f5a6181a5"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/upload.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/upload.ts",
+          "sourceSha256": "52dabb8451b432ab6ad50dda46ff2cb30c6a3057319fac426f5bdae2c542d16f"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/workflow-button.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/workflow-button.ts",
+          "sourceSha256": "992a03ef5a731729bc09c174852bc31759184e404255f4ca98bc9d35c631f2ff"
         },
         {
           "source": "utils/src/i18n/types.ts",
           "target": "lib/buildpad/i18n/types.ts",
-          "sourceSha256": "1f53ae6320e8db650ff1316a3b072f42f55c3c311e4d79773be9854b2007f2ac"
+          "sourceSha256": "d94fb5107ac9518fec28ac4e29a3fa81df01109ae2c7db6b7f7c8f2faaf3e409"
         },
         {
           "source": "utils/src/i18n/defaults.ts",
           "target": "lib/buildpad/i18n/defaults.ts",
-          "sourceSha256": "c57329ff9c1f5f22193f6f118a9248801b3f2bd4a04ba128573319fbdb845afa"
+          "sourceSha256": "0faa83f3113239c5521e4ea225cce73cfaaddb7b98e4a0c2e104f694626350be"
         },
         {
           "source": "utils/src/i18n/merge.ts",
@@ -247,7 +447,7 @@
         {
           "source": "utils/src/i18n/locales/id.ts",
           "target": "lib/buildpad/i18n/locales/id.ts",
-          "sourceSha256": "f743d1505d1db604808444e4d762837c8ba9da4bc0ba717ca151a4535e7170eb"
+          "sourceSha256": "1812bc1013d46441f862fefb3679c7449f4ed25007cb8e2b9ed62b4c3892584e"
         },
         {
           "source": "utils/src/i18n/locales/index.ts",
@@ -257,12 +457,12 @@
         {
           "source": "utils/src/i18n/index.ts",
           "target": "lib/buildpad/i18n/index.ts",
-          "sourceSha256": "d33986c3686be62f9c73f77a20a52cdf4ba99fcc793f177c4502f17995f183df"
+          "sourceSha256": "821e875e59a16a8bd10f40291676a086a4c08f653135d979cea80a9f1ed59b7b"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "4c6cf5cd9553bdf6dca219a5565f41dcc0d5d7c707f31192e317af56f45f89dc"
+          "sourceSha256": "c0a14cc4bc442c9cb64d554abb44b76ec43d7d14424921d221da4911f9ebcd16"
         },
         {
           "source": "cli/templates/lib/utils.ts",
