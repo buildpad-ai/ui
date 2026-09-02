@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-02T09:00:25.045Z",
+  "generatedAt": "2026-09-02T13:49:07.891Z",
   "version": "2.2.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -192,7 +192,7 @@
         {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts",
-          "sourceSha256": "f60138e3bb3639f73fc544015ad8aeba34e9a189a6967ed3cc6ed06dae15025d"
+          "sourceSha256": "34dc26039e0c98287edd1230f7b38fc08035f518befb7b85a068dbe72e4da8e3"
         },
         {
           "source": "utils/src/i18n/namespaces/common.ts",
@@ -427,7 +427,7 @@
         {
           "source": "utils/src/i18n/merge.ts",
           "target": "lib/buildpad/i18n/merge.ts",
-          "sourceSha256": "8184a98301002c85c4c5cb1d96b9c6cf59b048205dcee799b4b2cefe25d9a287"
+          "sourceSha256": "da6e2334407bf98641954130f0b5944b842e8969b2ca5f32c4980aaf820905f1"
         },
         {
           "source": "utils/src/i18n/interpolate.ts",
@@ -442,7 +442,7 @@
         {
           "source": "utils/src/i18n/locale.ts",
           "target": "lib/buildpad/i18n/locale.ts",
-          "sourceSha256": "10c7f66e179a7fac37bfa266638e9ae4e5d033f1ff3dfbb262d919fa81cd398e"
+          "sourceSha256": "a7a66900859aac8e75d2d66bb66e676a64536412c7ffc896018780bfdc567fee"
         },
         {
           "source": "utils/src/i18n/locales/id.ts",
@@ -452,7 +452,7 @@
         {
           "source": "utils/src/i18n/locales/index.ts",
           "target": "lib/buildpad/i18n/locales/index.ts",
-          "sourceSha256": "d8fb47f0f56376a18df8d34fa6f29bc9407d0f8c69487b507339265a6fcf257c"
+          "sourceSha256": "090da00b4238555981878a14cbb2cc7bf6008ae0a8676424dc65a936ea9e861b"
         },
         {
           "source": "utils/src/i18n/index.ts",
@@ -533,7 +533,7 @@
     },
     "services": {
       "name": "services",
-      "description": "Service classes for fields, collections, items, permissions, and DaaS API config, plus server-side guards: collection permissions (auth/enforcer) and module-level access keys (module-access/enforce).",
+      "description": "Service classes for fields, collections, items, permissions, and DaaS API config, plus server-side guards: collection permissions (auth/enforcer) and module-level access keys (module-access/enforce). Includes BuildpadI18nProvider (component locale + dictionary), which mounts Mantine DatesProvider.",
       "files": [
         {
           "source": "services/src/api-request.ts",
@@ -573,7 +573,7 @@
         {
           "source": "services/src/buildpad-i18n-context.tsx",
           "target": "lib/buildpad/services/buildpad-i18n-context.tsx",
-          "sourceSha256": "9b9daff9bc0c00ef84dd5a22efde4b2438c79cefab9cfa30c1eaebedf3327665"
+          "sourceSha256": "e3f13355c293350f49edcf417d8ab64ac8b080739e1846804319b7055f2aa01c"
         },
         {
           "source": "services/src/auth/index.ts",
@@ -609,6 +609,10 @@
       "internalDependencies": [
         "types",
         "utils"
+      ],
+      "dependencies": [
+        "@mantine/dates",
+        "dayjs"
       ],
       "sourcePackage": "@buildpad/services",
       "version": "2.2.0",
