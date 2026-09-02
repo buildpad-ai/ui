@@ -20,7 +20,8 @@ import {
   transformIntraComponentImports,
   transformVFormImports,
   addOriginHeader,
-  hashTransformed
+  hashTransformed,
+  originHeaderApplies,
 } from './transformer.js';
 import { verifySourceSha256 } from '../utils/checksum.js';
 import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
@@ -282,7 +283,9 @@ export async function copyLibModule(
       let content = await readSource(libModule.path);
       verifySourceSha256(libModule.path, content, libModule.sourceSha256);
       content = transformImports(content, config);
-      content = addOriginHeader(content, moduleName, libSourcePackage, release);
+      if (originHeaderApplies(libModule.target)) {
+        content = addOriginHeader(content, moduleName, libSourcePackage, release);
+      }
       await fs.ensureDir(path.dirname(targetPath));
       await fs.writeFile(targetPath, content);
       writtenFiles.push({
@@ -330,9 +333,11 @@ export async function copyLibModule(
         let content = await readSource(file.source);
         verifySourceSha256(file.source, content, file.sourceSha256);
         content = transformImports(content, config);
-        // Extract filename for origin tracking
+        // Extract filename for origin tracking (JSON etc. cannot carry a comment header)
         const fileName = path.basename(file.source, path.extname(file.source));
-        content = addOriginHeader(content, `${moduleName}/${fileName}`, libSourcePackage, release);
+        if (originHeaderApplies(file.target)) {
+          content = addOriginHeader(content, `${moduleName}/${fileName}`, libSourcePackage, release);
+        }
         await fs.ensureDir(path.dirname(targetPath));
         await fs.writeFile(targetPath, content);
         writtenFiles.push({

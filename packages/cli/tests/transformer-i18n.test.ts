@@ -38,3 +38,14 @@ describe('transformImports — @buildpad/utils/i18n', () => {
     expect(out).toBe(`import { mergeTranslations } from '@/lib/buildpad/utils';`);
   });
 });
+
+describe('originHeaderApplies', () => {
+  test('JSON dictionaries and text files are copied without a comment header', async () => {
+    const { originHeaderApplies } = await import('../src/commands/transformer.js');
+    expect(originHeaderApplies('lib/i18n/dictionaries/en.json')).toBe(false);
+    expect(originHeaderApplies('README.md')).toBe(false);
+    expect(originHeaderApplies('lib/i18n/config.ts')).toBe(true);
+    expect(originHeaderApplies('components/LanguageSwitcher.tsx')).toBe(true);
+    expect(originHeaderApplies('app/globals.css')).toBe(true);
+  });
+});

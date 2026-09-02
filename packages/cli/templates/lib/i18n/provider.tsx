@@ -100,15 +100,11 @@ export function I18nProvider({
 
   // Buildpad's own catalog for the locale (if it ships one) under the app's
   // `buildpad` overrides. `mergeTranslations` never mutates its inputs.
-  const buildpadTranslations = useMemo<BuildpadTranslationsInput>(
-    () =>
-      mergeTranslations(
-        {},
-        bundledTranslationsFor(locale),
-        (dictionary as { buildpad?: BuildpadTranslationsInput }).buildpad,
-      ),
-    [locale, dictionary],
-  );
+  const buildpadTranslations = useMemo<BuildpadTranslationsInput>(() => {
+    const bundled = bundledTranslationsFor(locale);
+    const overrides = (dictionary as { buildpad?: BuildpadTranslationsInput }).buildpad;
+    return bundled ? mergeTranslations(bundled, overrides) : (overrides ?? {});
+  }, [locale, dictionary]);
 
   return (
     <I18nContext.Provider value={value}>

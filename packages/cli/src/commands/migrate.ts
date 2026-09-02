@@ -48,6 +48,7 @@ import {
   transformVFormImports,
   addOriginHeader,
   hashTransformed,
+  originHeaderApplies,
 } from './transformer.js';
 import { registryFilesOf } from '../utils/staleness.js';
 import { copyLibModule } from './add.js';
@@ -316,7 +317,9 @@ export async function migrate(options: {
           let content = await resolveSourceFile(file.source);
           content = transformImports(content, config);
           const fileName = path.basename(file.source, path.extname(file.source));
-          content = addOriginHeader(content, `${libName}/${fileName}`, sourcePackage, release);
+          if (originHeaderApplies(file.target)) {
+            content = addOriginHeader(content, `${libName}/${fileName}`, sourcePackage, release);
+          }
           files.push({
             target: file.target,
             sourceSha256: file.sourceSha256,

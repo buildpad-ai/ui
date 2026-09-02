@@ -615,6 +615,15 @@ ${sha256Line} *
 }
 
 /**
+ * Whether a copied file can carry the `/** @buildpad-origin *\/` header.
+ * JSON (dictionaries), Markdown and plain-text targets cannot — a comment
+ * makes them invalid — so they are copied verbatim and hashed as-is.
+ */
+export function originHeaderApplies(target: string): boolean {
+  return !/\.(json|jsonc|md|mdx|txt|svg|ya?ml)$/i.test(target);
+}
+
+/**
  * Add origin header to file content.
  *
  * @param content       - File content to prepend the header to

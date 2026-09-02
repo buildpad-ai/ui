@@ -71,6 +71,7 @@ import {
   transformVFormImports,
   addOriginHeader,
   hashTransformed,
+  originHeaderApplies,
 } from './transformer.js';
 import {
   computeEntryStaleness,
@@ -120,7 +121,7 @@ async function transformContent(
  */
 function transformLibContent(
   rawContent: string,
-  file: { source: string },
+  file: { source: string; target: string },
   moduleName: string,
   config: Config,
   sourcePackage: string,
@@ -128,7 +129,9 @@ function transformLibContent(
 ): string {
   let content = transformImports(rawContent, config);
   const fileName = path.basename(file.source, path.extname(file.source));
-  content = addOriginHeader(content, `${moduleName}/${fileName}`, sourcePackage, version);
+  if (originHeaderApplies(file.target)) {
+    content = addOriginHeader(content, `${moduleName}/${fileName}`, sourcePackage, version);
+  }
   return content;
 }
 
