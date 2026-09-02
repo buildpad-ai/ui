@@ -153,6 +153,27 @@ Load failures never masquerade as an empty list: each manager shows a
 failed row delete keeps the confirm dialog open with an error toast so the
 action can be retried or cancelled.
 
+### URL state (shareable views)
+
+The list managers persist their settled state in the query string by default —
+`?search=…&role=<id>&status=active&sort=-email&page=2` on `UsersManager`, and
+`?search=…&sort=…&page=…` on `RolesManager` / `PoliciesManager` — so a filtered
+view can be shared, reloaded, or bookmarked. Writes replace the current history
+entry (no history spam) and ride the built-in 300 ms search debounce;
+Back/Forward and programmatic rewrites flow back into the components.
+
+In a Next.js App Router app the writes go through `router.replace`, which the
+`DaaSProviderWrapper` template registers with `registerUrlStateWriter` — this
+is required, not optional: native `history.replaceState` is invisible to
+`useSearchParams` and the router re-asserts its own URL over it, silently
+dropping the parameters. If you have customised `DaaSProviderWrapper`, keep
+that registration; in development the hook warns once when it detects Next.js
+and no writer.
+
+Turn it off for embedded surfaces with `urlParams={false}`, or namespace with
+`urlParamPrefix="users-"` when two url-synced lists share one page. Defaults
+stay off the URL entirely.
+
 ### Sorting and bulk actions
 
 The users list sorts server-side by **User** (`first_name`), **Email**,

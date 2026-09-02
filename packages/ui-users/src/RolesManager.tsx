@@ -9,11 +9,13 @@ import {
   Stack,
   Text,
   Title,
+  Center,
+  Loader,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconUsersGroup } from '@tabler/icons-react';
-import { usePermissions, useRoles } from '@buildpad/hooks';
+import { readUrlIntParam, readUrlParam, useHydrated, usePermissions, useRoles, useUrlListParams } from '@buildpad/hooks';
 import type { Role } from '@buildpad/types';
 import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { VTable } from '@buildpad/ui-table';
@@ -50,6 +52,17 @@ export interface RolesManagerProps {
   hideHeader?: boolean;
   /** DaaS collection used for RBAC checks. Default: 'daas_roles'. */
   rolesCollection?: string;
+  /**
+   * Persist search and page in the URL query string so the list is
+   * shareable and reload-safe. Writes ride the 300 ms search debounce and go
+   * through the app's registered URL writer (Next.js App Router:
+   * `router.replace`, registered by the `DaaSProviderWrapper` template —
+   * required there); outside a router they fall back to `history.replaceState`.
+   * Set `false` for embedded surfaces. Default: true.
+   */
+  urlParams?: boolean;
+  /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
+  urlParamPrefix?: string;
 }
 
 /**
@@ -62,13 +75,36 @@ export interface RolesManagerProps {
  * No column sorting: the roles API ignores the `sort` param (hardcodes
  * name-asc), so a sort UI here would lie across pages (Req 20.6).
  */
-export const RolesManager: React.FC<RolesManagerProps> = ({
+/**
+ * Client-only gate. The body seeds its state from the URL in `useState`
+ * initializers, which renders differently on the server (no URL) and on the
+ * client — a hydration mismatch on every deep link. Until hydrated, render the
+ * same loading shell the body shows before its first fetch, so server HTML and
+ * the hydration render agree; the body then mounts once with the URL in hand.
+ * Skipped when URL persistence is off, since then initial state is
+ * URL-independent and the body can server-render as before.
+ */
+export const RolesManager: React.FC<RolesManagerProps> = (props) => {
+  const hydrated = useHydrated();
+  if (props.urlParams !== false && !hydrated) {
+    return (
+      <Center mih={240}>
+        <Loader />
+      </Center>
+    );
+  }
+  return <RolesManagerBody {...props} />;
+};
+
+const RolesManagerBody: React.FC<RolesManagerProps> = ({
   onRoleClick,
   onCreateRole,
   pageSize = 25,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   hideHeader = false,
   rolesCollection = 'daas_roles',
+  urlParams = true,
+  urlParamPrefix = '',
 }) => {
   const { fetchRoles, deleteRole } = useRoles();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
@@ -82,13 +118,37 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
+  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
   const [debouncedSearch] = useDebouncedValue(search, 300);
+
+  // URL persistence — see useUrlListParams. Defaults serialize to null so they
+  // stay off the URL; Back/Forward and bridge rewrites flow back in below.
+  useUrlListParams({
+    enabled: urlParams,
+    params: {
+      [param('search')]: debouncedSearch || null,
+      [param('page')]: page > 1 ? String(page) : null,
+    },
+    onExternalChange: useCallback(
+      (get: (name: string) => string | null) => {
+        const nextSearch = get(param('search')) ?? '';
+        setSearch((current) => (current === nextSearch ? current : nextSearch));
+        const rawPage = get(param('page'));
+        const nextPage = (() => {
+          const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
+          return Number.isInteger(value) && value > 0 ? value : 1;
+        })();
+        setPage((current) => (current === nextPage ? current : nextPage));
+      },
+      [param],
+    ),
+  });
 
   const [deleteModal, setDeleteModal] = useState<{ opened: boolean; id: string }>({
     opened: false,
@@ -127,9 +187,19 @@ export const RolesManager: React.FC<RolesManagerProps> = ({
     void load();
   }, [load]);
 
+  // Only on CHANGES — not mount, or a ?page= restored from the URL is clobbered.
+  // StrictMode-safe: compare against the previous values rather than "has
+  // mounted". StrictMode re-runs mount effects with refs intact, so a
+  // has-mounted flag fires setPage(1) on the second run and clobbers a
+  // ?page= restored from the URL in development.
+  const filtersKey = JSON.stringify([debouncedSearch, limit]);
+  const previousFiltersKeyRef = React.useRef<string | null>(null);
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, limit]);
+    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
+      setPage(1);
+    }
+    previousFiltersKeyRef.current = filtersKey;
+  }, [filtersKey]);
 
   const confirmDelete = useCallback(async () => {
     setDeleting(true);

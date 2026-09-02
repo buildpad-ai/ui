@@ -49,12 +49,18 @@ async function findIdByField(
   value: string,
 ): Promise<string | null> {
   let page = 1;
+  let prevFirstId: string | undefined;
   while (true) {
     const res = await admin.get<{ data: Record<string, unknown>[] }>(
       `${listPath}?limit=100&page=${page}`,
     );
     if (res.status !== 200) return null;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) return null;
+    prevFirstId = firstId;
     const match = items.find(item => item[field] === value);
     if (match) return match['id'] as string;
     if (items.length < 100) return null;
@@ -69,12 +75,18 @@ async function deleteUserById(id: string): Promise<void> {
 async function deletePermissionsByPolicyId(policyId: string): Promise<void> {
   // Get all permissions and filter client-side by policy
   let page = 1;
+  let prevFirstId: string | undefined;
   while (true) {
     const res = await admin.get<{ data: { id: string; policy: string }[] }>(
       `/api/permissions?limit=100&page=${page}`,
     );
     if (res.status !== 200) break;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) break;
+    prevFirstId = firstId;
     for (const perm of items.filter(p => p.policy === policyId)) {
       await ignore404(() => admin.delete(`/api/permissions/${perm.id}`));
     }
@@ -85,12 +97,18 @@ async function deletePermissionsByPolicyId(policyId: string): Promise<void> {
 
 async function deleteAccessByPolicyId(policyId: string): Promise<void> {
   let page = 1;
+  let prevFirstId: string | undefined;
   while (true) {
     const res = await admin.get<{ data: { id: string; policy: string }[] }>(
       `/api/access?limit=100&page=${page}`,
     );
     if (res.status !== 200) break;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) break;
+    prevFirstId = firstId;
     for (const link of items.filter(a => a.policy === policyId)) {
       await ignore404(() => admin.delete(`/api/access/${link.id}`));
     }
@@ -102,12 +120,18 @@ async function deleteAccessByPolicyId(policyId: string): Promise<void> {
 async function deleteE2eFiles(): Promise<void> {
   // Scan files and delete those with e2e- title prefix
   let page = 1;
+  let prevFirstId: string | undefined;
   while (true) {
     const res = await admin.get<{ data: { id: string; title: string | null }[] }>(
       `/api/files?limit=100&page=${page}`,
     );
     if (res.status !== 200) break;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) break;
+    prevFirstId = firstId;
     for (const file of items.filter(f => f.title?.startsWith('e2e-'))) {
       await ignore404(() => admin.delete(`/api/files/${file.id}`));
     }
@@ -118,12 +142,18 @@ async function deleteE2eFiles(): Promise<void> {
 
 async function deleteE2eFolders(): Promise<void> {
   let page = 1;
+  let prevFirstId: string | undefined;
   while (true) {
     const res = await admin.get<{ data: { id: string; name: string }[] }>(
       `/api/folders?limit=100&page=${page}`,
     );
     if (res.status !== 200) break;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) break;
+    prevFirstId = firstId;
     for (const folder of items.filter(f => f.name?.startsWith('e2e-'))) {
       await ignore404(() => admin.delete(`/api/folders/${folder.id}`));
     }

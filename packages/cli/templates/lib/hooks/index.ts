@@ -201,3 +201,15 @@ export type {
 // Utility functions
 export { apiRequest, isValidPrimaryKey } from './utils';
 export { useModuleAccessKeys } from './useModuleAccessKeys';
+
+// URL persistence for list managers (search / filter / sort / page ↔ query string)
+export {
+  useUrlListParams,
+  useHydrated,
+  readUrlParam,
+  readUrlIntParam,
+  registerUrlStateWriter,
+  urlStateEventSearch,
+  URL_STATE_EVENT,
+  type UseUrlListParamsOptions,
+} from './useUrlListParams';

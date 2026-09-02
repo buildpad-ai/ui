@@ -108,6 +108,27 @@ export default function FilesPage() {
 `defaultView` (`'grid'` | `'list'`), and `enableFolders` (default `true` — set
 `false` for a flat library with no folder UI).
 
+### URL state (shareable views)
+
+`FileManager` persists its settled state in the query string by default —
+`?search=…`, `?folder=<id>`, and `?page=…` — so a filtered library view can be
+shared, reloaded, or bookmarked. Writes replace the current history entry
+(Back leaves the page rather than replaying keystrokes) and ride the built-in
+300 ms search debounce. A deep-linked `?folder=` id rebuilds its breadcrumb
+automatically.
+
+In a Next.js App Router app the writes go through `router.replace`, which the
+`DaaSProviderWrapper` template registers with `registerUrlStateWriter` — this
+is required, not optional: native `history.replaceState` is invisible to
+`useSearchParams` and the router re-asserts its own URL over it, silently
+dropping the parameters. If you have customised `DaaSProviderWrapper`, keep
+that registration; in development the hook warns once when it detects Next.js
+and no writer.
+
+Turn it off for embedded surfaces with `urlParams={false}`, or namespace the
+parameters with `urlParamPrefix="files-"` when two url-synced lists share one
+page. Defaults (empty search, root folder, page 1) stay off the URL entirely.
+
 ### The detail view
 
 `app/files/[id]/page.tsx` renders `FileDetail`, which fetches the file, shows the

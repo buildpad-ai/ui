@@ -17,11 +17,22 @@ import {
   Stack,
   Text,
   Title,
+  Center,
+  Loader,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash, IconUsersGroup } from '@tabler/icons-react';
-import { usePermissions, useRoles, useSelection, useUsers } from '@buildpad/hooks';
+import {
+  readUrlIntParam,
+  readUrlParam,
+  usePermissions,
+  useRoles,
+  useSelection,
+  useHydrated,
+  useUrlListParams,
+  useUsers,
+} from '@buildpad/hooks';
 import type { Role, User, UserStatus } from '@buildpad/types';
 import { VTable } from '@buildpad/ui-table';
 import type { Header, HeaderRaw, Item, Sort } from '@buildpad/ui-table';
@@ -77,6 +88,22 @@ export interface UsersManagerProps {
   hideHeader?: boolean;
   /** DaaS collection used for RBAC checks. Default: 'daas_users'. */
   usersCollection?: string;
+  /**
+   * Persist search, filters, sort, and page in the URL query string
+   * (`?search=…&role=…&status=…&sort=…&page=…`) so the list is shareable and
+   * reload-safe. Writes ride the existing 300 ms search debounce and go through
+   * the app's registered URL writer (Next.js App Router: `router.replace`,
+   * registered by the `DaaSProviderWrapper` template — required there);
+   * outside a router they fall back to `history.replaceState`. Set `false` for embedded surfaces that must not
+   * touch the page URL. Default: true.
+   */
+  urlParams?: boolean;
+  /**
+   * Prefix for every URL parameter this list manages (e.g. `'users-'` →
+   * `?users-search=…`). Use when two url-synced lists share one page.
+   * Default: '' (unprefixed).
+   */
+  urlParamPrefix?: string;
 }
 
 interface BulkRolesModalProps {
@@ -169,13 +196,50 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
  * `app/users/page.tsx` to `useUsers`/`useRoles` + `usePermissions` and
  * routing-agnostic navigation via `onUserClick`/`onCreateUser` props.
  */
-export const UsersManager: React.FC<UsersManagerProps> = ({
+/** Accept only real statuses from the URL; anything else means "no filter". */
+function parseStatusParam(raw: string | null): UserStatus | null {
+  if (!raw) return null;
+  return STATUS_OPTIONS.some((option) => option.value === raw) ? (raw as UserStatus) : null;
+}
+
+/** Parse the DaaS-style sort string (`-last_access` = descending). */
+function parseSortParam(raw: string | null): Sort | null {
+  if (!raw) return null;
+  const desc = raw.startsWith('-');
+  const by = desc ? raw.slice(1) : raw;
+  return by ? { by, desc } : null;
+}
+
+/**
+ * Client-only gate. The body seeds its state from the URL in `useState`
+ * initializers, which renders differently on the server (no URL) and on the
+ * client — a hydration mismatch on every deep link. Until hydrated, render the
+ * same loading shell the body shows before its first fetch, so server HTML and
+ * the hydration render agree; the body then mounts once with the URL in hand.
+ * Skipped when URL persistence is off, since then initial state is
+ * URL-independent and the body can server-render as before.
+ */
+export const UsersManager: React.FC<UsersManagerProps> = (props) => {
+  const hydrated = useHydrated();
+  if (props.urlParams !== false && !hydrated) {
+    return (
+      <Center mih={240}>
+        <Loader />
+      </Center>
+    );
+  }
+  return <UsersManagerBody {...props} />;
+};
+
+const UsersManagerBody: React.FC<UsersManagerProps> = ({
   onUserClick,
   onCreateUser,
   pageSize = 25,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   hideHeader = false,
   usersCollection = 'daas_users',
+  urlParams = true,
+  urlParamPrefix = '',
 }) => {
   const { fetchUsers, updateUser, deleteUser, bulkUpdateUsers } = useUsers();
   const { fetchRoles } = useRoles();
@@ -193,17 +257,28 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+
+  // URL-persisted list state (see useUrlListParams). Initializers read the URL
+  // once, so a shared /users?search=ann&status=active&page=2 link restores the
+  // exact view; invalid values fall back to the defaults.
+  const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
+  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
   const [debouncedSearch] = useDebouncedValue(search, 300);
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<UserStatus | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string | null>(() =>
+    urlParams ? readUrlParam(param('role')) : null,
+  );
+  const [selectedStatus, setSelectedStatus] = useState<UserStatus | null>(() =>
+    urlParams ? parseStatusParam(readUrlParam(param('status'))) : null,
+  );
   // Server-side sort; fields are whitelisted real columns.
-  const [sort, setSort] = useState<Sort | null>(null);
+  const [sort, setSort] = useState<Sort | null>(() =>
+    urlParams ? parseSortParam(readUrlParam(param('sort'))) : null,
+  );
 
   const { selection, setSelection, clearSelection, selectionCount } = useSelection<string>();
 
@@ -218,6 +293,46 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
   const [bulkBusy, setBulkBusy] = useState(false);
 
   const hasFilters = Boolean(debouncedSearch || selectedRole || selectedStatus);
+
+  // Keep the URL following the settled state (search rides its 300 ms
+  // debounce), and the state following the URL on Back/Forward or a
+  // bridge-driven rewrite. Defaults serialize to null so they stay off the URL.
+  useUrlListParams({
+    enabled: urlParams,
+    params: {
+      [param('search')]: debouncedSearch || null,
+      [param('role')]: selectedRole,
+      [param('status')]: selectedStatus,
+      [param('sort')]: sort ? `${sort.desc ? '-' : ''}${sort.by}` : null,
+      [param('page')]: page > 1 ? String(page) : null,
+    },
+    onExternalChange: useCallback(
+      (get: (name: string) => string | null) => {
+        const nextSearch = get(param('search')) ?? '';
+        setSearch((current) => (current === nextSearch ? current : nextSearch));
+        setSelectedRole((current) => {
+          const next = get(param('role'));
+          return current === next ? current : next;
+        });
+        setSelectedStatus((current) => {
+          const next = parseStatusParam(get(param('status')));
+          return current === next ? current : next;
+        });
+        setSort((current) => {
+          const next = parseSortParam(get(param('sort')));
+          const same = current?.by === next?.by && current?.desc === next?.desc;
+          return same ? current : next;
+        });
+        const nextPage = (() => {
+          const raw = get(param('page'));
+          const value = raw ? Number.parseInt(raw, 10) : 1;
+          return Number.isInteger(value) && value > 0 ? value : 1;
+        })();
+        setPage((current) => (current === nextPage ? current : nextPage));
+      },
+      [param],
+    ),
+  });
 
   const sizeOptions = useMemo(() => {
     return Array.from(new Set([...pageSizeOptions, pageSize])).sort((a, b) => a - b);
@@ -255,10 +370,20 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
     void load();
   }, [load]);
 
-  // Reset to page 1 whenever a filter, the sort, or the page size changes.
+  // Reset to page 1 whenever a filter, the sort, or the page size CHANGES —
+  // not on mount, or a ?page=3 restored from the URL would be clobbered.
+  // StrictMode-safe: compare against the previous values rather than "has
+  // mounted". StrictMode re-runs mount effects with refs intact, so a
+  // has-mounted flag fires setPage(1) on the second run and clobbers a
+  // ?page= restored from the URL in development.
+  const filtersKey = JSON.stringify([debouncedSearch, selectedRole, selectedStatus, sort, limit]);
+  const previousFiltersKeyRef = React.useRef<string | null>(null);
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, selectedRole, selectedStatus, sort, limit]);
+    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
+      setPage(1);
+    }
+    previousFiltersKeyRef.current = filtersKey;
+  }, [filtersKey]);
 
   // Selection survives page changes but not a change of what's being listed.
   useEffect(() => {

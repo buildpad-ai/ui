@@ -381,6 +381,10 @@
           "target": "lib/buildpad/hooks/useAccess.ts"
         },
         {
+          "source": "hooks/src/useUrlListParams.ts",
+          "target": "lib/buildpad/hooks/useUrlListParams.ts"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts"
         }

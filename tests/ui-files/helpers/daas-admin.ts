@@ -56,11 +56,17 @@ async function listAll<T extends Record<string, unknown>>(
   nameValue: unknown,
 ): Promise<T | null> {
   let page = 1;
+  let prevFirstId: string | undefined;
   const limit = 100;
   while (true) {
     const res = await admin.get<{ data: T[] }>(`${listPath}?limit=${limit}&page=${page}`);
     if (res.status !== 200) return null;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) return null;
+    prevFirstId = firstId;
     const match = items.find(item => item[nameField] === nameValue);
     if (match) return match;
     if (items.length < limit) return null; // exhausted

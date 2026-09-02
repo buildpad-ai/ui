@@ -83,12 +83,18 @@ async function createPolicy(name: string): Promise<string> {
 
 async function linkPolicyToRole(roleId: string, policyId: string): Promise<void> {
   let page = 1;
+  let prevFirstId: string | undefined;
   while (true) {
     const res = await admin.get<{ data: { id: string; role: string; policy: string }[] }>(
       `/api/access?limit=100&page=${page}`,
     );
     if (res.status !== 200) break;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) break;
+    prevFirstId = firstId;
     if (items.find(a => a.role === roleId && a.policy === policyId)) return;
     if (items.length < 100) break;
     page++;
@@ -104,12 +110,18 @@ async function addPermission(
   permissions: Record<string, unknown> = {},
 ): Promise<void> {
   let page = 1;
+  let prevFirstId: string | undefined;
   while (true) {
     const res = await admin.get<{ data: { id: string; policy: string; collection: string; action: string }[] }>(
       `/api/permissions?limit=100&page=${page}`,
     );
     if (res.status !== 200) break;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) break;
+    prevFirstId = firstId;
     if (items.find(p => p.policy === policyId && p.collection === collection && p.action === action)) return;
     if (items.length < 100) break;
     page++;

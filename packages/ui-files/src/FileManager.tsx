@@ -15,6 +15,7 @@ import {
   Text,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
+import { readUrlIntParam, readUrlParam, useHydrated, useUrlListParams } from '@buildpad/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   useFiles,
@@ -43,6 +44,17 @@ export interface FileManagerProps {
   enableFolders?: boolean;
   /** DaaS collection used for RBAC checks. */
   filesCollection?: string;
+  /**
+   * Persist search, the open folder, and the page in the URL query string
+   * (`?search=…&folder=…&page=…`) so the library view is shareable and
+   * reload-safe. Writes ride the existing 300 ms search debounce and go through
+   * the app's registered URL writer (Next.js App Router: `router.replace`,
+   * registered by the `DaaSProviderWrapper` template — required there);
+   * outside a router they fall back to `history.replaceState`. Set `false` for embedded surfaces. Default: true.
+   */
+  urlParams?: boolean;
+  /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
+  urlParamPrefix?: string;
 }
 
 /**
@@ -52,16 +64,39 @@ export interface FileManagerProps {
  * the `useFiles` / `useFolders` hooks for data. Actions are gated by DaaS
  * permissions via `usePermissions`.
  */
-export const FileManager: React.FC<FileManagerProps> = ({
+/**
+ * Client-only gate. The body seeds its state from the URL in `useState`
+ * initializers, which renders differently on the server (no URL) and on the
+ * client — a hydration mismatch on every deep link. Until hydrated, render the
+ * same loading shell the body shows before its first fetch, so server HTML and
+ * the hydration render agree; the body then mounts once with the URL in hand.
+ * Skipped when URL persistence is off, since then initial state is
+ * URL-independent and the body can server-render as before.
+ */
+export const FileManager: React.FC<FileManagerProps> = (props) => {
+  const hydrated = useHydrated();
+  if (props.urlParams !== false && !hydrated) {
+    return (
+      <Center mih={240}>
+        <Loader />
+      </Center>
+    );
+  }
+  return <FileManagerBody {...props} />;
+};
+
+const FileManagerBody: React.FC<FileManagerProps> = ({
   onFileClick,
   pageSize = 24,
   defaultView = 'grid',
   enableFolders = true,
   filesCollection = 'daas_files',
+  urlParams = true,
+  urlParamPrefix = '',
 }) => {
   const { uploadFiles, fetchFiles, importFromUrl, deleteFile, deleteFiles, getDownloadUrl } =
     useFiles();
-  const { fetchFolders, createFolder, updateFolder, deleteFolder } = useFolders();
+  const { fetchFolders, fetchFolder, createFolder, updateFolder, deleteFolder } = useFolders();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [filesCollection],
   });
@@ -71,17 +106,23 @@ export const FileManager: React.FC<FileManagerProps> = ({
   const updateAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'update');
   const deleteAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'delete');
 
+  const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
+
   const [view, setView] = useState<FilesView>(defaultView);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
   const [debouncedSearch] = useDebouncedValue(search, 300);
 
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  // A folder from the URL arrives as a bare id; its breadcrumb path is
+  // reconstructed by the effect below once fetchFolder can walk the parents.
+  const [currentFolder, setCurrentFolder] = useState<string | null>(() =>
+    urlParams && enableFolders ? readUrlParam(param('folder')) : null,
+  );
   const [path, setPath] = useState<FolderPathItem[]>([]);
 
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [listLoading, setListLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
@@ -176,10 +217,95 @@ export const FileManager: React.FC<FileManagerProps> = ({
     void load();
   }, [load]);
 
-  // Reset to first page whenever the search term or folder changes.
+  // Reset to first page whenever the search term or folder CHANGES — not on
+  // mount, or a ?page=2 restored from the URL would be clobbered.
+  // StrictMode-safe: compare against the previous values rather than "has
+  // mounted". StrictMode re-runs mount effects with refs intact, so a
+  // has-mounted flag fires setPage(1) on the second run and clobbers a
+  // ?page= restored from the URL in development.
+  const filtersKey = JSON.stringify([debouncedSearch, currentFolder]);
+  const previousFiltersKeyRef = React.useRef<string | null>(null);
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, currentFolder]);
+    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
+      setPage(1);
+    }
+    previousFiltersKeyRef.current = filtersKey;
+  }, [filtersKey]);
+
+  /**
+   * Rebuild the breadcrumb for a folder that arrived as a bare id (deep link,
+   * Back/Forward, or a bridge-driven URL rewrite) by walking `parent` links.
+   * An unreadable folder (deleted, or no permission) falls back to the root
+   * rather than stranding the view.
+   */
+  // Latest folder as of the last render, for event-time reads and for
+  // discarding a rebuild that finishes after the user has moved on.
+  const currentFolderRef = React.useRef(currentFolder);
+  currentFolderRef.current = currentFolder;
+
+  const rebuildPath = useCallback(
+    async (folderId: string) => {
+      try {
+        const chain: FolderPathItem[] = [];
+        let cursor: string | null = folderId;
+        for (let depth = 0; cursor && depth < 15; depth += 1) {
+          const folder = await fetchFolder(cursor);
+          chain.unshift({ id: folder.id, name: folder.name });
+          cursor = folder.parent;
+        }
+        if (currentFolderRef.current !== folderId) return; // superseded meanwhile
+        setPath(chain);
+      } catch {
+        if (currentFolderRef.current !== folderId) return;
+        setPath([]);
+        setCurrentFolder(null);
+      }
+    },
+    [fetchFolder],
+  );
+
+  // The URL-restored folder has no path yet; rebuild it once on mount.
+  const initialFolderRef = React.useRef(currentFolder);
+  useEffect(() => {
+    if (initialFolderRef.current) void rebuildPath(initialFolderRef.current);
+  }, [rebuildPath]);
+
+  // Keep the URL following the settled state, and the state following the URL
+  // on Back/Forward or a bridge-driven rewrite (see useUrlListParams).
+  useUrlListParams({
+    enabled: urlParams,
+    params: {
+      [param('search')]: debouncedSearch || null,
+      [param('folder')]: enableFolders ? currentFolder : null,
+      [param('page')]: page > 1 ? String(page) : null,
+    },
+    onExternalChange: useCallback(
+      (get: (name: string) => string | null) => {
+        const nextSearch = get(param('search')) ?? '';
+        setSearch((current) => (current === nextSearch ? current : nextSearch));
+
+        if (enableFolders) {
+          const nextFolder = get(param('folder'));
+          // Compare against the ref, not inside a setState updater: updaters
+          // must be pure (StrictMode double-invokes them), and this one
+          // kicks off a fetch chain.
+          if (currentFolderRef.current !== nextFolder) {
+            setCurrentFolder(nextFolder);
+            if (nextFolder) void rebuildPath(nextFolder);
+            else setPath([]);
+          }
+        }
+
+        const rawPage = get(param('page'));
+        const nextPage = (() => {
+          const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
+          return Number.isInteger(value) && value > 0 ? value : 1;
+        })();
+        setPage((current) => (current === nextPage ? current : nextPage));
+      },
+      [param, enableFolders, rebuildPath],
+    ),
+  });
 
   const openFolder = useCallback((folder: Folder) => {
     setPath((prev) => [...prev, { id: folder.id, name: folder.name }]);

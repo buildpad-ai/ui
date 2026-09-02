@@ -9,11 +9,13 @@ import {
   Stack,
   Text,
   Title,
+  Center,
+  Loader,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconShield } from '@tabler/icons-react';
-import { usePermissions, usePolicies } from '@buildpad/hooks';
+import { readUrlIntParam, readUrlParam, useHydrated, usePermissions, usePolicies, useUrlListParams } from '@buildpad/hooks';
 import type { Policy } from '@buildpad/types';
 import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { VTable } from '@buildpad/ui-table';
@@ -47,6 +49,17 @@ export interface PoliciesManagerProps {
   hideHeader?: boolean;
   /** DaaS collection used for RBAC checks. Default: 'daas_policies'. */
   policiesCollection?: string;
+  /**
+   * Persist search, sort, and page in the URL query string so the list is
+   * shareable and reload-safe. Writes ride the 300 ms search debounce and go
+   * through the app's registered URL writer (Next.js App Router:
+   * `router.replace`, registered by the `DaaSProviderWrapper` template —
+   * required there); outside a router they fall back to `history.replaceState`.
+   * Set `false` for embedded surfaces. Default: true.
+   */
+  urlParams?: boolean;
+  /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
+  urlParamPrefix?: string;
 }
 
 /**
@@ -59,13 +72,44 @@ export interface PoliciesManagerProps {
  * Only `name` is sortable: `userCount`/`roleCount` are computed after the
  * query server-side and cannot be sorted on.
  */
-export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
+/** Parse the DaaS-style sort string (`-name` = descending). */
+function parseSortParam(raw: string | null): Sort | null {
+  if (!raw) return null;
+  const desc = raw.startsWith('-');
+  const by = desc ? raw.slice(1) : raw;
+  return by ? { by, desc } : null;
+}
+
+/**
+ * Client-only gate. The body seeds its state from the URL in `useState`
+ * initializers, which renders differently on the server (no URL) and on the
+ * client — a hydration mismatch on every deep link. Until hydrated, render the
+ * same loading shell the body shows before its first fetch, so server HTML and
+ * the hydration render agree; the body then mounts once with the URL in hand.
+ * Skipped when URL persistence is off, since then initial state is
+ * URL-independent and the body can server-render as before.
+ */
+export const PoliciesManager: React.FC<PoliciesManagerProps> = (props) => {
+  const hydrated = useHydrated();
+  if (props.urlParams !== false && !hydrated) {
+    return (
+      <Center mih={240}>
+        <Loader />
+      </Center>
+    );
+  }
+  return <PoliciesManagerBody {...props} />;
+};
+
+const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
   onPolicyClick,
   onCreatePolicy,
   pageSize = 25,
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   hideHeader = false,
   policiesCollection = 'daas_policies',
+  urlParams = true,
+  urlParamPrefix = '',
 }) => {
   const { fetchPolicies, deletePolicy } = usePolicies();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
@@ -79,15 +123,48 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
+  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
   const [debouncedSearch] = useDebouncedValue(search, 300);
+
   // Server-side sort; computed count columns are not sortable.
-  const [sort, setSort] = useState<Sort | null>(null);
+  const [sort, setSort] = useState<Sort | null>(() =>
+    urlParams ? parseSortParam(readUrlParam(param('sort'))) : null,
+  );
+  // URL persistence — see useUrlListParams. Defaults serialize to null so they
+  // stay off the URL; Back/Forward and bridge rewrites flow back in below.
+  useUrlListParams({
+    enabled: urlParams,
+    params: {
+      [param('search')]: debouncedSearch || null,
+      [param('sort')]: sort ? `${sort.desc ? '-' : ''}${sort.by}` : null,
+      [param('page')]: page > 1 ? String(page) : null,
+    },
+    onExternalChange: useCallback(
+      (get: (name: string) => string | null) => {
+        const nextSearch = get(param('search')) ?? '';
+        setSearch((current) => (current === nextSearch ? current : nextSearch));
+        setSort((current) => {
+          const next = parseSortParam(get(param('sort')));
+          const same = current?.by === next?.by && current?.desc === next?.desc;
+          return same ? current : next;
+        });
+        const rawPage = get(param('page'));
+        const nextPage = (() => {
+          const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
+          return Number.isInteger(value) && value > 0 ? value : 1;
+        })();
+        setPage((current) => (current === nextPage ? current : nextPage));
+      },
+      [param],
+    ),
+  });
+
 
   const [deleteModal, setDeleteModal] = useState<{ opened: boolean; id: string }>({
     opened: false,
@@ -126,9 +203,19 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
     void load();
   }, [load]);
 
+  // Only on CHANGES — not mount, or a ?page= restored from the URL is clobbered.
+  // StrictMode-safe: compare against the previous values rather than "has
+  // mounted". StrictMode re-runs mount effects with refs intact, so a
+  // has-mounted flag fires setPage(1) on the second run and clobbers a
+  // ?page= restored from the URL in development.
+  const filtersKey = JSON.stringify([debouncedSearch, sort, limit]);
+  const previousFiltersKeyRef = React.useRef<string | null>(null);
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, sort, limit]);
+    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
+      setPage(1);
+    }
+    previousFiltersKeyRef.current = filtersKey;
+  }, [filtersKey]);
 
   const confirmDelete = useCallback(async () => {
     setDeleting(true);
