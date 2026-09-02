@@ -392,8 +392,11 @@ export async function applyNavItems(
   const navPath = path.join(srcDir, 'components/layout/navigation.ts');
 
   const entryLine = (i: NonNullable<LibModule['navItems']>[number], indent = '  ') =>
-    `${indent}{ label: "${i.label}", href: "${i.href}", icon: ${i.icon}` +
+    `${indent}{ label: "${i.label}", ` +
+    (i.labelKey ? `labelKey: "${i.labelKey}", ` : '') +
+    `href: "${i.href}", icon: ${i.icon}` +
     (i.section ? `, section: "${i.section}"` : '') +
+    (i.sectionKey ? `, sectionKey: "${i.sectionKey}"` : '') +
     ` },`;
 
   const manualHint = () => {
@@ -959,9 +962,17 @@ export async function add(
     console.log(chalk.bold('\n🔌 Installing API routes and Supabase auth...\n'));
     const spinner = ora('Processing lib modules...').start();
 
-    // Install supabase-auth first (dependency of api-routes)
+    // Install supabase-auth first (dependency of api-routes). Its own
+    // dependency, i18n, is pulled in by copyLibModule's recursion.
     if (registry.lib['supabase-auth'] && !config.installedLib.includes('supabase-auth')) {
       await copyLibModule('supabase-auth', registry, config, cwd, spinner);
+    }
+
+    // Install i18n explicitly too: the login page (api-routes), the middleware
+    // (supabase-auth) and the app shell (design-system) all import from
+    // lib/i18n, so it must be complete before any of them is written.
+    if (registry.lib['i18n'] && !config.installedLib.includes('i18n')) {
+      await copyLibModule('i18n', registry, config, cwd, spinner);
     }
 
     // Install api-routes

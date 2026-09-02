@@ -1,16 +1,21 @@
 /**
  * Supabase Auth Middleware
- * 
+ *
  * Refreshes auth tokens and protects routes.
  * This file is copied to your project by the Buildpad CLI.
- * 
+ *
+ * Routes are compared WITHOUT their locale prefix (`/id/login` → `/login`),
+ * and unauthenticated users are sent to the login page of the locale they
+ * were on.
+ *
  * @buildpad/origin: supabase/middleware
- * @buildpad/version: 1.1.0
+ * @buildpad/version: 2.0.0
  */
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { publicOrigin } from '@/lib/origin';
+import { defaultLocale, getLocaleFromPathname, stripLocale } from '@/lib/i18n/config';
 
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -49,19 +54,22 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const pathname = request.nextUrl.pathname;
+  const locale = getLocaleFromPathname(pathname) ?? defaultLocale;
+  // Compare routes without the locale prefix: "/id/login" gates like "/login".
+  const path = stripLocale(pathname);
+
   // Define public routes that don't require authentication
   const publicRoutes = ['/login', '/signup', '/auth', '/api/auth'];
-  const isPublicRoute = publicRoutes.some(route => 
-    request.nextUrl.pathname.startsWith(route)
-  );
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api');
+  const isPublicRoute = publicRoutes.some(route => path.startsWith(route));
+  const isApiRoute = path.startsWith('/api');
 
   // Redirect unauthenticated users to login (except for public and API routes)
   if (!user && !isPublicRoute && !isApiRoute) {
     // Built from the resolved public origin, not `request.nextUrl`: behind a
-    // proxy the latter names the server process (localhost), and middleware
+    // proxy the latter names the server process, and middleware
     // redirects emit an absolute Location header. See lib/origin.ts.
-    const url = new URL('/login', publicOrigin(request));
+    const url = new URL(`/${locale}/login`, publicOrigin(request));
     url.search = request.nextUrl.search;
     return NextResponse.redirect(url);
   }

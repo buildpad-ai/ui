@@ -10,7 +10,7 @@
 "use client";
 
 import React, { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { FileDetail } from '@/components/ui/file-manager';
 
 export default function FileDetailPage({
@@ -19,7 +19,7 @@ export default function FileDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return (
     <FileDetail

@@ -177,7 +177,7 @@ buildpad bootstrap --skip-validate --cwd /path/to/project
 | `/api/auth/logout` | POST | Sign out and clear session cookies |
 | `/api/auth/user` | GET | Get current user profile |
 | `/api/auth/callback` | GET | Handle OAuth/email-confirm redirects |
-| `/app/login/page.tsx` | — | Login page using proxy pattern |
+| `/app/[lang]/login/page.tsx` | — | Login page using proxy pattern (locale-prefixed) |
 
 **Key advantage:** Bootstrap works in non-empty directories and requires no user interaction.
 

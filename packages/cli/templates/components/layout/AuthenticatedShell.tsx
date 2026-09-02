@@ -12,13 +12,22 @@
  *
  * Styling lives in app/globals.css under the `.bp-*` namespace.
  *
+ * Locale-aware: nav hrefs are written without a prefix and rendered through
+ * `localeHref`; the active item is matched on `stripLocale(pathname)`; labels
+ * resolve through the dictionary (`labelKey`); the header carries a
+ * `LanguageSwitcher` (hide with `showLanguageSwitcher={false}`) and a
+ * `headerActions` slot for your own controls.
+ *
  * @buildpad/origin: components/layout/AuthenticatedShell
- * @buildpad/version: 1.0.0
+ * @buildpad/version: 2.0.0
  */
 
 "use client";
 
 import { ColorSchemeToggle } from "@/components/ColorSchemeToggle";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { localeHref, stripLocale } from "@/lib/i18n/config";
+import { useI18n } from "@/lib/i18n/provider";
 import {
   ActionIcon,
   AppShell,
@@ -62,7 +71,11 @@ interface AuthUser {
 }
 
 export interface NavItem {
+  /** Fallback label, shown when `labelKey` is absent or missing from the dictionary. */
   label: string;
+  /** Dictionary path (lib/i18n), e.g. "app.nav.users". */
+  labelKey?: string;
+  /** Route WITHOUT a locale prefix, e.g. "/users" — the shell prefixes it. */
   href: string;
   icon: ComponentType<IconProps>;
   /**
@@ -71,6 +84,8 @@ export interface NavItem {
    * their first entry appears in the nav list.
    */
   section?: string;
+  /** Dictionary path for the section heading, e.g. "app.nav.administration". */
+  sectionKey?: string;
 }
 
 export interface ShellBrand {
@@ -94,7 +109,19 @@ interface AuthenticatedShellProps {
   showSearch?: boolean;
   /** Show the (presentational) header notification bell. */
   showNotifications?: boolean;
+  /** Show the LanguageSwitcher in the header (renders nothing with a single locale). */
+  showLanguageSwitcher?: boolean;
+  /** Extra controls rendered in the header, before the switcher and theme toggle. */
+  headerActions?: ReactNode;
 }
+
+const DEFAULT_SECTION = "Main Menu";
+
+/** Dictionary keys for the section headings the CLI writes. */
+const SECTION_KEYS: Record<string, string> = {
+  "Main Menu": "app.nav.mainMenu",
+  Administration: "app.nav.administration",
+};
 
 // Default nav lives in ./navigation — the CLI appends route-module entries
 // there on install, so new modules appear in the sidebar automatically.
@@ -126,8 +153,20 @@ export function AuthenticatedShell({
   brand = defaultBrand(),
   showSearch = true,
   showNotifications = true,
+  showLanguageSwitcher = true,
+  headerActions,
 }: AuthenticatedShellProps) {
   const pathname = usePathname();
+  const { t, locale } = useI18n();
+  // Route without the locale prefix — what nav hrefs are matched against.
+  const route = stripLocale(pathname);
+
+  /** Dictionary lookup with the plain label as fallback (missing keys echo their path). */
+  const resolve = (key: string | undefined, fallback: string) => {
+    if (!key) return fallback;
+    const value = t(key);
+    return value === key ? fallback : value;
+  };
   const [mobileOpened, { toggle: toggleMobile, close: closeMobile }] =
     useDisclosure(false);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -174,12 +213,12 @@ export function AuthenticatedShell({
   // Group nav entries by section (default "Main Menu"), preserving the order
   // in which each section first appears.
   const navGroups = useMemo(() => {
-    const groups: Array<{ section: string; items: NavItem[] }> = [];
+    const groups: Array<{ section: string; sectionKey?: string; items: NavItem[] }> = [];
     for (const item of navItems) {
-      const section = item.section ?? "Main Menu";
+      const section = item.section ?? DEFAULT_SECTION;
       let group = groups.find((g) => g.section === section);
       if (!group) {
-        group = { section, items: [] };
+        group = { section, sectionKey: item.sectionKey ?? SECTION_KEYS[section], items: [] };
         groups.push(group);
       }
       group.items.push(item);
@@ -187,25 +226,26 @@ export function AuthenticatedShell({
     return groups;
   }, [navItems]);
 
+  const isActive = (item: NavItem) =>
+    route === item.href || (item.href !== "/" && route.startsWith(`${item.href}/`));
+
   const pageTitle = useMemo(() => {
-    const active = navItems.find(
-      (item) =>
-        pathname === item.href || pathname.startsWith(`${item.href}/`)
-    );
-    if (active) return active.label;
+    const active = navItems.find(isActive);
+    if (active) return resolve(active.labelKey, active.label);
     // Routes that aren't in the sidebar (e.g. /forms from the forms module)
     // still get a meaningful crumb from the first path segment, instead of
     // repeating the brand name.
-    const segment = pathname.split("/").filter(Boolean)[0];
+    const segment = route.split("/").filter(Boolean)[0];
     if (!segment) return brand.name;
     const words = segment.replace(/[-_]+/g, " ");
     return words.charAt(0).toUpperCase() + words.slice(1);
-  }, [pathname, navItems, brand.name]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route, navItems, brand.name, t]);
 
   const displayName =
     `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() ||
     user?.email ||
-    "Account";
+    t("app.shell.account");
 
   return (
     <AppShell
@@ -246,19 +286,19 @@ export function AuthenticatedShell({
               <UnstyledButton className="bp-search-button">
                 <Group gap="xs" wrap="nowrap">
                   <IconSearch size={14} stroke={1.8} />
-                  <Text size="xs">Search…</Text>
+                  <Text size="xs">{t("app.shell.search")}</Text>
                 </Group>
                 <span className="bp-search-kbd">⌘K</span>
               </UnstyledButton>
             )}
 
             {showNotifications && (
-              <Tooltip label="Notifications">
+              <Tooltip label={t("app.shell.notifications")}>
                 <div className="bp-notification-bell">
                   <ActionIcon
                     variant="subtle"
                     size="lg"
-                    aria-label="Notifications"
+                    aria-label={t("app.shell.notifications")}
                     color="gray"
                   >
                     <IconBell size={20} stroke={1.8} />
@@ -268,6 +308,8 @@ export function AuthenticatedShell({
               </Tooltip>
             )}
 
+            {headerActions}
+            {showLanguageSwitcher && <LanguageSwitcher />}
             <ColorSchemeToggle />
           </Group>
         </Group>
@@ -283,7 +325,7 @@ export function AuthenticatedShell({
                 {brand.name}
               </Text>
               <Text size="xs" c="dimmed" style={{ lineHeight: 1 }}>
-                Workspace
+                {t("app.shell.workspace")}
               </Text>
             </Stack>
           </div>
@@ -299,26 +341,23 @@ export function AuthenticatedShell({
                 mt={groupIndex > 0 ? "md" : 0}
                 style={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
               >
-                {group.section}
+                {resolve(group.sectionKey, group.section)}
               </Text>
 
               <Stack gap={4}>
                 {group.items.map((item) => {
-                  const isActive =
-                    pathname === item.href ||
-                    pathname.startsWith(`${item.href}/`);
                   const Icon = item.icon;
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
+                      href={localeHref(locale, item.href)}
                       className={`bp-nav-link ${
-                        isActive ? "bp-nav-link-active" : ""
+                        isActive(item) ? "bp-nav-link-active" : ""
                       }`}
                       onClick={closeMobile}
                     >
                       <Icon size={18} stroke={1.8} />
-                      <span>{item.label}</span>
+                      <span>{resolve(item.labelKey, item.label)}</span>
                     </Link>
                   );
                 })}
@@ -363,7 +402,7 @@ export function AuthenticatedShell({
                       lineClamp={1}
                       style={{ lineHeight: 1 }}
                     >
-                      {user?.email ?? "Signed in"}
+                      {user?.email ?? t("app.shell.signedIn")}
                     </Text>
                   </Stack>
                   <IconChevronDown size={14} color="var(--ds-gray-400)" />
@@ -371,22 +410,24 @@ export function AuthenticatedShell({
               </UnstyledButton>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label>Profile Settings</Menu.Label>
+              <Menu.Label>{t("app.shell.profileSettings")}</Menu.Label>
               <Menu.Item leftSection={<IconUser size={14} />} disabled>
-                Account details
+                {t("app.shell.accountDetails")}
               </Menu.Item>
               <Menu.Item leftSection={<IconSettings size={14} />} disabled>
-                Workspace Settings
+                {t("app.shell.workspaceSettings")}
               </Menu.Item>
               <Divider my="xs" />
               <Menu.Item
                 color="red"
                 leftSection={<IconLogout size={14} />}
                 onClick={() => {
+                  // API path — never locale-prefixed. The logout route
+                  // redirects to /login, which middleware re-prefixes.
                   window.location.href = "/api/auth/logout";
                 }}
               >
-                Logout
+                {t("app.shell.logout")}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>

@@ -257,6 +257,15 @@ importers:
         specifier: workspace:*
         version: link:../utils
     devDependencies:
+      '@mantine/core':
+        specifier: ^8.3.9
+        version: 8.3.10(@mantine/hooks@8.3.10(react@19.2.0))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@mantine/dates':
+        specifier: ^8.3.9
+        version: 8.3.10(@mantine/core@8.3.10(@mantine/hooks@8.3.10(react@19.2.0))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@mantine/hooks@8.3.10(react@19.2.0))(dayjs@1.11.19)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@mantine/hooks':
+        specifier: ^8.3.9
+        version: 8.3.10(react@19.2.0)
       '@supabase/supabase-js':
         specifier: ^2
         version: 2.93.3
@@ -266,6 +275,9 @@ importers:
       '@types/react':
         specifier: ^19
         version: 19.2.7
+      dayjs:
+        specifier: ^1.11.19
+        version: 1.11.19
       react:
         specifier: ^19
         version: 19.2.0

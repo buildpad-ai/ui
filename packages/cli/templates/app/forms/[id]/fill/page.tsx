@@ -11,7 +11,8 @@
 
 import React, { use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useLocaleHref, useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
 import { Anchor, Box, Breadcrumbs, Stack, Text } from '@mantine/core';
 import { DynamicForm } from '@/components/ui/form-builder';
 
@@ -21,16 +22,18 @@ export default function FillFormPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const href = useLocaleHref();
+  const { t } = useI18n();
 
   return (
     <Box maw={720} mx="auto">
       <Stack gap="md">
         <Breadcrumbs>
-          <Anchor component={Link} href="/forms" size="sm">
-            Forms
+          <Anchor component={Link} href={href('/forms')} size="sm">
+            {t('app.forms.title')}
           </Anchor>
-          <Text size="sm">Fill out</Text>
+          <Text size="sm">{t('app.forms.fillOut')}</Text>
         </Breadcrumbs>
         <DynamicForm
           definitionId={id}

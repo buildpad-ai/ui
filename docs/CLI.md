@@ -22,6 +22,9 @@ buildpad add --all               # Add all components (non-interactive)
 buildpad diff <component>        # Preview changes before adding
 buildpad bootstrap               # Full setup: init + add --all + deps + validate
 buildpad bootstrap --cwd <path>  # Bootstrap in a specific directory
+buildpad bootstrap --locales en,id --default-locale en  # Locales for app/[lang] (default: en)
+buildpad add i18n                # Locale routing module (lib/i18n, LanguageSwitcher) on its own
+buildpad migrate i18n            # Move a pre-2.3 app onto app/[lang] routing
 buildpad status                  # Show installed components
 buildpad status --json           # JSON output for scripting
 buildpad validate                # Validate installation (imports, SSR, missing files)
@@ -213,7 +216,10 @@ Bootstrap installs everything non-interactively, including:
 - Supabase auth utilities and middleware
 - **OAuth helpers** (`external-oauth` module): `lib/oauth/*` (config, pkce, validate) + OAuth
   provider route and login buttons — required because the auth routes import `@/lib/oauth/*`
-- npm dependencies via `pnpm install` (incl. `@supabase/ssr`, `@supabase/supabase-js`, `jose`)
+- **Locale routing** (`i18n` module): `lib/i18n/*` and `components/LanguageSwitcher.tsx`; every
+  page lives under `app/[lang]/` — see [Locale routing](#locale-routing-applang)
+- npm dependencies via `pnpm install` (incl. `@supabase/ssr`, `@supabase/supabase-js`, `jose`,
+  `negotiator`, `@formatjs/intl-localematcher`, `server-only`)
 
 The validate command checks for:
 - **Untransformed imports** - `@buildpad/*` imports that weren't converted to local paths
@@ -559,9 +565,55 @@ buildpad bootstrap --skip-validate --cwd /path/to/project
 | `/api/auth/logout` | POST | Sign out and clear session cookies |
 | `/api/auth/user` | GET | Get current user profile |
 | `/api/auth/callback` | GET | Handle OAuth/email-confirm redirects |
-| `/app/login/page.tsx` | — | Login page using proxy pattern |
+| `/app/[lang]/login/page.tsx` | — | Login page using proxy pattern (locale-prefixed) |
 
 **Key advantage:** Bootstrap works in non-empty directories (unlike `create-next-app`).
+
+## Locale routing (`app/[lang]`)
+
+Every app scaffolded by `init`/`bootstrap` is locale-prefixed: `/` redirects to `/<locale>`
+(negotiated from the `NEXT_LOCALE` cookie, then `Accept-Language`, then the default), unknown
+locales 404, and `/api/*` is never prefixed. The pieces, all tracked in `buildpad.json`:
+
+| Piece | Module | What it does |
+|-------|--------|--------------|
+| `lib/i18n/config.ts` | `i18n` | `locales`, `defaultLocale`, `localeMeta`, `hasLocale`, `stripLocale`, `localeHref` — the only place locale codes are declared |
+| `lib/i18n/negotiate.ts` | `i18n` | `negotiateLocale(request)` for middleware (Negotiator + `@formatjs/intl-localematcher`) |
+| `lib/i18n/dictionaries.ts` + `dictionaries/<code>.json` | `i18n` | Server-only loader; `app.*` strings for your pages, `buildpad.*` overrides for Buildpad components |
+| `lib/i18n/provider.tsx` | `i18n` | `I18nProvider` / `useI18n()` (`t`, `formatDate`, `formatNumber`); also mounts `BuildpadI18nProvider` from `lib/buildpad/services` so copied components render in the locale |
+| `lib/i18n/navigation.ts` | `i18n` | `useLocaleRouter()` (drop-in `useRouter` that prefixes the locale), `useLocaleHref()`, `useSwitchLocale()` |
+| `lib/i18n/content.ts` | `i18n` | `pickTranslation`, `translationsQuery`, `localeListQuery` for DaaS content translations |
+| `components/LanguageSwitcher.tsx` | `i18n` | Locale select; rendered by `AuthenticatedShell`'s header and the login page (hidden with one locale) |
+| `app/[lang]/layout.tsx` | scaffolded by `init` | `generateStaticParams`, `notFound()`, `<html lang dir>`, `DirectionProvider`, `I18nProvider` — there must be no `app/layout.tsx` beside it |
+| `middleware.ts`, `lib/supabase/middleware.ts` | `supabase-auth` | Locale redirect before the session refresh; route gating on the prefix-stripped path |
+
+`supabase-auth`, `design-system` and `api-routes` declare `i18n` as an internal dependency, so
+`add api-routes` / `upgrade --design` install it when missing. Route modules write nav entries
+with `labelKey`/`sectionKey` dictionary paths (`app.nav.users`, `app.nav.administration`).
+
+```bash
+# Scaffold with two locales (dictionaries/id.json is seeded from en.json — translate it)
+buildpad bootstrap --locales en,id --default-locale en --cwd /path/to/project
+
+# Existing app scaffolded before locale routing: move it under app/[lang]
+buildpad migrate i18n --cwd .              # add --locales en,id to configure locales too
+buildpad upgrade --all --three-way --cwd . # pulls the locale-aware middleware, login, shell, pages
+```
+
+`migrate i18n` installs the `i18n` module, writes the new root layout to `app/[lang]/layout.tsx`
+(your previous `app/layout.tsx` is kept as `app/[lang]/layout.pre-i18n.tsx` for a manual merge),
+moves every other route entry under `app/[lang]/` (API routes, CSS and metadata files stay), and
+retargets the manifest so `upgrade` follows the moved files. Your own pages then need
+`useLocaleRouter()` instead of `useRouter()` and `localeHref` for literal `href="/…"` links — the
+command prints the grep to find them.
+
+Locale edits made by `--locales` live in marker-delimited blocks (`// buildpad:locales`,
+`// buildpad:locale-meta-start`, `// buildpad:dictionary-loaders-start`); they show as local
+modifications to `lib/i18n/config.ts` and `lib/i18n/dictionaries.ts`, which `upgrade` three-way
+merges. Adding a locale by hand means editing those blocks and creating `dictionaries/<code>.json`.
+
+`validate` reports `DUPLICATE_ROOT_LAYOUT` (both `app/layout.tsx` and `app/[lang]/layout.tsx`),
+`MISSING_I18N_MODULE` (a module that imports `lib/i18n` without it) and `MISSING_LANG_LAYOUT`.
 
 ## For Humans: Quick Start
 

@@ -213,3 +213,15 @@ export {
   URL_STATE_EVENT,
   type UseUrlListParamsOptions,
 } from './useUrlListParams';
+
+// Component i18n (locale, dictionary, formatters) — see lib/buildpad/services
+export {
+  BuildpadI18nProvider,
+  BUILDPAD_I18N_DEFAULT_TIMEZONE,
+  useBuildpadI18n,
+  useBuildpadI18nOptional,
+  useBuildpadTranslations,
+  type BuildpadI18nContextValue,
+  type BuildpadI18nProviderProps,
+  type DateInput,
+} from './useBuildpadI18n';

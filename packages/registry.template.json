@@ -85,7 +85,7 @@
   "lib": {
     "utils": {
       "name": "utils",
-      "description": "Utility functions (cn, formatFileSize, field interface mapper, etc.)",
+      "description": "Utility functions (cn, formatFileSize, field interface mapper, component i18n core, etc.)",
       "files": [
         {
           "source": "cli/templates/lib/common-utils.ts",
@@ -126,6 +126,42 @@
         {
           "source": "utils/src/interface-catalog.ts",
           "target": "lib/buildpad/interface-catalog.ts"
+        },
+        {
+          "source": "utils/src/i18n/types.ts",
+          "target": "lib/buildpad/i18n/types.ts"
+        },
+        {
+          "source": "utils/src/i18n/defaults.ts",
+          "target": "lib/buildpad/i18n/defaults.ts"
+        },
+        {
+          "source": "utils/src/i18n/merge.ts",
+          "target": "lib/buildpad/i18n/merge.ts"
+        },
+        {
+          "source": "utils/src/i18n/interpolate.ts",
+          "target": "lib/buildpad/i18n/interpolate.ts"
+        },
+        {
+          "source": "utils/src/i18n/plural.ts",
+          "target": "lib/buildpad/i18n/plural.ts"
+        },
+        {
+          "source": "utils/src/i18n/locale.ts",
+          "target": "lib/buildpad/i18n/locale.ts"
+        },
+        {
+          "source": "utils/src/i18n/locales/id.ts",
+          "target": "lib/buildpad/i18n/locales/id.ts"
+        },
+        {
+          "source": "utils/src/i18n/locales/index.ts",
+          "target": "lib/buildpad/i18n/locales/index.ts"
+        },
+        {
+          "source": "utils/src/i18n/index.ts",
+          "target": "lib/buildpad/i18n/index.ts"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
@@ -213,6 +249,10 @@
         {
           "source": "services/src/daas-context.tsx",
           "target": "lib/buildpad/services/daas-context.tsx"
+        },
+        {
+          "source": "services/src/buildpad-i18n-context.tsx",
+          "target": "lib/buildpad/services/buildpad-i18n-context.tsx"
         },
         {
           "source": "services/src/auth/index.ts",
@@ -385,6 +425,10 @@
           "target": "lib/buildpad/hooks/useUrlListParams.ts"
         },
         {
+          "source": "hooks/src/useBuildpadI18n.ts",
+          "target": "lib/buildpad/hooks/useBuildpadI18n.ts"
+        },
+        {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts"
         }
@@ -394,9 +438,64 @@
         "services"
       ]
     },
+    "i18n": {
+      "name": "i18n",
+      "description": "Locale routing for app/[lang]: locale config, Accept-Language negotiation for middleware, server-loaded dictionaries, the app I18nProvider (which also mounts BuildpadI18nProvider), locale-aware navigation hooks, content-translation query helpers, and the LanguageSwitcher.",
+      "dependencies": [
+        "negotiator",
+        "@formatjs/intl-localematcher",
+        "server-only",
+        "@types/negotiator"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/lib/i18n/config.ts",
+          "target": "lib/i18n/config.ts"
+        },
+        {
+          "source": "cli/templates/lib/i18n/negotiate.ts",
+          "target": "lib/i18n/negotiate.ts"
+        },
+        {
+          "source": "cli/templates/lib/i18n/types.ts",
+          "target": "lib/i18n/types.ts"
+        },
+        {
+          "source": "cli/templates/lib/i18n/dictionaries.ts",
+          "target": "lib/i18n/dictionaries.ts"
+        },
+        {
+          "source": "cli/templates/lib/i18n/dictionaries/en.json",
+          "target": "lib/i18n/dictionaries/en.json"
+        },
+        {
+          "source": "cli/templates/lib/i18n/provider.tsx",
+          "target": "lib/i18n/provider.tsx"
+        },
+        {
+          "source": "cli/templates/lib/i18n/navigation.ts",
+          "target": "lib/i18n/navigation.ts"
+        },
+        {
+          "source": "cli/templates/lib/i18n/content.ts",
+          "target": "lib/i18n/content.ts"
+        },
+        {
+          "source": "cli/templates/lib/i18n/index.ts",
+          "target": "lib/i18n/index.ts"
+        },
+        {
+          "source": "cli/templates/components/LanguageSwitcher.tsx",
+          "target": "components/LanguageSwitcher.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "services"
+      ]
+    },
     "api-routes": {
       "name": "api-routes",
-      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout",
+      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout, all under app/[lang]",
       "files": [
         {
           "source": "cli/templates/api/auth-login-route.ts",
@@ -416,7 +515,7 @@
         },
         {
           "source": "cli/templates/api/login-page.tsx",
-          "target": "app/login/page.tsx"
+          "target": "app/[lang]/login/page.tsx"
         },
         {
           "source": "cli/templates/lib/api-auth-headers.ts",
@@ -488,11 +587,12 @@
         },
         {
           "source": "cli/templates/app/authenticated-layout.tsx",
-          "target": "app/(authenticated)/layout.tsx"
+          "target": "app/[lang]/(authenticated)/layout.tsx"
         }
       ],
       "internalDependencies": [
         "supabase-auth",
+        "i18n",
         "design-system"
       ]
     },
@@ -502,19 +602,19 @@
       "files": [
         {
           "source": "cli/templates/app/content/layout.tsx",
-          "target": "app/content/layout.tsx"
+          "target": "app/[lang]/content/layout.tsx"
         },
         {
           "source": "cli/templates/app/content/page.tsx",
-          "target": "app/content/page.tsx"
+          "target": "app/[lang]/content/page.tsx"
         },
         {
           "source": "cli/templates/app/content/[collection]/page.tsx",
-          "target": "app/content/[collection]/page.tsx"
+          "target": "app/[lang]/content/[collection]/page.tsx"
         },
         {
           "source": "cli/templates/app/content/[collection]/[id]/page.tsx",
-          "target": "app/content/[collection]/[id]/page.tsx"
+          "target": "app/[lang]/content/[collection]/[id]/page.tsx"
         }
       ],
       "internalDependencies": [
@@ -524,15 +624,15 @@
     },
     "files-routes": {
       "name": "files-routes",
-      "description": "Files management module pages \u2014 /files (drag-and-drop upload, folders, grid/list, search, bulk delete, import-from-URL) and /files/[id] (metadata edit + preview). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the file-manager component.",
+      "description": "Files management module pages — /files (drag-and-drop upload, folders, grid/list, search, bulk delete, import-from-URL) and /files/[id] (metadata edit + preview). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the file-manager component.",
       "files": [
         {
           "source": "cli/templates/app/files/page.tsx",
-          "target": "app/(authenticated)/files/page.tsx"
+          "target": "app/[lang]/(authenticated)/files/page.tsx"
         },
         {
           "source": "cli/templates/app/files/[id]/page.tsx",
-          "target": "app/(authenticated)/files/[id]/page.tsx"
+          "target": "app/[lang]/(authenticated)/files/[id]/page.tsx"
         }
       ],
       "internalDependencies": [
@@ -546,41 +646,42 @@
         {
           "label": "Files",
           "href": "/files",
-          "icon": "IconFolders"
+          "icon": "IconFolders",
+          "labelKey": "app.nav.files"
         }
       ]
     },
     "users-routes": {
       "name": "users-routes",
-      "description": "Users/roles/policies admin module pages \u2014 /users, /users/[id], /roles, /roles/[id], /policies, /policies/[id], /module-access-keys (list + create/edit for each access-control domain, plus the module-level access key registry). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the users-management component.",
+      "description": "Users/roles/policies admin module pages — /users, /users/[id], /roles, /roles/[id], /policies, /policies/[id], /module-access-keys (list + create/edit for each access-control domain, plus the module-level access key registry). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the users-management component.",
       "files": [
         {
           "source": "cli/templates/app/users/page.tsx",
-          "target": "app/(authenticated)/users/page.tsx"
+          "target": "app/[lang]/(authenticated)/users/page.tsx"
         },
         {
           "source": "cli/templates/app/users/[id]/page.tsx",
-          "target": "app/(authenticated)/users/[id]/page.tsx"
+          "target": "app/[lang]/(authenticated)/users/[id]/page.tsx"
         },
         {
           "source": "cli/templates/app/roles/page.tsx",
-          "target": "app/(authenticated)/roles/page.tsx"
+          "target": "app/[lang]/(authenticated)/roles/page.tsx"
         },
         {
           "source": "cli/templates/app/roles/[id]/page.tsx",
-          "target": "app/(authenticated)/roles/[id]/page.tsx"
+          "target": "app/[lang]/(authenticated)/roles/[id]/page.tsx"
         },
         {
           "source": "cli/templates/app/policies/page.tsx",
-          "target": "app/(authenticated)/policies/page.tsx"
+          "target": "app/[lang]/(authenticated)/policies/page.tsx"
         },
         {
           "source": "cli/templates/app/policies/[id]/page.tsx",
-          "target": "app/(authenticated)/policies/[id]/page.tsx"
+          "target": "app/[lang]/(authenticated)/policies/[id]/page.tsx"
         },
         {
           "source": "cli/templates/app/module-access-keys/page.tsx",
-          "target": "app/(authenticated)/module-access-keys/page.tsx"
+          "target": "app/[lang]/(authenticated)/module-access-keys/page.tsx"
         }
       ],
       "internalDependencies": [
@@ -595,41 +696,47 @@
           "label": "Users",
           "href": "/users",
           "icon": "IconUsers",
-          "section": "Administration"
+          "section": "Administration",
+          "labelKey": "app.nav.users",
+          "sectionKey": "app.nav.administration"
         },
         {
           "label": "Roles",
           "href": "/roles",
           "icon": "IconUsersGroup",
-          "section": "Administration"
+          "section": "Administration",
+          "labelKey": "app.nav.roles",
+          "sectionKey": "app.nav.administration"
         },
         {
           "label": "Policies",
           "href": "/policies",
           "icon": "IconShieldLock",
-          "section": "Administration"
+          "section": "Administration",
+          "labelKey": "app.nav.policies",
+          "sectionKey": "app.nav.administration"
         }
       ]
     },
     "forms-routes": {
       "name": "forms-routes",
-      "description": "Dynamic form builder module pages \u2014 /forms (list of form definitions), /forms/new (create a definition), /forms/[id] (visual FormBuilder editor), and /forms/[id]/fill (render the definition with DynamicForm to create a real item). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the form-builder component.",
+      "description": "Dynamic form builder module pages — /forms (list of form definitions), /forms/new (create a definition), /forms/[id] (visual FormBuilder editor), and /forms/[id]/fill (render the definition with DynamicForm to create a real item). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the form-builder component.",
       "files": [
         {
           "source": "cli/templates/app/forms/page.tsx",
-          "target": "app/(authenticated)/forms/page.tsx"
+          "target": "app/[lang]/(authenticated)/forms/page.tsx"
         },
         {
           "source": "cli/templates/app/forms/new/page.tsx",
-          "target": "app/(authenticated)/forms/new/page.tsx"
+          "target": "app/[lang]/(authenticated)/forms/new/page.tsx"
         },
         {
           "source": "cli/templates/app/forms/[id]/page.tsx",
-          "target": "app/(authenticated)/forms/[id]/page.tsx"
+          "target": "app/[lang]/(authenticated)/forms/[id]/page.tsx"
         },
         {
           "source": "cli/templates/app/forms/[id]/fill/page.tsx",
-          "target": "app/(authenticated)/forms/[id]/fill/page.tsx"
+          "target": "app/[lang]/(authenticated)/forms/[id]/fill/page.tsx"
         }
       ],
       "internalDependencies": [
@@ -643,13 +750,14 @@
         {
           "label": "Forms",
           "href": "/forms",
-          "icon": "IconForms"
+          "icon": "IconForms",
+          "labelKey": "app.nav.forms"
         }
       ]
     },
     "supabase-auth": {
       "name": "supabase-auth",
-      "description": "Supabase authentication clients and middleware for Next.js",
+      "description": "Supabase authentication clients and locale-aware middleware for Next.js (redirects unprefixed requests to the negotiated locale before refreshing the session)",
       "dependencies": [
         "@supabase/ssr",
         "@supabase/supabase-js"
@@ -679,6 +787,9 @@
           "source": "cli/templates/middleware/middleware.ts",
           "target": "middleware.ts"
         }
+      ],
+      "internalDependencies": [
+        "i18n"
       ]
     },
     "external-oauth": {
@@ -724,7 +835,7 @@
     },
     "scope-routes": {
       "name": "scope-routes",
-      "description": "DaaS multi-tenant scope system \u2014 ScopeProvider context, ScopeSwitcher, error handling, and onboarding page. Calls DaaS directly; no proxy routes needed.",
+      "description": "DaaS multi-tenant scope system — ScopeProvider context, ScopeSwitcher, error handling, and onboarding page. Calls DaaS directly; no proxy routes needed.",
       "internalDependencies": [
         "supabase-auth"
       ],
@@ -747,13 +858,13 @@
         },
         {
           "source": "cli/templates/app/select-scope/page.tsx",
-          "target": "app/select-scope/page.tsx"
+          "target": "app/[lang]/select-scope/page.tsx"
         }
       ]
     },
     "design-system": {
       "name": "design-system",
-      "description": "Design tokens, global styles, Mantine theme, and the app shell (ColorSchemeToggle, AuthenticatedShell). Scaffolded by init and refreshable via `upgrade --design`.",
+      "description": "Design tokens, global styles, Mantine theme, and the locale-aware app shell (ColorSchemeToggle, AuthenticatedShell with LanguageSwitcher). Scaffolded by init and refreshable via `upgrade --design`.",
       "files": [
         {
           "source": "cli/templates/app/design-tokens.css",
@@ -779,6 +890,9 @@
           "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
           "target": "components/layout/AuthenticatedShell.tsx"
         }
+      ],
+      "internalDependencies": [
+        "i18n"
       ]
     }
   },
@@ -2654,7 +2768,7 @@
       "name": "file-manager",
       "title": "FileManager",
       "excludeFromAll": true,
-      "description": "Full files-management UI \u2014 list surface (drag-and-drop upload, import-from-URL, folders, grid/list views, search, bulk delete) and a file detail view (metadata edit + preview for image/video/audio/pdf). Composes the upload interface and the useFiles/useFolders hooks.",
+      "description": "Full files-management UI — list surface (drag-and-drop upload, import-from-URL, folders, grid/list views, search, bulk delete) and a file detail view (metadata edit + preview for image/video/audio/pdf). Composes the upload interface and the useFiles/useFolders hooks.",
       "category": "media",
       "files": [
         {
@@ -2741,7 +2855,7 @@
       "name": "users-management",
       "title": "UsersManagement",
       "excludeFromAll": true,
-      "description": "Users, roles, and policies administration (RBAC management) \u2014 user list/detail with role assignment (M2M) and direct policy attachment, role list/detail with member management, hierarchy, and scope-assignment rules, policy list/detail with access flags and BOTH permission dimensions: a per-collection matrix (Record-Level Access, via system-permissions) and a capability-key tree (Module-Level Access), plus the /module-access-keys registry manager. Composes the useUsers/useRoles/usePolicies/useModuleAccessKeys hooks.",
+      "description": "Users, roles, and policies administration (RBAC management) — user list/detail with role assignment (M2M) and direct policy attachment, role list/detail with member management, hierarchy, and scope-assignment rules, policy list/detail with access flags and BOTH permission dimensions: a per-collection matrix (Record-Level Access, via system-permissions) and a capability-key tree (Module-Level Access), plus the /module-access-keys registry manager. Composes the useUsers/useRoles/usePolicies/useModuleAccessKeys hooks.",
       "category": "admin",
       "files": [
         {
@@ -2878,7 +2992,7 @@
       "name": "form-builder",
       "title": "FormBuilder",
       "excludeFromAll": true,
-      "description": "Dynamic form builder \u2014 a design-time authoring layer (visual FormBuilder with drag-and-drop field palette, sections, per-field width/required/readonly/hidden controls, and a conditions editor reusing FilterPanel) plus a runtime renderer (DynamicForm, FormPreview) that merges a saved form definition onto the live collection schema and drives the existing CollectionForm/VForm runtime. Definitions are stored as items in an ordinary, consumer-owned collection (default fb_definitions); the schema is never mutated.",
+      "description": "Dynamic form builder — a design-time authoring layer (visual FormBuilder with drag-and-drop field palette, sections, per-field width/required/readonly/hidden controls, and a conditions editor reusing FilterPanel) plus a runtime renderer (DynamicForm, FormPreview) that merges a saved form definition onto the live collection schema and drives the existing CollectionForm/VForm runtime. Definitions are stored as items in an ordinary, consumer-owned collection (default fb_definitions); the schema is never mutated.",
       "category": "collection",
       "files": [
         {

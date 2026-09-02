@@ -11,7 +11,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
 import {
   ActionIcon,
   Badge,
@@ -31,7 +32,8 @@ import { FormsEmptyState, type FormDefinition } from '@/components/ui/form-build
 import { useFormDefinitions } from '@/lib/buildpad/hooks';
 
 export default function FormsListPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const { list } = useFormDefinitions();
   const [definitions, setDefinitions] = useState<FormDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ export default function FormsListPage() {
       .then((defs) => !cancelled && setDefinitions(defs))
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load forms');
+          setError(err instanceof Error ? err.message : t('app.forms.loadFailed'));
         }
       })
       .finally(() => !cancelled && setLoading(false));
@@ -69,16 +71,16 @@ export default function FormsListPage() {
     <Stack gap="md">
       <Group justify="space-between" align="flex-end">
         <div>
-          <Title order={3}>Forms</Title>
+          <Title order={3}>{t('app.forms.title')}</Title>
           <Text size="sm" c="dimmed">
-            Build forms and collect responses in your collections.
+            {t('app.forms.subtitle')}
           </Text>
         </div>
         <Button
           leftSection={<IconPlus size={16} />}
           onClick={() => router.push('/forms/new')}
         >
-          New form
+          {t('app.forms.newForm')}
         </Button>
       </Group>
 
@@ -88,15 +90,15 @@ export default function FormsListPage() {
             <ThemeIcon size={48} radius="xl" variant="light">
               <IconForms size={26} />
             </ThemeIcon>
-            <Text fw={600}>No forms yet</Text>
+            <Text fw={600}>{t('app.forms.noForms')}</Text>
             <Text size="sm" c="dimmed" ta="center">
-              Create your first form to start collecting responses.
+              {t('app.forms.noFormsHint')}
             </Text>
             <Button
               leftSection={<IconPlus size={16} />}
               onClick={() => router.push('/forms/new')}
             >
-              New form
+              {t('app.forms.newForm')}
             </Button>
           </Stack>
         </Center>
@@ -129,13 +131,13 @@ export default function FormsListPage() {
                     variant="light"
                     onClick={() => router.push(`/forms/${def.id}/fill`)}
                   >
-                    Fill out
+                    {t('app.forms.fillOut')}
                   </Button>
-                  <Tooltip label="Edit form">
+                  <Tooltip label={t('app.forms.editForm')}>
                     <ActionIcon
                       variant="subtle"
                       onClick={() => router.push(`/forms/${def.id}`)}
-                      aria-label="Edit form"
+                      aria-label={t('app.forms.editForm')}
                     >
                       <IconEdit size={16} />
                     </ActionIcon>

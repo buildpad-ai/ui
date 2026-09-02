@@ -30,8 +30,11 @@ export async function bootstrap(options: {
   cwd: string;
   skipDeps?: boolean;
   skipValidate?: boolean;
+  /** Comma-separated locale codes for app/[lang], e.g. "en,id". */
+  locales?: string;
+  defaultLocale?: string;
 }) {
-  const { cwd, skipDeps = false, skipValidate = false } = options;
+  const { cwd, skipDeps = false, skipValidate = false, locales, defaultLocale } = options;
   const startTime = Date.now();
 
   console.log(chalk.bold.blue('\n🚀 Buildpad Bootstrap - Full Project Setup\n'));
@@ -42,7 +45,7 @@ export async function bootstrap(options: {
   console.log(chalk.bold('Step 1/3: Initializing project...\n'));
 
   try {
-    await init({ yes: true, cwd });
+    await init({ yes: true, cwd, locales, defaultLocale });
   } catch (error) {
     console.error(chalk.red('\n✗ Init failed:'), error);
     process.exit(1);
@@ -141,6 +144,7 @@ export async function bootstrap(options: {
   console.log(chalk.dim('  • Types, services, hooks in lib/buildpad/'));
   console.log(chalk.dim('  • API proxy routes in app/api/'));
   console.log(chalk.dim('  • Supabase auth utilities'));
+  console.log(chalk.dim('  • Locale routing under app/[lang]/ (lib/i18n, LanguageSwitcher)'));
   console.log(chalk.dim('  • Next.js skeleton (layout, page, config)'));
 
   console.log(chalk.bold('\nNext steps:'));

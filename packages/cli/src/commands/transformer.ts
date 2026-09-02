@@ -93,6 +93,12 @@ export function getImportMappings(config: Config): ImportMapping[] {
       from: /from ['"]@buildpad\/utils['"]/g,
       to: `from '${libAlias}/utils'`,
     },
+    // The i18n core ships as lib/buildpad/i18n/* (not under utils/), so its
+    // subpath must be mapped BEFORE the generic utils subpath rule below.
+    {
+      from: /from ['"]@buildpad\/utils\/i18n(\/[^'"]+)?['"]/g,
+      to: `from '${libAlias}/i18n$1'`,
+    },
     {
       from: /from ['"]@buildpad\/utils\/([^'"]+)['"]/g,
       to: `from '${libAlias}/utils/$1'`,

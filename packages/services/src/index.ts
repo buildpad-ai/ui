@@ -93,3 +93,16 @@ export {
   type PermissionDetails,
   type QueryBuilder,
 } from "./auth";
+
+// Component i18n provider — locale, dictionary and formatting for every
+// Buildpad component. Holds no auth state, so it belongs in the ROOT layout.
+export {
+  BuildpadI18nProvider,
+  BUILDPAD_I18N_DEFAULT_TIMEZONE,
+  useBuildpadI18n,
+  useBuildpadI18nOptional,
+  useBuildpadTranslations,
+  type BuildpadI18nContextValue,
+  type BuildpadI18nProviderProps,
+  type DateInput,
+} from "./buildpad-i18n-context";

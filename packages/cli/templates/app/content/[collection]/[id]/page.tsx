@@ -10,7 +10,7 @@
 "use client";
 
 import React, { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { CollectionForm } from '@/components/ui/collection-form';
 import { isNewItem } from '@/lib/buildpad/utils';
 
@@ -20,7 +20,7 @@ export default function ItemPage({
   params: Promise<{ collection: string; id: string }>;
 }) {
   const { collection, id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   const isNew = isNewItem(id);
 

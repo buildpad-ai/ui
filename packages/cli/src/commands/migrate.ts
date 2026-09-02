@@ -22,6 +22,7 @@
  * Safe to re-run — already-populated entries are refreshed, not duplicated.
  */
 
+import fs from 'fs-extra';
 import path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
@@ -49,6 +50,9 @@ import {
   hashTransformed,
 } from './transformer.js';
 import { registryFilesOf } from '../utils/staleness.js';
+import { copyLibModule } from './add.js';
+import { ensureExternalDeps } from '../utils/external-deps.js';
+import { applyLocales, parseLocalesOption } from '../utils/i18n-locales.js';
 
 async function getRegistry(): Promise<Registry> {
   try {
@@ -387,4 +391,220 @@ export async function migrate(options: {
     libFailed.forEach(n => console.log(chalk.dim(`    - ${n}`)));
     console.log(chalk.dim('  These will remain untracked.\n'));
   }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// `buildpad migrate i18n` — move an existing app onto app/[lang] routing
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Entries that stay at the app root: API routes, the locale segment itself,
+ * design-system CSS, and the Next.js metadata files that must not be
+ * locale-prefixed.
+ */
+const KEEP_AT_APP_ROOT = new Set([
+  'api',
+  '[lang]',
+  'globals.css',
+  'design-tokens.css',
+  'favicon.ico',
+  'global-error.tsx',
+  'global-error.js',
+  'robots.ts',
+  'robots.txt',
+  'sitemap.ts',
+  'sitemap.xml',
+  'manifest.ts',
+  'manifest.json',
+  'manifest.webmanifest',
+]);
+const KEEP_AT_APP_ROOT_PATTERN = /^(icon|apple-icon|opengraph-image|twitter-image)\d*\.[a-z]+$/;
+
+/** The previous root layout is kept beside the new one for a manual merge. */
+export const PRE_I18N_LAYOUT = 'layout.pre-i18n.tsx';
+
+export interface MigrateI18nOptions {
+  cwd: string;
+  dryRun?: boolean;
+  /** Comma-separated locale codes to configure after the move (e.g. "en,id"). */
+  locales?: string;
+  defaultLocale?: string;
+}
+
+/** Retarget a recorded file path from app/… to app/[lang]/…, leaving API routes alone. */
+export function langTarget(target: string): string {
+  if (!target.startsWith('app/')) return target;
+  if (target.startsWith('app/api/') || target.startsWith('app/[lang]/')) return target;
+  const base = target.slice('app/'.length);
+  const first = base.split('/')[0];
+  if (KEEP_AT_APP_ROOT.has(first) || KEEP_AT_APP_ROOT_PATTERN.test(first)) return target;
+  return `app/[lang]/${base}`;
+}
+
+/**
+ * Move an app scaffolded before locale routing onto `app/[lang]`:
+ *
+ *   1. install the `i18n` lib module (lib/i18n/*, LanguageSwitcher)
+ *   2. write the new root layout to app/[lang]/layout.tsx and keep the old
+ *      app/layout.tsx as app/[lang]/layout.pre-i18n.tsx for a manual merge
+ *      (its CSS imports are rewritten to ../globals.css)
+ *   3. move every other route entry under app/[lang]/ (api/ and metadata
+ *      files stay), retargeting the buildpad.json records so `upgrade` sees
+ *      the moved files as the same files
+ *   4. optionally configure locales (--locales)
+ *
+ * The rewritten middleware, login page, app shell and route pages then
+ * arrive through `buildpad upgrade --all --three-way`.
+ */
+export async function migrateI18n(options: MigrateI18nOptions) {
+  const { cwd, dryRun = false } = options;
+  const localeList = parseLocalesOption(options.locales);
+
+  const config = await loadConfig(cwd);
+  if (!config) {
+    console.error(chalk.red('\n✗ buildpad.json not found. Run "npx buildpad init" first.\n'));
+    process.exit(1);
+  }
+
+  const srcRoot = config.srcDir ? path.join(cwd, 'src') : cwd;
+  const appDir = path.join(srcRoot, 'app');
+  const langDir = path.join(appDir, '[lang]');
+  const rel = (p: string) => path.relative(cwd, p);
+
+  if (!fs.existsSync(appDir)) {
+    console.error(chalk.red(`\n✗ ${rel(appDir)} not found — is this a Next.js App Router project?\n`));
+    process.exit(1);
+  }
+
+  console.log(chalk.bold('\n🌐 Migrating to locale-prefixed routing (app/[lang])...\n'));
+  if (dryRun) console.log(chalk.yellow('  (dry run — no files will be written)\n'));
+
+  const spinner = ora('Fetching registry...').start();
+  const registry = await getRegistry();
+  spinner.succeed('Registry loaded');
+
+  // ── 1. i18n lib module ────────────────────────────────────────────
+  if (!registry.lib['i18n']) {
+    console.error(chalk.red('\n✗ This registry has no i18n module — upgrade the CLI: npx @buildpad/cli@latest\n'));
+    process.exit(1);
+  }
+  if (config.installedLib.includes('i18n')) {
+    console.log(chalk.dim('  i18n module already installed'));
+  } else if (dryRun) {
+    console.log(chalk.dim('  would install lib module: i18n (+ services, utils, types)'));
+  } else {
+    const libSpinner = ora('Installing lib module: i18n...').start();
+    await copyLibModule('i18n', registry, config, cwd, libSpinner, true);
+  }
+
+  // ── 2. root layout ────────────────────────────────────────────────
+  const oldLayout = path.join(appDir, 'layout.tsx');
+  const newLayout = path.join(langDir, 'layout.tsx');
+  const keptLayout = path.join(langDir, PRE_I18N_LAYOUT);
+  const moves: Array<{ from: string; to: string }> = [];
+  const conflicts: string[] = [];
+
+  if (fs.existsSync(oldLayout)) {
+    if (fs.existsSync(newLayout)) {
+      conflicts.push(`${rel(oldLayout)} → ${rel(newLayout)} (already exists)`);
+    } else {
+      console.log(chalk.cyan(`  ${rel(newLayout)}`) + chalk.dim(' ← new root layout (generateStaticParams, <html lang dir>, I18nProvider)'));
+      console.log(chalk.cyan(`  ${rel(keptLayout)}`) + chalk.dim(` ← your previous ${rel(oldLayout)}, kept for a manual merge`));
+      if (!dryRun) {
+        const template = await resolveSourceFile('cli/templates/app/layout.tsx');
+        await fs.ensureDir(langDir);
+        await fs.writeFile(newLayout, template);
+        const previous = (await fs.readFile(oldLayout, 'utf-8'))
+          .replace(/(['"])\.\/globals\.css\1/g, '$1../globals.css$1')
+          .replace(/(['"])\.\/design-tokens\.css\1/g, '$1../design-tokens.css$1');
+        await fs.writeFile(keptLayout, previous);
+        await fs.remove(oldLayout);
+      }
+    }
+  } else if (!fs.existsSync(newLayout)) {
+    console.log(chalk.cyan(`  ${rel(newLayout)}`) + chalk.dim(' ← new root layout'));
+    if (!dryRun) {
+      const template = await resolveSourceFile('cli/templates/app/layout.tsx');
+      await fs.ensureDir(langDir);
+      await fs.writeFile(newLayout, template);
+    }
+  }
+
+  // ── 3. move every other route entry ───────────────────────────────
+  for (const entry of await fs.readdir(appDir)) {
+    if (KEEP_AT_APP_ROOT.has(entry) || KEEP_AT_APP_ROOT_PATTERN.test(entry)) continue;
+    if (entry === 'layout.tsx') continue; // handled above
+    const from = path.join(appDir, entry);
+    const to = path.join(langDir, entry);
+    if (fs.existsSync(to)) {
+      conflicts.push(`${rel(from)} → ${rel(to)} (already exists)`);
+      continue;
+    }
+    moves.push({ from, to });
+  }
+
+  for (const { from, to } of moves) {
+    console.log(chalk.cyan(`  ${rel(from)}`) + chalk.dim(` → ${rel(to)}`));
+    if (!dryRun) {
+      await fs.ensureDir(path.dirname(to));
+      await fs.move(from, to);
+    }
+  }
+
+  // Retarget manifest records so `upgrade`/`status` follow the moved files
+  // instead of reporting them removed-and-added.
+  let retargeted = 0;
+  for (const record of Object.values(config.lib ?? {})) {
+    for (const file of record.files ?? []) {
+      const next = langTarget(file.target);
+      if (next !== file.target) {
+        file.target = next;
+        retargeted++;
+      }
+    }
+  }
+
+  if (!dryRun) await saveConfig(cwd, config);
+
+  // ── 4. locales ────────────────────────────────────────────────────
+  if (localeList) {
+    try {
+      const result = await applyLocales({
+        cwd,
+        srcDir: config.srcDir,
+        locales: localeList,
+        defaultLocale: options.defaultLocale,
+        dryRun,
+      });
+      console.log(chalk.green(`\n✓ Locales: ${result.locales.join(', ')} (default: ${result.defaultLocale})`));
+      result.created.forEach(f => console.log(chalk.dim(`  seeded ${f} from en.json — translate it`)));
+    } catch (err: any) {
+      console.log(chalk.yellow(`\n⚠ Could not configure locales: ${err.message}`));
+    }
+  }
+
+  // ── npm deps of the i18n module ───────────────────────────────────
+  await ensureExternalDeps({
+    cwd,
+    deps: (registry.lib['i18n'].dependencies ?? []).map(d => d.replace(/@[^@/]*$/, '')),
+    dryRun,
+  });
+
+  // ── summary ───────────────────────────────────────────────────────
+  console.log(chalk.bold(`\n${dryRun ? 'Would move' : 'Moved'} ${moves.length} entr${moves.length === 1 ? 'y' : 'ies'} under app/[lang]/; retargeted ${retargeted} manifest record(s).`));
+  if (conflicts.length > 0) {
+    console.log(chalk.yellow('\n⚠ Skipped (target already exists — merge by hand, then delete the old file):'));
+    conflicts.forEach(c => console.log(chalk.dim(`  - ${c}`)));
+  }
+
+  console.log(chalk.bold('\nNext steps:'));
+  console.log(chalk.cyan('  1. ') + chalk.dim('npx @buildpad/cli@latest upgrade --all --three-way'));
+  console.log(chalk.dim('     → pulls the locale-aware middleware, login page, app shell and route pages'));
+  if (fs.existsSync(keptLayout) || (dryRun && fs.existsSync(oldLayout))) {
+    console.log(chalk.cyan('  2. ') + chalk.dim(`merge your providers from app/[lang]/${PRE_I18N_LAYOUT} into app/[lang]/layout.tsx, then delete it`));
+  }
+  console.log(chalk.cyan('  3. ') + chalk.dim("replace useRouter() with useLocaleRouter() and href=\"/x\" with localeHref in your own pages:"));
+  console.log(chalk.dim("     grep -rn \"router\\.\\(push\\|replace\\)(['\\\"\\\`]/\\|href=['\\\"]/\" app/ components/ --include=*.tsx | grep -v /api/"));
+  console.log(chalk.cyan('  4. ') + chalk.dim('pnpm build — unknown locales 404, / redirects to /<locale>\n'));
 }

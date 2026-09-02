@@ -11,7 +11,7 @@
 "use client";
 
 import React, { use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { RoleDetail } from '@/components/ui/users-management';
 
 export default function RoleDetailPage({
@@ -20,7 +20,7 @@ export default function RoleDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return (
     <RoleDetail

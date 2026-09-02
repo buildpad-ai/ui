@@ -14,7 +14,7 @@
  *   <ScopeSwitcher />
  *
  * @buildpad/origin: scope-routes/scope-switcher
- * @buildpad/version: 1.0.0
+ * @buildpad/version: 2.0.0
  */
 
 'use client';
@@ -24,6 +24,7 @@ import { Select, Alert, Loader } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { useScope } from '@/lib/scope/context';
 import { useDaaSContext } from '@/lib/buildpad/services';
+import { useI18n } from '@/lib/i18n/provider';
 
 interface ScopeItem {
   id: string;
@@ -36,6 +37,7 @@ interface ScopeItem {
 export default function ScopeSwitcher() {
   const { resourceUri, setScope, isHydrating } = useScope();
   const { buildUrl, getHeaders } = useDaaSContext();
+  const { t } = useI18n();
   const [options, setOptions] = useState<ScopeItem[] | null>(null); // null = loading
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +59,7 @@ export default function ScopeSwitcher() {
         }
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Failed to load scopes');
+        setError(err instanceof Error ? err.message : t('app.scope.loadFailed'));
       });
     // Only run on mount — intentional
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,7 +78,7 @@ export default function ScopeSwitcher() {
   if (options.length === 0) {
     return (
       <Alert color="orange" icon={<IconAlertCircle size={16} />} p="xs">
-        No scope assigned — contact your administrator.
+        {t('app.scope.noScope')}
       </Alert>
     );
   }
@@ -94,7 +96,7 @@ export default function ScopeSwitcher() {
       data={selectData}
       value={resourceUri}
       onChange={(uri) => setScope(uri)}
-      placeholder="Select scope…"
+      placeholder={t('app.scope.placeholder')}
       size="sm"
       w={220}
       allowDeselect={false}

@@ -62,7 +62,10 @@ your-project/
 │   │   ├── fields/[collection]/route.ts # Fields proxy
 │   │   ├── items/[collection]/route.ts  # Items proxy
 │   │   └── ...
-│   └── login/page.tsx                   # Login page template
+│   └── [lang]/                          # Every page is locale-prefixed (/en/…, /id/…)
+│       ├── layout.tsx                   # Root layout: <html lang dir>, I18nProvider
+│       ├── login/page.tsx               # Login page template
+│       └── (authenticated)/…            # App shell + route modules
 ├── src/
 │   ├── components/
 │   │   └── ui/                      # UI components
@@ -81,10 +84,14 @@ your-project/
 │       │   ├── services/
 │       │   └── hooks/
 │       ├── api/auth-headers.ts      # Auth header utilities
+│       ├── i18n/                    # Locale config, dictionaries, I18nProvider, useLocaleRouter
+│       │   ├── config.ts
+│       │   ├── dictionaries/en.json
+│       │   └── provider.tsx
 │       └── supabase/                # Supabase client utilities
 │           ├── server.ts
 │           └── client.ts
-├── middleware.ts                     # Auth middleware
+├── middleware.ts                     # Locale redirect + auth session refresh
 └── buildpad.json                  # Configuration
 ```
 

@@ -8,7 +8,7 @@
  * Pattern: Browser → /api/auth/login (same origin) → Supabase Auth (server-side)
  * 
  * @buildpad/origin: pages/login
- * @buildpad/version: 1.1.0
+ * @buildpad/version: 2.0.0
  */
 
 'use client';
@@ -27,11 +27,14 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useRouter } from 'next/navigation';
+import { useI18n } from '@/lib/i18n/provider';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { IconMail, IconLock, IconCheck, IconShield } from '@tabler/icons-react';
 
 export default function LoginPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const form = useForm({
@@ -40,8 +43,9 @@ export default function LoginPage() {
       password: '',
     },
     validate: {
-      email: (value) => (!value ? 'Email is required' : /^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-      password: (value) => (!value ? 'Password is required' : null),
+      email: (value) =>
+        !value ? t('app.login.emailRequired') : /^\S+@\S+$/.test(value) ? null : t('app.login.emailInvalid'),
+      password: (value) => (!value ? t('app.login.passwordRequired') : null),
     },
   });
 
@@ -61,12 +65,12 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.errors?.[0]?.message || 'Login failed');
+        throw new Error(data.errors?.[0]?.message || t('app.login.failed'));
       }
 
       notifications.show({
-        title: 'Success',
-        message: 'Logged in successfully',
+        title: t('app.login.successTitle'),
+        message: t('app.login.successMessage'),
         color: 'green',
       });
 
@@ -75,8 +79,8 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Login error:', error);
       notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to login',
+        title: t('app.login.errorTitle'),
+        message: error instanceof Error ? error.message : t('app.login.errorMessage'),
         color: 'red',
       });
     } finally {
@@ -156,15 +160,15 @@ export default function LoginPage() {
                   }}
                 />
                 <Text size="xs" fw={600} style={{ color: '#fdba74' }}>
-                  Enterprise Platform
+                  {t('app.login.hero.badge')}
                 </Text>
               </Box>
             </Group>
             <Title order={1} size="h1" style={{ fontSize: 36, fontWeight: 800, lineHeight: 1.15, letterSpacing: '-0.5px' }}>
-              The design system for professional web apps.
+              {t('app.login.hero.title')}
             </Title>
             <Text style={{ color: '#cbd5e1' }} size="md" lh={1.6}>
-              A comprehensive UI registry of copy-and-own components designed for high-performance enterprise applications.
+              {t('app.login.hero.subtitle')}
             </Text>
           </Stack>
 
@@ -174,9 +178,9 @@ export default function LoginPage() {
                 <IconCheck size={20} stroke={2.5} />
               </Box>
               <Box>
-                <Text fw={600} size="sm">Role-Based Access Control</Text>
+                <Text fw={600} size="sm">{t('app.login.hero.feature1Title')}</Text>
                 <Text size="xs" style={{ color: '#cbd5e1' }} lh={1.4}>
-                  Manage fine-grained permissions, roles, and users in real-time with an intuitive dashboard interface.
+                  {t('app.login.hero.feature1Body')}
                 </Text>
               </Box>
             </Group>
@@ -186,9 +190,9 @@ export default function LoginPage() {
                 <IconCheck size={20} stroke={2.5} />
               </Box>
               <Box>
-                <Text fw={600} size="sm">Unified Design Tokens</Text>
+                <Text fw={600} size="sm">{t('app.login.hero.feature2Title')}</Text>
                 <Text size="xs" style={{ color: '#cbd5e1' }} lh={1.4}>
-                  Maintain brand consistency using Tailwind slate neutrals, orange primary accents, and responsive typography.
+                  {t('app.login.hero.feature2Body')}
                 </Text>
               </Box>
             </Group>
@@ -198,9 +202,9 @@ export default function LoginPage() {
                 <IconCheck size={20} stroke={2.5} />
               </Box>
               <Box>
-                <Text fw={600} size="sm">Secure Two-Tier Auth Proxy</Text>
+                <Text fw={600} size="sm">{t('app.login.hero.feature3Title')}</Text>
                 <Text size="xs" style={{ color: '#cbd5e1' }} lh={1.4}>
-                  Avoid CORS issues with direct browser-to-proxy route mapping, providing enhanced security out of the box.
+                  {t('app.login.hero.feature3Body')}
                 </Text>
               </Box>
             </Group>
@@ -210,10 +214,10 @@ export default function LoginPage() {
         {/* Footer / Trust Badge */}
         <Group justify="space-between" align="center" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: 20 }}>
           <Text size="xs" style={{ color: '#94a3b8' }}>
-            Protected by industry-standard encryption
+            {t('app.login.hero.trust')}
           </Text>
           <Text size="xs" style={{ color: '#94a3b8' }} fw={600}>
-            SOC2 & ISO 27001
+            {t('app.login.hero.compliance')}
           </Text>
         </Group>
       </Box>
@@ -251,20 +255,23 @@ export default function LoginPage() {
             </Text>
           </Group>
 
-          <Stack gap="xs" mb={30} ta={{ base: 'center', md: 'left' }}>
-            <Title order={2} style={{ fontWeight: 700, letterSpacing: '-0.5px' }}>
-              Welcome back
-            </Title>
-            <Text c="dimmed" size="sm">
-              Please sign in to access your account console
-            </Text>
-          </Stack>
+          <Group justify="space-between" align="flex-start" mb={30} wrap="nowrap">
+            <Stack gap="xs" ta={{ base: 'center', md: 'left' }} style={{ flex: 1 }}>
+              <Title order={2} style={{ fontWeight: 700, letterSpacing: '-0.5px' }}>
+                {t('app.login.welcome')}
+              </Title>
+              <Text c="dimmed" size="sm">
+                {t('app.login.subtitle')}
+              </Text>
+            </Stack>
+            <LanguageSwitcher />
+          </Group>
 
           <form onSubmit={form.onSubmit(handleLogin)}>
             <Stack gap="md">
               <TextInput
-                label="Email"
-                placeholder="you@company.com"
+                label={t('app.login.email')}
+                placeholder={t('app.login.emailPlaceholder')}
                 required
                 size="md"
                 radius="md"
@@ -273,7 +280,7 @@ export default function LoginPage() {
               />
 
               <PasswordInput
-                label="Password"
+                label={t('app.login.password')}
                 placeholder="••••••••"
                 required
                 size="md"
@@ -284,7 +291,7 @@ export default function LoginPage() {
 
               <Group justify="flex-end" mt={-5}>
                 <Anchor component="button" type="button" c="dimmed" size="xs" style={{ textDecoration: 'none' }}>
-                  Forgot password?
+                  {t('app.login.forgotPassword')}
                 </Anchor>
               </Group>
 
@@ -299,7 +306,7 @@ export default function LoginPage() {
                   transition: 'background-color 0.2s ease',
                 }}
               >
-                Sign In
+                {t('app.login.submit')}
               </Button>
             </Stack>
           </form>
@@ -314,7 +321,7 @@ export default function LoginPage() {
           */}
 
           <Text size="xs" c="dimmed" ta="center" mt={40}>
-            Protected by Buildpad Secure Auth. Security policies apply.
+            {t('app.login.footer')}
           </Text>
         </Box>
       </Box>

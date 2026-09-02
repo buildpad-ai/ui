@@ -21,7 +21,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useLocaleHref, useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
 import {
   Anchor,
   Breadcrumbs,
@@ -92,7 +93,9 @@ function ChoiceCard({
 }
 
 export default function NewFormPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const href = useLocaleHref();
+  const { t } = useI18n();
   // Read admin/schema rights from the DaaS context, which resolves the dynamic
   // Supabase token (via `getToken`). See useDaaSContext for why this is the
   // reliable source with dynamic auth.
@@ -114,10 +117,10 @@ export default function NewFormPage() {
 
   const breadcrumbs = (
     <Breadcrumbs>
-      <Anchor component={Link} href="/forms" size="sm">
-        Forms
+      <Anchor component={Link} href={href('/forms')} size="sm">
+        {t('app.forms.title')}
       </Anchor>
-      <Text size="sm">New form</Text>
+      <Text size="sm">{t('app.forms.newForm')}</Text>
     </Breadcrumbs>
   );
 
@@ -127,11 +130,11 @@ export default function NewFormPage() {
     return (
       <Stack gap="md" maw={560}>
         {breadcrumbs}
-        <Title order={3}>New form</Title>
+        <Title order={3}>{t('app.forms.newForm')}</Title>
         <Group gap="xs">
           <Loader size="xs" />
           <Text size="sm" c="dimmed">
-            Checking your permissions…
+            {t('app.forms.checkingPermissions')}
           </Text>
         </Group>
       </Stack>
@@ -159,9 +162,9 @@ export default function NewFormPage() {
     <Stack gap="md" maw={560}>
       {breadcrumbs}
       <div>
-        <Title order={3}>New form</Title>
+        <Title order={3}>{t('app.forms.newForm')}</Title>
         <Text size="sm" c="dimmed">
-          Choose where this form's responses will be stored.
+          {t('app.forms.chooseStorage')}
         </Text>
       </div>
 
@@ -170,9 +173,9 @@ export default function NewFormPage() {
           selected={choice === 'scratch'}
           onSelect={() => setChoiceOverride('scratch')}
           icon={<IconDatabasePlus size={20} />}
-          title="Start from scratch"
-          description="We set up a new collection for your responses automatically when you save."
-          hint="Creates an fb_-prefixed collection named after the form; every field becomes a real, searchable column."
+          title={t('app.forms.scratchTitle')}
+          description={t('app.forms.scratchDescription')}
+          hint={t('app.forms.scratchHint')}
         />
       )}
 
@@ -180,14 +183,14 @@ export default function NewFormPage() {
         selected={choice === 'existing'}
         onSelect={() => setChoiceOverride('existing')}
         icon={<IconDatabase size={20} />}
-        title="Use an existing collection"
-        description="Bind the form to a collection you already have."
-        hint="Provisioned fields become real columns; anything else can go into an optional extras tail."
+        title={t('app.forms.existingTitle')}
+        description={t('app.forms.existingDescription')}
+        hint={t('app.forms.existingHint')}
       >
         <TextInput
           mt={4}
-          placeholder="e.g. issues"
-          aria-label="Target collection"
+          placeholder={t('app.forms.targetCollectionPlaceholder')}
+          aria-label={t('app.forms.targetCollection')}
           value={collectionInput}
           onChange={(e) => setCollectionInput(e.currentTarget.value)}
           onClick={(e) => e.stopPropagation()}
@@ -210,7 +213,7 @@ export default function NewFormPage() {
             )
           }
         >
-          Start building
+          {t('app.forms.startBuilding')}
         </Button>
       </Group>
     </Stack>
