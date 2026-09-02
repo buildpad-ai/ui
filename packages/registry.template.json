@@ -128,6 +128,26 @@
           "target": "lib/buildpad/interface-catalog.ts"
         },
         {
+          "source": "utils/src/i18n/primitives.ts",
+          "target": "lib/buildpad/i18n/primitives.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/common.ts",
+          "target": "lib/buildpad/i18n/namespaces/common.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/form.ts",
+          "target": "lib/buildpad/i18n/namespaces/form.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/table.ts",
+          "target": "lib/buildpad/i18n/namespaces/table.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces.ts"
+        },
+        {
           "source": "utils/src/i18n/types.ts",
           "target": "lib/buildpad/i18n/types.ts"
         },
@@ -1538,6 +1558,10 @@
         {
           "source": "ui-interfaces/src/datetime/DateTime.tsx",
           "target": "components/ui/datetime.tsx"
+        },
+        {
+          "source": "ui-interfaces/src/datetime/dayjs-locales.ts",
+          "target": "components/ui/datetime/dayjs-locales.ts"
         }
       ],
       "dependencies": [

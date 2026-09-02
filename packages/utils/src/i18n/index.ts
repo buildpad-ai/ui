@@ -10,6 +10,7 @@ export type {
   BuildpadTranslations,
   BuildpadTranslationsInput,
   CommonTranslations,
+  DateTimeTranslations,
   DeepPartial,
   FormTranslations,
   FormValidationTranslations,

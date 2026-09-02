@@ -4,6 +4,8 @@ import dayjs, { Dayjs } from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { useDayjsLocale } from './dayjs-locales';
 
 // Extend dayjs with plugins
 dayjs.extend(customParseFormat);
@@ -104,6 +106,12 @@ export const DateTime: React.FC<DateTimeProps> = ({
   onChange,
   pickerProps = {},
 }) => {
+  // Locale from BuildpadI18nProvider (English/browser without one). The
+  // calendar and the display format use dayjs locale data loaded on demand.
+  const { locale, hasProvider } = useBuildpadI18n();
+  const t = useBuildpadTranslations((d) => d.interfaces.datetime);
+  const dayjsLocale = useDayjsLocale(hasProvider ? locale : undefined);
+
   // Convert string value to Mantine 8 date string format (YYYY-MM-DD or YYYY-MM-DD HH:mm:ss)
   const dateValue = React.useMemo((): string | null => {
     if (!value) {
@@ -215,16 +223,12 @@ export const DateTime: React.FC<DateTimeProps> = ({
     }
     
     switch (type) {
-      case 'datetime':
-        return 'Pick date and time';
       case 'date':
-        return 'Pick date';
+        return t.pickDate;
       case 'time':
-        return 'Pick time';
-      case 'timestamp':
-        return 'Pick date and time';
+        return t.pickTime;
       default:
-        return 'Pick date and time';
+        return t.pickDateTime;
     }
   };
 
@@ -247,6 +251,7 @@ export const DateTime: React.FC<DateTimeProps> = ({
     withSeconds: includeSeconds,
     minDate,
     maxDate,
+    ...(dayjsLocale ? { locale: dayjsLocale } : {}),
   };
 
   // For date-only type, use DatePickerInput instead of DateTimePicker
@@ -267,6 +272,7 @@ export const DateTime: React.FC<DateTimeProps> = ({
       clearable: clearable && !readOnly,
       minDate,
       maxDate,
+      ...(dayjsLocale ? { locale: dayjsLocale } : {}),
     };
 
     return <DatePickerInput {...datePickerProps} />;
