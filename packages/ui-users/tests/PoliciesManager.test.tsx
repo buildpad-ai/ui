@@ -17,10 +17,19 @@ const { fetchPoliciesMock, deletePolicyMock, usePermissionsMock } = vi.hoisted((
   usePermissionsMock: vi.fn(),
 }));
 
-vi.mock('@buildpad/hooks', () => ({
+vi.mock('@buildpad/hooks', async () => {
+  // The URL-persistence helpers are pure; use the real ones so the managers'
+  // URL wiring is exercised, not stubbed.
+  const url = await import('../../hooks/src/useUrlListParams');
+  return {
+    useUrlListParams: url.useUrlListParams,
+    useHydrated: url.useHydrated,
+    readUrlParam: url.readUrlParam,
+    readUrlIntParam: url.readUrlIntParam,
   usePolicies: () => ({ fetchPolicies: fetchPoliciesMock, deletePolicy: deletePolicyMock }),
   usePermissions: usePermissionsMock,
-}));
+  };
+});
 
 function renderManager(props: Partial<React.ComponentProps<typeof PoliciesManager>> = {}) {
   return render(

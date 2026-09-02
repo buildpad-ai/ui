@@ -2720,10 +2720,6 @@
         {
           "source": "ui-files/src/index.ts",
           "target": "components/ui/file-manager/index.ts"
-        },
-        {
-          "source": "hooks/src/useUrlListParams.ts",
-          "target": "lib/buildpad/hooks/useUrlListParams.ts"
         }
       ],
       "dependencies": [
@@ -2859,10 +2855,6 @@
         {
           "source": "ui-users/src/index.ts",
           "target": "components/ui/users-management/index.ts"
-        },
-        {
-          "source": "hooks/src/useUrlListParams.ts",
-          "target": "lib/buildpad/hooks/useUrlListParams.ts"
         }
       ],
       "dependencies": [

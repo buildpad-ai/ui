@@ -9,11 +9,13 @@ import {
   Stack,
   Text,
   Title,
+  Center,
+  Loader,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconShield } from '@tabler/icons-react';
-import { readUrlIntParam, readUrlParam, usePermissions, usePolicies, useUrlListParams } from '@buildpad/hooks';
+import { readUrlIntParam, readUrlParam, useHydrated, usePermissions, usePolicies, useUrlListParams } from '@buildpad/hooks';
 import type { Policy } from '@buildpad/types';
 import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { VTable } from '@buildpad/ui-table';
@@ -49,8 +51,11 @@ export interface PoliciesManagerProps {
   policiesCollection?: string;
   /**
    * Persist search, sort, and page in the URL query string so the list is
-   * shareable and reload-safe (`history.replaceState`, riding the 300 ms search
-   * debounce). Set `false` for embedded surfaces. Default: true.
+   * shareable and reload-safe. Writes ride the 300 ms search debounce and go
+   * through the app's registered URL writer (Next.js App Router:
+   * `router.replace`, registered by the `DaaSProviderWrapper` template —
+   * required there); outside a router they fall back to `history.replaceState`.
+   * Set `false` for embedded surfaces. Default: true.
    */
   urlParams?: boolean;
   /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
@@ -75,7 +80,28 @@ function parseSortParam(raw: string | null): Sort | null {
   return by ? { by, desc } : null;
 }
 
-export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
+/**
+ * Client-only gate. The body seeds its state from the URL in `useState`
+ * initializers, which renders differently on the server (no URL) and on the
+ * client — a hydration mismatch on every deep link. Until hydrated, render the
+ * same loading shell the body shows before its first fetch, so server HTML and
+ * the hydration render agree; the body then mounts once with the URL in hand.
+ * Skipped when URL persistence is off, since then initial state is
+ * URL-independent and the body can server-render as before.
+ */
+export const PoliciesManager: React.FC<PoliciesManagerProps> = (props) => {
+  const hydrated = useHydrated();
+  if (props.urlParams !== false && !hydrated) {
+    return (
+      <Center mih={240}>
+        <Loader />
+      </Center>
+    );
+  }
+  return <PoliciesManagerBody {...props} />;
+};
+
+const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
   onPolicyClick,
   onCreatePolicy,
   pageSize = 25,
@@ -178,14 +204,18 @@ export const PoliciesManager: React.FC<PoliciesManagerProps> = ({
   }, [load]);
 
   // Only on CHANGES — not mount, or a ?page= restored from the URL is clobbered.
-  const filtersMountedRef = React.useRef(false);
+  // StrictMode-safe: compare against the previous values rather than "has
+  // mounted". StrictMode re-runs mount effects with refs intact, so a
+  // has-mounted flag fires setPage(1) on the second run and clobbers a
+  // ?page= restored from the URL in development.
+  const filtersKey = JSON.stringify([debouncedSearch, sort, limit]);
+  const previousFiltersKeyRef = React.useRef<string | null>(null);
   useEffect(() => {
-    if (!filtersMountedRef.current) {
-      filtersMountedRef.current = true;
-      return;
+    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
+      setPage(1);
     }
-    setPage(1);
-  }, [debouncedSearch, sort, limit]);
+    previousFiltersKeyRef.current = filtersKey;
+  }, [filtersKey]);
 
   const confirmDelete = useCallback(async () => {
     setDeleting(true);

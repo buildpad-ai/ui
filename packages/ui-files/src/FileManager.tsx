@@ -15,7 +15,7 @@ import {
   Text,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { readUrlIntParam, readUrlParam, useUrlListParams } from '@buildpad/hooks';
+import { readUrlIntParam, readUrlParam, useHydrated, useUrlListParams } from '@buildpad/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   useFiles,
@@ -47,8 +47,10 @@ export interface FileManagerProps {
   /**
    * Persist search, the open folder, and the page in the URL query string
    * (`?search=…&folder=…&page=…`) so the library view is shareable and
-   * reload-safe. Writes use `history.replaceState` and ride the existing
-   * 300 ms search debounce. Set `false` for embedded surfaces. Default: true.
+   * reload-safe. Writes ride the existing 300 ms search debounce and go through
+   * the app's registered URL writer (Next.js App Router: `router.replace`,
+   * registered by the `DaaSProviderWrapper` template — required there);
+   * outside a router they fall back to `history.replaceState`. Set `false` for embedded surfaces. Default: true.
    */
   urlParams?: boolean;
   /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
@@ -62,7 +64,28 @@ export interface FileManagerProps {
  * the `useFiles` / `useFolders` hooks for data. Actions are gated by DaaS
  * permissions via `usePermissions`.
  */
-export const FileManager: React.FC<FileManagerProps> = ({
+/**
+ * Client-only gate. The body seeds its state from the URL in `useState`
+ * initializers, which renders differently on the server (no URL) and on the
+ * client — a hydration mismatch on every deep link. Until hydrated, render the
+ * same loading shell the body shows before its first fetch, so server HTML and
+ * the hydration render agree; the body then mounts once with the URL in hand.
+ * Skipped when URL persistence is off, since then initial state is
+ * URL-independent and the body can server-render as before.
+ */
+export const FileManager: React.FC<FileManagerProps> = (props) => {
+  const hydrated = useHydrated();
+  if (props.urlParams !== false && !hydrated) {
+    return (
+      <Center mih={240}>
+        <Loader />
+      </Center>
+    );
+  }
+  return <FileManagerBody {...props} />;
+};
+
+const FileManagerBody: React.FC<FileManagerProps> = ({
   onFileClick,
   pageSize = 24,
   defaultView = 'grid',
@@ -196,14 +219,18 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
   // Reset to first page whenever the search term or folder CHANGES — not on
   // mount, or a ?page=2 restored from the URL would be clobbered.
-  const filtersMountedRef = React.useRef(false);
+  // StrictMode-safe: compare against the previous values rather than "has
+  // mounted". StrictMode re-runs mount effects with refs intact, so a
+  // has-mounted flag fires setPage(1) on the second run and clobbers a
+  // ?page= restored from the URL in development.
+  const filtersKey = JSON.stringify([debouncedSearch, currentFolder]);
+  const previousFiltersKeyRef = React.useRef<string | null>(null);
   useEffect(() => {
-    if (!filtersMountedRef.current) {
-      filtersMountedRef.current = true;
-      return;
+    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
+      setPage(1);
     }
-    setPage(1);
-  }, [debouncedSearch, currentFolder]);
+    previousFiltersKeyRef.current = filtersKey;
+  }, [filtersKey]);
 
   /**
    * Rebuild the breadcrumb for a folder that arrived as a bare id (deep link,
@@ -211,6 +238,11 @@ export const FileManager: React.FC<FileManagerProps> = ({
    * An unreadable folder (deleted, or no permission) falls back to the root
    * rather than stranding the view.
    */
+  // Latest folder as of the last render, for event-time reads and for
+  // discarding a rebuild that finishes after the user has moved on.
+  const currentFolderRef = React.useRef(currentFolder);
+  currentFolderRef.current = currentFolder;
+
   const rebuildPath = useCallback(
     async (folderId: string) => {
       try {
@@ -221,8 +253,10 @@ export const FileManager: React.FC<FileManagerProps> = ({
           chain.unshift({ id: folder.id, name: folder.name });
           cursor = folder.parent;
         }
+        if (currentFolderRef.current !== folderId) return; // superseded meanwhile
         setPath(chain);
       } catch {
+        if (currentFolderRef.current !== folderId) return;
         setPath([]);
         setCurrentFolder(null);
       }
@@ -252,12 +286,14 @@ export const FileManager: React.FC<FileManagerProps> = ({
 
         if (enableFolders) {
           const nextFolder = get(param('folder'));
-          setCurrentFolder((current) => {
-            if (current === nextFolder) return current;
+          // Compare against the ref, not inside a setState updater: updaters
+          // must be pure (StrictMode double-invokes them), and this one
+          // kicks off a fetch chain.
+          if (currentFolderRef.current !== nextFolder) {
+            setCurrentFolder(nextFolder);
             if (nextFolder) void rebuildPath(nextFolder);
             else setPath([]);
-            return nextFolder;
-          });
+          }
         }
 
         const rawPage = get(param('page'));

@@ -12,10 +12,10 @@
  * Design constraints, in order:
  *
  * 1. **No framework imports.** These packages also render in Storybook, so
- *    `next/navigation` is off the table. Writes go through the native History
- *    API (`history.replaceState`), which Next.js ≥ 14.1 intercepts and feeds
- *    back into `useSearchParams` — app-side observers (e.g. a micro-frontend
- *    bridge) see every write without this package knowing Next exists.
+ *    `next/navigation` is off the table. The hook itself only knows the
+ *    History API; an app that has a router registers a writer for it (see
+ *    {@link registerUrlStateWriter}). In a Next.js App Router app that
+ *    registration is REQUIRED, not optional — see the note there.
  * 2. **`replaceState`, never `pushState`.** Filter and search changes must not
  *    grow the browser history — Back should leave the page, not step through
  *    every debounced keystroke.
@@ -23,18 +23,20 @@
  *    managers already debounce at 300 ms for fetching), so URL writes ride the
  *    same debounce and cost nothing extra per keystroke.
  * 4. **Merge, don't clobber.** Only the keys a caller manages are touched;
- *    unrelated parameters on the URL survive.
+ *    unrelated parameters on the URL survive — including the keys of another
+ *    instance on the same page (see {@link currentQuery} for why that needs
+ *    more than reading `location.search`).
  * 5. **SSR-safe.** All `window` access is inside effects or guarded readers.
+ *    Seeding component state from the URL is only mismatch-free on the client
+ *    after hydration; gate the component on {@link useHydrated} first.
  *
  * Inbound changes (browser Back/Forward, or a programmatic rewrite by a
  * micro-frontend bridge applying the host's URL) arrive via `popstate` and the
  * {@link URL_STATE_EVENT} custom event. Anything that rewrites the URL
- * programmatically and wants list components to notice must dispatch:
- *
- *     window.dispatchEvent(new Event(URL_STATE_EVENT));
+ * programmatically and wants list components to notice must dispatch it.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 /**
  * Dispatched after ANY programmatic URL rewrite that others should re-read:
@@ -67,10 +69,79 @@ let urlStateWriter: UrlStateWriter | null = null;
  * (`useSearchParams` never updates) and actively FIGHTS — the router
  * re-asserts its own stale URL on the next render, silently stripping the
  * parameters (observed on Next 16). The native fallback exists for
- * router-less runtimes such as Storybook.
+ * router-less runtimes such as Storybook; in development the hook warns once
+ * if it detects Next.js and no writer.
  */
 export function registerUrlStateWriter(writer: UrlStateWriter | null): void {
   urlStateWriter = writer;
+}
+
+/**
+ * The query string this module most recently asked to have written, and
+ * where. Router writers (`router.replace`) commit asynchronously, so for a
+ * short window `location.search` still shows the previous URL. Two instances
+ * mounting in the same commit — the `urlParamPrefix` case — would each merge
+ * into that stale value, and the second's write would drop the first's keys
+ * and then announce a query without them, which the first would apply as a
+ * reset. Merging into the last *requested* query keeps the writes additive.
+ *
+ * Scoped to a pathname and short-lived: `popstate` clears it (the browser is
+ * the truth again), an external URL_STATE_EVENT replaces it (its detail is
+ * the truth), and it expires quickly so a write the router never committed
+ * cannot poison later merges.
+ */
+interface PendingWrite {
+  pathname: string;
+  query: string;
+  at: number;
+}
+let pendingWrite: PendingWrite | null = null;
+const PENDING_WRITE_TTL_MS = 1000;
+
+/** The query string to merge into: the in-flight write if fresh, else the URL. */
+function currentQuery(): string {
+  const live = window.location.search.replace(/^\?/, '');
+  if (!pendingWrite) return live;
+  const fresh = Date.now() - pendingWrite.at < PENDING_WRITE_TTL_MS;
+  if (!fresh || pendingWrite.pathname !== window.location.pathname) {
+    pendingWrite = null;
+    return live;
+  }
+  return pendingWrite.query;
+}
+
+let moduleListenersInstalled = false;
+function installModuleListeners(): void {
+  if (moduleListenersInstalled || typeof window === 'undefined') return;
+  moduleListenersInstalled = true;
+  window.addEventListener('popstate', () => {
+    pendingWrite = null;
+  });
+  window.addEventListener(URL_STATE_EVENT, (event) => {
+    // Our own dispatches restate what we just recorded; an external actor's
+    // dispatch tells us what it wrote, and that becomes the merge base.
+    pendingWrite = {
+      pathname: window.location.pathname,
+      query: urlStateEventSearch(event),
+      at: Date.now(),
+    };
+  });
+}
+
+let warnedMissingWriter = false;
+function warnIfNextWithoutWriter(): void {
+  if (warnedMissingWriter || process.env.NODE_ENV === 'production') return;
+  const w = window as unknown as { next?: unknown; __NEXT_DATA__?: unknown };
+  if (!w.next && !w.__NEXT_DATA__) return;
+  warnedMissingWriter = true;
+  console.warn(
+    '[useUrlListParams] Running inside Next.js with no URL writer registered. ' +
+      'The App Router ignores native history.replaceState (useSearchParams never updates) ' +
+      'and may strip these parameters on its next render. Call ' +
+      'registerUrlStateWriter((url) => router.replace(url, { scroll: false })) from a ' +
+      'client component rendered inside the router — the Buildpad DaaSProviderWrapper ' +
+      'template does this.',
+  );
 }
 
 /** SSR-safe read of a single query parameter from the current URL. */
@@ -85,6 +156,27 @@ export function readUrlIntParam(name: string, fallback: number): number {
   if (!raw) return fallback;
   const value = Number.parseInt(raw, 10);
   return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+const subscribeToNothing = () => () => {};
+
+/**
+ * `true` once rendering on the client after hydration (immediately on a plain
+ * client mount, as in Storybook); `false` during SSR and the hydration render.
+ *
+ * A component that seeds `useState` from the URL renders differently on the
+ * server (no URL) and the client (URL present) — a hydration mismatch on every
+ * deep link. Rendering a placeholder until this is `true` keeps the server
+ * HTML and the hydration render identical, and lets the real component mount
+ * once with the URL in hand. The managers' server output was a loading shell
+ * anyway (data is fetched client-side), so nothing meaningful is lost.
+ */
+export function useHydrated(): boolean {
+  return useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
 }
 
 export interface UseUrlListParamsOptions {
@@ -114,9 +206,9 @@ export interface UseUrlListParamsOptions {
  * Mirror serialized list state into the URL, and surface external URL changes.
  *
  * See the managers for the wiring pattern: initial state comes from
- * {@link readUrlParam} in `useState` initializers; this hook then keeps the
- * URL following the state, and `onExternalChange` keeps the state following
- * the URL.
+ * {@link readUrlParam} in `useState` initializers (behind {@link useHydrated});
+ * this hook then keeps the URL following the state, and `onExternalChange`
+ * keeps the state following the URL.
  */
 export function useUrlListParams({ enabled = true, params, onExternalChange }: UseUrlListParamsOptions): void {
   // The keys this instance manages — used by the write effect to know what it
@@ -129,25 +221,30 @@ export function useUrlListParams({ enabled = true, params, onExternalChange }: U
   /* ------------------------------ state → URL ------------------------------ */
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') return;
+    installModuleListeners();
 
-    const next = new URLSearchParams(window.location.search);
+    const base = currentQuery();
+    const next = new URLSearchParams(base);
     for (const [key, value] of Object.entries(managedRef.current)) {
       if (value === null || value === '') next.delete(key);
       else next.set(key, value);
     }
 
     const nextQuery = next.toString();
-    const currentQuery = window.location.search.replace(/^\?/, '');
-    if (nextQuery === currentQuery) return; // already in sync — no write, no loop
+    if (nextQuery === base) return; // already in sync — no write, no loop
 
     const url =
       window.location.pathname + (nextQuery ? `?${nextQuery}` : '') + window.location.hash;
+    // Record before writing: the router path commits later, and any instance
+    // whose effect runs before then must merge into THIS query, not the URL.
+    pendingWrite = { pathname: window.location.pathname, query: nextQuery, at: Date.now() };
     if (urlStateWriter) {
       // App-registered writer (Next: router.replace) — keeps the router's
       // internal URL state consistent so it cannot re-assert a stale URL over
       // this write.
       urlStateWriter(url);
     } else {
+      warnIfNextWithoutWriter();
       // Router-less runtime (Storybook). Preserve the existing history state:
       // Next.js stores router state there, and replacing it with null corrupts
       // app-router navigation.
@@ -161,6 +258,7 @@ export function useUrlListParams({ enabled = true, params, onExternalChange }: U
   /* ------------------------------ URL → state ------------------------------ */
   useEffect(() => {
     if (!enabled || typeof window === 'undefined' || !onExternalChange) return;
+    installModuleListeners();
 
     const notify = (event?: Event) => {
       const source =

@@ -33,7 +33,14 @@ const {
 
 vi.mock('@buildpad/hooks', async () => {
   const { useState, useCallback } = await import('react');
+  // The URL-persistence helpers are pure; use the real ones so the managers'
+  // URL wiring is exercised, not stubbed.
+  const url = await import('../../hooks/src/useUrlListParams');
   return {
+    useUrlListParams: url.useUrlListParams,
+    useHydrated: url.useHydrated,
+    readUrlParam: url.readUrlParam,
+    readUrlIntParam: url.readUrlIntParam,
     useUsers: () => ({
       fetchUsers: fetchUsersMock,
       updateUser: updateUserMock,

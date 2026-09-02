@@ -17,6 +17,8 @@ import {
   Stack,
   Text,
   Title,
+  Center,
+  Loader,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -27,6 +29,7 @@ import {
   usePermissions,
   useRoles,
   useSelection,
+  useHydrated,
   useUrlListParams,
   useUsers,
 } from '@buildpad/hooks';
@@ -88,8 +91,10 @@ export interface UsersManagerProps {
   /**
    * Persist search, filters, sort, and page in the URL query string
    * (`?search=…&role=…&status=…&sort=…&page=…`) so the list is shareable and
-   * reload-safe. Writes use `history.replaceState` and ride the existing
-   * 300 ms search debounce. Set `false` for embedded surfaces that must not
+   * reload-safe. Writes ride the existing 300 ms search debounce and go through
+   * the app's registered URL writer (Next.js App Router: `router.replace`,
+   * registered by the `DaaSProviderWrapper` template — required there);
+   * outside a router they fall back to `history.replaceState`. Set `false` for embedded surfaces that must not
    * touch the page URL. Default: true.
    */
   urlParams?: boolean;
@@ -205,7 +210,28 @@ function parseSortParam(raw: string | null): Sort | null {
   return by ? { by, desc } : null;
 }
 
-export const UsersManager: React.FC<UsersManagerProps> = ({
+/**
+ * Client-only gate. The body seeds its state from the URL in `useState`
+ * initializers, which renders differently on the server (no URL) and on the
+ * client — a hydration mismatch on every deep link. Until hydrated, render the
+ * same loading shell the body shows before its first fetch, so server HTML and
+ * the hydration render agree; the body then mounts once with the URL in hand.
+ * Skipped when URL persistence is off, since then initial state is
+ * URL-independent and the body can server-render as before.
+ */
+export const UsersManager: React.FC<UsersManagerProps> = (props) => {
+  const hydrated = useHydrated();
+  if (props.urlParams !== false && !hydrated) {
+    return (
+      <Center mih={240}>
+        <Loader />
+      </Center>
+    );
+  }
+  return <UsersManagerBody {...props} />;
+};
+
+const UsersManagerBody: React.FC<UsersManagerProps> = ({
   onUserClick,
   onCreateUser,
   pageSize = 25,
@@ -346,14 +372,18 @@ export const UsersManager: React.FC<UsersManagerProps> = ({
 
   // Reset to page 1 whenever a filter, the sort, or the page size CHANGES —
   // not on mount, or a ?page=3 restored from the URL would be clobbered.
-  const filtersMountedRef = React.useRef(false);
+  // StrictMode-safe: compare against the previous values rather than "has
+  // mounted". StrictMode re-runs mount effects with refs intact, so a
+  // has-mounted flag fires setPage(1) on the second run and clobbers a
+  // ?page= restored from the URL in development.
+  const filtersKey = JSON.stringify([debouncedSearch, selectedRole, selectedStatus, sort, limit]);
+  const previousFiltersKeyRef = React.useRef<string | null>(null);
   useEffect(() => {
-    if (!filtersMountedRef.current) {
-      filtersMountedRef.current = true;
-      return;
+    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
+      setPage(1);
     }
-    setPage(1);
-  }, [debouncedSearch, selectedRole, selectedStatus, sort, limit]);
+    previousFiltersKeyRef.current = filtersKey;
+  }, [filtersKey]);
 
   // Selection survives page changes but not a change of what's being listed.
   useEffect(() => {

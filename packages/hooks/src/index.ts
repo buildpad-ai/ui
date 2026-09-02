@@ -204,5 +204,7 @@ export {
   registerUrlStateWriter,
   URL_STATE_EVENT,
   urlStateEventSearch,
+  useHydrated,
   useUrlListParams,
+  type UseUrlListParamsOptions,
 } from './useUrlListParams';
