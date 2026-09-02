@@ -184,10 +184,31 @@ echo "${DIM}  pnpm --filter @buildpad/cli test${OFF}"
 pnpm --filter @buildpad/cli test >/dev/null 2>&1 || die "CLI tests fail. Fix before releasing."
 ok "CLI tests pass"
 
-echo "${DIM}  pnpm registry:check${OFF}"
-pnpm registry:check >/dev/null 2>&1 || die "registry.json is out of sync with the sources.
-    Run: pnpm build:registry"
-ok "registry.json in sync"
+# The artifact-sync check is mode-dependent, and getting this wrong blocked a
+# real release (2.2.0):
+#
+#   bump   — a stale registry.json is EXPECTED. Since #150 the artifact is
+#            regenerated inside `pnpm version:packages`, so any merged source
+#            change sits un-regenerated on main until the bump. Checking here
+#            makes the script refuse to cut exactly the releases it exists to
+#            cut. Step 2 re-runs registry:check after the regen, which is the
+#            gate that matters.
+#   resume — the bump already ran, so the artifact must be in sync; a mismatch
+#            means someone edited sources after the bump commit.
+#
+# What the bump-mode skip gives up: a source change merged with NO changeset
+# rides along silently (correct hashes, missing changelog entry). Catching
+# that pre-bump needs the changeset-aware guard — Issue 11, Tier 3.
+if [[ "$MODE" == "resume" ]]; then
+  echo "${DIM}  pnpm registry:check${OFF}"
+  pnpm registry:check >/dev/null 2>&1 || die "registry.json is out of sync with the sources.
+    The bump already ran, so sources must not have changed since. Someone
+    committed source edits after the release commit — investigate before
+    publishing. (A fresh source change belongs in the NEXT release.)"
+  ok "registry.json in sync"
+else
+  warn "registry:check skipped pre-bump — the bump regenerates the artifact (re-checked in step 2)"
+fi
 
 if ! $EXECUTE; then
   step "Plan (dry run — nothing has changed) — mode: ${MODE}"

@@ -2163,6 +2163,8 @@
       "dependencies": [
         "@mantine/core",
         "@mantine/tiptap",
+        "@tabler/icons-react",
+        "@tiptap/core",
         "@tiptap/react",
         "@tiptap/starter-kit",
         "@tiptap/extension-link",

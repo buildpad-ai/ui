@@ -134,10 +134,71 @@ export function useRelationM2O(
         );
 
         // Resolve one_collection from top-level or meta (DaaS may nest it)
-        const resolvedOneCollection =
+        let resolvedOneCollection =
           relation?.one_collection ??
           (relation?.meta?.one_collection as string | undefined) ??
           null;
+        let fallbackPkColumn: string | undefined;
+
+        // ── 1b. Fallback: the field's own record ───────────────────────
+        // /api/relations only reports a relation when a live Postgres FK
+        // constraint exists (or daas_relations metadata resolved via one).
+        // If that DDL step failed or was never run — e.g. a mismatched FK
+        // target type, or a scope/M2O metadata collision — the field still
+        // carries its intended target on daas_fields, and one request
+        // recovers it.
+        //
+        // Two tiers, because they fail in different situations and the
+        // second is the common one:
+        //
+        //   1. `schema.foreign_key_table` — the physical FK. Authoritative
+        //      when present, and it brings the related PK column with it.
+        //   2. `meta.options.related_collection` — what the admin actually
+        //      configured. This is the tier that matters when FK creation
+        //      is the step that failed: no constraint exists, so there is
+        //      no `foreign_key_table` to read, and tier 1 alone would
+        //      still error out on a field whose target is sitting right
+        //      here in the response.
+        //
+        // Both tiers come from the same response, so the second costs
+        // nothing and does not depend on the backend folding options into
+        // the schema block. `useRelationM2M` resolves its own broken-
+        // relation case from `meta.options` the same way.
+        if (!resolvedOneCollection) {
+          try {
+            const fieldResp = await apiRequest<{
+              data: {
+                schema?: {
+                  foreign_key_table?: string | null;
+                  foreign_key_column?: string | null;
+                } | null;
+                meta?: {
+                  options?: Record<string, unknown> | null;
+                } | null;
+              };
+            }>(`/api/fields/${collection}/${field}`);
+
+            const fkTable = fieldResp.data?.schema?.foreign_key_table;
+            if (fkTable) {
+              resolvedOneCollection = fkTable;
+              fallbackPkColumn =
+                fieldResp.data?.schema?.foreign_key_column ?? undefined;
+            } else {
+              const configuredTarget =
+                fieldResp.data?.meta?.options?.related_collection;
+              if (typeof configuredTarget === "string" && configuredTarget) {
+                resolvedOneCollection = configuredTarget;
+                // No FK constraint means no foreign_key_column to read, so
+                // the related PK falls through to "id" below. That is the
+                // same assumption the pre-existing `|| "id"` tail makes;
+                // detecting it properly (as useRelationM2M/O2M/M2A do) is
+                // a separate change.
+              }
+            }
+          } catch {
+            // Fallback is best-effort — fall through to the error below.
+          }
+        }
 
         if (!resolvedOneCollection) {
           if (!cancelled) {
@@ -151,11 +212,12 @@ export function useRelationM2O(
         }
 
         const relatedCollectionName = resolvedOneCollection;
-        const fkType = relation!.schema?.data_type || "uuid";
+        const fkType = relation?.schema?.data_type || "uuid";
         const relatedPK =
-          relation!.one_primary ||
-          (relation!.meta?.one_primary as string | undefined) ||
-          relation!.schema?.foreign_key_column ||
+          relation?.one_primary ||
+          (relation?.meta?.one_primary as string | undefined) ||
+          relation?.schema?.foreign_key_column ||
+          fallbackPkColumn ||
           "id";
 
         // ── 2. Fetch related collection meta for display template ─────
@@ -208,7 +270,7 @@ export function useRelationM2O(
             field,
             collection,
             related_collection: relatedCollectionName,
-            meta: relation!.meta ?? null,
+            meta: relation?.meta ?? null,
           },
           isSingleton,
         };

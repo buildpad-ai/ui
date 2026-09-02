@@ -1,5 +1,23 @@
 # @buildpad/ui-form
 
+## 2.2.0
+
+### Patch Changes
+
+- @buildpad/ui-interfaces@2.2.0
+- @buildpad/services@2.2.0
+- @buildpad/types@2.2.0
+- @buildpad/utils@2.2.0
+
+## 2.1.0
+
+### Patch Changes
+
+- @buildpad/ui-interfaces@2.1.0
+- @buildpad/services@2.1.0
+- @buildpad/types@2.1.0
+- @buildpad/utils@2.1.0
+
 ## 2.0.0
 
 ### Patch Changes

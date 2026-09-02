@@ -309,7 +309,7 @@ const KNOWN_NPM_PACKAGES = new Set([
   // Drag-and-drop (list-m2m/list-m2a, vtable, form-builder)
   '@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities',
   // TipTap rich text
-  '@tiptap/react', '@tiptap/starter-kit', '@tiptap/extension-highlight',
+  '@tiptap/core', '@tiptap/react', '@tiptap/starter-kit', '@tiptap/extension-highlight',
   '@tiptap/extension-text-align', '@tiptap/extension-superscript',
   '@tiptap/extension-subscript', '@tiptap/extension-placeholder',
   '@tiptap/extension-color', '@tiptap/extension-text-style',

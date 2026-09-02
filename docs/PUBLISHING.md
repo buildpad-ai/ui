@@ -152,10 +152,42 @@ pnpm changeset
 
 This prompts you to:
 1. Select changed packages (`@buildpad/cli`, `@buildpad/mcp`)
-2. Pick bump type: `patch` (bug fix), `minor` (new feature), `major` (breaking)
+2. Pick a bump type — see the table below
 3. Write a summary
 
 A `.changeset/<random-name>.md` file is created — commit it.
+
+#### Bump types
+
+Pick by **what changed**, not by how the change feels:
+
+| bump | when |
+|---|---|
+| `major` | a breaking change to a published API or a consumer-visible contract |
+| `minor` | any release that changes component source — **the default** |
+| `patch` | docs, templates, MCP server, or CLI fixes only; no component source change |
+
+`minor` is the default because it is the signal consumers read. A bug fix in
+`packages/ui-collections/src/CollectionForm.tsx` is still `minor` — the
+severity of the change does not matter, only whether there is new component
+source to pull. This is the one place the convention departs from ordinary
+semver habit, where a bug fix would be `patch`.
+
+Two facts make the bump type a labelling decision rather than a functional
+one, so getting it wrong is cheap to correct but easy to let drift:
+
+- All 13 packages ship in lockstep (a single `fixed` group in
+  `.changeset/config.json`), so every release moves every package to the same
+  version. Changesets takes the **maximum** bump across all pending
+  changesets — one `minor` in the queue makes the whole release a minor.
+- Staleness is content-based, not version-based. `buildpad outdated` compares
+  each file's `sourceSha256` against the manifest (see
+  `packages/cli/src/utils/staleness.ts`); `lastChangedIn` in the registry is
+  display data only. Consumers get the right answer regardless of what the
+  version number says.
+
+Nothing enforces this yet — the `registry:check` bump-type guard is deferred —
+so it is applied by hand at review time.
 
 ### Step 3: Push and open a PR
 

@@ -42,6 +42,7 @@ export const DEPENDENCY_VERSIONS: Record<string, string> = {
   '@dnd-kit/sortable': '^9.0.0',
   '@dnd-kit/utilities': '^3.0.0',
   // Rich text (tiptap v3 line, per @buildpad/ui-forms peers)
+  '@tiptap/core': '^3.13.0',
   '@tiptap/react': '^3.13.0',
   '@tiptap/starter-kit': '^3.13.0',
   '@tiptap/extension-link': '^3.13.0',
