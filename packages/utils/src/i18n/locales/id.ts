@@ -11,12 +11,20 @@ import { commonId } from '../namespaces/common';
 import { formId } from '../namespaces/form';
 import { tableId } from '../namespaces/table';
 import { interfacesId } from '../namespaces/interfaces';
+import { collectionsId } from '../namespaces/collections';
+import { filesId } from '../namespaces/files';
+import { usersId } from '../namespaces/users';
+import { formsId } from '../namespaces/forms';
 
 export const id: BuildpadTranslations = {
   common: commonId,
   form: formId,
   table: tableId,
   interfaces: interfacesId,
+  collections: collectionsId,
+  files: filesId,
+  users: usersId,
+  forms: formsId,
 };
 
 export default id;

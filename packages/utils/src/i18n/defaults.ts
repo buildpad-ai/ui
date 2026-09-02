@@ -12,12 +12,20 @@ import { commonDefaults } from './namespaces/common';
 import { formDefaults } from './namespaces/form';
 import { tableDefaults } from './namespaces/table';
 import { interfacesDefaults } from './namespaces/interfaces';
+import { collectionsDefaults } from './namespaces/collections';
+import { filesDefaults } from './namespaces/files';
+import { usersDefaults } from './namespaces/users';
+import { formsDefaults } from './namespaces/forms';
 
 export const defaultTranslations: BuildpadTranslations = {
   common: commonDefaults,
   form: formDefaults,
   table: tableDefaults,
   interfaces: interfacesDefaults,
+  collections: collectionsDefaults,
+  files: filesDefaults,
+  users: usersDefaults,
+  forms: formsDefaults,
 };
 
 export default defaultTranslations;

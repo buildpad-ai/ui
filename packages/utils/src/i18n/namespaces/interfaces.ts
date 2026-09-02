@@ -1,194 +1,162 @@
 /**
- * `interfaces` namespace — ui-interfaces (one sub-namespace per interface).
- *
- * One file per namespace so packages can be migrated in parallel without
- * touching a shared dictionary file: the English defaults and the Indonesian
- * catalog live next to the interface they must match.
+ * `interfaces` namespace — ui-interfaces, one sub-namespace per interface
+ * folder (`interfaces.listM2M`, `interfaces.upload`, …), each in
+ * `./interfaces/<folder>.ts` with its interface, English defaults and
+ * Indonesian catalog. Add keys in the sub-namespace file; this composer only
+ * assembles them.
  */
-/**
- * ListM2M strings. Keys are snake_case for backward compatibility with the
- * pre-existing `translations` prop of `ListM2M`.
- */
-export interface ListM2MTranslations {
-  // Header Actions
-  create_new: string;
-  add_existing: string;
-  batch_edit: string;
-  batch_edit_not_implemented: string;
-  not_allowed: string;
-  // States
-  no_items: string;
-  relationship_not_setup: string;
-  relationship_not_setup_detail: string;
-  no_singleton_relations: string;
-  configuration_error: string;
-  storybook_hint: string;
-  loading: string;
-  // Pagination
-  per_page: string;
-  showing_range: string;
-  item_count_one: string;
-  item_count_other: string;
-  unsaved_changes: string;
-  // Actions
-  edit: string;
-  remove: string;
-  navigate_to_item: string;
-  search_placeholder: string;
-  select_items: string;
-  add_selected: string;
-  select_all: string;
-  deselect_all: string;
-  // Drawer
-  create_item: string;
-  edit_item: string;
-  junction_fields: string;
-  // Batch Edit
-  batch_edit_title: string;
-  batch_edit_apply: string;
-  // Sorting
-  move_up: string;
-  move_down: string;
-  drag_to_reorder: string;
-  order: string;
-  actions: string;
-  // Versioning
-  version: string;
-  viewing_version: string;
-  // Status badges
-  badge_new: string;
-  badge_edited: string;
-  // Validation
-  field_required: string;
-  invalid_value: string;
-}
+import { autocompleteApiDefaults, autocompleteApiId, type AutocompleteApiTranslations } from './interfaces/autocomplete-api';
+import { booleanDefaults, booleanId, type BooleanTranslations } from './interfaces/boolean';
+import { collectionItemDropdownDefaults, collectionItemDropdownId, type CollectionItemDropdownTranslations } from './interfaces/collection-item-dropdown';
+import { colorDefaults, colorId, type ColorTranslations } from './interfaces/color';
+import { datetimeDefaults, datetimeId, type DateTimeTranslations } from './interfaces/datetime';
+import { dividerDefaults, dividerId, type DividerTranslations } from './interfaces/divider';
+import { fileDefaults, fileId, type FileTranslations } from './interfaces/file';
+import { fileImageDefaults, fileImageId, type FileImageTranslations } from './interfaces/file-image';
+import { filesDefaults, filesId, type FilesTranslations } from './interfaces/files';
+import { groupAccordionDefaults, groupAccordionId, type GroupAccordionTranslations } from './interfaces/group-accordion';
+import { groupDetailDefaults, groupDetailId, type GroupDetailTranslations } from './interfaces/group-detail';
+import { groupRawDefaults, groupRawId, type GroupRawTranslations } from './interfaces/group-raw';
+import { inputDefaults, inputId, type InputTranslations } from './interfaces/input';
+import { inputBlockEditorDefaults, inputBlockEditorId, type InputBlockEditorTranslations } from './interfaces/input-block-editor';
+import { inputCodeDefaults, inputCodeId, type InputCodeTranslations } from './interfaces/input-code';
+import { inputHashDefaults, inputHashId, type InputHashTranslations } from './interfaces/input-hash';
+import { listM2ADefaults, listM2AId, type ListM2ATranslations } from './interfaces/list-m2a';
+import { listM2MDefaults, listM2MId, type ListM2MTranslations } from './interfaces/list-m2m';
+import { listO2MDefaults, listO2MId, type ListO2MTranslations } from './interfaces/list-o2m';
+import { mapDefaults, mapId, type MapTranslations } from './interfaces/map';
+import { noticeDefaults, noticeId, type NoticeTranslations } from './interfaces/notice';
+import { richTextHtmlDefaults, richTextHtmlId, type RichTextHtmlTranslations } from './interfaces/rich-text-html';
+import { richTextMarkdownDefaults, richTextMarkdownId, type RichTextMarkdownTranslations } from './interfaces/rich-text-markdown';
+import { selectDropdownDefaults, selectDropdownId, type SelectDropdownTranslations } from './interfaces/select-dropdown';
+import { selectDropdownM2ODefaults, selectDropdownM2OId, type SelectDropdownM2OTranslations } from './interfaces/select-dropdown-m2o';
+import { selectIconDefaults, selectIconId, type SelectIconTranslations } from './interfaces/select-icon';
+import { selectMultipleCheckboxDefaults, selectMultipleCheckboxId, type SelectMultipleCheckboxTranslations } from './interfaces/select-multiple-checkbox';
+import { selectRadioDefaults, selectRadioId, type SelectRadioTranslations } from './interfaces/select-radio';
+import { sliderDefaults, sliderId, type SliderTranslations } from './interfaces/slider';
+import { systemPermissionsDefaults, systemPermissionsId, type SystemPermissionsTranslations } from './interfaces/system-permissions';
+import { systemTokenDefaults, systemTokenId, type SystemTokenTranslations } from './interfaces/system-token';
+import { tagsDefaults, tagsId, type TagsTranslations } from './interfaces/tags';
+import { textareaDefaults, textareaId, type TextareaTranslations } from './interfaces/textarea';
+import { toggleDefaults, toggleId, type ToggleTranslations } from './interfaces/toggle';
+import { uploadDefaults, uploadId, type UploadTranslations } from './interfaces/upload';
+import { workflowButtonDefaults, workflowButtonId, type WorkflowButtonTranslations } from './interfaces/workflow-button';
 
-/** DateTime interface (placeholders; the calendar itself is Mantine + dayjs locale data). */
-export interface DateTimeTranslations {
-  pickDateTime: string;
-  pickDate: string;
-  pickTime: string;
-}
+export type { AutocompleteApiTranslations, BooleanTranslations, CollectionItemDropdownTranslations, ColorTranslations, DateTimeTranslations, DividerTranslations, FileTranslations, FileImageTranslations, FilesTranslations, GroupAccordionTranslations, GroupDetailTranslations, GroupRawTranslations, InputTranslations, InputBlockEditorTranslations, InputCodeTranslations, InputHashTranslations, ListM2ATranslations, ListM2MTranslations, ListO2MTranslations, MapTranslations, NoticeTranslations, RichTextHtmlTranslations, RichTextMarkdownTranslations, SelectDropdownTranslations, SelectDropdownM2OTranslations, SelectIconTranslations, SelectMultipleCheckboxTranslations, SelectRadioTranslations, SliderTranslations, SystemPermissionsTranslations, SystemTokenTranslations, TagsTranslations, TextareaTranslations, ToggleTranslations, UploadTranslations, WorkflowButtonTranslations };
 
 export interface InterfacesTranslations {
-  listM2M: ListM2MTranslations;
+  autocompleteApi: AutocompleteApiTranslations;
+  boolean: BooleanTranslations;
+  collectionItemDropdown: CollectionItemDropdownTranslations;
+  color: ColorTranslations;
   datetime: DateTimeTranslations;
+  divider: DividerTranslations;
+  file: FileTranslations;
+  fileImage: FileImageTranslations;
+  files: FilesTranslations;
+  groupAccordion: GroupAccordionTranslations;
+  groupDetail: GroupDetailTranslations;
+  groupRaw: GroupRawTranslations;
+  input: InputTranslations;
+  inputBlockEditor: InputBlockEditorTranslations;
+  inputCode: InputCodeTranslations;
+  inputHash: InputHashTranslations;
+  listM2A: ListM2ATranslations;
+  listM2M: ListM2MTranslations;
+  listO2M: ListO2MTranslations;
+  map: MapTranslations;
+  notice: NoticeTranslations;
+  richTextHtml: RichTextHtmlTranslations;
+  richTextMarkdown: RichTextMarkdownTranslations;
+  selectDropdown: SelectDropdownTranslations;
+  selectDropdownM2O: SelectDropdownM2OTranslations;
+  selectIcon: SelectIconTranslations;
+  selectMultipleCheckbox: SelectMultipleCheckboxTranslations;
+  selectRadio: SelectRadioTranslations;
+  slider: SliderTranslations;
+  systemPermissions: SystemPermissionsTranslations;
+  systemToken: SystemTokenTranslations;
+  tags: TagsTranslations;
+  textarea: TextareaTranslations;
+  toggle: ToggleTranslations;
+  upload: UploadTranslations;
+  workflowButton: WorkflowButtonTranslations;
 }
 
 export const interfacesDefaults: InterfacesTranslations = {
-  listM2M: {
-    // Header Actions
-    create_new: 'Create New',
-    add_existing: 'Add Existing',
-    batch_edit: 'Edit Selected',
-    batch_edit_not_implemented: 'Batch editing is not yet implemented',
-    not_allowed: 'Not allowed',
-    // States
-    no_items: 'No related items',
-    relationship_not_setup: 'Relationship not configured',
-    relationship_not_setup_detail:
-      'The many-to-many relationship is not properly configured for this field.',
-    no_singleton_relations:
-      'The related collection is a singleton and cannot be used in an M2M relationship.',
-    configuration_error: 'Configuration Error',
-    storybook_hint:
-      'In Storybook, relational interfaces require API proxy routes. This component works fully in a Next.js app with DaaS integration.',
-    loading: 'Loading...',
-    // Pagination
-    per_page: 'Items per page:',
-    showing_range: 'Showing {start} to {end} of {total}',
-    item_count_one: '1 item',
-    item_count_other: '{count} items',
-    unsaved_changes: '(unsaved changes)',
-    // Actions
-    edit: 'Edit',
-    remove: 'Remove',
-    navigate_to_item: 'Open item',
-    search_placeholder: 'Search...',
-    select_items: 'Select Items',
-    add_selected: 'Add Selected',
-    select_all: 'Select All',
-    deselect_all: 'Deselect All',
-    // Drawer
-    create_item: 'Create New Item',
-    edit_item: 'Edit Item',
-    junction_fields: 'Junction Fields',
-    // Batch Edit
-    batch_edit_title: 'Editing {count} items',
-    batch_edit_apply: 'Apply Changes',
-    // Sorting
-    move_up: 'Move up',
-    move_down: 'Move down',
-    drag_to_reorder: 'Drag to reorder',
-    order: 'Order',
-    actions: 'Actions',
-    // Versioning
-    version: 'Version',
-    viewing_version: 'Viewing version: {name}',
-    // Status badges
-    badge_new: 'NEW',
-    badge_edited: 'EDITED',
-    // Validation
-    field_required: 'This field is required',
-    invalid_value: 'Invalid value',
-  },
-  datetime: {
-    pickDateTime: 'Pick date and time',
-    pickDate: 'Pick date',
-    pickTime: 'Pick time',
-  },
+  autocompleteApi: autocompleteApiDefaults,
+  boolean: booleanDefaults,
+  collectionItemDropdown: collectionItemDropdownDefaults,
+  color: colorDefaults,
+  datetime: datetimeDefaults,
+  divider: dividerDefaults,
+  file: fileDefaults,
+  fileImage: fileImageDefaults,
+  files: filesDefaults,
+  groupAccordion: groupAccordionDefaults,
+  groupDetail: groupDetailDefaults,
+  groupRaw: groupRawDefaults,
+  input: inputDefaults,
+  inputBlockEditor: inputBlockEditorDefaults,
+  inputCode: inputCodeDefaults,
+  inputHash: inputHashDefaults,
+  listM2A: listM2ADefaults,
+  listM2M: listM2MDefaults,
+  listO2M: listO2MDefaults,
+  map: mapDefaults,
+  notice: noticeDefaults,
+  richTextHtml: richTextHtmlDefaults,
+  richTextMarkdown: richTextMarkdownDefaults,
+  selectDropdown: selectDropdownDefaults,
+  selectDropdownM2O: selectDropdownM2ODefaults,
+  selectIcon: selectIconDefaults,
+  selectMultipleCheckbox: selectMultipleCheckboxDefaults,
+  selectRadio: selectRadioDefaults,
+  slider: sliderDefaults,
+  systemPermissions: systemPermissionsDefaults,
+  systemToken: systemTokenDefaults,
+  tags: tagsDefaults,
+  textarea: textareaDefaults,
+  toggle: toggleDefaults,
+  upload: uploadDefaults,
+  workflowButton: workflowButtonDefaults,
 };
 
 export const interfacesId: InterfacesTranslations = {
-  listM2M: {
-    create_new: 'Buat Baru',
-    add_existing: 'Tambah yang Ada',
-    batch_edit: 'Ubah yang Dipilih',
-    batch_edit_not_implemented: 'Pengeditan massal belum tersedia',
-    not_allowed: 'Tidak diizinkan',
-    no_items: 'Tidak ada item terkait',
-    relationship_not_setup: 'Relasi belum dikonfigurasi',
-    relationship_not_setup_detail:
-      'Relasi many-to-many untuk kolom ini belum dikonfigurasi dengan benar.',
-    no_singleton_relations:
-      'Koleksi terkait adalah singleton dan tidak dapat digunakan dalam relasi M2M.',
-    configuration_error: 'Kesalahan Konfigurasi',
-    storybook_hint:
-      'Di Storybook, antarmuka relasional memerlukan rute proxy API. Komponen ini berfungsi penuh di aplikasi Next.js dengan integrasi DaaS.',
-    loading: 'Memuat...',
-    per_page: 'Item per halaman:',
-    showing_range: 'Menampilkan {start} sampai {end} dari {total}',
-    item_count_one: '1 item',
-    item_count_other: '{count} item',
-    unsaved_changes: '(perubahan belum disimpan)',
-    edit: 'Ubah',
-    remove: 'Hapus',
-    navigate_to_item: 'Buka item',
-    search_placeholder: 'Cari...',
-    select_items: 'Pilih Item',
-    add_selected: 'Tambahkan yang Dipilih',
-    select_all: 'Pilih Semua',
-    deselect_all: 'Batalkan Semua Pilihan',
-    create_item: 'Buat Item Baru',
-    edit_item: 'Ubah Item',
-    junction_fields: 'Kolom Junction',
-    batch_edit_title: 'Mengubah {count} item',
-    batch_edit_apply: 'Terapkan Perubahan',
-    move_up: 'Pindah ke atas',
-    move_down: 'Pindah ke bawah',
-    drag_to_reorder: 'Seret untuk mengurutkan',
-    order: 'Urutan',
-    actions: 'Aksi',
-    version: 'Versi',
-    viewing_version: 'Melihat versi: {name}',
-    badge_new: 'BARU',
-    badge_edited: 'DIUBAH',
-    field_required: 'Kolom ini wajib diisi',
-    invalid_value: 'Nilai tidak valid',
-  },
-  datetime: {
-    pickDateTime: 'Pilih tanggal dan waktu',
-    pickDate: 'Pilih tanggal',
-    pickTime: 'Pilih waktu',
-  },
+  autocompleteApi: autocompleteApiId,
+  boolean: booleanId,
+  collectionItemDropdown: collectionItemDropdownId,
+  color: colorId,
+  datetime: datetimeId,
+  divider: dividerId,
+  file: fileId,
+  fileImage: fileImageId,
+  files: filesId,
+  groupAccordion: groupAccordionId,
+  groupDetail: groupDetailId,
+  groupRaw: groupRawId,
+  input: inputId,
+  inputBlockEditor: inputBlockEditorId,
+  inputCode: inputCodeId,
+  inputHash: inputHashId,
+  listM2A: listM2AId,
+  listM2M: listM2MId,
+  listO2M: listO2MId,
+  map: mapId,
+  notice: noticeId,
+  richTextHtml: richTextHtmlId,
+  richTextMarkdown: richTextMarkdownId,
+  selectDropdown: selectDropdownId,
+  selectDropdownM2O: selectDropdownM2OId,
+  selectIcon: selectIconId,
+  selectMultipleCheckbox: selectMultipleCheckboxId,
+  selectRadio: selectRadioId,
+  slider: sliderId,
+  systemPermissions: systemPermissionsId,
+  systemToken: systemTokenId,
+  tags: tagsId,
+  textarea: textareaId,
+  toggle: toggleId,
+  upload: uploadId,
+  workflowButton: workflowButtonId,
 };

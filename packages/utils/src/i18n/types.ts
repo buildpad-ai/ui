@@ -22,18 +22,30 @@ import type { CommonTranslations } from './namespaces/common';
 import type { FormTranslations } from './namespaces/form';
 import type { TableTranslations } from './namespaces/table';
 import type { InterfacesTranslations } from './namespaces/interfaces';
+import type { CollectionsTranslations } from './namespaces/collections';
+import type { FilesTranslations } from './namespaces/files';
+import type { UsersTranslations } from './namespaces/users';
+import type { FormsTranslations } from './namespaces/forms';
 
 export type { PluralForms, DeepPartial, TextDirection, InterpolationValues } from './primitives';
 export type { CommonTranslations } from './namespaces/common';
 export type { FormTranslations, FormValidationTranslations } from './namespaces/form';
 export type { TableTranslations } from './namespaces/table';
-export type { InterfacesTranslations, ListM2MTranslations, DateTimeTranslations } from './namespaces/interfaces';
+export type * from './namespaces/interfaces';
+export type { CollectionsTranslations } from './namespaces/collections';
+export type { FilesTranslations } from './namespaces/files';
+export type { UsersTranslations } from './namespaces/users';
+export type { FormsTranslations } from './namespaces/forms';
 
 export interface BuildpadTranslations {
   common: CommonTranslations;
   form: FormTranslations;
   table: TableTranslations;
   interfaces: InterfacesTranslations;
+  collections: CollectionsTranslations;
+  files: FilesTranslations;
+  users: UsersTranslations;
+  forms: FormsTranslations;
 }
 
 /** What apps pass to the provider and what `locales/*.ts` export. */

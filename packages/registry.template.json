@@ -148,6 +148,166 @@
           "target": "lib/buildpad/i18n/namespaces/interfaces.ts"
         },
         {
+          "source": "utils/src/i18n/namespaces/collections.ts",
+          "target": "lib/buildpad/i18n/namespaces/collections.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/files.ts",
+          "target": "lib/buildpad/i18n/namespaces/files.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/users.ts",
+          "target": "lib/buildpad/i18n/namespaces/users.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/forms.ts",
+          "target": "lib/buildpad/i18n/namespaces/forms.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/autocomplete-api.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/autocomplete-api.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/boolean.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/boolean.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/collection-item-dropdown.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/collection-item-dropdown.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/color.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/color.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/datetime.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/datetime.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/divider.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/divider.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/file.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/file.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/file-image.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/file-image.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/files.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/files.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/group-accordion.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/group-accordion.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/group-detail.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/group-detail.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/group-raw.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/group-raw.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/input.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/input.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/input-block-editor.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/input-block-editor.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/input-code.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/input-code.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/input-hash.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/input-hash.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/list-m2a.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/list-m2a.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/list-m2m.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/list-m2m.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/list-o2m.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/list-o2m.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/map.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/map.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/notice.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/notice.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/rich-text-html.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/rich-text-html.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/rich-text-markdown.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/rich-text-markdown.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-dropdown.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-dropdown.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-dropdown-m2o.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-dropdown-m2o.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-icon.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-icon.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-multiple-checkbox.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-multiple-checkbox.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/select-radio.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/select-radio.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/slider.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/slider.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/system-permissions.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/system-permissions.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/system-token.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/system-token.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/tags.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/tags.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/textarea.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/textarea.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/toggle.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/toggle.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/upload.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/upload.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/workflow-button.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/workflow-button.ts"
+        },
+        {
           "source": "utils/src/i18n/types.ts",
           "target": "lib/buildpad/i18n/types.ts"
         },
