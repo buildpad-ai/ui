@@ -121,12 +121,14 @@ Options:
   --cwd <cwd>          the working directory (defaults to current directory)
   --skip-deps          skip npm dependency installation
   --skip-validate      skip post-install validation
+  --locales <codes>    locales for app/[lang], comma-separated (e.g. en,id); default: en
+  --default-locale <code>  default locale (must be in --locales); default: the first one
   -h, --help           display help for command
 ```
 
 ### What Bootstrap Does
 
-1. Creates `buildpad.json` and project skeleton (package.json, tsconfig, Next.js layout/page, design tokens)
+1. Creates `buildpad.json` and project skeleton (package.json, tsconfig, the `app/[lang]` root layout and home page, design tokens, locale routing in `lib/i18n/`)
 2. Copies all 40+ UI components to `components/ui/`
 3. Copies types, services, hooks to `lib/buildpad/`
 4. Copies API proxy routes (fields, items, relations, files)
@@ -474,10 +476,13 @@ your-project/
 
 ```bash
 # Initialize project
-buildpad init [--yes] [--cwd <path>]
+buildpad init [--yes] [--cwd <path>] [--locales en,id] [--default-locale en]
 
 # Bootstrap full project (init + add all + deps + validate)
-buildpad bootstrap [--cwd <path>] [--skip-deps] [--skip-validate]
+buildpad bootstrap [--cwd <path>] [--skip-deps] [--skip-validate] [--locales en,id] [--default-locale en]
+
+# Move an app scaffolded before 2.3 onto locale-prefixed app/[lang] routing
+buildpad migrate i18n [--cwd <path>] [--locales en,id] [--dry-run]
 
 # Add components
 buildpad add [components...] [--all] [--category <name>] [--overwrite] [--cwd <path>]

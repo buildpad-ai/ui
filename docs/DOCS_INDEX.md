@@ -15,6 +15,8 @@ Complete guide to Buildpad UI Packages and distribution tools.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture diagrams | Technical users |
 | [TESTING.md](TESTING.md) | Playwright E2E testing guide | Developers |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Token-based theming architecture | Designers, Developers |
+| [I18N_PLAN.md](I18N_PLAN.md) | Internationalization plan: locale routing (app/[lang]) + component i18n, decisions and status | Maintainers |
+| [I18N_COMPONENT_GUIDE.md](I18N_COMPONENT_GUIDE.md) | How a Buildpad package reads its strings from the shared dictionary; migration definition of done | Developers |
 
 ## 🤖 For AI Agents
 
@@ -41,7 +43,9 @@ buildpad upgrade --all        # Upgrade all components (safe per-file checksums)
 buildpad upgrade --design     # Upgrade the design-system module (tokens, theme, app shell)
 buildpad upgrade --three-way  # 3-way merge for customized files
 buildpad changelog <pkg>      # View changelog between installed and latest
-buildpad migrate              # Migrate buildpad.json to v2 schema
+buildpad migrate              # Migrate buildpad.json to v3 schema
+buildpad migrate i18n         # Move a pre-2.3 app onto locale-prefixed app/[lang] routing
+buildpad bootstrap --locales en,id   # Scaffold with several locales
 ```
 
 ## 🎯 Quick Navigation
