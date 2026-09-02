@@ -1,6 +1,6 @@
 # Internationalization — Phase 2 (Buildpad UI)
 
-**Status:** proposal · **Owner:** Buildpad UI · **Depends on:** the `add-i18n` skill in `buildpad-ai/skills` (Phase 1)
+**Status:** in progress — B1 (component i18n core) and Workstream A (CLI shell) landed on `feat/i18n-phase-2`; B2 package migration underway · **Owner:** Buildpad UI · **Depends on:** the `add-i18n` skill in `buildpad-ai/skills` (Phase 1)
 
 ## Why this phase exists
 
@@ -141,9 +141,23 @@ Global decorator in every `packages/*/.storybook/preview.tsx` wrapping `Buildpad
 - **Next 16 `proxy.ts` naming** — decide before A3 so the templates are only rewritten once.
 - **Client bundle** — the app dictionary ships to the client (every Buildpad page is a client component); keep dictionaries to UI strings, never content.
 
-## Decisions needed before starting
+## Decisions (taken while implementing)
 
-1. `middleware.ts` → `proxy.ts` now or later (A3).
-2. Prefix strategy: always-prefix (the Next.js guide; recommended — one canonical URL shape) vs. unprefixed default locale via rewrite.
-3. `LanguageSwitcher` built into `AuthenticatedShell` or exposed through a `headerActions` slot.
-4. Locale list at bootstrap: `buildpad bootstrap --locales en,id` writing `config.ts`, or edit after scaffolding.
+1. **`middleware.ts` stays for this release.** Next 16.1 still accepts it; 16.3 prints a deprecation in favour of `proxy.ts`. Renaming the tracked file would leave existing apps with both `middleware.ts` (kept on disk by `upgrade`) and `proxy.ts`, which Next refuses. The template documents the identical `proxy.ts` body; `npx @next/codemod@canary middleware-to-proxy .` is the user-run path. Revisit when the CLI drops Next 16.1.
+2. **Always-prefix.** `/` → `/<locale>`, no unprefixed default locale. An unknown first segment (`/xx/login`) is treated as a path and prefixed (`/en/xx/login`), which then 404s — so two-letter app routes keep working.
+3. **Both.** `AuthenticatedShell` renders `LanguageSwitcher` in its header by default (`showLanguageSwitcher={false}` hides it; it renders nothing with one locale) and exposes a `headerActions` slot.
+4. **`--locales` on `init`/`bootstrap`/`migrate i18n`**, rewriting marker-delimited blocks in `lib/i18n/config.ts` and `dictionaries.ts` and seeding `dictionaries/<code>.json` from `en.json`; editing those blocks by hand is equivalent.
+
+Also decided: the app-level `I18nProvider` (lib/i18n) mounts `BuildpadI18nProvider` itself with the catalog Buildpad ships for the locale (`bundledTranslationsFor`) under the app's `buildpad.*` overrides, so the `i18n` lib module depends on `services`; `supabase-auth`, `design-system` and `api-routes` depend on `i18n`; `upgrade` installs lib dependencies a release introduces. Without a provider, components keep English defaults AND browser locale/time zone (no behaviour change for existing consumers); with a provider the time zone is pinned to UTC unless given.
+
+## Status
+
+| Item | State |
+| --- | --- |
+| B1 core (`utils/src/i18n`, `BuildpadI18nProvider`, `useBuildpadI18n`, tests) | done |
+| A1–A6 (i18n module, `[lang]` templates, middleware, shell, install order, `migrate i18n`) | done |
+| A7 (`packages/cli/tests/e2e/bootstrap-i18n.sh`: bootstrap → build → start → redirect assertions) | done, manual/nightly |
+| B4 Storybook decorator (`packages/storybook-i18n.tsx`, Locale toolbar in every preview) | done |
+| B2 ESLint rule `buildpad/no-untranslated-literal` (warn; error per migrated package via `I18N_MIGRATED`) | done |
+| B2 package migration (`ui-form` → `ui-table` → `ui-collections` → `ui-interfaces` → `ui-files` → `ui-users` → `ui-forms`) + B3 dates | in progress |
+| `add-i18n` skill update (already-prefixed default, `buildpad.*` = `BuildpadTranslations`) | patch prepared, to be applied in `buildpad-ai/skills` |

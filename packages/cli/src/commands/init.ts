@@ -211,10 +211,13 @@ export interface InitOptions {
  * local mode, the pinned release tag otherwise.
  */
 const BUNDLED_FIRST = {
-  readSource: (source: string) =>
-    source.startsWith('cli/templates/') ? resolveBundledTemplate(source) : resolveSourceFile(source),
-  sourceExists: (source: string) =>
-    source.startsWith('cli/templates/') ? bundledTemplateExists(source) : sourceFileExists(source),
+  readSource: async (source: string) =>
+    (await bundledTemplateExists(source)) ? resolveBundledTemplate(source) : resolveSourceFile(source),
+  // A template can be absent from the bundle (tsup's d.ts clean removes
+  // types/modules.d.ts from dist/templates) — fall through to the resolver
+  // rather than reporting it missing.
+  sourceExists: async (source: string) =>
+    (await bundledTemplateExists(source)) || sourceFileExists(source),
 };
 
 export async function init(options: InitOptions) {
