@@ -37,7 +37,7 @@ test.describe('FileManager URL persistence', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await connectAs(page, 'admin');
+    await connectAs(page.request, rbac().admin.token);
   });
 
   test('search settles into the URL and a reload restores it', async ({ page }) => {

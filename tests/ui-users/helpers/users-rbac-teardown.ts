@@ -56,12 +56,18 @@ async function collectIds(
 ): Promise<string[]> {
   const ids: string[] = [];
   let page = 1;
+  let prevFirstId: string | undefined;
   while (true) {
     const res = await admin.get<{ data: Record<string, unknown>[] }>(
       `${listPath}?limit=100&page=${page}`,
     );
     if (res.status !== 200) return ids;
     const items = res.data?.data ?? [];
+    // Guard against a backend that ignores `page` (DaaS /api/permissions returns
+    // every row for every page): a repeated first id means we have seen it all.
+    const firstId = items[0]?.id;
+    if (firstId !== undefined && firstId === prevFirstId) return ids;
+    prevFirstId = firstId;
     for (const item of items) {
       if (predicate(item[field])) ids.push(item['id'] as string);
     }
