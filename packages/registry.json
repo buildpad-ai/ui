@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-02T08:49:33.282Z",
+  "generatedAt": "2026-09-02T08:56:26.920Z",
   "version": "2.2.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -190,14 +190,39 @@
           "sourceSha256": "ec60890733f96d71e1265e8dead9a65d440d85df19fdd6d1764a7cabae135e55"
         },
         {
+          "source": "utils/src/i18n/primitives.ts",
+          "target": "lib/buildpad/i18n/primitives.ts",
+          "sourceSha256": "f60138e3bb3639f73fc544015ad8aeba34e9a189a6967ed3cc6ed06dae15025d"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/common.ts",
+          "target": "lib/buildpad/i18n/namespaces/common.ts",
+          "sourceSha256": "8ab92ab22cdac0b683cd9de034691f9005958a52833933b85e326e0a8b0e4d84"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/form.ts",
+          "target": "lib/buildpad/i18n/namespaces/form.ts",
+          "sourceSha256": "26d9c85c5dcda808454498c99fea5beda246fc10aac6db3a2e73238a8782382b"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/table.ts",
+          "target": "lib/buildpad/i18n/namespaces/table.ts",
+          "sourceSha256": "b885cb8fc0ee9a775e6cc9ac9afa32f06fcb3f94495b40f849b3c06151984143"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces.ts",
+          "sourceSha256": "ee8b73ecf777ac2a8fc016753ca41060d4dd59eca409bc668ad18cafe7a07855"
+        },
+        {
           "source": "utils/src/i18n/types.ts",
           "target": "lib/buildpad/i18n/types.ts",
-          "sourceSha256": "18b8fa23d779388c47499d5ea114e17f8e93fab7291a766628d6a5e635924830"
+          "sourceSha256": "1f53ae6320e8db650ff1316a3b072f42f55c3c311e4d79773be9854b2007f2ac"
         },
         {
           "source": "utils/src/i18n/defaults.ts",
           "target": "lib/buildpad/i18n/defaults.ts",
-          "sourceSha256": "b2961318581eb0734e52ffba78c3417334ed5a7ebd5198464718089e60eda3f4"
+          "sourceSha256": "c57329ff9c1f5f22193f6f118a9248801b3f2bd4a04ba128573319fbdb845afa"
         },
         {
           "source": "utils/src/i18n/merge.ts",
@@ -222,7 +247,7 @@
         {
           "source": "utils/src/i18n/locales/id.ts",
           "target": "lib/buildpad/i18n/locales/id.ts",
-          "sourceSha256": "cd5eaaebb40226c18c1e8f44ac5085e65ffeea8b6aa2f19e0a2bcd3bc70ab24a"
+          "sourceSha256": "f743d1505d1db604808444e4d762837c8ba9da4bc0ba717ca151a4535e7170eb"
         },
         {
           "source": "utils/src/i18n/locales/index.ts",
@@ -232,12 +257,12 @@
         {
           "source": "utils/src/i18n/index.ts",
           "target": "lib/buildpad/i18n/index.ts",
-          "sourceSha256": "04b79b5859236d34de67111ec9a728f9ebf5ab54cdcab35a82fa287a967ccaa8"
+          "sourceSha256": "d33986c3686be62f9c73f77a20a52cdf4ba99fcc793f177c4502f17995f183df"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "26862501edb7aef3ff3606058bebe6984e11b23c867463d6c03a9b2f19ccc99f"
+          "sourceSha256": "4c6cf5cd9553bdf6dca219a5565f41dcc0d5d7c707f31192e317af56f45f89dc"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -1865,7 +1890,12 @@
         {
           "source": "ui-interfaces/src/datetime/DateTime.tsx",
           "target": "components/ui/datetime.tsx",
-          "sourceSha256": "9d14843f3ba48fc57c7373f74c7a3ee2868dbc68228cfa99d992956656b62238"
+          "sourceSha256": "fe86fef431303048a6dc5d06498af89c9aecf822524e82eca23053b2d5f652c2"
+        },
+        {
+          "source": "ui-interfaces/src/datetime/dayjs-locales.ts",
+          "target": "components/ui/datetime/dayjs-locales.ts",
+          "sourceSha256": "688492fde7496d1f5bbfefdcafcd67afb05e6fc7f07aee5e84da59bd25df5a80"
         }
       ],
       "dependencies": [
@@ -1895,7 +1925,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.2.0",
-      "lastChangedIn": "1.2.0"
+      "lastChangedIn": "2.2.0"
     },
     {
       "name": "boolean",
