@@ -6,7 +6,7 @@
  * date formatting and plural formatting.
  */
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import {
   BuildpadI18nProvider,
@@ -23,12 +23,17 @@ function withProvider(props: Omit<BuildpadI18nProviderProps, 'children'>) {
 }
 
 describe('useBuildpadI18n without a provider', () => {
-  it('returns English defaults and no pinned zone', () => {
+  it('returns English defaults and formats with the runtime locale and zone', () => {
     const { result } = renderHook(() => useBuildpadI18n());
     expect(result.current.hasProvider).toBe(false);
     expect(result.current.locale).toBe('en');
     expect(result.current.direction).toBe('ltr');
     expect(result.current.timeZone).toBeUndefined();
+    // No provider → Intl gets `undefined` (runtime default), exactly like the old toLocale* calls.
+    const runtimeDefault = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+      new Date('2024-06-01T12:00:00Z'),
+    );
+    expect(result.current.formatDate('2024-06-01T12:00:00Z', { dateStyle: 'medium' })).toBe(runtimeDefault);
     expect(result.current.t('form.validation.required')).toBe('This field is required');
     expect(result.current.translations.table.noItems).toBe('No items');
   });
@@ -99,6 +104,32 @@ describe('BuildpadI18nProvider', () => {
     expect(result.current.t('common.itemCount', { count: 2 })).toBe('2 items');
   });
 
+  it('survives an invalid locale or time zone by falling back (never throws)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() => useBuildpadI18n(), {
+      wrapper: withProvider({ locale: 'en_US!', timeZone: 'Asia/Jakart' }),
+    });
+    expect(result.current.locale).toBe('en');
+    expect(result.current.timeZone).toBe('UTC');
+    expect(result.current.formatDate('2024-01-15T23:30:00Z', { dateStyle: 'medium' })).toBe('Jan 15, 2024');
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+  });
+
+  it('keeps the pinned zone when caller options are invalid', () => {
+    const { result } = renderHook(() => useBuildpadI18n(), {
+      wrapper: withProvider({ locale: 'en-US', timeZone: 'Asia/Jakarta' }),
+    });
+    expect(
+      result.current.formatDate('2024-01-15T23:30:00Z', { dateStyle: 'nope' as unknown as 'medium' }),
+    ).toBe('Jan 16, 2024');
+  });
+
+  it('canonicalises the locale tag', () => {
+    const { result } = renderHook(() => useBuildpadI18n(), { wrapper: withProvider({ locale: 'id-id' }) });
+    expect(result.current.locale).toBe('id-ID');
+  });
+
   it('can be mounted without the Mantine DatesProvider', () => {
     const { result } = renderHook(() => useBuildpadI18n(), {
       wrapper: withProvider({ locale: 'id', datesProvider: false }),
@@ -126,6 +157,19 @@ describe('useBuildpadTranslations', () => {
     expect(result.current.create_new).toBe('From prop');
     expect(result.current.add_existing).toBe('Tambah');
     expect(result.current.remove).toBe('Remove');
+  });
+
+  it('returns the same object across renders for structurally equal inline overrides', () => {
+    const { result, rerender } = renderHook(
+      ({ text }: { text: string }) => useBuildpadTranslations((d) => d.table, { noItems: text }),
+      { initialProps: { text: 'Nothing here' } },
+    );
+    const first = result.current;
+    rerender({ text: 'Nothing here' }); // new object literal, same content
+    expect(result.current).toBe(first);
+    rerender({ text: 'Changed' });
+    expect(result.current).not.toBe(first);
+    expect(result.current.noItems).toBe('Changed');
   });
 
   it('ignores undefined overrides so optional props do not blank strings', () => {

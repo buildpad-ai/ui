@@ -60,6 +60,10 @@ export function translate(
   const entry = lookupTranslation(dictionary, path);
   if (entry === undefined) return path;
   if (typeof entry === 'string') return interpolate(entry, values);
-  const count = typeof values?.count === 'number' ? values.count : Number(values?.count ?? 0);
-  return formatCount(locale, Number.isFinite(count) ? count : 0, entry, values);
+  const raw = values?.count;
+  const count = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN;
+  // Without a usable count there is nothing to pluralise: use the universal
+  // form and leave the caller's values (including `count`) untouched.
+  if (!Number.isFinite(count)) return interpolate(entry.other, values);
+  return formatCount(locale, count, entry, values);
 }

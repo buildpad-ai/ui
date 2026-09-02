@@ -17,5 +17,6 @@ export const bundledLocales: Record<string, BuildpadTranslations> = { en, id };
 /** The bundled catalog for a locale ("id-ID" → id), or `undefined`. */
 export function bundledTranslationsFor(locale: string | undefined | null): BuildpadTranslations | undefined {
   const primary = (locale ?? '').trim().split(/[-_]/)[0]?.toLowerCase();
-  return primary ? bundledLocales[primary] : undefined;
+  if (!primary || !Object.prototype.hasOwnProperty.call(bundledLocales, primary)) return undefined;
+  return bundledLocales[primary];
 }

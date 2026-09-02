@@ -76,12 +76,27 @@ describe('mergeTranslations', () => {
     expect(merged.a).not.toBe(base.a);
   });
 
-  it('merges plural forms field by field', () => {
+  it('replaces plural forms as a unit so English categories never leak into another locale', () => {
     const merged = mergeTranslations(defaultTranslations, {
-      common: { itemCount: { other: '{count} things' } },
+      common: { itemCount: { other: '{count} item' } },
     });
-    expect(merged.common.itemCount.one).toBe('{count} item');
-    expect(merged.common.itemCount.other).toBe('{count} things');
+    expect(merged.common.itemCount).toEqual({ other: '{count} item' });
+    // the base object is untouched
+    expect(defaultTranslations.common.itemCount.one).toBe('{count} item');
+  });
+
+  it('ignores prototype-polluting keys from parsed JSON', () => {
+    const hostile = JSON.parse('{"__proto__":{"polluted":"yes"},"common":{"save":"Ok"}}');
+    const merged = mergeTranslations(defaultTranslations, hostile);
+    expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
+    expect((merged as unknown as { polluted?: string }).polluted).toBeUndefined();
+    expect(({} as { polluted?: string }).polluted).toBeUndefined();
+    expect(merged.common.save).toBe('Ok');
+  });
+
+  it('a nested null override is ignored rather than wiping a subtree', () => {
+    const merged = mergeTranslations(defaultTranslations, { form: null as unknown as undefined });
+    expect(merged.form.validation.required).toBe('This field is required');
   });
 });
 
@@ -135,7 +150,18 @@ describe('lookupTranslation / translate', () => {
     );
     expect(translate(defaultTranslations, 'en', 'common.itemCount', { count: 1 })).toBe('1 item');
     expect(translate(defaultTranslations, 'en', 'common.itemCount', { count: 5 })).toBe('5 items');
+    expect(translate(defaultTranslations, 'en', 'common.itemCount', { count: '12' })).toBe('12 items');
     expect(translate(defaultTranslations, 'en', 'missing.key')).toBe('missing.key');
+  });
+
+  it('translate leaves a non-numeric count alone and uses the universal form', () => {
+    expect(translate(defaultTranslations, 'en', 'common.itemCount', { count: 'many' })).toBe('many items');
+    expect(translate(defaultTranslations, 'en', 'common.itemCount')).toBe('{count} items');
+  });
+
+  it('bundledTranslationsFor ignores prototype members', () => {
+    expect(bundledTranslationsFor('constructor')).toBeUndefined();
+    expect(bundledTranslationsFor('__proto__')).toBeUndefined();
   });
 });
 
@@ -212,7 +238,9 @@ describe('bundled locale parity', () => {
     };
     const mismatches: string[] = [];
     // Plural forms legitimately differ in which categories exist; compare `other`.
-    walk(defaultTranslations, id as BuildpadTranslations, 'id', mismatches);
+    for (const [code, catalog] of Object.entries(bundledLocales)) {
+      walk(defaultTranslations, catalog as BuildpadTranslations, code, mismatches);
+    }
     expect(mismatches.filter((m) => !/\.(one|zero|two|few|many)$/.test(m))).toEqual([]);
   });
 });

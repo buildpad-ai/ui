@@ -400,7 +400,7 @@
     },
     "services": {
       "name": "services",
-      "description": "Service classes for fields, collections, items, permissions, and DaaS API config, plus server-side guards: collection permissions (auth/enforcer) and module-level access keys (module-access/enforce).",
+      "description": "Service classes for fields, collections, items, permissions, and DaaS API config, plus server-side guards: collection permissions (auth/enforcer) and module-level access keys (module-access/enforce). Includes BuildpadI18nProvider (component locale + dictionary), which mounts Mantine DatesProvider.",
       "files": [
         {
           "source": "services/src/api-request.ts",
@@ -462,6 +462,10 @@
       "internalDependencies": [
         "types",
         "utils"
+      ],
+      "dependencies": [
+        "@mantine/dates",
+        "dayjs"
       ]
     },
     "hooks": {

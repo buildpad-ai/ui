@@ -13,11 +13,22 @@ export interface PluralForms {
   other: string;
 }
 
+/**
+ * True only for the plural-forms shape itself — an object whose keys are all
+ * CLDR categories. A namespace that merely has an `other: string` key next to
+ * unrelated keys is a namespace, not a plural entry.
+ */
+type IsPluralForms<T> = T extends PluralForms
+  ? Exclude<keyof T, keyof PluralForms> extends never
+    ? true
+    : false
+  : false;
+
 /** Recursive partial — what apps and props may pass as overrides. */
 export type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends string
     ? string
-    : T[K] extends PluralForms
+    : IsPluralForms<T[K]> extends true
       ? Partial<PluralForms>
       : T[K] extends object
         ? DeepPartial<T[K]>

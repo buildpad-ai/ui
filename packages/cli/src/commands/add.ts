@@ -322,11 +322,27 @@ export async function copyLibModule(
       // through here for consumers who already have the other twelve. Without
       // this guard every one of them is rewritten, silently discarding local
       // edits to files the header explicitly invites customising. Only write
-      // what is genuinely missing unless an overwrite was asked for.
+      // what is genuinely missing unless an overwrite was asked for —
+      // EXCEPT a file that is stale upstream and still pristine on disk: it is
+      // refreshed in place (nothing to lose), the same self-heal `add` applies
+      // to components. Otherwise a module gaining a file (i18n/*) would ship
+      // with a barrel that does not export what the new files need.
       if (!overwrite && fs.existsSync(targetPath)) {
         const existing = await fs.readFile(targetPath, 'utf-8');
-        writtenFiles.push(keepExisting(file, existing));
-        continue;
+        const prior = existingRecord?.files?.find(f => f.target === file.target);
+        const staleUpstream =
+          !!prior?.sourceSha256 && !!file.sourceSha256 && prior.sourceSha256 !== file.sourceSha256;
+        const pristine = !!prior && hashTransformed(existing) === prior.sha256;
+        if (!staleUpstream || !pristine) {
+          if (staleUpstream) {
+            spinner.warn(
+              `${file.target} is outdated but locally modified — keeping yours. Merge with: npx buildpad upgrade ${moduleName} --three-way`
+            );
+          }
+          writtenFiles.push(keepExisting(file, existing));
+          continue;
+        }
+        spinner.info(`${file.target} — refreshing unmodified copy (changed upstream)`);
       }
 
       if (await checkSource(file.source)) {
