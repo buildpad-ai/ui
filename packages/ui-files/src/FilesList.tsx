@@ -11,7 +11,13 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { formatFileSize, getFileCategory } from '@buildpad/types';
-import type { FileUpload, Folder } from '@buildpad/hooks';
+import {
+  useBuildpadI18n,
+  useBuildpadTranslations,
+  type FileUpload,
+  type Folder,
+} from '@buildpad/hooks';
+import { interpolate, type DeepPartial, type FilesTranslations } from '@buildpad/utils';
 
 export interface FilesListProps {
   folders: Folder[];
@@ -29,13 +35,12 @@ export interface FilesListProps {
   onDeleteFile?: (file: FileUpload) => void;
   canUpdate?: boolean;
   canDelete?: boolean;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
-function formatDate(value?: string): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
-}
+/** The components `Date#toLocaleDateString()` renders with no options. */
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric' };
 
 /**
  * Table layout rendering folders first, then files, with a selection
@@ -54,11 +59,19 @@ export const FilesList: React.FC<FilesListProps> = ({
   onDeleteFile,
   canUpdate = true,
   canDelete = true,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+  const { formatDate } = useBuildpadI18n();
+
   const selectedCount = files.filter((f) => selectedIds.has(f.id)).length;
   const allSelected = files.length > 0 && selectedCount === files.length;
   const someSelected = selectedCount > 0 && !allSelected;
   const showRowMenu = Boolean(onDownloadFile || (onDeleteFile && canDelete) || canUpdate);
+
+  // `formatDate` returns '' for an empty or invalid value.
+  const uploadedOn = (value?: string) => formatDate(value, DATE_OPTIONS) || t.emptyValue;
 
   return (
     <Table highlightOnHover verticalSpacing="sm" data-testid="files-list">
@@ -71,16 +84,16 @@ export const FilesList: React.FC<FilesListProps> = ({
                   checked={allSelected}
                   indeterminate={someSelected}
                   onChange={(e) => onToggleAll(e.currentTarget.checked)}
-                  aria-label="Select all files"
+                  aria-label={t.filesList.selectAllAriaLabel}
                   data-testid="files-select-all"
                 />
               )}
             </Table.Th>
           )}
-          <Table.Th>Name</Table.Th>
-          <Table.Th w={140}>Type</Table.Th>
-          <Table.Th w={120}>Size</Table.Th>
-          <Table.Th w={140}>Uploaded</Table.Th>
+          <Table.Th>{t.filesList.columns.name}</Table.Th>
+          <Table.Th w={140}>{t.filesList.columns.type}</Table.Th>
+          <Table.Th w={120}>{t.filesList.columns.size}</Table.Th>
+          <Table.Th w={140}>{t.filesList.columns.uploaded}</Table.Th>
           {showRowMenu && <Table.Th w={56} />}
         </Table.Tr>
       </Table.Thead>
@@ -105,11 +118,11 @@ export const FilesList: React.FC<FilesListProps> = ({
             </Table.Td>
             <Table.Td>
               <Text size="sm" c="dimmed">
-                Folder
+                {t.filesList.folderType}
               </Text>
             </Table.Td>
-            <Table.Td>—</Table.Td>
-            <Table.Td>—</Table.Td>
+            <Table.Td>{t.emptyValue}</Table.Td>
+            <Table.Td>{t.emptyValue}</Table.Td>
             {showRowMenu && <Table.Td />}
           </Table.Tr>
         ))}
@@ -125,7 +138,9 @@ export const FilesList: React.FC<FilesListProps> = ({
                 <Checkbox
                   checked={selectedIds.has(file.id)}
                   onChange={(e) => onToggleSelect(file.id, e.currentTarget.checked)}
-                  aria-label={`Select ${file.filename_download}`}
+                  aria-label={interpolate(t.filesList.selectAriaLabel, {
+                    filename: file.filename_download,
+                  })}
                 />
               </Table.Td>
             )}
@@ -141,11 +156,11 @@ export const FilesList: React.FC<FilesListProps> = ({
             </Table.Td>
             <Table.Td onClick={() => onOpenFile(file)}>
               <Text size="sm" c="dimmed" style={{ textTransform: 'capitalize' }}>
-                {getFileCategory(file.type)}
+                {t.fileCategory[getFileCategory(file.type)]}
               </Text>
             </Table.Td>
             <Table.Td onClick={() => onOpenFile(file)}>{formatFileSize(file.filesize)}</Table.Td>
-            <Table.Td onClick={() => onOpenFile(file)}>{formatDate(file.uploaded_on)}</Table.Td>
+            <Table.Td onClick={() => onOpenFile(file)}>{uploadedOn(file.uploaded_on)}</Table.Td>
             {showRowMenu && (
               <Table.Td onClick={(e) => e.stopPropagation()}>
                 <Menu position="bottom-end" withinPortal>
@@ -153,7 +168,7 @@ export const FilesList: React.FC<FilesListProps> = ({
                     <ActionIcon
                       variant="subtle"
                       color="gray"
-                      aria-label="File actions"
+                      aria-label={t.filesList.fileActionsAriaLabel}
                       data-testid="files-list-row-menu"
                     >
                       <IconDots size={16} />
@@ -165,7 +180,7 @@ export const FilesList: React.FC<FilesListProps> = ({
                         leftSection={<IconPencil size={14} />}
                         onClick={() => onOpenFile(file)}
                       >
-                        Edit
+                        {common.edit}
                       </Menu.Item>
                     )}
                     {onDownloadFile && (
@@ -173,7 +188,7 @@ export const FilesList: React.FC<FilesListProps> = ({
                         leftSection={<IconDownload size={14} />}
                         onClick={() => onDownloadFile(file)}
                       >
-                        Download
+                        {common.download}
                       </Menu.Item>
                     )}
                     {onDeleteFile && canDelete && (
@@ -182,7 +197,7 @@ export const FilesList: React.FC<FilesListProps> = ({
                         leftSection={<IconTrash size={14} />}
                         onClick={() => onDeleteFile(file)}
                       >
-                        Delete
+                        {common.delete}
                       </Menu.Item>
                     )}
                   </Menu.Dropdown>

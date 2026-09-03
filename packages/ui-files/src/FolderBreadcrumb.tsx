@@ -3,6 +3,8 @@
 import React from 'react';
 import { Anchor, Breadcrumbs, Text } from '@mantine/core';
 import { IconChevronRight } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/hooks';
+import type { DeepPartial, FilesTranslations } from '@buildpad/utils';
 
 export interface FolderPathItem {
   id: string;
@@ -12,10 +14,12 @@ export interface FolderPathItem {
 export interface FolderBreadcrumbProps {
   /** Ancestors from root → current (excluding the implicit root entry). */
   path: FolderPathItem[];
-  /** Label for the root crumb. */
+  /** Label for the root crumb. Defaults to the dictionary's `files.folderBreadcrumb.root`. */
   rootLabel?: string;
   /** Navigate to a folder id, or `null` for root. */
   onNavigate: (folderId: string | null) => void;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 /**
@@ -24,10 +28,12 @@ export interface FolderBreadcrumbProps {
  */
 export const FolderBreadcrumb: React.FC<FolderBreadcrumbProps> = ({
   path,
-  rootLabel = 'Files',
+  rootLabel,
   onNavigate,
+  translations,
 }) => {
-  const items = [{ id: null as string | null, name: rootLabel }, ...path];
+  const t = useBuildpadTranslations((d) => d.files, translations);
+  const items = [{ id: null as string | null, name: rootLabel ?? t.folderBreadcrumb.root }, ...path];
 
   return (
     <Breadcrumbs

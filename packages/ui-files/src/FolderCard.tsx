@@ -3,13 +3,16 @@
 import React from 'react';
 import { ActionIcon, Group, Menu, Paper, Text, ThemeIcon } from '@mantine/core';
 import { IconDots, IconFolder, IconPencil, IconTrash } from '@tabler/icons-react';
-import type { Folder } from '@buildpad/hooks';
+import { useBuildpadTranslations, type Folder } from '@buildpad/hooks';
+import type { DeepPartial, FilesTranslations } from '@buildpad/utils';
 
 export interface FolderCardProps {
   folder: Folder;
   onOpen?: (folder: Folder) => void;
   onRename?: (folder: Folder) => void;
   onDelete?: (folder: Folder) => void;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 /**
@@ -21,7 +24,10 @@ export const FolderCard: React.FC<FolderCardProps> = ({
   onOpen,
   onRename,
   onDelete,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
+  const common = useBuildpadTranslations((d) => d.common);
   const hasMenu = Boolean(onRename || onDelete);
 
   return (
@@ -50,7 +56,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
                 variant="subtle"
                 color="gray"
                 onClick={(e) => e.stopPropagation()}
-                aria-label="Folder actions"
+                aria-label={t.folderCard.folderActionsAriaLabel}
                 data-testid="folder-card-menu"
               >
                 <IconDots size={16} />
@@ -59,7 +65,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
             <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
               {onRename && (
                 <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => onRename(folder)}>
-                  Rename
+                  {t.folderCard.rename}
                 </Menu.Item>
               )}
               {onDelete && (
@@ -68,7 +74,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
                   leftSection={<IconTrash size={14} />}
                   onClick={() => onDelete(folder)}
                 >
-                  Delete
+                  {common.delete}
                 </Menu.Item>
               )}
             </Menu.Dropdown>

@@ -12,23 +12,31 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconCopy } from '@tabler/icons-react';
 import { formatFileSize } from '@buildpad/types';
-import type { FileUpload } from '@buildpad/hooks';
+import { useBuildpadI18n, useBuildpadTranslations, type FileUpload } from '@buildpad/hooks';
+import { interpolate, type DeepPartial, type FilesTranslations } from '@buildpad/utils';
 
 export interface FileInfoPanelProps {
   file: FileUpload;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
-function formatDateTime(value?: string): string {
-  if (!value) return '—';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
-}
+/** The components `Date#toLocaleString()` renders with no options. */
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
+  second: 'numeric',
+};
 
-function formatDuration(seconds?: number): string {
-  if (!seconds || Number.isNaN(seconds)) return '—';
+/** "m:ss" from a duration in seconds, or `null` when there is none. */
+function formatDuration(seconds: number | undefined, template: string): string | null {
+  if (!seconds || Number.isNaN(seconds)) return null;
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  return interpolate(template, { minutes: m, seconds: s.toString().padStart(2, '0') });
 }
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -46,31 +54,36 @@ const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, ch
  * Read-only metadata panel for a file: id (copyable), MIME type, size,
  * dimensions, duration, storage, and timestamps.
  */
-export const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ file }) => {
+export const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ file, translations }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
+  const { formatDateTime } = useBuildpadI18n();
   const hasDimensions = Boolean(file.width && file.height);
   const hasDuration = Boolean(file.duration);
+
+  // `formatDateTime` returns '' for an empty or invalid value.
+  const dateTime = (value?: string) => formatDateTime(value, DATE_TIME_OPTIONS) || t.emptyValue;
 
   return (
     <Paper withBorder radius="md" p="md" data-testid="file-info-panel">
       <Stack gap="sm">
         <Text size="sm" fw={600}>
-          File info
+          {t.fileInfoPanel.heading}
         </Text>
 
-        <Row label="ID">
+        <Row label={t.fileInfoPanel.rows.id}>
           <Group gap={4} wrap="nowrap" justify="flex-end">
             <Text size="xs" ff="monospace">
-              {file.id.slice(0, 8)}…
+              {interpolate(t.fileInfoPanel.idTruncated, { id: file.id.slice(0, 8) })}
             </Text>
             <CopyButton value={file.id} timeout={1500}>
               {({ copied, copy }) => (
-                <Tooltip label={copied ? 'Copied' : 'Copy ID'} withArrow>
+                <Tooltip label={copied ? t.fileInfoPanel.copied : t.fileInfoPanel.copyId} withArrow>
                   <ActionIcon
                     size="xs"
                     variant="subtle"
                     color={copied ? 'teal' : 'gray'}
                     onClick={copy}
-                    aria-label="Copy file ID"
+                    aria-label={t.fileInfoPanel.copyFileIdAriaLabel}
                     data-testid="file-info-copy-id"
                   >
                     {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
@@ -81,17 +94,21 @@ export const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ file }) => {
           </Group>
         </Row>
 
-        <Row label="Type">{file.type || '—'}</Row>
-        <Row label="Size">{formatFileSize(file.filesize)}</Row>
+        <Row label={t.fileInfoPanel.rows.type}>{file.type || t.emptyValue}</Row>
+        <Row label={t.fileInfoPanel.rows.size}>{formatFileSize(file.filesize)}</Row>
         {hasDimensions && (
-          <Row label="Dimensions">
-            {file.width} × {file.height} px
+          <Row label={t.fileInfoPanel.rows.dimensions}>
+            {interpolate(t.fileInfoPanel.dimensionsFormat, { width: file.width, height: file.height })}
           </Row>
         )}
-        {hasDuration && <Row label="Duration">{formatDuration(file.duration)}</Row>}
-        <Row label="Storage">{file.storage || '—'}</Row>
-        <Row label="Uploaded">{formatDateTime(file.uploaded_on)}</Row>
-        <Row label="Modified">{formatDateTime(file.modified_on)}</Row>
+        {hasDuration && (
+          <Row label={t.fileInfoPanel.rows.duration}>
+            {formatDuration(file.duration, t.fileInfoPanel.durationFormat) ?? t.emptyValue}
+          </Row>
+        )}
+        <Row label={t.fileInfoPanel.rows.storage}>{file.storage || t.emptyValue}</Row>
+        <Row label={t.fileInfoPanel.rows.uploaded}>{dateTime(file.uploaded_on)}</Row>
+        <Row label={t.fileInfoPanel.rows.modified}>{dateTime(file.modified_on)}</Row>
       </Stack>
     </Paper>
   );

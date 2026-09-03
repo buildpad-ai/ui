@@ -18,12 +18,14 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { readUrlIntParam, readUrlParam, useHydrated, useUrlListParams } from '@buildpad/hooks';
 import { notifications } from '@mantine/notifications';
 import {
+  useBuildpadTranslations,
   useFiles,
   useFolders,
   usePermissions,
   type FileUpload,
   type Folder,
 } from '@buildpad/hooks';
+import { interpolate, type DeepPartial, type FilesTranslations } from '@buildpad/utils';
 import { Upload } from '@buildpad/ui-interfaces/upload';
 import { FilesToolbar, type FilesView } from './FilesToolbar';
 import { FolderBreadcrumb, type FolderPathItem } from './FolderBreadcrumb';
@@ -55,6 +57,11 @@ export interface FileManagerProps {
   urlParams?: boolean;
   /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
   urlParamPrefix?: string;
+  /**
+   * Per-instance overrides of the `files` dictionary namespace, forwarded to
+   * every sub-component (prop > `BuildpadI18nProvider` > English defaults).
+   */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 /**
@@ -93,7 +100,9 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
   filesCollection = 'daas_files',
   urlParams = true,
   urlParamPrefix = '',
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
   const { uploadFiles, fetchFiles, importFromUrl, deleteFile, deleteFiles, getDownloadUrl } =
     useFiles();
   const { fetchFolders, fetchFolder, createFolder, updateFolder, deleteFolder } = useFolders();
@@ -197,8 +206,8 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
     } catch (err) {
       notifications.show({
         color: 'red',
-        title: 'Failed to load files',
-        message: err instanceof Error ? err.message : 'Unknown error',
+        title: t.fileManager.notifications.loadFailedTitle,
+        message: err instanceof Error ? err.message : t.unknownError,
       });
     } finally {
       setListLoading(false);
@@ -211,6 +220,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
     enableFolders,
     fetchFiles,
     fetchFolders,
+    t,
   ]);
 
   useEffect(() => {
@@ -359,10 +369,13 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
       try {
         if (renameTarget) {
           await updateFolder(renameTarget.id, { name });
-          notifications.show({ color: 'green', message: 'Folder renamed' });
+          notifications.show({ color: 'green', message: t.fileManager.notifications.folderRenamed });
         } else {
           await createFolder({ name, parent: currentFolder });
-          notifications.show({ color: 'green', message: `Folder “${name}” created` });
+          notifications.show({
+            color: 'green',
+            message: interpolate(t.fileManager.notifications.folderCreated, { name }),
+          });
         }
         setFolderDialogOpen(false);
         setRenameTarget(null);
@@ -370,14 +383,16 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
       } catch (err) {
         notifications.show({
           color: 'red',
-          title: renameTarget ? 'Could not rename folder' : 'Could not create folder',
-          message: err instanceof Error ? err.message : 'Unknown error',
+          title: renameTarget
+            ? t.fileManager.notifications.renameFolderFailedTitle
+            : t.fileManager.notifications.createFolderFailedTitle,
+          message: err instanceof Error ? err.message : t.unknownError,
         });
       } finally {
         setFolderSaving(false);
       }
     },
-    [renameTarget, updateFolder, createFolder, currentFolder, load]
+    [renameTarget, updateFolder, createFolder, currentFolder, load, t]
   );
 
   const requestBulkDelete = useCallback(() => {
@@ -403,13 +418,13 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
     try {
       if (folderPendingDelete) {
         await deleteFolder(folderPendingDelete.id);
-        notifications.show({ color: 'green', message: 'Folder deleted' });
+        notifications.show({ color: 'green', message: t.fileManager.notifications.folderDeleted });
       } else if (filePendingDelete) {
         await deleteFile(filePendingDelete.id);
-        notifications.show({ color: 'green', message: 'File deleted' });
+        notifications.show({ color: 'green', message: t.fileManager.notifications.fileDeleted });
       } else {
         await deleteFiles([...selectedIds]);
-        notifications.show({ color: 'green', message: 'Files deleted' });
+        notifications.show({ color: 'green', message: t.fileManager.notifications.filesDeleted });
         setSelectedIds(new Set());
       }
       setDeleteOpen(false);
@@ -419,13 +434,13 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
     } catch (err) {
       notifications.show({
         color: 'red',
-        title: 'Delete failed',
-        message: err instanceof Error ? err.message : 'Unknown error',
+        title: t.fileManager.notifications.deleteFailedTitle,
+        message: err instanceof Error ? err.message : t.unknownError,
       });
     } finally {
       setDeleting(false);
     }
-  }, [folderPendingDelete, filePendingDelete, deleteFolder, deleteFile, deleteFiles, selectedIds, load]);
+  }, [folderPendingDelete, filePendingDelete, deleteFolder, deleteFile, deleteFiles, selectedIds, load, t]);
 
   const handleRowDownload = useCallback(
     async (file: FileUpload) => {
@@ -433,10 +448,10 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
         const url = await getDownloadUrl(file.id);
         window.open(url, '_blank', 'noopener');
       } catch {
-        notifications.show({ color: 'red', message: 'Could not start download' });
+        notifications.show({ color: 'red', message: t.fileManager.notifications.downloadFailed });
       }
     },
-    [getDownloadUrl]
+    [getDownloadUrl, t]
   );
 
   const uploadAffordance = useMemo(
@@ -457,12 +472,12 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
           onImportFromUrl={(url) => importFromUrl(url, { folder: currentFolder ?? undefined })}
           onInput={() => {
             setUploadProgress(null);
-            notifications.show({ color: 'green', message: 'Upload complete' });
+            notifications.show({ color: 'green', message: t.fileManager.notifications.uploadComplete });
             void load();
           }}
         />
       ) : null,
-    [createAllowed, currentFolder, uploadFiles, importFromUrl, load]
+    [createAllowed, currentFolder, uploadFiles, importFromUrl, load, t]
   );
 
   const isEmpty = !listLoading && folders.length === 0 && files.length === 0;
@@ -471,7 +486,9 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
 
   return (
     <Stack gap="md" className="bp-file-manager" data-testid="file-manager">
-      {enableFolders && <FolderBreadcrumb path={path} onNavigate={navigateTo} />}
+      {enableFolders && (
+        <FolderBreadcrumb path={path} onNavigate={navigateTo} translations={translations} />
+      )}
 
       <FilesToolbar
         search={search}
@@ -479,6 +496,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
         view={view}
         onViewChange={setView}
         onNewFolder={enableFolders && createAllowed ? openCreateFolder : undefined}
+        translations={translations}
       />
 
       {uploadAffordance && (
@@ -497,6 +515,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
             deleting={deleting}
             onDelete={requestBulkDelete}
             onClear={() => setSelectedIds(new Set())}
+            translations={translations}
           />
         </Paper>
       )}
@@ -508,10 +527,10 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
       ) : isEmpty ? (
         <Center mih={200}>
           <Text c="dimmed" size="sm">
-            No files here yet.{' '}
+            {t.fileManager.emptyState.title}{' '}
             {createAllowed
-              ? 'Drag files above or use the upload button to get started.'
-              : 'No files are available.'}
+              ? t.fileManager.emptyState.uploadHint
+              : t.fileManager.emptyState.readOnlyHint}
           </Text>
         </Center>
       ) : view === 'grid' ? (
@@ -524,6 +543,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
           onOpenFile={(file) => onFileClick?.(file)}
           onRenameFolder={enableFolders && updateAllowed ? openRenameFolder : undefined}
           onDeleteFolder={enableFolders && deleteAllowed ? requestFolderDelete : undefined}
+          translations={translations}
         />
       ) : (
         <FilesList
@@ -538,6 +558,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
           onDeleteFile={requestFileDelete}
           canUpdate={updateAllowed}
           canDelete={deleteAllowed}
+          translations={translations}
         />
       )}
 
@@ -546,8 +567,15 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
           {/* The total is omitted while filtering — see the totalPages note. */}
           <Text size="xs" c="dimmed" data-testid="file-manager-count">
             {totalIsTrustworthy
-              ? `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`
-              : `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + files.length}`}
+              ? interpolate(t.fileManager.pagination.showingOfTotal, {
+                  from: (page - 1) * pageSize + 1,
+                  to: Math.min(page * pageSize, total),
+                  total,
+                })
+              : interpolate(t.fileManager.pagination.showingRange, {
+                  from: (page - 1) * pageSize + 1,
+                  to: (page - 1) * pageSize + files.length,
+                })}
           </Text>
           {totalPages > 1 && (
             <Pagination
@@ -564,13 +592,18 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
         opened={folderDialogOpen}
         loading={folderSaving}
         initialName={renameTarget?.name ?? ''}
-        title={renameTarget ? 'Rename Folder' : 'New Folder'}
-        submitLabel={renameTarget ? 'Rename' : 'Create'}
+        title={
+          renameTarget ? t.fileManager.folderDialog.renameTitle : t.fileManager.folderDialog.createTitle
+        }
+        submitLabel={
+          renameTarget ? t.fileManager.folderDialog.renameSubmit : t.fileManager.folderDialog.createSubmit
+        }
         onSubmit={handleFolderSubmit}
         onClose={() => {
           setFolderDialogOpen(false);
           setRenameTarget(null);
         }}
+        translations={translations}
       />
 
       <DeleteConfirmModal
@@ -584,6 +617,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
           setFolderPendingDelete(null);
           setFilePendingDelete(null);
         }}
+        translations={translations}
       />
     </Stack>
   );

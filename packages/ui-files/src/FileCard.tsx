@@ -11,7 +11,8 @@ import {
   IconCode,
 } from '@tabler/icons-react';
 import { getAssetUrl, getFileCategory, formatFileSize } from '@buildpad/types';
-import type { FileUpload } from '@buildpad/hooks';
+import { useBuildpadTranslations, type FileUpload } from '@buildpad/hooks';
+import { interpolate, type DeepPartial, type FilesTranslations } from '@buildpad/utils';
 
 export interface FileCardProps {
   file: FileUpload;
@@ -19,6 +20,8 @@ export interface FileCardProps {
   selected?: boolean;
   onSelect?: (id: string, checked: boolean) => void;
   onOpen?: (file: FileUpload) => void;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 const CATEGORY_ICON: Record<string, React.ReactNode> = {
@@ -40,7 +43,9 @@ export const FileCard: React.FC<FileCardProps> = ({
   selected = false,
   onSelect,
   onOpen,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
   const category = getFileCategory(file.type);
   const [imgError, setImgError] = useState(false);
   const showImage = category === 'image' && !imgError;
@@ -61,7 +66,7 @@ export const FileCard: React.FC<FileCardProps> = ({
           checked={selected}
           onChange={(e) => onSelect?.(file.id, e.currentTarget.checked)}
           onClick={(e) => e.stopPropagation()}
-          aria-label={`Select ${file.filename_download}`}
+          aria-label={interpolate(t.fileCard.selectAriaLabel, { filename: file.filename_download })}
           data-testid="file-card-checkbox"
           style={{ position: 'absolute', top: 8, left: 8, zIndex: 2 }}
         />
@@ -98,7 +103,7 @@ export const FileCard: React.FC<FileCardProps> = ({
         </Text>
         <Group justify="space-between" gap="xs" wrap="nowrap">
           <Badge size="xs" variant="light" color="gray" style={{ textTransform: 'capitalize' }}>
-            {category}
+            {t.fileCategory[category]}
           </Badge>
           <Text size="xs" c="dimmed">
             {formatFileSize(file.filesize)}

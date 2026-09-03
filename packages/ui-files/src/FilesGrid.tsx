@@ -3,6 +3,7 @@
 import React from 'react';
 import { SimpleGrid } from '@mantine/core';
 import type { FileUpload, Folder } from '@buildpad/hooks';
+import type { DeepPartial, FilesTranslations } from '@buildpad/utils';
 import { FileCard } from './FileCard';
 import { FolderCard } from './FolderCard';
 
@@ -16,6 +17,8 @@ export interface FilesGridProps {
   onOpenFile: (file: FileUpload) => void;
   onRenameFolder?: (folder: Folder) => void;
   onDeleteFolder?: (folder: Folder) => void;
+  /** Per-instance overrides of the `files` dictionary namespace, forwarded to the cards. */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 /**
@@ -31,6 +34,7 @@ export const FilesGrid: React.FC<FilesGridProps> = ({
   onOpenFile,
   onRenameFolder,
   onDeleteFolder,
+  translations,
 }) => {
   return (
     <SimpleGrid
@@ -45,6 +49,7 @@ export const FilesGrid: React.FC<FilesGridProps> = ({
           onOpen={onOpenFolder}
           onRename={onRenameFolder}
           onDelete={onDeleteFolder}
+          translations={translations}
         />
       ))}
       {files.map((file) => (
@@ -55,6 +60,7 @@ export const FilesGrid: React.FC<FilesGridProps> = ({
           selected={selectedIds.has(file.id)}
           onSelect={onToggleSelect}
           onOpen={onOpenFile}
+          translations={translations}
         />
       ))}
     </SimpleGrid>
