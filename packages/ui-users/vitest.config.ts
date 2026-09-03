@@ -36,6 +36,14 @@ export default defineConfig({
       'react-dom': resolve(rootModules, 'react-dom'),
       'react/jsx-runtime': resolve(rootModules, 'react/jsx-runtime'),
       'react/jsx-dev-runtime': resolve(rootModules, 'react/jsx-dev-runtime'),
+      // VTable (aliased ui-table source) imports @dnd-kit, which resolves from
+      // ui-table's own node_modules and binds to the `.pnpm` React copy — a
+      // second instance next to the hoisted root React that react-dom above
+      // renders with (null-dispatcher crash in useSensor). Pin dnd-kit to the
+      // root install for the same reason react/react-dom are.
+      '@dnd-kit/core': resolve(rootModules, '@dnd-kit/core'),
+      '@dnd-kit/sortable': resolve(rootModules, '@dnd-kit/sortable'),
+      '@dnd-kit/utilities': resolve(rootModules, '@dnd-kit/utilities'),
     },
     // Aliased ui-interfaces sources must share ONE Mantine (and React) copy
     // with the tests — a second pnpm-keyed instance crashes with a null

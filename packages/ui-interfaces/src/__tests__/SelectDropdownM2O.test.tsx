@@ -19,6 +19,7 @@ jest.mock("@buildpad/hooks", () => ({
     useRelationM2OItem: jest.fn(),
 }));
 jest.mock("@buildpad/services", () => ({
+    ...jest.requireActual("@buildpad/services"),
     apiRequest: jest.fn(),
 }));
 

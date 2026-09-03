@@ -9,6 +9,8 @@ import {
   Text,
 } from '@mantine/core';
 import type { Field, Permission, PermissionAction } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import type { RelationInfo } from './PermissionFilterTypes';
 import { fetchCollectionFields, fetchCollectionRelations } from './permissionMetadata';
 import { PermissionFieldsTab } from './PermissionFieldsTab';
@@ -35,6 +37,8 @@ export interface PermissionDetailModalProps {
   /** Rendered as a Delete action when provided (existing permissions only). */
   onDelete?: () => void;
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemPermissions`) */
+  translations?: DeepPartial<InterfacesTranslations['systemPermissions']>;
 }
 
 const EMPTY_DRAFT: Pick<Permission, 'fields' | 'permissions' | 'validation' | 'presets'> = {
@@ -65,7 +69,9 @@ export function PermissionDetailModal({
   onSave,
   onDelete,
   'data-testid': testId,
+  translations,
 }: PermissionDetailModalProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemPermissions, translations);
   const [draft, setDraft] = useState<Partial<Permission>>({ collection, action, ...EMPTY_DRAFT });
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -147,32 +153,32 @@ export function PermissionDetailModal({
     if (['read', 'update', 'delete', 'share'].includes(action)) {
       tabList.push({
         value: 'permissions',
-        label: 'Item Permissions',
+        label: t.detailModal.tabs.itemPermissions,
         hasValue: hasObjectValue(draft.permissions),
       });
     }
     if (['create', 'read', 'update'].includes(action)) {
       tabList.push({
         value: 'fields',
-        label: 'Field Permissions',
+        label: t.detailModal.tabs.fieldPermissions,
         hasValue: draft.fields !== null && draft.fields !== undefined,
       });
     }
     if (['create', 'update'].includes(action)) {
       tabList.push({
         value: 'validation',
-        label: 'Field Validation',
+        label: t.detailModal.tabs.fieldValidation,
         hasValue: hasObjectValue(draft.validation),
       });
       tabList.push({
         value: 'presets',
-        label: 'Field Presets',
+        label: t.detailModal.tabs.fieldPresets,
         hasValue: hasObjectValue(draft.presets),
       });
     }
 
     return tabList;
-  }, [action, draft]);
+  }, [action, draft, t]);
 
   const currentTab = activeTab ?? tabs[0]?.value ?? null;
 
@@ -192,7 +198,11 @@ export function PermissionDetailModal({
     onClose();
   };
 
-  const modalTitle = `${policyName || 'Policy'} → ${collection} → ${action.toUpperCase()}`;
+  const modalTitle = interpolate(t.detailModal.title, {
+    policyName: policyName || t.policyFallback,
+    collection,
+    action: t.actions[action].toUpperCase(),
+  });
 
   return (
     <>
@@ -233,6 +243,7 @@ export function PermissionDetailModal({
                   appMinimal={appMinimal?.permissions}
                   onChange={setDraft}
                   data-testid={testId ? `${testId}-filter` : undefined}
+                  translations={translations}
                 />
               </Tabs.Panel>
             )}
@@ -247,6 +258,7 @@ export function PermissionDetailModal({
                   appMinimal={appMinimal?.fields}
                   onChange={setDraft}
                   data-testid={testId ? `${testId}-fields` : undefined}
+                  translations={translations}
                 />
               </Tabs.Panel>
             )}
@@ -259,6 +271,7 @@ export function PermissionDetailModal({
                   appMinimal={appMinimal?.validation}
                   onChange={setDraft}
                   data-testid={testId ? `${testId}-validation` : undefined}
+                  translations={translations}
                 />
               </Tabs.Panel>
             )}
@@ -271,6 +284,7 @@ export function PermissionDetailModal({
                   fields={fields}
                   onChange={setDraft}
                   data-testid={testId ? `${testId}-presets` : undefined}
+                  translations={translations}
                 />
               </Tabs.Panel>
             )}
@@ -285,7 +299,7 @@ export function PermissionDetailModal({
                   onClick={() => setDeleteConfirmOpen(true)}
                   data-testid={testId ? `${testId}-delete` : undefined}
                 >
-                  Delete
+                  {t.detailModal.delete}
                 </Button>
               )}
             </Group>
@@ -295,10 +309,10 @@ export function PermissionDetailModal({
                 onClick={onClose}
                 data-testid={testId ? `${testId}-cancel` : undefined}
               >
-                Cancel
+                {t.detailModal.cancel}
               </Button>
               <Button onClick={handleSave} data-testid={testId ? `${testId}-save` : undefined}>
-                {isNew ? 'Create' : 'Save'}
+                {isNew ? t.detailModal.create : t.detailModal.save}
               </Button>
             </Group>
           </Group>
@@ -309,25 +323,25 @@ export function PermissionDetailModal({
       <Modal
         opened={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
-        title="Remove permission"
+        title={t.detailModal.removeDialog.title}
         centered
         size="sm"
         transitionProps={{ duration: 0 }}
         data-testid={testId ? `${testId}-delete-dialog` : undefined}
       >
         <Text size="sm" mb="md">
-          Are you sure you want to remove this permission? This action cannot be undone.
+          {t.detailModal.removeDialog.message}
         </Text>
         <Group justify="flex-end">
           <Button variant="default" onClick={() => setDeleteConfirmOpen(false)}>
-            Cancel
+            {t.detailModal.removeDialog.cancel}
           </Button>
           <Button
             color="red"
             onClick={executeDelete}
             data-testid={testId ? `${testId}-delete-confirm` : undefined}
           >
-            Remove
+            {t.detailModal.removeDialog.confirm}
           </Button>
         </Group>
       </Modal>

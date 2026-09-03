@@ -694,7 +694,7 @@ Source Code Changes           Registry Template
 │                                                                        │
 │  Browser (same-origin)                                                │
 │  ┌────────────────────────────────────────────────────────────┐      │
-│  │  Login Page (/app/login/page.tsx)                          │      │
+│  │  Login Page (/app/[lang]/login/page.tsx)                   │      │
 │  │  → POST /api/auth/login (same-origin, no CORS)            │      │
 │  └────────────────────┬───────────────────────────────────────┘      │
 │                       │                                               │
@@ -742,7 +742,7 @@ Source Code Changes           Registry Template
 │  │ • types, services, hooks → lib/buildpad/│                       │
 │  │ • API proxy routes → app/api/            │                         │
 │  │ • Auth routes → app/api/auth/            │                         │
-│  │ • Login page → app/login/page.tsx        │                         │
+│  │ • Login page → app/[lang]/login/page.tsx │                         │
 │  │ • Supabase utilities → lib/supabase/     │                         │
 │  │ • Middleware → middleware.ts              │                         │
 │  └─────────────────────┬───────────────────┘                         │

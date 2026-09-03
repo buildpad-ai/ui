@@ -57,9 +57,22 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { CollectionsService, FieldsService, fullBaselineFields } from '@buildpad/services';
+import {
+  CollectionsService,
+  FieldsService,
+  fullBaselineFields,
+  useBuildpadI18n,
+  useBuildpadTranslations,
+} from '@buildpad/services';
 import { useFormDefinitions, usePermissions } from '@buildpad/hooks';
-import { interfaceForFieldType, interfaceRequiresChoices, PROVISIONABLE_INTERFACES } from '@buildpad/utils';
+import {
+  interfaceForFieldType,
+  interfaceRequiresChoices,
+  interpolate,
+  PROVISIONABLE_INTERFACES,
+  type DeepPartial,
+  type FormsTranslations,
+} from '@buildpad/utils';
 import type {
   Field,
   FieldSpec,
@@ -68,11 +81,16 @@ import type {
   FormFieldConfig,
   FormSection,
 } from '@buildpad/types';
-import { FieldPalette, PALETTE_ID_PREFIX, NEWFIELD_ID_PREFIX } from './FieldPalette';
+import {
+  FieldPalette,
+  PALETTE_ID_PREFIX,
+  NEWFIELD_ID_PREFIX,
+  catalogInterfaceLabel,
+} from './FieldPalette';
 import { BuilderCanvas } from './BuilderCanvas';
 import { FieldSettingsPanel } from './FieldSettingsPanel';
 import { FormPreview } from './FormPreview';
-import { FormsEmptyState } from './FormsEmptyState';
+import { FormsEmptyState, interpolateNodes } from './FormsEmptyState';
 import { AddFieldModal, type AddFieldResult } from './AddFieldModal';
 import { NameFieldModal } from './NameFieldModal';
 import type { Choice } from './ChoicesInput';
@@ -95,6 +113,11 @@ export interface FormBuilderProps {
   formsCollection?: string;
   /** Called after a successful save with the persisted definition. */
   onSaved?: (def: FormDefinition) => void;
+  /**
+   * Per-instance overrides of the dictionary strings (`forms` namespace).
+   * Passed down to every pane, modal and the preview.
+   */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
@@ -227,13 +250,14 @@ function resolveDropTarget(
 
 /**
  * Insert a placed field config at a drop target. A null `sectionId` appends to
- * the last section (creating a default one when there are none). Deduplicates:
- * a field can only be placed once.
+ * the last section (creating a default one — titled `defaultSectionTitle` —
+ * when there are none). Deduplicates: a field can only be placed once.
  */
 function insertFieldAt(
   sections: FormSection[],
   drop: DropTarget,
   config: FormFieldConfig,
+  defaultSectionTitle: string,
 ): FormSection[] {
   if (sections.some((s) => s.fields.some((f) => f.field === config.field))) {
     return sections;
@@ -245,7 +269,9 @@ function insertFieldAt(
       : sections.findIndex((s) => s.id === drop.sectionId);
   if (targetIdx === -1) {
     if (sections.length === 0) {
-      return [{ id: genId('section'), title: 'Details', fields: [config] }];
+      return [
+        { id: genId('section'), title: defaultSectionTitle, fields: [config] },
+      ];
     }
     const next = sections.map((s, i) =>
       i === sections.length - 1 ? { ...s, fields: [...s.fields, config] } : s,
@@ -268,9 +294,12 @@ export function FormBuilder({
   definitionId,
   formsCollection,
   onSaved,
+  translations,
 }: FormBuilderProps) {
   const { get, create, update } = useFormDefinitions(formsCollection);
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions();
+  const t = useBuildpadTranslations((d) => d.forms, translations);
+  const { formatCount } = useBuildpadI18n();
 
   const [schemaFields, setSchemaFields] = useState<Field[]>([]);
   // Effective target collection: the prop for new screens, or the loaded
@@ -336,6 +365,8 @@ export function FormBuilder({
     canPerform(formsCollection ?? 'fb_definitions', 'update');
 
   // ---- Load schema + (optional) existing definition ----
+  // `t` is a dependency only for the fallback messages; `loadedRef` keeps a
+  // dictionary/locale change from reloading.
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
@@ -360,7 +391,9 @@ export function FormBuilder({
             // Most likely the definitions collection doesn't exist yet.
             setDefinitionsMissing(true);
             setLoadError(
-              err instanceof Error ? err.message : 'Failed to load definition',
+              err instanceof Error
+                ? err.message
+                : t.formBuilder.error.loadDefinitionFailed,
             );
             return;
           }
@@ -368,7 +401,13 @@ export function FormBuilder({
           // Fresh definition: start with a single default section.
           setCollection(effectiveCollection);
           setName('');
-          setSections([{ id: genId('section'), title: 'Details', fields: [] }]);
+          setSections([
+            {
+              id: genId('section'),
+              title: t.formBuilder.defaultSectionTitle,
+              fields: [],
+            },
+          ]);
         }
 
         if (effectiveCollection) {
@@ -384,7 +423,9 @@ export function FormBuilder({
         }
       } catch (err) {
         setLoadError(
-          err instanceof Error ? err.message : 'Failed to load collection schema',
+          err instanceof Error
+            ? err.message
+            : t.formBuilder.error.loadSchemaFailed,
         );
       } finally {
         setLoading(false);
@@ -392,7 +433,7 @@ export function FormBuilder({
     };
 
     load();
-  }, [targetCollection, definitionId, get, reloadNonce]);
+  }, [targetCollection, definitionId, get, reloadNonce, t]);
 
   /** Re-run the schema/definition load (e.g. after provisioning the collection). */
   const reload = useCallback(() => {
@@ -454,9 +495,15 @@ export function FormBuilder({
   const addSection = useCallback(() => {
     setSections((prev) => [
       ...prev,
-      { id: genId('section'), title: `Section ${prev.length + 1}`, fields: [] },
+      {
+        id: genId('section'),
+        title: interpolate(t.formBuilder.newSectionTitle, {
+          number: prev.length + 1,
+        }),
+        fields: [],
+      },
     ]);
-  }, []);
+  }, [t]);
 
   const renameSection = useCallback((sectionId: string, title: string) => {
     setSections((prev) =>
@@ -477,22 +524,31 @@ export function FormBuilder({
   );
 
   // Place a full field config into the last section (creating one if needed).
-  const placeConfig = useCallback((config: FormFieldConfig) => {
-    setSections((prev) => {
-      // Already placed (e.g. a stray click fired right after a drag-drop) — no-op.
-      if (prev.some((s) => s.fields.some((f) => f.field === config.field))) {
-        return prev;
-      }
-      if (prev.length === 0) {
-        return [{ id: genId('section'), title: 'Details', fields: [config] }];
-      }
-      // Add to the last section by default.
-      const next = prev.map((s) => ({ ...s, fields: [...s.fields] }));
-      next[next.length - 1].fields.push(config);
-      return next;
-    });
-    setSelectedField(config.field);
-  }, []);
+  const placeConfig = useCallback(
+    (config: FormFieldConfig) => {
+      setSections((prev) => {
+        // Already placed (e.g. a stray click fired right after a drag-drop) — no-op.
+        if (prev.some((s) => s.fields.some((f) => f.field === config.field))) {
+          return prev;
+        }
+        if (prev.length === 0) {
+          return [
+            {
+              id: genId('section'),
+              title: t.formBuilder.defaultSectionTitle,
+              fields: [config],
+            },
+          ];
+        }
+        // Add to the last section by default.
+        const next = prev.map((s) => ({ ...s, fields: [...s.fields] }));
+        next[next.length - 1].fields.push(config);
+        return next;
+      });
+      setSelectedField(config.field);
+    },
+    [t],
+  );
 
   const addField = useCallback(
     (fieldKey: string) => placeConfig({ field: fieldKey }),
@@ -555,12 +611,17 @@ export function FormBuilder({
         prev.some((f) => f.field === fieldKey) ? prev : [...prev, synth],
       );
       setSections((prev) =>
-        insertFieldAt(prev, drop, { field: fieldKey }),
+        insertFieldAt(
+          prev,
+          drop,
+          { field: fieldKey },
+          t.formBuilder.defaultSectionTitle,
+        ),
       );
       setSelectedField(fieldKey);
       setPendingDrop(null);
     },
-    [pendingDrop, collection],
+    [pendingDrop, collection, t],
   );
 
   /**
@@ -619,6 +680,8 @@ export function FormBuilder({
       const created = await new FieldsService().createField(collection, {
         field: EXTRAS_COLUMN,
         type: 'json',
+        // Persisted DaaS column label of the hidden jsonb tail (schema
+        // metadata, never rendered by the builder) — not UI copy.
         label: 'Extras',
         hidden: true,
       });
@@ -627,14 +690,17 @@ export function FormBuilder({
       );
       notifications.show({
         color: 'green',
-        title: 'Extras column added',
-        message: `Added an “${EXTRAS_COLUMN}” JSON column to ${collection} to hold extra fields.`,
+        title: t.formBuilder.notify.extrasAdded.title,
+        message: interpolate(t.formBuilder.notify.extrasAdded.message, {
+          column: EXTRAS_COLUMN,
+          collection,
+        }),
       });
     } catch {
       // Column may already exist server-side, or we lack rights — either way,
       // don't block the author. The save-time guard reports a genuine absence.
     }
-  }, [schemaFields, canProvisionSchema, collection]);
+  }, [schemaFields, canProvisionSchema, collection, t]);
 
   /**
    * Provision and place a brand-new field. Real columns are created via the DDL
@@ -665,8 +731,11 @@ export function FormBuilder({
         placeConfig({ field: created.field });
         notifications.show({
           color: 'green',
-          title: 'Field created',
-          message: `“${result.spec.label ?? created.field}” was added to ${collection}.`,
+          title: t.formBuilder.notify.fieldCreated.title,
+          message: interpolate(t.formBuilder.notify.fieldCreated.message, {
+            label: result.spec.label ?? created.field,
+            collection,
+          }),
         });
       } else {
         await ensureExtrasColumn();
@@ -679,7 +748,7 @@ export function FormBuilder({
         });
       }
     },
-    [collection, placeConfig, ensureExtrasColumn],
+    [collection, placeConfig, ensureExtrasColumn, t],
   );
 
   const removeField = useCallback((fieldKey: string) => {
@@ -848,12 +917,12 @@ export function FormBuilder({
   const draft = useMemo<FormDefinition>(
     () => ({
       id: savedId != null ? String(savedId) : undefined,
-      name: name.trim() || 'Untitled form',
+      name: name.trim() || t.formBuilder.untitledForm,
       target_collection: collection,
       key: screenKey.trim() || null,
       sections,
     }),
-    [savedId, name, screenKey, collection, sections],
+    [savedId, name, screenKey, collection, sections, t],
   );
 
   const handleSave = useCallback(async () => {
@@ -871,8 +940,10 @@ export function FormBuilder({
         if (!FIELD_KEY_PATTERN.test(key)) {
           notifications.show({
             color: 'red',
-            title: 'Invalid field name',
-            message: `“${key}” isn’t a valid column name (lowercase letters, numbers, underscores; start with a letter).`,
+            title: t.formBuilder.notify.invalidFieldName.title,
+            message: interpolate(t.formBuilder.notify.invalidFieldName.message, {
+              key,
+            }),
           });
           return;
         }
@@ -882,8 +953,10 @@ export function FormBuilder({
           if (!choices || choices.length === 0) {
             notifications.show({
               color: 'red',
-              title: 'Choices required',
-              message: `“${spec.label || key}” is a choice field — add at least one choice in the settings panel before saving.`,
+              title: t.formBuilder.notify.choicesRequired.title,
+              message: interpolate(t.formBuilder.notify.choicesRequired.message, {
+                label: spec.label || key,
+              }),
             });
             return;
           }
@@ -898,17 +971,14 @@ export function FormBuilder({
       // Auto-create the target collection on the first save when none is bound.
       if (autoCreate) {
         if (!canProvisionSchema) {
-          throw new Error(
-            'No target collection is set, and you lack the schema rights to create one. Bind this form to an existing collection instead.',
-          );
+          throw new Error(t.formBuilder.error.noTargetNoRights);
         }
         const screenName = name.trim();
         if (!screenName) {
           notifications.show({
             color: 'red',
-            title: 'Name required',
-            message:
-              'Enter a form name first — the new collection is named after it.',
+            title: t.formBuilder.notify.nameRequired.title,
+            message: t.formBuilder.notify.nameRequired.message,
           });
           return;
         }
@@ -947,20 +1017,28 @@ export function FormBuilder({
       if (autoCreate) {
         notifications.show({
           color: 'green',
-          title: 'Collection created',
-          message: `Created “${resolvedCollection}” with ${provisioned.length} field(s).`,
+          title: t.formBuilder.notify.collectionCreated.title,
+          message: formatCount(
+            provisioned.length,
+            t.formBuilder.notify.collectionCreated.message,
+            { collection: resolvedCollection },
+          ),
         });
       } else if (provisioned.length > 0) {
         notifications.show({
           color: 'green',
-          title: 'Fields added',
-          message: `Provisioned ${provisioned.length} new field(s) on ${resolvedCollection}.`,
+          title: t.formBuilder.notify.fieldsAdded.title,
+          message: formatCount(
+            provisioned.length,
+            t.formBuilder.notify.fieldsAdded.message,
+            { collection: resolvedCollection },
+          ),
         });
       }
 
       const payload: FormDefinition = {
         id: savedId != null ? String(savedId) : undefined,
-        name: name.trim() || 'Untitled form',
+        name: name.trim() || t.formBuilder.untitledForm,
         target_collection: resolvedCollection,
         key: screenKey.trim() || null,
         sections,
@@ -975,19 +1053,21 @@ export function FormBuilder({
       setDefinitionsMissing(false);
       notifications.show({
         color: 'green',
-        title: 'Saved',
-        message: `“${saved.name}” has been saved.`,
+        title: t.formBuilder.notify.saved.title,
+        message: interpolate(t.formBuilder.notify.saved.message, {
+          name: saved.name,
+        }),
       });
       onSaved?.(saved);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to save definition';
+        err instanceof Error ? err.message : t.formBuilder.error.saveFailed;
       // A missing definitions collection is the most common *definition*-save
       // failure; don't blow away the builder for a target-provisioning error.
       if (persistingDefinition) setDefinitionsMissing(true);
       notifications.show({
         color: 'red',
-        title: 'Save failed',
+        title: t.formBuilder.notify.saveFailed.title,
         message,
       });
     } finally {
@@ -1003,6 +1083,8 @@ export function FormBuilder({
     update,
     create,
     onSaved,
+    t,
+    formatCount,
   ]);
 
   // Human-readable label for the DragOverlay preview of the active drag.
@@ -1014,14 +1096,17 @@ export function FormBuilder({
     }
     if (activeDragId.startsWith(NEWFIELD_ID_PREFIX)) {
       const iface = activeDragId.slice(NEWFIELD_ID_PREFIX.length);
-      return (
-        PROVISIONABLE_INTERFACES.find((i) => i.value === iface)?.label ||
-        'New field'
-      );
+      const descriptor = PROVISIONABLE_INTERFACES.find((i) => i.value === iface);
+      return descriptor
+        ? catalogInterfaceLabel(t, descriptor)
+        : t.formBuilder.dragOverlay.newField;
     }
     if (activeDragId.startsWith(SECTION_ID_PREFIX)) {
       const sid = activeDragId.slice(SECTION_ID_PREFIX.length);
-      return sections.find((s) => s.id === sid)?.title || 'Section';
+      return (
+        sections.find((s) => s.id === sid)?.title ||
+        t.formBuilder.dragOverlay.section
+      );
     }
     // A placed field row.
     for (const s of sections) {
@@ -1029,7 +1114,7 @@ export function FormBuilder({
       if (f) return f.note || schemaByKey.get(activeDragId)?.meta?.note || activeDragId;
     }
     return activeDragId;
-  }, [activeDragId, schemaByKey, sections]);
+  }, [activeDragId, schemaByKey, sections, t]);
 
   // ---- Render ----
   const selectedSchemaField = selectedField
@@ -1054,6 +1139,10 @@ export function FormBuilder({
     selectedSchemaField?.meta?.interface ?? '',
   );
 
+  const pendingDescriptor = pendingDrop
+    ? PROVISIONABLE_INTERFACES.find((i) => i.value === pendingDrop.interfaceValue)
+    : undefined;
+
   if (loading) {
     return (
       <Center mih={240}>
@@ -1067,12 +1156,12 @@ export function FormBuilder({
       <Alert
         icon={<IconAlertCircle size={16} />}
         color="red"
-        title="Not allowed"
+        title={t.formBuilder.noPermission.title}
         data-testid="forms-no-permission"
       >
-        You need create or update permission on the{' '}
-        <strong>{formsCollection ?? 'fb_definitions'}</strong> collection to
-        build forms.
+        {interpolateNodes(t.formBuilder.noPermission.message, {
+          collection: <strong>{formsCollection ?? 'fb_definitions'}</strong>,
+        })}
       </Alert>
     );
   }
@@ -1084,6 +1173,7 @@ export function FormBuilder({
         error={loadError}
         canCreateCollection={canProvisionSchema}
         onCreated={reload}
+        translations={translations}
       />
     );
   }
@@ -1100,17 +1190,17 @@ export function FormBuilder({
       <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
         <Group gap="sm" align="flex-end" style={{ flex: 1 }}>
           <TextInput
-            label="Form name"
-            placeholder="e.g. Bug report form"
+            label={t.formBuilder.name.label}
+            placeholder={t.formBuilder.name.placeholder}
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
             style={{ flex: 1, minWidth: 200 }}
             data-testid="form-builder-name"
           />
           <TextInput
-            label="Key (optional)"
-            description="Distinguishes forms that share a collection"
-            placeholder="e.g. bug"
+            label={t.formBuilder.key.label}
+            description={t.formBuilder.key.description}
+            placeholder={t.formBuilder.key.placeholder}
             value={screenKey}
             onChange={(e) => setScreenKey(e.currentTarget.value)}
             style={{ width: 180 }}
@@ -1122,31 +1212,27 @@ export function FormBuilder({
           onClick={handleSave}
           data-testid="form-builder-save"
         >
-          Save
+          {t.formBuilder.save}
         </Button>
       </Group>
 
       <Text size="xs" c="dimmed">
-        {collection ? (
-          <>
-            Target collection: <strong>{collection}</strong>
-          </>
-        ) : (
-          <>
-            A new <strong>fb_</strong>-prefixed collection will be created from
-            the form name when you save — every field becomes a real,
-            searchable column.
-          </>
-        )}
+        {collection
+          ? interpolateNodes(t.formBuilder.targetCollection, {
+              collection: <strong>{collection}</strong>,
+            })
+          : interpolateNodes(t.formBuilder.autoCreateHint, {
+              prefix: <strong>fb_</strong>,
+            })}
       </Text>
 
       <Tabs defaultValue="build">
         <Tabs.List>
           <Tabs.Tab value="build" leftSection={<IconLayoutColumns size={14} />}>
-            Build
+            {t.formBuilder.tabs.build}
           </Tabs.Tab>
           <Tabs.Tab value="preview" leftSection={<IconEye size={14} />}>
-            Preview
+            {t.formBuilder.tabs.preview}
           </Tabs.Tab>
         </Tabs.List>
 
@@ -1167,6 +1253,7 @@ export function FormBuilder({
                     onAddNewField={() => openAddField()}
                     onAddFieldType={handleAddFieldType}
                     canProvisionSchema={canProvisionSchema}
+                    translations={translations}
                   />
                 </Paper>
               </Grid.Col>
@@ -1182,6 +1269,7 @@ export function FormBuilder({
                     onRenameSection={renameSection}
                     onRemoveSection={removeSection}
                     onAddSection={addSection}
+                    translations={translations}
                   />
                 </ScrollArea.Autosize>
               </Grid.Col>
@@ -1204,12 +1292,12 @@ export function FormBuilder({
                       onNewFieldChoicesChange={(choices) =>
                         handleNewFieldChoicesChange(selectedConfig.field, choices)
                       }
+                      translations={translations}
                     />
                   ) : (
                     <Center mih={320}>
                       <Text size="sm" c="dimmed" ta="center">
-                        Select a field to edit its width, required/hidden
-                        settings, and conditions.
+                        {t.formBuilder.settingsEmptyState}
                       </Text>
                     </Center>
                   )}
@@ -1237,7 +1325,11 @@ export function FormBuilder({
 
         <Tabs.Panel value="preview" pt="md">
           <Box maw={720} mx="auto">
-            <FormPreview definition={draft} schemaFields={schemaFields} />
+            <FormPreview
+              definition={draft}
+              schemaFields={schemaFields}
+              translations={translations}
+            />
           </Box>
         </Tabs.Panel>
       </Tabs>
@@ -1251,20 +1343,18 @@ export function FormBuilder({
         defaultType={addFieldSeed?.type}
         defaultInterface={addFieldSeed?.interface}
         onCreate={handleCreateField}
+        translations={translations}
       />
 
       <NameFieldModal
         opened={pendingDrop != null}
         onClose={() => setPendingDrop(null)}
         interfaceLabel={
-          pendingDrop
-            ? PROVISIONABLE_INTERFACES.find(
-                (i) => i.value === pendingDrop.interfaceValue,
-              )?.label
-            : undefined
+          pendingDescriptor ? catalogInterfaceLabel(t, pendingDescriptor) : undefined
         }
         existingFieldNames={existingFieldNames}
         onConfirm={handleNameFieldConfirm}
+        translations={translations}
       />
     </Stack>
   );

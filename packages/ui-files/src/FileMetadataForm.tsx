@@ -12,7 +12,8 @@ import {
   TextInput,
 } from '@mantine/core';
 import { IconDeviceFloppy } from '@tabler/icons-react';
-import type { FileUpload } from '@buildpad/hooks';
+import { useBuildpadTranslations, type FileUpload } from '@buildpad/hooks';
+import type { DeepPartial, FilesTranslations } from '@buildpad/utils';
 
 export interface FileMetadataValues {
   title: string;
@@ -39,6 +40,8 @@ export interface FileMetadataFormProps {
   /** Show focal-point inputs (images only). */
   showFocalPoint?: boolean;
   onSave: (values: FileMetadataValues) => void;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 function toValues(file: FileUpload): FileMetadataValues {
@@ -65,7 +68,9 @@ export const FileMetadataForm: React.FC<FileMetadataFormProps> = ({
   folderOptions = [],
   showFocalPoint = false,
   onSave,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
   const [values, setValues] = useState<FileMetadataValues>(() => toValues(file));
 
   useEffect(() => {
@@ -75,18 +80,20 @@ export const FileMetadataForm: React.FC<FileMetadataFormProps> = ({
   const update = <K extends keyof FileMetadataValues>(key: K, value: FileMetadataValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: value }));
 
+  const f = t.fileMetadataForm;
+
   return (
     <Stack gap="md" data-testid="file-metadata-form">
       <TextInput
-        label="Title"
-        placeholder="Display name"
+        label={f.title.label}
+        placeholder={f.title.placeholder}
         value={values.title}
         onChange={(e) => update('title', e.currentTarget.value)}
         disabled={disabled}
       />
       <Textarea
-        label="Description"
-        placeholder="Free-text description"
+        label={f.description.label}
+        placeholder={f.description.placeholder}
         autosize
         minRows={2}
         value={values.description}
@@ -94,35 +101,35 @@ export const FileMetadataForm: React.FC<FileMetadataFormProps> = ({
         disabled={disabled}
       />
       <TagsInput
-        label="Tags"
-        placeholder="Add tag and press Enter"
+        label={f.tags.label}
+        placeholder={f.tags.placeholder}
         value={values.tags}
         onChange={(tags) => update('tags', tags)}
         disabled={disabled}
         clearable
       />
       <Select
-        label="Folder"
-        placeholder="Root"
+        label={f.folder.label}
+        placeholder={f.folder.placeholder}
         data={folderOptions}
         value={values.folder}
         onChange={(v) => update('folder', v)}
         disabled={disabled}
         clearable
         searchable
-        nothingFoundMessage="No folders"
+        nothingFoundMessage={f.folder.nothingFound}
         data-testid="file-folder-select"
       />
       <TextInput
-        label="Location"
-        placeholder="Optional location"
+        label={f.location.label}
+        placeholder={f.location.placeholder}
         value={values.location}
         onChange={(e) => update('location', e.currentTarget.value)}
         disabled={disabled}
       />
       <TextInput
-        label="Download filename"
-        description="Filename used when the file is downloaded"
+        label={f.downloadFilename.label}
+        description={f.downloadFilename.description}
         value={values.filename_download}
         onChange={(e) => update('filename_download', e.currentTarget.value)}
         disabled={disabled}
@@ -131,16 +138,16 @@ export const FileMetadataForm: React.FC<FileMetadataFormProps> = ({
       {showFocalPoint && (
         <Group grow>
           <NumberInput
-            label="Focal point X"
-            description="Crop center (px)"
+            label={f.focalPointX.label}
+            description={f.focalPointX.description}
             value={values.focal_point_x ?? ''}
             onChange={(v) => update('focal_point_x', v === '' ? null : Number(v))}
             disabled={disabled}
             allowNegative={false}
           />
           <NumberInput
-            label="Focal point Y"
-            description="Crop center (px)"
+            label={f.focalPointY.label}
+            description={f.focalPointY.description}
             value={values.focal_point_y ?? ''}
             onChange={(v) => update('focal_point_y', v === '' ? null : Number(v))}
             disabled={disabled}
@@ -157,7 +164,7 @@ export const FileMetadataForm: React.FC<FileMetadataFormProps> = ({
           onClick={() => onSave(values)}
           data-testid="file-metadata-save"
         >
-          Save
+          {f.save}
         </Button>
       </Group>
     </Stack>

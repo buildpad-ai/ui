@@ -4,13 +4,16 @@ import React from 'react';
 import { Box, Stack, Text, Button, ThemeIcon } from '@mantine/core';
 import { IconDownload, IconFile } from '@tabler/icons-react';
 import { getAssetUrl, getFileCategory, formatFileSize } from '@buildpad/types';
-import type { FileUpload } from '@buildpad/hooks';
+import { useBuildpadTranslations, type FileUpload } from '@buildpad/hooks';
+import { interpolate, type DeepPartial, type FilesTranslations } from '@buildpad/utils';
 
 export interface FilePreviewProps {
   /** The file to preview. */
   file: FileUpload;
   /** Max height of the preview surface (px). */
   maxHeight?: number;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 /**
@@ -18,7 +21,9 @@ export interface FilePreviewProps {
  * image, video, audio, and PDF are rendered inline; everything else
  * falls back to an icon with a download action.
  */
-export const FilePreview: React.FC<FilePreviewProps> = ({ file, maxHeight = 520 }) => {
+export const FilePreview: React.FC<FilePreviewProps> = ({ file, maxHeight = 520, translations }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
+  const common = useBuildpadTranslations((d) => d.common);
   const category = getFileCategory(file.type);
   const src = getAssetUrl(file.id);
   const isPdf = file.type === 'application/pdf';
@@ -73,7 +78,10 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ file, maxHeight = 520 
       </ThemeIcon>
       <Text fw={500}>{file.filename_download}</Text>
       <Text size="sm" c="dimmed">
-        {file.type || 'Unknown type'} · {formatFileSize(file.filesize)}
+        {interpolate(t.filePreview.subtitle, {
+          type: file.type || t.filePreview.unknownType,
+          size: formatFileSize(file.filesize),
+        })}
       </Text>
       <Button
         component="a"
@@ -81,7 +89,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ file, maxHeight = 520 
         leftSection={<IconDownload size={16} />}
         variant="light"
       >
-        Download
+        {common.download}
       </Button>
     </Stack>
   );

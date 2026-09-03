@@ -26,7 +26,7 @@ import { fix } from './commands/fix.js';
 import { bootstrap } from './commands/bootstrap.js';
 import { upgrade } from './commands/upgrade.js';
 import { changelog } from './commands/changelog.js';
-import { migrate } from './commands/migrate.js';
+import { migrate, migrateI18n } from './commands/migrate.js';
 import { setSourceRef, getSourceRef } from './resolver.js';
 
 // Read the version from package.json so it never drifts from the published version
@@ -54,6 +54,8 @@ program
   .description('Initialize Buildpad in your project (creates buildpad.json)')
   .option('-y, --yes', 'Skip prompts and use defaults')
   .option('-c, --cwd <path>', 'Project directory', process.cwd())
+  .option('--locales <codes>', 'Locales for app/[lang], comma-separated (e.g. en,id); default: en')
+  .option('--default-locale <code>', 'Default locale (must be in --locales); default: the first one')
   .action(init);
 
 program
@@ -118,11 +120,15 @@ program
   .option('--cwd <path>', 'Project directory', process.cwd())
   .option('--skip-deps', 'Skip npm dependency installation')
   .option('--skip-validate', 'Skip post-install validation')
+  .option('--locales <codes>', 'Locales for app/[lang], comma-separated (e.g. en,id); default: en')
+  .option('--default-locale <code>', 'Default locale (must be in --locales); default: the first one')
   .action(async (options) => {
     await bootstrap({
       cwd: options.cwd,
       skipDeps: options.skipDeps,
       skipValidate: options.skipValidate,
+      locales: options.locales,
+      defaultLocale: options.defaultLocale,
     });
   });
 
@@ -195,10 +201,28 @@ program
 
 program
   .command('migrate')
-  .description('Migrate buildpad.json to schema v3 (enables content-based update tracking)')
+  .description(
+    'Migrate buildpad.json to schema v3, or (with "i18n") move an app onto locale-prefixed app/[lang] routing'
+  )
+  .argument('[target]', 'Omit for the manifest schema; "i18n" to move pages under app/[lang]')
   .option('-n, --dry-run', 'Preview migration without writing files')
+  .option('--locales <codes>', '(i18n only) Locales to configure, comma-separated (e.g. en,id)')
+  .option('--default-locale <code>', '(i18n only) Default locale')
   .option('--cwd <path>', 'Project directory', process.cwd())
-  .action(async (options) => {
+  .action(async (target, options) => {
+    if (target === 'i18n') {
+      await migrateI18n({
+        cwd: options.cwd,
+        dryRun: options.dryRun,
+        locales: options.locales,
+        defaultLocale: options.defaultLocale,
+      });
+      return;
+    }
+    if (target) {
+      console.error(`Unknown migrate target: ${target}. Use "i18n" or no target.`);
+      process.exit(1);
+    }
     await migrate({ cwd: options.cwd, dryRun: options.dryRun });
   });
 

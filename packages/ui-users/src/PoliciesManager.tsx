@@ -16,10 +16,12 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconShield } from '@tabler/icons-react';
 import { readUrlIntParam, readUrlParam, useHydrated, usePermissions, usePolicies, useUrlListParams } from '@buildpad/hooks';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import type { Policy } from '@buildpad/types';
 import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { VTable } from '@buildpad/ui-table';
 import type { Header, HeaderRaw, Item, Sort } from '@buildpad/ui-table';
+import { interpolate, type DeepPartial, type UsersTranslations } from '@buildpad/utils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { ListFooter } from './ListFooter';
 import { RowActionsMenu } from './RowActionsMenu';
@@ -27,14 +29,6 @@ import { SearchInput } from './SearchInput';
 import './ManagerTable.css';
 
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-
-const POLICY_HEADERS: HeaderRaw[] = [
-  { text: '', value: 'icon', sortable: false, width: 48 },
-  { text: 'Name', value: 'name', sortable: true, width: 260 },
-  { text: 'Users', value: 'userCount', sortable: false },
-  { text: 'Roles', value: 'roleCount', sortable: false },
-  { text: 'Description', value: 'description', sortable: false },
-];
 
 export interface PoliciesManagerProps {
   /** Called when a policy row is clicked (and the current user may update policies). */
@@ -60,6 +54,8 @@ export interface PoliciesManagerProps {
   urlParams?: boolean;
   /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
   urlParamPrefix?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -110,15 +106,29 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
   policiesCollection = 'daas_policies',
   urlParams = true,
   urlParamPrefix = '',
+  translations,
 }) => {
   const { fetchPolicies, deletePolicy } = usePolicies();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [policiesCollection],
   });
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const { formatCount } = useBuildpadI18n();
 
   const createAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'create');
   const updateAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'update');
   const deleteAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'delete');
+
+  const headers = useMemo<HeaderRaw[]>(
+    () => [
+      { text: '', value: 'icon', sortable: false, width: 48 },
+      { text: t.columns.name, value: 'name', sortable: true, width: 260 },
+      { text: t.columns.users, value: 'userCount', sortable: false },
+      { text: t.columns.roles, value: 'roleCount', sortable: false },
+      { text: t.columns.description, value: 'description', sortable: false },
+    ],
+    [t]
+  );
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,14 +200,14 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
       setTotalPages(result.totalPages);
       setLoadError(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load policies';
+      const message = err instanceof Error ? err.message : t.policiesManager.notifications.loadFailed;
       setPolicies([]);
       setLoadError(message);
-      notifications.show({ title: 'Failed to load policies', message, color: 'red' });
+      notifications.show({ title: t.policiesManager.notifications.loadFailed, message, color: 'red' });
     } finally {
       setLoading(false);
     }
-  }, [fetchPolicies, page, limit, debouncedSearch, sort]);
+  }, [fetchPolicies, page, limit, debouncedSearch, sort, t]);
 
   useEffect(() => {
     void load();
@@ -226,59 +236,62 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
     } catch (err) {
       // Keep the modal open so the administrator can retry or cancel.
       notifications.show({
-        title: 'Failed to delete policy',
-        message: err instanceof Error ? err.message : 'Failed to delete policy',
+        title: t.policiesManager.notifications.deleteFailed,
+        message: err instanceof Error ? err.message : t.policiesManager.notifications.deleteFailed,
         color: 'red',
       });
     } finally {
       setDeleting(false);
     }
-  }, [deletePolicy, deleteModal.id, load]);
+  }, [deletePolicy, deleteModal.id, load, t]);
 
   const addButton =
     createAllowed && onCreatePolicy ? (
       <Button leftSection={<IconPlus size={16} />} onClick={onCreatePolicy} data-testid="policies-manager-add-btn">
-        Add Policy
+        {t.policiesManager.addPolicy}
       </Button>
     ) : null;
 
-  const renderCell = useCallback((item: Item, header: Header): React.ReactNode => {
-    const policy = item as unknown as Policy;
-    switch (header.value) {
-      case 'icon':
-        return <IconDisplay icon={policy.icon} fallback={IconShield} />;
-      case 'name':
-        return (
-          <Group gap="xs">
-            <Text size="sm" fw={500}>
-              {policy.name}
+  const renderCell = useCallback(
+    (item: Item, header: Header): React.ReactNode => {
+      const policy = item as unknown as Policy;
+      switch (header.value) {
+        case 'icon':
+          return <IconDisplay icon={policy.icon} fallback={IconShield} />;
+        case 'name':
+          return (
+            <Group gap="xs">
+              <Text size="sm" fw={500}>
+                {policy.name}
+              </Text>
+              {policy.admin_access && (
+                <Badge color="red" size="xs">
+                  {t.policyAccess.admin}
+                </Badge>
+              )}
+              {policy.app_access && (
+                <Badge color="blue" size="xs">
+                  {t.policyAccess.app}
+                </Badge>
+              )}
+            </Group>
+          );
+        case 'userCount':
+          return <Text size="sm">{policy.userCount || 0}</Text>;
+        case 'roleCount':
+          return <Text size="sm">{policy.roleCount || 0}</Text>;
+        case 'description':
+          return (
+            <Text size="sm" c="dimmed" lineClamp={1}>
+              {policy.description || t.emptyValue}
             </Text>
-            {policy.admin_access && (
-              <Badge color="red" size="xs">
-                Admin
-              </Badge>
-            )}
-            {policy.app_access && (
-              <Badge color="blue" size="xs">
-                App
-              </Badge>
-            )}
-          </Group>
-        );
-      case 'userCount':
-        return <Text size="sm">{policy.userCount || 0}</Text>;
-      case 'roleCount':
-        return <Text size="sm">{policy.roleCount || 0}</Text>;
-      case 'description':
-        return (
-          <Text size="sm" c="dimmed" lineClamp={1}>
-            {policy.description || '—'}
-          </Text>
-        );
-      default:
-        return null;
-    }
-  }, []);
+          );
+        default:
+          return null;
+      }
+    },
+    [t]
+  );
 
   const renderRowAppend =
     updateAllowed || deleteAllowed
@@ -290,6 +303,7 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
               onDelete={
                 deleteAllowed ? () => setDeleteModal({ opened: true, id: policy.id }) : undefined
               }
+              translations={translations}
             />
           );
         }
@@ -300,10 +314,10 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
       {!hideHeader && (
         <Box>
           <Title order={2} mb={4}>
-            Policies
+            {t.policiesManager.title}
           </Title>
           <Text size="sm" c="dimmed">
-            Define policies that grant access and permissions to users and roles
+            {t.policiesManager.subtitle}
           </Text>
         </Box>
       )}
@@ -311,16 +325,17 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
       <div className="bp-manager-card">
         <Group className="bp-manager-toolbar" wrap="wrap">
           <SearchInput
-            placeholder="Search policies..."
+            placeholder={t.policiesManager.searchPlaceholder}
             value={search}
             onChange={setSearch}
             style={{ flex: 1, minWidth: 200, maxWidth: 360 }}
             data-testid="policies-manager-search"
+            translations={translations}
           />
           <Group gap="sm" style={{ marginLeft: 'auto' }}>
             {totalCount > 0 && (
               <Badge variant="light" color="gray" size="lg" radius="sm">
-                {totalCount} {totalCount === 1 ? 'policy' : 'policies'}
+                {formatCount(totalCount, t.count.policies)}
               </Badge>
             )}
             {addButton}
@@ -328,7 +343,7 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
         </Group>
 
         <VTable
-          headers={POLICY_HEADERS}
+          headers={headers}
           items={policies as unknown as Item[]}
           itemKey="id"
           sort={sort}
@@ -337,10 +352,10 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
           loading={loading}
           noItemsText={
             loadError
-              ? `Failed to load policies — ${loadError}`
+              ? interpolate(t.policiesManager.emptyState.loadError, { error: loadError })
               : debouncedSearch
-                ? 'No policies found — try a different search term'
-                : 'No policies found — create your first policy to get started'
+                ? t.policiesManager.emptyState.search
+                : t.policiesManager.emptyState.pristine
           }
           clickable={updateAllowed}
           renderCell={renderCell}
@@ -349,7 +364,7 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
             <ListFooter
               shown={policies.length}
               totalCount={totalCount}
-              itemsLabel="policies"
+              itemsLabel={t.policiesManager.itemsLabel}
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
@@ -357,6 +372,7 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
               sizeOptions={sizeOptions}
               onLimitChange={setLimit}
               data-testid="policies-manager-page-size"
+              translations={translations}
             />
           )}
           onSortChange={setSort}
@@ -370,8 +386,9 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
         onClose={() => setDeleteModal({ opened: false, id: '' })}
         onConfirm={confirmDelete}
         loading={deleting}
-        title="Delete policy"
-        description="Are you sure you want to delete this policy? This action cannot be undone."
+        title={t.policiesManager.deleteModal.title}
+        description={t.policiesManager.deleteModal.description}
+        translations={translations}
       />
     </Stack>
   );

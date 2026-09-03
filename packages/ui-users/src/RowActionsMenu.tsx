@@ -3,12 +3,16 @@
 import React from 'react';
 import { ActionIcon, Menu } from '@mantine/core';
 import { IconDots, IconEdit, IconTrash } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 
 export interface RowActionsMenuProps {
   /** Edit item; omit when the current user may not update. */
   onEdit?: () => void;
   /** Delete item; omit when the current user may not delete. */
   onDelete?: () => void;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -16,7 +20,10 @@ export interface RowActionsMenuProps {
  * `undefined` for disallowed actions; renders nothing when both are absent.
  * All clicks stop propagation so row navigation never fires.
  */
-export const RowActionsMenu: React.FC<RowActionsMenuProps> = ({ onEdit, onDelete }) => {
+export const RowActionsMenu: React.FC<RowActionsMenuProps> = ({ onEdit, onDelete, translations }) => {
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+
   if (!onEdit && !onDelete) return null;
 
   return (
@@ -27,7 +34,7 @@ export const RowActionsMenu: React.FC<RowActionsMenuProps> = ({ onEdit, onDelete
           color="gray"
           size="sm"
           onClick={(e) => e.stopPropagation()}
-          aria-label="Row actions"
+          aria-label={t.rowActions.ariaLabel}
         >
           <IconDots size={16} />
         </ActionIcon>
@@ -41,7 +48,7 @@ export const RowActionsMenu: React.FC<RowActionsMenuProps> = ({ onEdit, onDelete
               onEdit();
             }}
           >
-            Edit
+            {common.edit}
           </Menu.Item>
         )}
         {onDelete && (
@@ -53,7 +60,7 @@ export const RowActionsMenu: React.FC<RowActionsMenuProps> = ({ onEdit, onDelete
               onDelete();
             }}
           >
-            Delete
+            {common.delete}
           </Menu.Item>
         )}
       </Menu.Dropdown>

@@ -16,9 +16,14 @@ import {
 } from '@mantine/core';
 import { IconAlertTriangle, IconChevronDown, IconChevronRight, IconX } from '@tabler/icons-react';
 import type { Field } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import type { DynamicValue, FilterNode, FilterOperator, FilterValue, RelationInfo } from './PermissionFilterTypes';
-import { DYNAMIC_VALUES, getOperatorsForRelation, getOperatorsForType } from './PermissionFilterTypes';
+import { getDynamicValueLabels, getOperatorsForRelation, getOperatorsForType } from './PermissionFilterTypes';
 import { fetchCollectionFields } from './permissionMetadata';
+
+/** Resolved strings of the rule editor (`interfaces.systemPermissions.filterRuleNode`). */
+type FilterRuleNodeStrings = InterfacesTranslations['systemPermissions']['filterRuleNode'];
 
 /**
  * Format field name to Title Case (e.g., "user_created" -> "User Created")
@@ -60,6 +65,8 @@ export interface FilterRuleNodeProps {
   onAddGroup: (parentGroupId: string | null) => void;
   onToggleGroupLogical: (groupId: string) => void;
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemPermissions`) */
+  translations?: DeepPartial<InterfacesTranslations['systemPermissions']>;
 }
 
 export function FilterRuleNode({
@@ -74,7 +81,9 @@ export function FilterRuleNode({
   onAddGroup,
   onToggleGroupLogical,
   'data-testid': testId,
+  translations,
 }: FilterRuleNodeProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemPermissions, translations);
   // Cache for lazy-loaded related collection fields
   const [relatedFieldsCache, setRelatedFieldsCache] = useState<Record<string, Field[]>>({});
   const [expandedRelation, setExpandedRelation] = useState<string | null>(null);
@@ -131,16 +140,16 @@ export function FilterRuleNode({
 
   // Get operators based on resolved type
   const operators = resolvedFieldType === '__relation__'
-    ? getOperatorsForRelation()
-    : getOperatorsForType(resolvedFieldType);
+    ? getOperatorsForRelation(t.operators)
+    : getOperatorsForType(resolvedFieldType, t.operators);
 
   // Get the selected operator info
   const selectedOperator = operators.find((op) => op.value === node.operator);
 
   // Dynamic variable options
-  const dynamicVariableOptions = Object.entries(DYNAMIC_VALUES).map(([key, label]) => ({
+  const dynamicVariableOptions = Object.entries(getDynamicValueLabels(t.dynamicValues)).map(([key, label]) => ({
     value: key,
-    label: `${key} - ${label}`,
+    label: interpolate(t.filterRuleNode.dynamicOptionLabel, { key, label }),
   }));
 
   // Check if current value is a dynamic variable
@@ -152,7 +161,7 @@ export function FilterRuleNode({
     // Check if this is a bare relation alias (exclude M2O — those are physical FK columns)
     const isRel = relations?.some((r) => r.field === value && r.relationType !== 'm2o');
     if (isRel) {
-      const relOps = getOperatorsForRelation();
+      const relOps = getOperatorsForRelation(t.operators);
       onUpdate(node.id, {
         field: value,
         operator: relOps[0]?.value || '_has',
@@ -169,7 +178,7 @@ export function FilterRuleNode({
       const relFields = rel ? relatedFieldsCache[rel.relatedCollection] : null;
       const relField = relFields?.find((f) => f.field === col);
       const newType = relField?.type || 'string';
-      const newOperators = getOperatorsForType(newType);
+      const newOperators = getOperatorsForType(newType, t.operators);
       onUpdate(node.id, {
         field: value,
         operator: newOperators[0]?.value || '_eq',
@@ -180,7 +189,7 @@ export function FilterRuleNode({
     // Regular local field
     const newField = fields.find((f) => f.field === value);
     const newType = newField?.type || 'string';
-    const newOperators = getOperatorsForType(newType);
+    const newOperators = getOperatorsForType(newType, t.operators);
 
     // Reset operator to first available if current doesn't apply
     const currentOpValid = newOperators.some((op) => op.value === node.operator);
@@ -256,7 +265,7 @@ export function FilterRuleNode({
           </Menu.Target>
           <Menu.Dropdown style={{ maxHeight: '350px', overflowY: 'auto' }}>
             <TextInput
-              placeholder="Search"
+              placeholder={t.filterRuleNode.fieldSearchPlaceholder}
               size="xs"
               mb="xs"
               value={fieldSearch}
@@ -280,7 +289,7 @@ export function FilterRuleNode({
             {visibleRelations.length > 0 && (
               <>
                 <Menu.Divider />
-                <Menu.Label>Related Fields</Menu.Label>
+                <Menu.Label>{t.filterEditor.relatedFields}</Menu.Label>
                 {visibleRelations.map((rel) => (
                   <Box key={`rel-${rel.field}`}>
                     <Menu.Item
@@ -315,7 +324,7 @@ export function FilterRuleNode({
                             color: 'var(--mantine-color-violet-7)',
                           }}
                         >
-                          Has related items
+                          {t.filterRuleNode.hasRelatedItems}
                         </Menu.Item>
                         <Menu.Divider />
                         {/* Related collection columns */}
@@ -334,7 +343,7 @@ export function FilterRuleNode({
                           ))
                         ) : (
                           <Menu.Item disabled>
-                            Loading...
+                            {t.filterRuleNode.loading}
                           </Menu.Item>
                         )}
                       </Box>
@@ -363,7 +372,7 @@ export function FilterRuleNode({
               className="hover-highlight"
               data-testid={testId ? `${testId}-operator` : undefined}
             >
-              {selectedOperator?.label || 'Equals'}
+              {selectedOperator?.label || t.operators.equals}
               {selectedOperator?.relationalLimitation && (
                 <Tooltip label={selectedOperator.relationalLimitation} multiline w={260}>
                   <IconAlertTriangle size={14} color="var(--mantine-color-yellow-6)" />
@@ -395,8 +404,8 @@ export function FilterRuleNode({
         {(isRelationAlias || (matchedRelation && relatedColumnName)) && (
           <Tooltip
             label={isRelationAlias
-              ? 'Relational existence filters (_has) require a two-step query fallback on child mutations.'
-              : 'Dot-notation filters have limited enforcement on relational mutations. On update/delete, a two-step query fallback is used (+1 SELECT).'}
+              ? t.filterRuleNode.relationAliasWarning
+              : t.filterRuleNode.dotNotationWarning}
             multiline
             w={280}
           >
@@ -413,6 +422,7 @@ export function FilterRuleNode({
             isDynamic={isDynamicValue}
             dynamicOptions={dynamicVariableOptions}
             onChange={(value) => onUpdate(node.id, { value })}
+            t={t.filterRuleNode}
           />
         )}
 
@@ -422,7 +432,7 @@ export function FilterRuleNode({
           color="gray"
           size="xs"
           onClick={() => onRemove(node.id)}
-          aria-label="Remove rule"
+          aria-label={t.filterRuleNode.removeRule}
           style={{ marginLeft: '4px' }}
           data-testid={testId ? `${testId}-remove` : undefined}
         >
@@ -468,7 +478,7 @@ export function FilterRuleNode({
               }}
               data-testid={testId ? `${testId}-logical` : undefined}
             >
-              {isAnd ? 'AND' : 'OR'}
+              {isAnd ? t.filterRuleNode.and : t.filterRuleNode.or}
             </UnstyledButton>
           </Group>
 
@@ -486,6 +496,7 @@ export function FilterRuleNode({
               onAddRule={onAddRule}
               onAddGroup={onAddGroup}
               onToggleGroupLogical={onToggleGroupLogical}
+              translations={translations}
             />
           ))}
 
@@ -502,7 +513,7 @@ export function FilterRuleNode({
                   fontSize: 'var(--mantine-font-size-sm)',
                 }}
               >
-                Add Filter <IconChevronDown size={12} />
+                {t.filterEditor.addFilter} <IconChevronDown size={12} />
               </UnstyledButton>
             </Menu.Target>
 
@@ -511,12 +522,12 @@ export function FilterRuleNode({
                 onClick={() => onAddGroup(node.id)}
                 style={{ fontWeight: 500 }}
               >
-                And / Or group
+                {t.filterEditor.andOrGroup}
               </Menu.Item>
               <Menu.Divider />
               {fields.length === 0 ? (
                 <Menu.Item disabled>
-                  Loading fields...
+                  {t.filterEditor.loadingFields}
                 </Menu.Item>
               ) : (
                 <>
@@ -531,7 +542,7 @@ export function FilterRuleNode({
                   {relations && relations.length > 0 && (
                     <>
                       <Menu.Divider />
-                      <Menu.Label>Related Fields</Menu.Label>
+                      <Menu.Label>{t.filterEditor.relatedFields}</Menu.Label>
                       {relations.map((rel) => (
                         <Menu.Item
                           key={`rel-${rel.field}`}
@@ -555,7 +566,7 @@ export function FilterRuleNode({
           color="gray"
           size="xs"
           onClick={() => onRemove(node.id)}
-          aria-label="Remove group"
+          aria-label={t.filterRuleNode.removeGroup}
           style={{ position: 'absolute', top: '8px', right: '8px' }}
           data-testid={testId ? `${testId}-remove` : undefined}
         >
@@ -576,6 +587,8 @@ interface FilterValueInputProps {
   isDynamic: boolean;
   dynamicOptions: { value: string; label: string }[];
   onChange: (value: FilterValue | DynamicValue) => void;
+  /** Resolved dictionary strings (aria-labels, range separator, booleans) */
+  t: FilterRuleNodeStrings;
 }
 
 function FilterValueInput({
@@ -585,6 +598,7 @@ function FilterValueInput({
   isDynamic,
   dynamicOptions,
   onChange,
+  t,
 }: FilterValueInputProps) {
   const fieldType = field?.type || 'string';
 
@@ -622,7 +636,7 @@ function FilterValueInput({
           },
         }}
         comboboxProps={{ withinPortal: true }}
-        aria-label="Value"
+        aria-label={t.valueAriaLabel}
       />
     );
   }
@@ -647,7 +661,7 @@ function FilterValueInput({
             color: 'var(--mantine-color-cyan-7)',
           },
         }}
-        aria-label="Values"
+        aria-label={t.valuesAriaLabel}
       />
     );
   }
@@ -665,9 +679,9 @@ function FilterValueInput({
           variant="unstyled"
           styles={inlineInputStyle}
           style={{ width: 50 }}
-          aria-label="From value"
+          aria-label={t.fromValueAriaLabel}
         />
-        <Text size="xs" c="dimmed">to</Text>
+        <Text size="xs" c="dimmed">{t.rangeTo}</Text>
         <TextInput
           value={rangeValue[1]?.toString() || ''}
           onChange={(e) => onChange([rangeValue[0], e.target.value || null])}
@@ -676,7 +690,7 @@ function FilterValueInput({
           variant="unstyled"
           styles={inlineInputStyle}
           style={{ width: 50 }}
-          aria-label="To value"
+          aria-label={t.toValueAriaLabel}
         />
       </Group>
     );
@@ -687,8 +701,8 @@ function FilterValueInput({
     return (
       <Select
         data={[
-          { value: 'true', label: 'True' },
-          { value: 'false', label: 'False' },
+          { value: 'true', label: t.booleanTrue },
+          { value: 'false', label: t.booleanFalse },
         ]}
         value={value === true ? 'true' : value === false ? 'false' : null}
         onChange={(v) => onChange(v === 'true' ? true : v === 'false' ? false : null)}
@@ -705,7 +719,7 @@ function FilterValueInput({
           },
         }}
         comboboxProps={{ withinPortal: true }}
-        aria-label="Value"
+        aria-label={t.valueAriaLabel}
       />
     );
   }
@@ -722,7 +736,7 @@ function FilterValueInput({
         variant="unstyled"
         styles={inlineInputStyle}
         style={{ minWidth: '140px' }}
-        aria-label="Date value"
+        aria-label={t.dateValueAriaLabel}
       />
     );
   }
@@ -747,7 +761,7 @@ function FilterValueInput({
           },
         }}
         hideControls
-        aria-label="Value"
+        aria-label={t.valueAriaLabel}
       />
     );
   }
@@ -762,7 +776,7 @@ function FilterValueInput({
       variant="unstyled"
       styles={inlineInputStyle}
       style={{ minWidth: '60px' }}
-      aria-label="Value"
+      aria-label={t.valueAriaLabel}
     />
   );
 }

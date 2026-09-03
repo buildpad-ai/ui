@@ -3,6 +3,8 @@
  * Renders the table header row with sorting, resizing, and selection controls
  */
 
+import { useBuildpadTranslations } from "@buildpad/services";
+import type { DeepPartial, TableTranslations } from "@buildpad/utils";
 import { Checkbox, Text, Tooltip } from "@mantine/core";
 import {
   IconArrowDown,
@@ -57,6 +59,11 @@ export interface TableHeaderProps {
   onReorderingChange?: (reordering: boolean) => void;
   /** Header right-click handler (alternative to renderHeaderContextMenu) */
   onHeaderContextMenu?: (header: Header, event: React.MouseEvent) => void;
+  /**
+   * Overrides for the `table` dictionary namespace (control aria-labels).
+   * Precedence: prop > `BuildpadI18nProvider` > English defaults.
+   */
+  translations?: DeepPartial<TableTranslations>;
 }
 
 export const TableHeader: React.FC<TableHeaderProps> = ({
@@ -81,7 +88,10 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   onHeadersChange,
   onReorderingChange: _onReorderingChange,
   onHeaderContextMenu,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.table, translations);
+
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
     header: Header;
@@ -273,7 +283,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             onClick={handleManualSortToggle}
             scope="col"
           >
-            <span className="sr-only">Toggle manual sort</span>
+            <span className="sr-only">{t.toggleManualSort}</span>
             <IconGripVertical size={18} aria-hidden="true" />
           </th>
         )}
@@ -286,7 +296,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
                 checked={allItemsSelected}
                 indeterminate={someItemsSelected && !allItemsSelected}
                 onChange={() => onToggleSelectAll?.(!allItemsSelected)}
-                aria-label="Select all"
+                aria-label={t.selectAll}
               />
             )}
           </th>
@@ -314,7 +324,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
                 <div
                   className="reorder-handle"
                   role="button"
-                  aria-label="Reorder column"
+                  aria-label={t.reorderColumn}
                 >
                   <IconGripVertical size={14} />
                 </div>

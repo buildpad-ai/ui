@@ -7,6 +7,7 @@ import type { Field, Permission } from '@buildpad/types';
 
 // Mock @buildpad/services apiRequest (fields are injected in most tests)
 jest.mock('@buildpad/services', () => ({
+  ...jest.requireActual('@buildpad/services'),
   apiRequest: jest.fn(),
 }));
 

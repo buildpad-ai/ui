@@ -170,6 +170,68 @@ async function checkLibModules(
 }
 
 /**
+ * Locale routing consistency (app/[lang]).
+ *
+ * - Both app/layout.tsx and app/[lang]/layout.tsx present → Next.js renders
+ *   the outer one and every locale page nests a second <html>; error.
+ * - A lib module that imports from lib/i18n (supabase-auth, design-system,
+ *   api-routes) installed without the i18n module → build error; error.
+ * - i18n installed but no app/[lang]/layout.tsx → the app never mounts
+ *   I18nProvider; warning pointing at `migrate i18n`.
+ */
+async function checkI18nLayout(
+  cwd: string,
+  config: Config
+): Promise<{ errors: ValidationError[]; warnings: ValidationWarning[] }> {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+  const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
+  const appDir = path.join(srcDir, 'app');
+  if (!fs.existsSync(appDir)) return { errors, warnings };
+
+  const rootLayout = path.join(appDir, 'layout.tsx');
+  const langLayout = path.join(appDir, '[lang]', 'layout.tsx');
+  const hasRoot = fs.existsSync(rootLayout);
+  const hasLang = fs.existsSync(langLayout);
+
+  if (hasRoot && hasLang) {
+    errors.push({
+      file: 'app/layout.tsx',
+      message:
+        'Both app/layout.tsx and app/[lang]/layout.tsx exist. Keep only the [lang] one ' +
+        '(move any custom providers into it, then delete app/layout.tsx).',
+      code: 'DUPLICATE_ROOT_LAYOUT',
+    });
+  }
+
+  const needsI18n = ['supabase-auth', 'design-system', 'api-routes'].filter(m =>
+    config.installedLib.includes(m)
+  );
+  const i18nInstalled = config.installedLib.includes('i18n');
+  const i18nConfig = path.join(srcDir, 'lib', 'i18n', 'config.ts');
+  if (needsI18n.length > 0 && !i18nInstalled && !fs.existsSync(i18nConfig)) {
+    errors.push({
+      file: 'lib/i18n/config.ts',
+      message:
+        `Missing lib/i18n — required by ${needsI18n.join(', ')} (middleware, login page and app shell import it).`,
+      code: 'MISSING_I18N_MODULE',
+    });
+  }
+
+  if ((i18nInstalled || fs.existsSync(i18nConfig)) && !hasLang) {
+    warnings.push({
+      file: 'app/[lang]/layout.tsx',
+      message:
+        'lib/i18n is installed but there is no app/[lang]/layout.tsx, so I18nProvider is never mounted ' +
+        'and locale-prefixed URLs 404.',
+      code: 'MISSING_LANG_LAYOUT',
+    });
+  }
+
+  return { errors, warnings };
+}
+
+/**
  * Check for SSR-unsafe component usage
  */
 async function checkSsrIssues(
@@ -578,6 +640,14 @@ function generateSuggestions(
     );
   }
   
+  // Locale routing
+  if (errors.some(e => e.code === 'MISSING_I18N_MODULE')) {
+    suggestions.push(`Install locale routing: npx @buildpad/cli@latest add i18n --cwd .`);
+  }
+  if (errors.some(e => e.code === 'DUPLICATE_ROOT_LAYOUT') || warnings.some(w => w.code === 'MISSING_LANG_LAYOUT')) {
+    suggestions.push(`Move the app onto app/[lang] routing: npx @buildpad/cli@latest migrate i18n --cwd .`);
+  }
+
   // Missing API routes
   const missingRouteCount = warnings.filter(w => w.code === 'MISSING_API_ROUTE').length;
   const missingApiDir = warnings.some(w => w.code === 'MISSING_API_DIR');
@@ -650,6 +720,7 @@ export async function validate(options: {
       apiRouteWarnings,
       react19Warnings,
       duplicateExportWarnings,
+      i18nLayout,
     ] = await Promise.all([
       checkUntransformedImports(cwd, config),
       checkBrokenRelativeImports(cwd, config),
@@ -659,6 +730,7 @@ export async function validate(options: {
       checkApiRoutes(cwd),
       checkReact19Compatibility(cwd, config),
       checkDuplicateExports(cwd, config),
+      checkI18nLayout(cwd, config),
     ]);
     
     // Run TypeScript check (slower, run separately)
@@ -667,8 +739,8 @@ export async function validate(options: {
     }
     const tsErrors = await checkTypeScriptErrors(cwd, config);
     
-    const errors = [...untransformedErrors, ...brokenImportErrors, ...libModuleErrors, ...tsErrors];
-    const warnings = [...missingCssWarnings, ...ssrWarnings, ...apiRouteWarnings, ...react19Warnings, ...duplicateExportWarnings];
+    const errors = [...untransformedErrors, ...brokenImportErrors, ...libModuleErrors, ...i18nLayout.errors, ...tsErrors];
+    const warnings = [...missingCssWarnings, ...ssrWarnings, ...apiRouteWarnings, ...react19Warnings, ...duplicateExportWarnings, ...i18nLayout.warnings];
 
     // Schema checks. v3 decides staleness by comparing each file's recorded
     // upstream hash with the registry's, so a manifest without those hashes

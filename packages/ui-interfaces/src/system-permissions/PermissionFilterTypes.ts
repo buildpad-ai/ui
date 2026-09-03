@@ -7,8 +7,21 @@
  * types below model the editor's view of that JSON.
  */
 import type { Filter } from '@buildpad/types';
+import { defaultTranslations, type InterfacesTranslations } from '@buildpad/utils';
 
 export type { Filter };
+
+/** Operator labels (`interfaces.systemPermissions.operators`). */
+export type OperatorLabels = InterfacesTranslations['systemPermissions']['operators'];
+/** Dynamic value labels (`interfaces.systemPermissions.dynamicValues`). */
+export type DynamicValueLabels = InterfacesTranslations['systemPermissions']['dynamicValues'];
+
+// English defaults — the non-React helpers below take the active locale's
+// labels as a parameter and fall back to these, so existing callers that pass
+// nothing keep their English output.
+const DEFAULT_OPERATOR_LABELS: OperatorLabels = defaultTranslations.interfaces.systemPermissions.operators;
+const DEFAULT_DYNAMIC_VALUE_LABELS: DynamicValueLabels =
+  defaultTranslations.interfaces.systemPermissions.dynamicValues;
 
 // Filter operators supported by the system
 export type FilterOperator =
@@ -54,17 +67,34 @@ export type FilterValue =
   | number[]
   | [unknown, unknown]; // For between
 
-// Dynamic value placeholders
-export const DYNAMIC_VALUES = {
-  '$CURRENT_USER': 'Current User ID',
-  '$CURRENT_ROLE': 'Current User Role',
-  '$NOW': 'Current Date/Time',
-  '$CURRENT_ROLES': 'Current User Roles (array)',
-  '$CURRENT_POLICIES': 'Current User Policies (array)',
-  '$CURRENT_RESOURCE_URI': 'Current Resource URI',
-} as const;
+// Dynamic value placeholders → dictionary key of their label
+export const DYNAMIC_VALUE_LABEL_KEYS = {
+  '$CURRENT_USER': 'currentUser',
+  '$CURRENT_ROLE': 'currentRole',
+  '$NOW': 'now',
+  '$CURRENT_ROLES': 'currentRoles',
+  '$CURRENT_POLICIES': 'currentPolicies',
+  '$CURRENT_RESOURCE_URI': 'currentResourceUri',
+} as const satisfies Record<string, keyof DynamicValueLabels>;
 
-export type DynamicValue = keyof typeof DYNAMIC_VALUES;
+export type DynamicValue = keyof typeof DYNAMIC_VALUE_LABEL_KEYS;
+
+/**
+ * Labels of the dynamic value placeholders for one locale
+ * (`interfaces.systemPermissions.dynamicValues`); English when omitted.
+ */
+export function getDynamicValueLabels(
+  labels: DynamicValueLabels = DEFAULT_DYNAMIC_VALUE_LABELS,
+): Record<DynamicValue, string> {
+  const out = {} as Record<DynamicValue, string>;
+  for (const key of Object.keys(DYNAMIC_VALUE_LABEL_KEYS) as DynamicValue[]) {
+    out[key] = labels[DYNAMIC_VALUE_LABEL_KEYS[key]];
+  }
+  return out;
+}
+
+/** English labels of the dynamic value placeholders (use `getDynamicValueLabels` for the active locale). */
+export const DYNAMIC_VALUES: Record<DynamicValue, string> = getDynamicValueLabels();
 
 // Parsed filter node for rendering
 export interface FilterNode {
@@ -111,69 +141,71 @@ export interface RelationInfo {
 }
 
 /**
- * Get filter operators for a specific field type
+ * Get filter operators for a specific field type. `labels` are the operator
+ * labels of the active locale (`interfaces.systemPermissions.operators`);
+ * English when omitted.
  */
-export function getOperatorsForType(type: string): OperatorInfo[] {
+export function getOperatorsForType(type: string, labels: OperatorLabels = DEFAULT_OPERATOR_LABELS): OperatorInfo[] {
   const textOperators: OperatorInfo[] = [
-    { value: '_eq', label: 'Equals', requiresValue: true, valueType: 'string' },
-    { value: '_neq', label: 'Not equals', requiresValue: true, valueType: 'string' },
-    { value: '_contains', label: 'Contains', requiresValue: true, valueType: 'string' },
-    { value: '_ncontains', label: 'Not contains', requiresValue: true, valueType: 'string' },
-    { value: '_icontains', label: 'Contains (case-insensitive)', requiresValue: true, valueType: 'string' },
-    { value: '_starts_with', label: 'Starts with', requiresValue: true, valueType: 'string' },
-    { value: '_nstarts_with', label: 'Not starts with', requiresValue: true, valueType: 'string' },
-    { value: '_ends_with', label: 'Ends with', requiresValue: true, valueType: 'string' },
-    { value: '_nends_with', label: 'Not ends with', requiresValue: true, valueType: 'string' },
-    { value: '_in', label: 'One of', requiresValue: true, valueType: 'array' },
-    { value: '_nin', label: 'Not one of', requiresValue: true, valueType: 'array' },
-    { value: '_null', label: 'Is null', requiresValue: false, valueType: 'none' },
-    { value: '_nnull', label: 'Is not null', requiresValue: false, valueType: 'none' },
-    { value: '_empty', label: 'Is empty', requiresValue: false, valueType: 'none' },
-    { value: '_nempty', label: 'Is not empty', requiresValue: false, valueType: 'none' },
+    { value: '_eq', label: labels.equals, requiresValue: true, valueType: 'string' },
+    { value: '_neq', label: labels.notEquals, requiresValue: true, valueType: 'string' },
+    { value: '_contains', label: labels.contains, requiresValue: true, valueType: 'string' },
+    { value: '_ncontains', label: labels.notContains, requiresValue: true, valueType: 'string' },
+    { value: '_icontains', label: labels.iContains, requiresValue: true, valueType: 'string' },
+    { value: '_starts_with', label: labels.startsWith, requiresValue: true, valueType: 'string' },
+    { value: '_nstarts_with', label: labels.notStartsWith, requiresValue: true, valueType: 'string' },
+    { value: '_ends_with', label: labels.endsWith, requiresValue: true, valueType: 'string' },
+    { value: '_nends_with', label: labels.notEndsWith, requiresValue: true, valueType: 'string' },
+    { value: '_in', label: labels.oneOf, requiresValue: true, valueType: 'array' },
+    { value: '_nin', label: labels.notOneOf, requiresValue: true, valueType: 'array' },
+    { value: '_null', label: labels.isNull, requiresValue: false, valueType: 'none' },
+    { value: '_nnull', label: labels.isNotNull, requiresValue: false, valueType: 'none' },
+    { value: '_empty', label: labels.isEmpty, requiresValue: false, valueType: 'none' },
+    { value: '_nempty', label: labels.isNotEmpty, requiresValue: false, valueType: 'none' },
   ];
 
   const numberOperators: OperatorInfo[] = [
-    { value: '_eq', label: 'Equals', requiresValue: true, valueType: 'number' },
-    { value: '_neq', label: 'Not equals', requiresValue: true, valueType: 'number' },
-    { value: '_lt', label: 'Less than', requiresValue: true, valueType: 'number' },
-    { value: '_lte', label: 'Less than or equal', requiresValue: true, valueType: 'number' },
-    { value: '_gt', label: 'Greater than', requiresValue: true, valueType: 'number' },
-    { value: '_gte', label: 'Greater than or equal', requiresValue: true, valueType: 'number' },
-    { value: '_between', label: 'Between', requiresValue: true, valueType: 'range' },
-    { value: '_nbetween', label: 'Not between', requiresValue: true, valueType: 'range' },
-    { value: '_in', label: 'One of', requiresValue: true, valueType: 'array' },
-    { value: '_nin', label: 'Not one of', requiresValue: true, valueType: 'array' },
-    { value: '_null', label: 'Is null', requiresValue: false, valueType: 'none' },
-    { value: '_nnull', label: 'Is not null', requiresValue: false, valueType: 'none' },
+    { value: '_eq', label: labels.equals, requiresValue: true, valueType: 'number' },
+    { value: '_neq', label: labels.notEquals, requiresValue: true, valueType: 'number' },
+    { value: '_lt', label: labels.lessThan, requiresValue: true, valueType: 'number' },
+    { value: '_lte', label: labels.lessThanOrEqual, requiresValue: true, valueType: 'number' },
+    { value: '_gt', label: labels.greaterThan, requiresValue: true, valueType: 'number' },
+    { value: '_gte', label: labels.greaterThanOrEqual, requiresValue: true, valueType: 'number' },
+    { value: '_between', label: labels.between, requiresValue: true, valueType: 'range' },
+    { value: '_nbetween', label: labels.notBetween, requiresValue: true, valueType: 'range' },
+    { value: '_in', label: labels.oneOf, requiresValue: true, valueType: 'array' },
+    { value: '_nin', label: labels.notOneOf, requiresValue: true, valueType: 'array' },
+    { value: '_null', label: labels.isNull, requiresValue: false, valueType: 'none' },
+    { value: '_nnull', label: labels.isNotNull, requiresValue: false, valueType: 'none' },
   ];
 
   const booleanOperators: OperatorInfo[] = [
-    { value: '_eq', label: 'Equals', requiresValue: true, valueType: 'boolean' },
-    { value: '_neq', label: 'Not equals', requiresValue: true, valueType: 'boolean' },
-    { value: '_null', label: 'Is null', requiresValue: false, valueType: 'none' },
-    { value: '_nnull', label: 'Is not null', requiresValue: false, valueType: 'none' },
+    { value: '_eq', label: labels.equals, requiresValue: true, valueType: 'boolean' },
+    { value: '_neq', label: labels.notEquals, requiresValue: true, valueType: 'boolean' },
+    { value: '_null', label: labels.isNull, requiresValue: false, valueType: 'none' },
+    { value: '_nnull', label: labels.isNotNull, requiresValue: false, valueType: 'none' },
   ];
 
   const dateOperators: OperatorInfo[] = [
-    { value: '_eq', label: 'Equals', requiresValue: true, valueType: 'date' },
-    { value: '_neq', label: 'Not equals', requiresValue: true, valueType: 'date' },
-    { value: '_lt', label: 'Before', requiresValue: true, valueType: 'date' },
-    { value: '_lte', label: 'On or before', requiresValue: true, valueType: 'date' },
-    { value: '_gt', label: 'After', requiresValue: true, valueType: 'date' },
-    { value: '_gte', label: 'On or after', requiresValue: true, valueType: 'date' },
-    { value: '_between', label: 'Between', requiresValue: true, valueType: 'range' },
-    { value: '_nbetween', label: 'Not between', requiresValue: true, valueType: 'range' },
-    { value: '_null', label: 'Is null', requiresValue: false, valueType: 'none' },
-    { value: '_nnull', label: 'Is not null', requiresValue: false, valueType: 'none' },
+    { value: '_eq', label: labels.equals, requiresValue: true, valueType: 'date' },
+    { value: '_neq', label: labels.notEquals, requiresValue: true, valueType: 'date' },
+    { value: '_lt', label: labels.before, requiresValue: true, valueType: 'date' },
+    { value: '_lte', label: labels.onOrBefore, requiresValue: true, valueType: 'date' },
+    { value: '_gt', label: labels.after, requiresValue: true, valueType: 'date' },
+    { value: '_gte', label: labels.onOrAfter, requiresValue: true, valueType: 'date' },
+    { value: '_between', label: labels.between, requiresValue: true, valueType: 'range' },
+    { value: '_nbetween', label: labels.notBetween, requiresValue: true, valueType: 'range' },
+    { value: '_null', label: labels.isNull, requiresValue: false, valueType: 'none' },
+    { value: '_nnull', label: labels.isNotNull, requiresValue: false, valueType: 'none' },
   ];
 
   const uuidOperators: OperatorInfo[] = [
-    { value: '_eq', label: 'Equals', requiresValue: true, valueType: 'string' },
-    { value: '_neq', label: 'Not equals', requiresValue: true, valueType: 'string' },
-    { value: '_in', label: 'One of', requiresValue: true, valueType: 'array' },
-    { value: '_nin', label: 'Not one of', requiresValue: true, valueType: 'array' },
-    { value: '_null', label: 'Is null', requiresValue: false, valueType: 'none' },
-    { value: '_nnull', label: 'Is not null', requiresValue: false, valueType: 'none' },
+    { value: '_eq', label: labels.equals, requiresValue: true, valueType: 'string' },
+    { value: '_neq', label: labels.notEquals, requiresValue: true, valueType: 'string' },
+    { value: '_in', label: labels.oneOf, requiresValue: true, valueType: 'array' },
+    { value: '_nin', label: labels.notOneOf, requiresValue: true, valueType: 'array' },
+    { value: '_null', label: labels.isNull, requiresValue: false, valueType: 'none' },
+    { value: '_nnull', label: labels.isNotNull, requiresValue: false, valueType: 'none' },
   ];
 
   switch (type.toLowerCase()) {
@@ -199,8 +231,8 @@ export function getOperatorsForType(type: string): OperatorInfo[] {
     case 'json':
     case 'jsonb':
       return [
-        { value: '_null', label: 'Is null', requiresValue: false, valueType: 'none' },
-        { value: '_nnull', label: 'Is not null', requiresValue: false, valueType: 'none' },
+        { value: '_null', label: labels.isNull, requiresValue: false, valueType: 'none' },
+        { value: '_nnull', label: labels.isNotNull, requiresValue: false, valueType: 'none' },
       ];
     case 'string':
     case 'text':
@@ -215,12 +247,18 @@ export function getOperatorsForType(type: string): OperatorInfo[] {
 /**
  * Get filter operators for a relation field (bare alias, not dot-notation).
  * Used when filtering on a relation alias itself (e.g. "roles") rather than
- * a specific column on the related table.
+ * a specific column on the related table. `labels` as in `getOperatorsForType`.
  */
-export function getOperatorsForRelation(): OperatorInfo[] {
+export function getOperatorsForRelation(labels: OperatorLabels = DEFAULT_OPERATOR_LABELS): OperatorInfo[] {
   return [
-    { value: '_has', label: 'Has related items', requiresValue: true, valueType: 'boolean', relationalLimitation: 'Requires two-step query on child mutations (update/delete). Performance cost: +1 SELECT per operation.' },
-    { value: '_null', label: 'Is null', requiresValue: false, valueType: 'none' },
-    { value: '_nnull', label: 'Is not null', requiresValue: false, valueType: 'none' },
+    {
+      value: '_has',
+      label: labels.hasRelatedItems,
+      requiresValue: true,
+      valueType: 'boolean',
+      relationalLimitation: labels.hasRelationalLimitation,
+    },
+    { value: '_null', label: labels.isNull, requiresValue: false, valueType: 'none' },
+    { value: '_nnull', label: labels.isNotNull, requiresValue: false, valueType: 'none' },
   ];
 }

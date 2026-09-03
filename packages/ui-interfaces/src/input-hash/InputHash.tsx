@@ -1,5 +1,6 @@
 import React, { forwardRef, useState, useEffect } from 'react';
-import { isConcealedValue } from '@buildpad/utils';
+import { isConcealedValue, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+import { useBuildpadTranslations } from '@buildpad/services';
 import { TextInput, PasswordInput, Box } from '@mantine/core';
 import { IconLock, IconLockOpen } from '@tabler/icons-react';
 import './InputHash.css';
@@ -36,6 +37,8 @@ export interface InputHashProps {
   'data-testid'?: string;
   /** Accessible name, used when no visible `label` is rendered */
   'aria-label'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.inputHash`) */
+  translations?: DeepPartial<InterfacesTranslations['inputHash']>;
 }
 
 export const InputHash = forwardRef<HTMLInputElement, InputHashProps>(({
@@ -53,11 +56,13 @@ export const InputHash = forwardRef<HTMLInputElement, InputHashProps>(({
   autocomplete,
   'data-testid': testId,
   'aria-label': ariaLabel,
+  translations,
 }, ref) => {
   // Accept either casing. @buildpad/ui-form passes camelCase `readOnly`; this
   // component historically read only the lowercase form, so a readonly password
   // field stayed fully typeable and overwrote the stored credential on save.
   const readonly = readonlyProp || readOnlyProp;
+  const t = useBuildpadTranslations((d) => d.interfaces.inputHash, translations);
   const isHashed = typeof value === 'string' && value.length > 0;
   const [localValue, setLocalValue] = useState<string>('');
 
@@ -77,7 +82,7 @@ export const InputHash = forwardRef<HTMLInputElement, InputHashProps>(({
   const resolvedAutocomplete = autocomplete ?? (masked ? 'new-password' : 'off');
 
   const internalPlaceholder = isHashed && !localValue
-    ? 'Value securely stored'
+    ? t.storedPlaceholder
     : placeholder;
 
   const handleChange = (newValue: string) => {

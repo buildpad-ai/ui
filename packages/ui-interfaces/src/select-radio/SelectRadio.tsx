@@ -3,6 +3,8 @@
 import React, { useMemo, useState } from 'react';
 import { Radio, Text, Stack, Group, TextInput, ActionIcon, ColorSwatch } from '@mantine/core';
 import { IconX } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 import { IconDisplay } from '../select-icon/SelectIcon';
 
 export interface RadioChoice {
@@ -35,6 +37,8 @@ export interface SelectRadioProps {
    */
   readOnly?: boolean;
   'aria-label'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.selectRadio`) */
+  translations?: DeepPartial<InterfacesTranslations['selectRadio']>;
 }
 
 export function SelectRadio({
@@ -52,7 +56,9 @@ export function SelectRadio({
   iconOff: _iconOff = 'radio_button_unchecked',
   color = 'blue',
   'aria-label': ariaLabel,
+  translations,
 }: SelectRadioProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.selectRadio, translations);
   const [otherValue, setOtherValue] = useState('');
   const [showOtherInput, setShowOtherInput] = useState(false);
 
@@ -185,7 +191,7 @@ export function SelectRadio({
           </Text>
         )}
         <Text size="sm" c="orange" role="alert">
-          Choices option configured incorrectly
+          {t.misconfigured}
         </Text>
         {error && (
           <Text size="xs" c="red" role="alert" aria-live="polite">
@@ -260,7 +266,7 @@ export function SelectRadio({
             <Stack gap="xs">
               <Radio
                 value="__other__"
-                label="Other"
+                label={t.other}
                 color={color}
                 disabled={disabled}
                 size="sm"
@@ -278,7 +284,7 @@ export function SelectRadio({
               {(showOtherInput || usesOtherValue) && (
                 <Group gap="xs" align="flex-end" pl="md">
                   <TextInput
-                    placeholder="Enter custom value"
+                    placeholder={t.customValuePlaceholder}
                     value={otherValue}
                     onChange={(event) => handleOtherChange(event.currentTarget.value)}
                     onFocus={handleOtherFocus}

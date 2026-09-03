@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { isNewItem } from '@buildpad/utils';
+import { isNewItem, interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
 import {
     Paper,
     Group,
@@ -119,6 +120,8 @@ export interface ListM2AProps {
     mockItems?: M2AItem[];
     /** Mock relationship info for demo/testing */
     mockRelationInfo?: Partial<M2ARelationInfo>;
+    /** Per-instance overrides of the dictionary strings (`interfaces.listM2A`) */
+    translations?: DeepPartial<InterfacesTranslations['listM2A']>;
 }
 
 // ── DnD helper: Sortable table row ──
@@ -181,12 +184,15 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
 interface SortableListItemProps {
     id: string;
     dragEnabled: boolean;
+    /** aria-label of the drag handle */
+    reorderLabel: string;
     children: React.ReactNode;
 }
 
 const SortableListItem: React.FC<SortableListItemProps> = ({
     id,
     dragEnabled,
+    reorderLabel,
     children,
 }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -216,7 +222,7 @@ const SortableListItem: React.FC<SortableListItemProps> = ({
                     }}
                     data-testid={`m2a-drag-handle-${id}`}
                     role="button"
-                    aria-label="Reorder item"
+                    aria-label={reorderLabel}
                     {...listeners}
                 >
                     <IconGripVertical size={14} color="var(--mantine-color-gray-5)" />
@@ -259,7 +265,11 @@ export const ListM2A: React.FC<ListM2AProps> = ({
     readOnly = false,
     mockItems,
     mockRelationInfo,
+    translations,
 }) => {
+    const t = useBuildpadTranslations((d) => d.interfaces.listM2A, translations);
+    const { formatCount } = useBuildpadI18n();
+
     // `readOnly` was previously destructured into an unused variable, so every
     // mutation affordance below was gated on `disabled` alone and a read-only
     // M2A field stayed fully create/select/delete/reorder capable. Mirrors the
@@ -692,7 +702,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
         }
 
         const collInfo = allowedCollections.find(c => c.collection === collectionName);
-        return collInfo?.name || collectionName || 'Unknown';
+        return collInfo?.name || collectionName || t.unknownCollection;
     };
 
     // Get display value for an item
@@ -728,7 +738,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
         return (
             <Alert 
                 icon={<IconAlertCircle size={16} />} 
-                title="Configuration Error" 
+                title={t.configError.title} 
                 color="red" 
                 data-testid="m2a-error"
             >
@@ -742,11 +752,11 @@ export const ListM2A: React.FC<ListM2AProps> = ({
         return (
             <Alert 
                 icon={<IconAlertCircle size={16} />} 
-                title="No available collections" 
+                title={t.noCollections.title} 
                 color="warning" 
                 data-testid="m2a-no-collections"
             >
-                No non-singleton collections are configured for this M2A relationship.
+                {t.noCollections.message}
             </Alert>
         );
     }
@@ -756,11 +766,11 @@ export const ListM2A: React.FC<ListM2AProps> = ({
         return (
             <Alert 
                 icon={<IconAlertCircle size={16} />} 
-                title="Relationship not configured" 
+                title={t.notConfigured.title} 
                 color="warning" 
                 data-testid="m2a-not-configured"
             >
-                The many-to-any relationship is not properly configured for this field.
+                {t.notConfigured.message}
             </Alert>
         );
     }
@@ -788,7 +798,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     <Group>
                         {enableSearchFilter && layout === 'table' && (
                             <TextInput
-                                placeholder="Search..."
+                                placeholder={t.searchPlaceholder}
                                 leftSection={<IconSearch size={16} />}
                                 value={search}
                                 onChange={(e) => {
@@ -804,7 +814,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     <Group>
                         {totalCount > 0 && (
                             <Text size="sm" c="dimmed" data-testid="m2a-count">
-                                {totalCount} item{totalCount !== 1 ? 's' : ''}
+                                {formatCount(totalCount, t.itemCount)}
                             </Text>
                         )}
 
@@ -817,7 +827,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                         rightSection={<IconDropdown size={14} />}
                                         data-testid="m2a-select-btn"
                                     >
-                                        Add Existing
+                                        {t.addExisting}
                                     </Button>
                                 </Menu.Target>
                                 <Menu.Dropdown>
@@ -839,7 +849,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                             <Menu shadow="md" width={200}>
                                 <Menu.Target>
                                     <Tooltip 
-                                        label="Save the item first before creating related items"
+                                        label={t.saveFirstHint}
                                         disabled={!!isParentSaved}
                                     >
                                         <Button
@@ -848,7 +858,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                             disabled={!isParentSaved}
                                             data-testid="m2a-create-btn"
                                         >
-                                            Create New
+                                            {t.createNew}
                                         </Button>
                                     </Tooltip>
                                 </Menu.Target>
@@ -872,7 +882,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                 {/* Unsaved changes notice */}
                 {!isDemoMode && hasChanges && (
                     <Alert icon={<IconAlertCircle size={16} />} color="info" mb="md" data-testid="m2a-unsaved-notice">
-                        You have unsaved changes. Save the parent item to persist them.
+                        {t.unsavedChanges}
                     </Alert>
                 )}
 
@@ -892,14 +902,14 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                 {/* Drag disabled notice (paginated) */}
                 {hasSortField && !isEffectivelyDisabled && totalCount > limit && (
                     <Alert icon={<IconAlertCircle size={16} />} color="warning" mb="md" data-testid="m2a-drag-disabled-notice">
-                        Drag &amp; drop sorting is disabled when items are paginated. Reduce items or increase page size to enable.
+                        {t.dragDisabledPaginated}
                     </Alert>
                 )}
 
                 {/* Content */}
                 {items.length === 0 && !loading ? (
                     <Paper p="xl" style={{ textAlign: 'center' }} data-testid="m2a-empty">
-                        <Text c="dimmed">No items</Text>
+                        <Text c="dimmed">{t.noItems}</Text>
                     </Paper>
                 ) : layout === 'table' ? (
                     /* Table Layout — wrapped with DnD */
@@ -911,9 +921,9 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                 {hasSortField && (
                                     <Table.Th style={{ width: 50 }}></Table.Th>
                                 )}
-                                <Table.Th style={{ width: 150 }}>Collection</Table.Th>
-                                <Table.Th>Item</Table.Th>
-                                <Table.Th style={{ width: 120 }}>Actions</Table.Th>
+                                <Table.Th style={{ width: 150 }}>{t.columns.collection}</Table.Th>
+                                <Table.Th>{t.columns.item}</Table.Th>
+                                <Table.Th style={{ width: 120 }}>{t.columns.actions}</Table.Th>
                             </Table.Tr>
                         </Table.Thead>
                         <Table.Tbody>
@@ -946,21 +956,21 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                             {isAllowed ? (
                                                 <Group gap="xs">
                                                     <Text size="sm" td={isDeleted ? 'line-through' : undefined}>{getItemDisplayValue(item)}</Text>
-                                                    {isCreated && <Badge size="xs" color="green" variant="light">new</Badge>}
-                                                    {isUpdated && <Badge size="xs" color="warning" variant="light">edited</Badge>}
-                                                    {isDeleted && <Badge size="xs" color="red" variant="light">removed</Badge>}
+                                                    {isCreated && <Badge size="xs" color="green" variant="light">{t.badges.new}</Badge>}
+                                                    {isUpdated && <Badge size="xs" color="warning" variant="light">{t.badges.edited}</Badge>}
+                                                    {isDeleted && <Badge size="xs" color="red" variant="light">{t.badges.removed}</Badge>}
                                                 </Group>
                                             ) : (
                                                 <Group gap="xs">
                                                 <IconAlertCircle size={14} color="var(--mantine-color-yellow-6)" />
-                                                    <Text size="sm" c="dimmed">Invalid item</Text>
+                                                    <Text size="sm" c="dimmed">{t.invalidItem}</Text>
                                                 </Group>
                                             )}
                                         </Table.Td>
                                         <Table.Td>
                                             <Group gap="xs">
                                                 {enableLink && isAllowed && !isDeleted && (
-                                                    <Tooltip label="View item">
+                                                    <Tooltip label={t.actions.viewItem}>
                                                         <ActionIcon
                                                             variant="subtle"
                                                             size="sm"
@@ -972,7 +982,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 )}
 
                                                 {!isEffectivelyDisabled && isAllowed && !isDeleted && canEditItem(item) && (
-                                                    <Tooltip label="Edit">
+                                                    <Tooltip label={t.actions.edit}>
                                                         <ActionIcon
                                                             variant="subtle"
                                                             color="gray"
@@ -986,7 +996,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 )}
 
                                                 {!isEffectivelyDisabled && isDeleted && (
-                                                    <Tooltip label="Undo remove">
+                                                    <Tooltip label={t.actions.undoRemove}>
                                                         <ActionIcon
                                                             variant="subtle"
                                                             size="sm"
@@ -999,7 +1009,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 )}
 
                                                 {!isEffectivelyDisabled && !isDeleted && canDeleteItem(item) && (
-                                                    <Tooltip label="Remove">
+                                                    <Tooltip label={t.actions.remove}>
                                                         <ActionIcon
                                                             variant="subtle"
                                                             color="red"
@@ -1036,6 +1046,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                     key={item.id}
                                     id={String(item.id)}
                                     dragEnabled={canDrag && !isDeleted}
+                                    reorderLabel={t.reorderItem}
                                 >
                                 <Paper
                                     p="sm"
@@ -1054,18 +1065,18 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                         <Group>
                                             {isAllowed ? (
                                                 <Group gap="xs">
-                                                    <Text c="var(--mantine-primary-color-6)" fw={500}>{getItemPrefix(item)}:</Text>
+                                                    <Text c="var(--mantine-primary-color-6)" fw={500}>{interpolate(t.prefixFormat, { prefix: getItemPrefix(item) })}</Text>
                                                     <Text td={isDeleted ? 'line-through' : undefined}>
                                                         {getItemDisplayValue(item)}
                                                     </Text>
-                                                    {isCreated && <Badge size="xs" color="green" variant="light">new</Badge>}
-                                                    {isUpdated && <Badge size="xs" color="warning" variant="light">edited</Badge>}
-                                                    {isDeleted && <Badge size="xs" color="red" variant="light">removed</Badge>}
+                                                    {isCreated && <Badge size="xs" color="green" variant="light">{t.badges.new}</Badge>}
+                                                    {isUpdated && <Badge size="xs" color="warning" variant="light">{t.badges.edited}</Badge>}
+                                                    {isDeleted && <Badge size="xs" color="red" variant="light">{t.badges.removed}</Badge>}
                                                 </Group>
                                             ) : (
                                                 <Group gap="xs">
                                                     <IconAlertCircle size={14} color="var(--mantine-color-yellow-6)" />
-                                                    <Text c="dimmed">Invalid item</Text>
+                                                    <Text c="dimmed">{t.invalidItem}</Text>
                                                 </Group>
                                             )}
                                         </Group>
@@ -1082,7 +1093,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 </ActionIcon>
                                             )}
                                             {!isEffectivelyDisabled && isDeleted && (
-                                                <Tooltip label="Undo remove">
+                                                <Tooltip label={t.actions.undoRemove}>
                                                     <ActionIcon
                                                         variant="subtle"
                                                         size="sm"
@@ -1097,7 +1108,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                                 </Tooltip>
                                             )}
                                             {!isEffectivelyDisabled && !isDeleted && canDeleteItem(item) && (
-                                                <Tooltip label="Remove">
+                                                <Tooltip label={t.actions.remove}>
                                                     <ActionIcon
                                                         variant="subtle"
                                                         color="red"
@@ -1128,12 +1139,16 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     <Group justify="space-between" mt="md" data-testid="m2a-pagination">
                         <Group>
                             <Text size="sm" c="dimmed">
-                                Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, totalCount)} of {totalCount}
+                                {interpolate(t.showingRange, {
+                                    start: ((currentPage - 1) * limit) + 1,
+                                    end: Math.min(currentPage * limit, totalCount),
+                                    total: totalCount,
+                                })}
                             </Text>
                         </Group>
 
                         <Group>
-                            <Text size="sm">Items per page:</Text>
+                            <Text size="sm">{t.perPage}</Text>
                             <Select
                                 value={String(limit)}
                                 onChange={(value) => {
@@ -1161,7 +1176,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
 
             {error && (
                 <Text size="xs" c="red" data-testid="m2a-error-text">
-                    {typeof error === 'string' ? error : 'Invalid value'}
+                    {typeof error === 'string' ? error : t.invalidValue}
                 </Text>
             )}
 
@@ -1173,7 +1188,11 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     setCurrentlyEditing(null);
                     setSelectedCollection(null);
                 }}
-                title={isCreatingNew ? `Create New ${selectedCollection}` : `Edit ${selectedCollection}`}
+                title={
+                    isCreatingNew
+                        ? interpolate(t.editModal.createTitle, { collection: selectedCollection })
+                        : interpolate(t.editModal.editTitle, { collection: selectedCollection })
+                }
                 size="lg"
             >
                 {selectedCollection && relationInfo && (
@@ -1184,6 +1203,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                         isNew={isCreatingNew}
                         parentPrimaryKey={primaryKey}
                         disabled={isEffectivelyDisabled}
+                        translations={translations}
                         onCancel={() => {
                             closeEditModal();
                             setCurrentlyEditing(null);
@@ -1234,14 +1254,14 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     setSelectedCollection(null);
                     setSelectError(null);
                 }}
-                title={`Select from ${selectedCollection}`}
+                title={interpolate(t.selectModal.title, { collection: selectedCollection })}
                 size="xl"
             >
                 {/* Error */}
                 {selectError && (
                     <Alert 
                         icon={<IconAlertCircle size={16} />} 
-                        title="Error" 
+                        title={t.selectModal.errorTitle} 
                         color="red" 
                         mb="md"
                         withCloseButton
@@ -1255,11 +1275,11 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                 {!selectError && (
                     <Alert 
                         icon={<IconAlertCircle size={16} />} 
-                        title="Items will be linked when you save" 
+                        title={t.selectModal.stagedTitle} 
                         color="info" 
                         mb="md"
                     >
-                        Selected items will be staged locally and saved when you save the parent item.
+                        {t.selectModal.stagedMessage}
                     </Alert>
                 )}
 
@@ -1280,7 +1300,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                             })() : undefined}
                             bulkActions={[
                                 {
-                                    label: "Add Selected",
+                                    label: t.selectModal.addSelected,
                                     icon: <IconPlus size={14} />,
                                     action: handleSelectItems,
                                 }

@@ -2,6 +2,8 @@ import React, { forwardRef } from 'react';
 import { TextInput, NumberInput, PasswordInput, ActionIcon, Group } from '@mantine/core';
 import { IconEye, IconEyeOff, IconX } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 
 export interface InputProps {
   /** Input value */
@@ -72,6 +74,8 @@ export interface InputProps {
   /** Field key — forwarded by the form container; not rendered. */
   field?: string;
   defaultValue?: string | number | null;
+  /** Per-instance overrides of the dictionary strings (`interfaces.input`) */
+  translations?: DeepPartial<InterfacesTranslations['input']>;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(({
@@ -112,10 +116,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   autoFocus: autoFocusProp,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   defaultValue: _defaultValue,
+  translations,
   ...props
 }, ref) => {
   // Accept either casing — @buildpad/ui-form passes camelCase `readOnly`.
   const readonly = readonlyProp || readOnlyProp;
+  const t = useBuildpadTranslations((d) => d.interfaces.input, translations);
   // Strict on the lowercase spelling: `meta.options` is unvalidated admin JSON,
   // so a truthy string like "false" would otherwise turn focus on. SelectIcon
   // compares the same way, deliberately.
@@ -228,7 +234,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
       size="sm"
       onClick={() => handleChange(null)}
       disabled={disabled || readonly}
-      aria-label="Clear input"
+      aria-label={t.clear}
     >
       <IconX size={16} />
     </ActionIcon>
@@ -274,7 +280,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
           size="sm"
           onClick={toggle}
           disabled={disabled || readonly}
-          aria-label={showPassword ? 'Hide password' : 'Show password'}
+          aria-label={showPassword ? t.hidePassword : t.showPassword}
         >
           {showPassword ? (
             <IconEyeOff size={16} />

@@ -6,6 +6,8 @@
 import React from 'react';
 import { Text, Tooltip } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
+import type { DeepPartial, FormTranslations } from '@buildpad/utils';
+import { useBuildpadTranslations } from '@buildpad/services';
 
 export interface FormFieldLabelProps {
   /** Label text */
@@ -14,6 +16,8 @@ export interface FormFieldLabelProps {
   required?: boolean;
   /** Description/help text */
   description?: string;
+  /** Per-instance overrides of the `form` dictionary namespace */
+  translations?: DeepPartial<FormTranslations>;
 }
 
 /**
@@ -23,7 +27,10 @@ export const FormFieldLabel: React.FC<FormFieldLabelProps> = ({
   label,
   required = false,
   description,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.form, translations);
+
   return (
     <Text
       component="label"
@@ -34,7 +41,7 @@ export const FormFieldLabel: React.FC<FormFieldLabelProps> = ({
       {label}
       {required && (
         <Text component="span" c="red" size="sm">
-          *
+          {t.fieldLabel.requiredIndicator}
         </Text>
       )}
       {description && (

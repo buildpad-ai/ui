@@ -1,9 +1,9 @@
 import React from 'react';
 import type { Preview } from '@storybook/nextjs-vite';
 import { MantineProvider } from '@mantine/core';
-import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
 import { enterpriseTheme } from '../../storybook-enterprise-theme';
+import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../storybook-i18n';
 
 // Mantine CSS
 import '@mantine/core/styles.css';
@@ -28,17 +28,18 @@ const preview: Preview = {
     },
     layout: 'centered',
   },
+  globalTypes: i18nGlobalTypes,
+  initialGlobals: i18nInitialGlobals,
   decorators: [
     (Story) => (
       <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
-        <DatesProvider settings={{ locale: 'en' }}>
-          <Notifications position="top-right" />
-          <div className="sb-enterprise-wrapper sb-interfaces-pad">
-            <Story />
-          </div>
-        </DatesProvider>
+        <Notifications position="top-right" />
+        <div className="sb-enterprise-wrapper sb-interfaces-pad">
+          <Story />
+        </div>
       </MantineProvider>
     ),
+    withBuildpadI18n,
   ],
   tags: ['autodocs'],
 };

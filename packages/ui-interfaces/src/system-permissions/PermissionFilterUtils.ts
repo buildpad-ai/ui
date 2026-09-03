@@ -4,6 +4,8 @@
  * `hasRelationalFilterKeys` lifted from its `FilterRuleBuilder`.
  */
 
+import { createElement, Fragment, type ReactNode } from 'react';
+import { defaultTranslations, type InterfacesTranslations } from '@buildpad/utils';
 import type {
   Filter,
   FilterNode,
@@ -12,6 +14,25 @@ import type {
   LogicalOperator,
   DynamicValue,
 } from './PermissionFilterTypes';
+
+/** `validateNode` messages (`interfaces.systemPermissions.validation`). */
+export type ValidationMessages = InterfacesTranslations['systemPermissions']['validation'];
+const DEFAULT_VALIDATION_MESSAGES: ValidationMessages = defaultTranslations.interfaces.systemPermissions.validation;
+
+/**
+ * Render a `{key}` template with React nodes substituted for the placeholders,
+ * so a translated sentence keeps its bold / code fragments in place. Unknown
+ * placeholders stay visible, like `interpolate`.
+ */
+export function interpolateNodes(template: string, nodes: Record<string, ReactNode>): ReactNode[] {
+  return template.split(/(\{\w+\})/g).map((part, index) => {
+    const match = /^\{(\w+)\}$/.exec(part);
+    if (match && match[1] in nodes) {
+      return createElement(Fragment, { key: index }, nodes[match[1]]);
+    }
+    return part;
+  });
+}
 
 /**
  * Generate a unique ID for filter nodes
@@ -293,31 +314,35 @@ export function toggleGroupLogical(nodes: FilterNode[], groupId: string): Filter
 }
 
 /**
- * Validate a filter node
+ * Validate a filter node. `messages` are the error strings of the active
+ * locale (`interfaces.systemPermissions.validation`); English when omitted.
  */
-export function validateNode(node: FilterNode): { valid: boolean; error?: string } {
+export function validateNode(
+  node: FilterNode,
+  messages: ValidationMessages = DEFAULT_VALIDATION_MESSAGES,
+): { valid: boolean; error?: string } {
   if (node.type === 'field') {
     if (!node.field) {
-      return { valid: false, error: 'Field is required' };
+      return { valid: false, error: messages.fieldRequired };
     }
     if (!node.operator) {
-      return { valid: false, error: 'Operator is required' };
+      return { valid: false, error: messages.operatorRequired };
     }
     // Check if operator requires a value
     const noValueOperators = ['_null', '_nnull', '_empty', '_nempty'];
     if (!noValueOperators.includes(node.operator)) {
       if (node.value === undefined || node.value === '') {
-        return { valid: false, error: 'Value is required' };
+        return { valid: false, error: messages.valueRequired };
       }
     }
   }
 
   if (node.type === 'group') {
     if (!node.children || node.children.length === 0) {
-      return { valid: false, error: 'Group must have at least one condition' };
+      return { valid: false, error: messages.groupNeedsCondition };
     }
     for (const child of node.children) {
-      const result = validateNode(child);
+      const result = validateNode(child, messages);
       if (!result.valid) {
         return result;
       }
@@ -328,13 +353,16 @@ export function validateNode(node: FilterNode): { valid: boolean; error?: string
 }
 
 /**
- * Validate all nodes
+ * Validate all nodes (`messages` as in `validateNode`)
  */
-export function validateNodes(nodes: FilterNode[]): { valid: boolean; errors: string[] } {
+export function validateNodes(
+  nodes: FilterNode[],
+  messages: ValidationMessages = DEFAULT_VALIDATION_MESSAGES,
+): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   for (const node of nodes) {
-    const result = validateNode(node);
+    const result = validateNode(node, messages);
     if (!result.valid && result.error) {
       errors.push(result.error);
     }

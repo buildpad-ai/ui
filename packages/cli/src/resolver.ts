@@ -197,7 +197,16 @@ export interface LibModule {
    * `icon` is a @tabler/icons-react export name; `section` groups entries
    * under a labelled sidebar heading (default "Main Menu").
    */
-  navItems?: Array<{ label: string; href: string; icon: string; section?: string }>;
+  navItems?: Array<{
+    label: string;
+    /** Dictionary path (lib/i18n) resolved by the shell, e.g. "app.nav.users". */
+    labelKey?: string;
+    href: string;
+    icon: string;
+    section?: string;
+    /** Dictionary path for the section heading, e.g. "app.nav.administration". */
+    sectionKey?: string;
+  }>;
   /** v2: owning source package, e.g. "@buildpad/cli". */
   sourcePackage?: string;
   /** v2: semver of the source package at registry generation time. */

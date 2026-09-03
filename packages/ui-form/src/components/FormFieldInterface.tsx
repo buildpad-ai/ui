@@ -18,9 +18,13 @@ import {
   isConcealedField,
   concealingInterface,
   CONCEALED_PLACEHOLDER,
+  interpolate,
+  type DeepPartial,
+  type FormTranslations,
   type InterfaceConfig,
   type InterfaceType,
 } from '@buildpad/utils';
+import { useBuildpadTranslations } from '@buildpad/services';
 import { InterfaceErrorBoundary } from './InterfaceErrorBoundary';
 
 // Import interface components
@@ -44,6 +48,9 @@ const MULTI_SELECT_INTERFACE_TYPES = new Set([
   'select-multiple-dropdown',
   'select-multiple-checkbox-tree',
 ]);
+
+/** Where the bold interface type goes inside `fieldInterface.componentNotFound.title`. */
+const INTERFACE_TYPE_PLACEHOLDER = '{interfaceType}';
 
 /**
  * Get the default interface name for a given field type.
@@ -110,6 +117,8 @@ export interface FormFieldInterfaceProps {
    * rendered separately by FormFieldLabel.
    */
   accessibleName?: string;
+  /** Per-instance overrides of the `form` dictionary namespace */
+  translations?: DeepPartial<FormTranslations>;
 }
 
 /**
@@ -128,7 +137,11 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   autofocus = false,
   primaryKey,
   accessibleName,
+  translations,
 }) => {
+  // `form` dictionary namespace: prop overrides > provider dictionary > English defaults
+  const t = useBuildpadTranslations((d) => d.form, translations);
+
   // Get interface configuration from @buildpad/utils
   // Returns InterfaceConfig with type and props
   // Falls back to default interface for the field type when meta.interface is null
@@ -331,13 +344,16 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
 
   // Show error if component not found
   if (!InterfaceComponent) {
+    // The interface type is rendered bold, so the template is split around
+    // its placeholder instead of being interpolated into one string.
+    const [before, after] = t.fieldInterface.componentNotFound.title.split(INTERFACE_TYPE_PLACEHOLDER);
     return (
       <Alert icon={<IconAlertCircle size={16} />} color="warning">
         <Text size="sm">
-          Interface component not found: <Text component="span" fw={600}>{interfaceConfig.type}</Text>
+          {before}<Text component="span" fw={600}>{interfaceConfig.type}</Text>{after}
         </Text>
         <Text size="xs" c="dimmed" mt="xs">
-          Field: {field.field} (Type: {field.type})
+          {interpolate(t.fieldInterface.componentNotFound.detail, { field: field.field, type: field.type })}
         </Text>
       </Alert>
     );
@@ -412,7 +428,7 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
 
   // Render interface component wrapped in error boundary
   return (
-    <InterfaceErrorBoundary interfaceName={interfaceConfig.type} fieldKey={field.field}>
+    <InterfaceErrorBoundary interfaceName={interfaceConfig.type} fieldKey={field.field} translations={translations}>
       <InterfaceComponent {...interfaceProps} />
     </InterfaceErrorBoundary>
   );

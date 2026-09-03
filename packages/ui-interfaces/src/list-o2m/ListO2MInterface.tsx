@@ -4,6 +4,8 @@ import React from 'react';
 import { Box, Text, Stack, Alert, Paper, Group, ActionIcon, Button } from '@mantine/core';
 import { IconAlertCircle, IconPlus, IconTrash, IconList } from '@tabler/icons-react';
 import type { O2MRelationInfo, O2MItem } from '@buildpad/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 
 /**
  * Render function types for customizing ListO2M display
@@ -59,6 +61,8 @@ export interface ListO2MInterfaceProps extends ListO2MRenderProps {
   required?: boolean;
   /** Test ID for testing */
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.listO2M`) */
+  translations?: DeepPartial<InterfacesTranslations['listO2M']>;
 }
 
 /**
@@ -93,7 +97,10 @@ export const ListO2MInterface: React.FC<ListO2MInterfaceProps> = ({
   renderCreateModal,
   renderEditModal,
   'data-testid': testId,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.listO2M, translations);
+  const p = t.placeholder;
   const hasRenderProps = renderItemList || renderCreateModal;
 
   if (!hasRenderProps) {
@@ -114,14 +121,14 @@ export const ListO2MInterface: React.FC<ListO2MInterfaceProps> = ({
           variant="light"
         >
           <Text size="sm">
-            <strong>ListO2M Interface</strong> requires render props to be provided.
+            <strong>{p.title}</strong> {p.requiresRenderProps}
           </Text>
           <Text size="xs" mt="xs">
-            Collection: <code>{collection}</code>, Field: <code>{field}</code>
+            {p.collectionLabel} <code>{collection}</code>, {p.fieldLabel} <code>{field}</code>
           </Text>
         </Alert>
         {error && (
-          <Text size="xs" c="red">{typeof error === 'string' ? error : 'Validation error'}</Text>
+          <Text size="xs" c="red">{typeof error === 'string' ? error : p.validationError}</Text>
         )}
       </Stack>
     );
@@ -154,7 +161,7 @@ export const ListO2MInterface: React.FC<ListO2MInterfaceProps> = ({
             leftSection={<IconPlus size={14} />}
             disabled={!renderCreateModal}
           >
-            Create New
+            {p.createNew}
           </Button>
         </Group>
       )}
@@ -162,9 +169,9 @@ export const ListO2MInterface: React.FC<ListO2MInterfaceProps> = ({
       {/* Items list */}
       <Paper withBorder p="md" radius="sm">
         {loading ? (
-          <Text size="sm" c="dimmed" ta="center">Loading...</Text>
+          <Text size="sm" c="dimmed" ta="center">{p.loading}</Text>
         ) : value.length === 0 ? (
-          <Text size="sm" c="dimmed" ta="center">No items</Text>
+          <Text size="sm" c="dimmed" ta="center">{p.noItems}</Text>
         ) : renderItemList ? (
           renderItemList(value, handleRemove)
         ) : (
@@ -172,7 +179,7 @@ export const ListO2MInterface: React.FC<ListO2MInterfaceProps> = ({
             {value.map((item, index) => (
               <Group key={item.id || index} justify="space-between">
                 <Text size="sm">
-                  {template || `Item ${item.id || index + 1}`}
+                  {template || interpolate(p.itemFallback, { id: item.id || index + 1 })}
                 </Text>
                 {!disabled && (
                   <ActionIcon
@@ -191,7 +198,7 @@ export const ListO2MInterface: React.FC<ListO2MInterfaceProps> = ({
       </Paper>
 
       {error && (
-        <Text size="xs" c="red">{typeof error === 'string' ? error : 'Validation error'}</Text>
+        <Text size="xs" c="red">{typeof error === 'string' ? error : p.validationError}</Text>
       )}
     </Stack>
   );

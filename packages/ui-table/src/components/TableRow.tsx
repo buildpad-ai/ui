@@ -4,6 +4,8 @@
  */
 
 import React, { forwardRef } from 'react';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, TableTranslations } from '@buildpad/utils';
 import { Checkbox, Radio, Text } from '@mantine/core';
 import { IconGripVertical } from '@tabler/icons-react';
 import type { Header, Item, ShowSelect } from '../types';
@@ -40,6 +42,12 @@ export interface TableRowProps extends Omit<React.HTMLAttributes<HTMLTableRowEle
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   /** Whether row is being dragged */
   isDragging?: boolean;
+  /**
+   * Overrides for the `table` dictionary namespace (control aria-labels,
+   * default cell formatting). Precedence: prop > `BuildpadI18nProvider` >
+   * English defaults.
+   */
+  translations?: DeepPartial<TableTranslations>;
 }
 
 /**
@@ -54,19 +62,36 @@ function getNestedValue(item: Item, path: string): unknown {
   }, item);
 }
 
+/** Strings and formatter the default cell formatter needs (resolved by the component). */
+interface FormatValueOptions {
+  booleanTrue: string;
+  booleanFalse: string;
+  formatDate: (value: Date) => string;
+}
+
+/** Same components as `Date.prototype.toLocaleDateString()` with no arguments. */
+const DATE_CELL_FORMAT: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+};
+
 /**
  * Format value for display
  */
-function formatValue(value: unknown): string {
+function formatValue(
+  value: unknown,
+  { booleanTrue, booleanFalse, formatDate }: FormatValueOptions,
+): string {
   if (value === null || value === undefined) {
     return '';
   }
   if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No';
+    return value ? booleanTrue : booleanFalse;
   }
   if (typeof value === 'object') {
     if (value instanceof Date) {
-      return value.toLocaleDateString();
+      return formatDate(value);
     }
     return JSON.stringify(value);
   }
@@ -89,10 +114,22 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({
   onSelect,
   dragHandleProps,
   isDragging = false,
+  translations,
   style,
   className,
   ...restProps
 }, ref) => {
+  // Strings: prop > provider dictionary > English defaults; dates follow the
+  // provider locale / time zone (browser defaults without a provider).
+  const t = useBuildpadTranslations((d) => d.table, translations);
+  const { formatDate } = useBuildpadI18n();
+  const formatCell = (value: unknown) =>
+    formatValue(value, {
+      booleanTrue: t.booleanTrue,
+      booleanFalse: t.booleanFalse,
+      formatDate: (date) => formatDate(date, DATE_CELL_FORMAT),
+    });
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
     if (e.metaKey) return;
     if ((e.target as HTMLElement)?.tagName === 'TR' && ['Enter', ' '].includes(e.key)) {
@@ -128,7 +165,7 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({
           <div
             className={`drag-handle ${sortedManually ? 'sorted-manually' : ''}`}
             role="button"
-            aria-label="Reorder row"
+            aria-label={t.reorderRow}
             {...dragHandleProps}
           >
             <IconGripVertical size={18} />
@@ -143,13 +180,13 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({
             <Radio
               checked={isSelected}
               onChange={(e) => onSelect?.(e.currentTarget.checked)}
-              aria-label="Select row"
+              aria-label={t.selectRow}
             />
           ) : (
             <Checkbox
               checked={isSelected}
               onChange={(e) => onSelect?.(e.currentTarget.checked)}
-              aria-label="Select row"
+              aria-label={t.selectRow}
             />
           )}
         </td>
@@ -169,10 +206,10 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(({
               content
             ) : value !== null && value !== undefined ? (
               <Text size="sm" truncate="end">
-                {formatValue(value)}
+                {formatCell(value)}
               </Text>
             ) : (
-              <Text size="sm" c="gray.6">—</Text>
+              <Text size="sm" c="gray.6">{t.emptyValue}</Text>
             )}
           </td>
         );

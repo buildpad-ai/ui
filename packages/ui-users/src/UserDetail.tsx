@@ -24,21 +24,18 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconTrash } from '@tabler/icons-react';
 import { usePermissions, useRoles, useUsers } from '@buildpad/hooks';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import type { User, UserStatus } from '@buildpad/types';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { InfoPanel } from './InfoPanel';
 import { TokenInput } from './TokenInput';
 import { UserPoliciesManager } from './UserPoliciesManager';
-import { normalizeRoleIds } from './accessUtils';
+import { DATE_TIME_FORMAT_OPTIONS, normalizeRoleIds } from './accessUtils';
 import type { Policy } from '@buildpad/types';
 
-const STATUS_OPTIONS: Array<{ value: UserStatus; label: string }> = [
-  { value: 'active', label: 'Active' },
-  { value: 'suspended', label: 'Suspended' },
-  { value: 'invited', label: 'Invited' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'terminated', label: 'Terminated' },
-];
+/** Order of the Status select options; labels come from `users.status`. */
+const STATUS_VALUES: UserStatus[] = ['active', 'suspended', 'invited', 'draft', 'terminated'];
 
 const LANGUAGE_OPTIONS = [
   'en-US',
@@ -53,11 +50,8 @@ const LANGUAGE_OPTIONS = [
   'zh-CN',
 ];
 
-const THEME_OPTIONS = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-];
+/** Order of the Theme select options; labels come from `users.userDetail.theme`. */
+const THEME_VALUES = ['auto', 'light', 'dark'] as const;
 
 /**
  * The editable subset of `User` this form manages. Restricted/computed
@@ -152,6 +146,8 @@ export interface UserDetailProps {
   onPolicyClick?: (policy: Policy) => void;
   /** DaaS collection used for RBAC checks. Default: 'daas_users'. */
   usersCollection?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -169,6 +165,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   onSaved,
   onPolicyClick,
   usersCollection = 'daas_users',
+  translations,
 }) => {
   const isNew = id === 'new' || id === '+';
   const { getUser, createUser, updateUser, deleteUser } = useUsers();
@@ -176,11 +173,23 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [usersCollection],
   });
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+  const { formatDateTime, formatCount } = useBuildpadI18n();
 
   const createAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'create');
   const updateAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'update');
   const deleteAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'delete');
   const saveAllowed = isNew ? createAllowed : updateAllowed;
+
+  const statusOptions = useMemo<Array<{ value: UserStatus; label: string }>>(
+    () => STATUS_VALUES.map((value) => ({ value, label: t.status[value] })),
+    [t]
+  );
+  const themeOptions = useMemo(
+    () => THEME_VALUES.map((value) => ({ value, label: t.userDetail.theme[value] })),
+    [t]
+  );
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(!isNew);
@@ -218,14 +227,14 @@ export const UserDetail: React.FC<UserDetailProps> = ({
       setValues(formValues);
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to fetch user',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.userDetail.notifications.fetchFailed,
         color: 'red',
       });
     } finally {
       setLoading(false);
     }
-  }, [getUser, id, isNew]);
+  }, [getUser, id, isNew, t, common]);
 
   useEffect(() => {
     void load();
@@ -261,21 +270,21 @@ export const UserDetail: React.FC<UserDetailProps> = ({
 
   const validate = useCallback((): boolean => {
     const errors: Partial<Record<keyof UserFormValues, string>> = {};
-    if (!values.email.trim()) errors.email = 'Email is required';
-    if (isNew && !values.password) errors.password = 'Password is required for new users';
+    if (!values.email.trim()) errors.email = t.userDetail.validation.emailRequired;
+    if (isNew && !values.password) errors.password = t.userDetail.validation.passwordRequired;
     if (values.password && values.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
+      errors.password = t.userDetail.validation.passwordMinLength;
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [values.email, values.password, isNew]);
+  }, [values.email, values.password, isNew, t]);
 
   const handleSave = useCallback(async () => {
     if (!isNew && !isDirty) return;
     if (!validate()) {
       notifications.show({
-        title: 'Validation Error',
-        message: 'Please fix the highlighted fields',
+        title: t.validationErrorTitle,
+        message: t.userDetail.validation.fixHighlighted,
         color: 'red',
       });
       return;
@@ -290,8 +299,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({
         saved = await updateUser(id, edits);
       }
       notifications.show({
-        title: 'Success',
-        message: `User ${isNew ? 'created' : 'updated'} successfully`,
+        title: common.success,
+        message: isNew ? t.userDetail.notifications.created : t.userDetail.notifications.updated,
         color: 'green',
       });
       // Keep local state consistent in case the host app stays on this view.
@@ -301,42 +310,46 @@ export const UserDetail: React.FC<UserDetailProps> = ({
       onSaved?.(saved);
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to save user',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.userDetail.notifications.saveFailed,
         color: 'red',
       });
     } finally {
       setSaving(false);
     }
-  }, [isNew, isDirty, validate, createUser, updateUser, id, edits, values, onSaved]);
+  }, [isNew, isDirty, validate, createUser, updateUser, id, edits, values, onSaved, t, common]);
 
   const confirmDelete = useCallback(async () => {
     try {
       await deleteUser(id);
       notifications.show({
-        title: 'Success',
-        message: 'User deleted successfully',
+        title: common.success,
+        message: t.userDetail.notifications.deleted,
         color: 'green',
       });
       setDeleteModalOpen(false);
       onDeleted?.();
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to delete user',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.userDetail.notifications.deleteFailed,
         color: 'red',
       });
     }
-  }, [deleteUser, id, onDeleted]);
+  }, [deleteUser, id, onDeleted, t, common]);
+
+  // `formatDateTime` returns '' for an empty or invalid value.
+  const dateTime = (value?: string | null) =>
+    formatDateTime(value, DATE_TIME_FORMAT_OPTIONS) || t.emptyValue;
 
   return (
     <Stack gap="md" data-testid="user-detail">
       <Group justify="space-between">
-        <Title order={2}>{isNew ? 'New User' : 'Edit User'}</Title>
+        <Title order={2}>{isNew ? t.userDetail.titleNew : t.userDetail.titleEdit}</Title>
         <Group>
           {onBack && (
             <Button variant="default" onClick={onBack}>
-              Cancel
+              {common.cancel}
             </Button>
           )}
           {!isNew && deleteAllowed && (
@@ -349,14 +362,14 @@ export const UserDetail: React.FC<UserDetailProps> = ({
             </Button>
           )}
           {saveAllowed && (
-            <Tooltip label="No changes to save" disabled={isNew || isDirty}>
+            <Tooltip label={t.userDetail.noChangesTooltip} disabled={isNew || isDirty}>
               <Button
                 onClick={() => void handleSave()}
                 loading={saving}
                 disabled={!isNew && !isDirty}
                 data-testid="user-detail-save-btn"
               >
-                {isNew ? 'Create' : 'Save'}
+                {isNew ? common.create : common.save}
               </Button>
             </Tooltip>
           )}
@@ -367,7 +380,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
         <Grid.Col span={{ base: 12, md: 8 }}>
           <Tabs value={activeTab} onChange={setActiveTab}>
             <Tabs.List>
-              <Tabs.Tab value="basic">Basic Information</Tabs.Tab>
+              <Tabs.Tab value="basic">{t.basicInformation}</Tabs.Tab>
               {!isNew && (
                 <Tabs.Tab
                   value="policies"
@@ -377,7 +390,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                     </Badge>
                   }
                 >
-                  Policies
+                  {t.userDetail.tabs.policies}
                 </Tabs.Tab>
               )}
             </Tabs.List>
@@ -389,15 +402,15 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                 <Stack gap="md">
                   <Group grow>
                     <TextInput
-                      label="First Name"
-                      placeholder="Jane"
+                      label={t.userDetail.fields.firstName}
+                      placeholder={t.userDetail.fields.firstNamePlaceholder}
                       value={values.first_name}
                       onChange={(e) => setField('first_name', e.currentTarget.value)}
                       data-testid="user-detail-first-name"
                     />
                     <TextInput
-                      label="Last Name"
-                      placeholder="Doe"
+                      label={t.userDetail.fields.lastName}
+                      placeholder={t.userDetail.fields.lastNamePlaceholder}
                       value={values.last_name}
                       onChange={(e) => setField('last_name', e.currentTarget.value)}
                       data-testid="user-detail-last-name"
@@ -405,8 +418,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                   </Group>
 
                   <TextInput
-                    label="Email"
-                    placeholder="jane@example.com"
+                    label={t.userDetail.fields.email}
+                    placeholder={t.userDetail.fields.emailPlaceholder}
                     required
                     type="email"
                     value={values.email}
@@ -416,8 +429,12 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                   />
 
                   <PasswordInput
-                    label="Password"
-                    placeholder={isNew ? 'Minimum 6 characters' : 'Leave blank to keep current password'}
+                    label={t.userDetail.fields.password}
+                    placeholder={
+                      isNew
+                        ? t.userDetail.fields.passwordPlaceholderNew
+                        : t.userDetail.fields.passwordPlaceholderEdit
+                    }
                     required={isNew}
                     value={values.password}
                     onChange={(e) => setField('password', e.currentTarget.value)}
@@ -429,8 +446,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                   />
 
                   <MultiSelect
-                    label="Roles"
-                    placeholder={values.roles.length === 0 ? 'Assign roles' : undefined}
+                    label={t.userDetail.fields.roles}
+                    placeholder={values.roles.length === 0 ? t.userDetail.fields.rolesPlaceholder : undefined}
                     data={roleOptions}
                     value={values.roles}
                     onChange={(roles) => setField('roles', roles)}
@@ -441,24 +458,24 @@ export const UserDetail: React.FC<UserDetailProps> = ({
 
                   <Group grow>
                     <Select
-                      label="Status"
-                      data={STATUS_OPTIONS}
+                      label={t.userDetail.fields.status}
+                      data={statusOptions}
                       value={values.status}
                       onChange={(status) => setField('status', (status as UserStatus) ?? 'active')}
                       allowDeselect={false}
                       data-testid="user-detail-status"
                     />
                     <TextInput
-                      label="Title"
-                      placeholder="Job title"
+                      label={t.userDetail.fields.title}
+                      placeholder={t.userDetail.fields.titlePlaceholder}
                       value={values.title}
                       onChange={(e) => setField('title', e.currentTarget.value)}
                     />
                   </Group>
 
                   <Textarea
-                    label="Description"
-                    placeholder="Notes about this user"
+                    label={t.fields.description}
+                    placeholder={t.userDetail.fields.descriptionPlaceholder}
                     value={values.description}
                     onChange={(e) => setField('description', e.currentTarget.value)}
                     rows={3}
@@ -466,14 +483,14 @@ export const UserDetail: React.FC<UserDetailProps> = ({
 
                   <Group grow>
                     <TextInput
-                      label="Location"
-                      placeholder="City, Country"
+                      label={t.userDetail.fields.location}
+                      placeholder={t.userDetail.fields.locationPlaceholder}
                       value={values.location}
                       onChange={(e) => setField('location', e.currentTarget.value)}
                     />
                     <TagsInput
-                      label="Tags"
-                      placeholder="Add tag"
+                      label={t.userDetail.fields.tags}
+                      placeholder={t.userDetail.fields.tagsPlaceholder}
                       value={values.tags}
                       onChange={(tags) => setField('tags', tags)}
                     />
@@ -481,8 +498,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({
 
                   <Group grow>
                     <Select
-                      label="Language"
-                      placeholder="en-US"
+                      label={t.userDetail.fields.language}
+                      placeholder={t.userDetail.fields.languagePlaceholder}
                       data={LANGUAGE_OPTIONS}
                       value={values.language}
                       onChange={(language) => setField('language', language)}
@@ -490,9 +507,9 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                       clearable
                     />
                     <Select
-                      label="Theme"
-                      placeholder="Auto"
-                      data={THEME_OPTIONS}
+                      label={t.userDetail.fields.theme}
+                      placeholder={t.userDetail.fields.themePlaceholder}
+                      data={themeOptions}
                       value={values.theme}
                       onChange={(theme) => setField('theme', theme)}
                       clearable
@@ -500,11 +517,12 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                   </Group>
 
                   <TokenInput
-                    label="Static API Token"
-                    description="Token for API access without a session. Generate a new value to rotate it; clear it to revoke."
+                    label={t.userDetail.fields.token}
+                    description={t.userDetail.fields.tokenDescription}
                     value={values.token || null}
                     onChange={(token) => setField('token', token ?? '')}
                     data-testid="user-detail-token"
+                    translations={translations}
                   />
                 </Stack>
               </Paper>
@@ -516,6 +534,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
                   userId={id}
                   onUpdate={() => void refreshCounts()}
                   onPolicyClick={onPolicyClick}
+                  translations={translations}
                 />
               </Tabs.Panel>
             )}
@@ -526,25 +545,22 @@ export const UserDetail: React.FC<UserDetailProps> = ({
           {!isNew && user && (
             <InfoPanel
               items={[
-                { label: 'User ID', value: user.id },
+                { label: t.userDetail.info.userId, value: user.id },
                 {
-                  label: 'Last Access',
-                  value: user.last_access ? new Date(user.last_access).toLocaleString() : 'Never',
+                  label: t.userDetail.info.lastAccess,
+                  value: user.last_access
+                    ? formatDateTime(user.last_access, DATE_TIME_FORMAT_OPTIONS)
+                    : t.never,
                 },
+                { label: t.created, value: dateTime(user.created_at) },
+                { label: t.updated, value: dateTime(user.updated_at) },
                 {
-                  label: 'Created',
-                  value: user.created_at ? new Date(user.created_at).toLocaleString() : '—',
-                },
-                {
-                  label: 'Updated',
-                  value: user.updated_at ? new Date(user.updated_at).toLocaleString() : '—',
-                },
-                {
-                  label: 'Policies',
-                  value: `${policyCount} ${policyCount === 1 ? 'policy' : 'policies'}`,
+                  label: t.userDetail.info.policies,
+                  value: formatCount(policyCount, t.count.policies),
                 },
               ]}
-              description="User information and activity details"
+              description={t.userDetail.info.description}
+              translations={translations}
             />
           )}
         </Grid.Col>
@@ -554,8 +570,9 @@ export const UserDetail: React.FC<UserDetailProps> = ({
         opened={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Delete user"
-        description="Are you sure you want to delete this user? This action cannot be undone."
+        title={t.userDetail.deleteModal.title}
+        description={t.userDetail.deleteModal.description}
+        translations={translations}
       />
     </Stack>
   );

@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { Box, Text, TextInput, TagsInput, Chip, Group } from '@mantine/core';
 import { IconTag, IconChevronRight } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 
 export interface TagsProps {
   /** Current array of selected tags */
@@ -47,6 +49,8 @@ export interface TagsProps {
   trim?: boolean;
   /** Test ID for testing */
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.tags`) */
+  translations?: DeepPartial<InterfacesTranslations['tags']>;
 }
 
 /**
@@ -118,7 +122,7 @@ export function Tags({
   value = [],
   onChange,
   label,
-  placeholder = 'Add a tag...',
+  placeholder,
   disabled = false,
   readOnly = false,
   required = false,
@@ -134,7 +138,11 @@ export function Tags({
   capitalize = false,
   trim = true,
   'data-testid': testId,
+  translations,
 }: TagsProps) {
+  // Dictionary strings; the `placeholder` prop wins over both the
+  // `translations` prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.tags, translations, { placeholder });
   const [inputValue, setInputValue] = useState('');
 
   // Process tags array with configured options
@@ -226,7 +234,7 @@ export function Tags({
       {processedPresets.length === 0 && allowCustom ? (
         <TagsInput
           label={label}
-          placeholder={placeholder}
+          placeholder={t.placeholder}
           disabled={disabled}
           readOnly={readOnly}
           required={required}
@@ -243,7 +251,7 @@ export function Tags({
           {/* Custom input for adding tags when custom tags are allowed and presets exist */}
           {allowCustom && (
             <TextInput
-              placeholder={placeholder}
+              placeholder={t.placeholder}
               disabled={disabled}
               readOnly={readOnly}
               value={inputValue}
@@ -331,7 +339,7 @@ export function Tags({
 
           {/* Show preset display when allowCustom is false and no label provided yet */}
           {!allowCustom && processedPresets.length > 0 && !label && (
-            <Text size="sm" fw={500} mb="xs">Tags</Text>
+            <Text size="sm" fw={500} mb="xs">{t.defaultLabel}</Text>
           )}
         </>
       )}

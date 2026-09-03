@@ -11,6 +11,9 @@ import {
 } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import type { Filter, Permission } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+import { interpolateNodes } from './PermissionFilterUtils';
 
 export interface PermissionValidationTabProps {
   /** Draft permission being edited (must carry `collection` and `action`). */
@@ -20,6 +23,8 @@ export interface PermissionValidationTabProps {
   appMinimal?: Filter | null;
   onChange: (permission: Partial<Permission>) => void;
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemPermissions`) */
+  translations?: DeepPartial<InterfacesTranslations['systemPermissions']>;
 }
 
 /**
@@ -32,13 +37,15 @@ export function PermissionValidationTab({
   appMinimal,
   onChange,
   'data-testid': testId,
+  translations,
 }: PermissionValidationTabProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemPermissions, translations);
   const [validationJson, setValidationJson] = useState<string>(
     JSON.stringify(permission.validation || {}, null, 2),
   );
   const [jsonError, setJsonError] = useState<string | null>(null);
 
-  const actionText = permission.action === 'create' ? 'creating' : 'updating';
+  const actionText = permission.action === 'create' ? t.actionGerund.creating : t.actionGerund.updating;
 
   const handleJsonChange = (value: string) => {
     setValidationJson(value);
@@ -51,7 +58,7 @@ export function PermissionValidationTab({
       });
     } catch (error) {
       // Invalid JSON — keep the draft untouched until it parses again
-      setJsonError(error instanceof Error ? error.message : 'Invalid JSON');
+      setJsonError(error instanceof Error ? error.message : t.invalidJson);
     }
   };
 
@@ -67,12 +74,15 @@ export function PermissionValidationTab({
   return (
     <Stack gap="md" data-testid={testId}>
       <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-        Define validation rules for fields when {actionText} items in{' '}
-        <strong>{permission.collection}</strong> by {policyName || 'this policy'}.
+        {interpolateNodes(t.validationTab.intro, {
+          action: actionText,
+          collection: <strong>{permission.collection}</strong>,
+          policyName: policyName || t.thisPolicyFallback,
+        })}
       </Alert>
 
       <Group justify="space-between" wrap="nowrap">
-        <Text size="sm" fw={500}>Validation Rules</Text>
+        <Text size="sm" fw={500}>{t.validationTab.heading}</Text>
         <Anchor
           component="button"
           type="button"
@@ -83,14 +93,13 @@ export function PermissionValidationTab({
           style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
           data-testid={testId ? `${testId}-clear` : undefined}
         >
-          Clear
+          {t.clear}
         </Anchor>
       </Group>
 
       <Stack gap="sm">
         <Text size="xs" c="dimmed">
-          Enter field validation rules using Directus filter syntax. These rules will be checked
-          before allowing {actionText} operations.
+          {interpolate(t.validationTab.jsonHint, { action: actionText })}
         </Text>
         <Textarea
           value={validationJson}
@@ -124,9 +133,9 @@ export function PermissionValidationTab({
       <Divider />
 
       <Stack gap="xs">
-        <Text size="xs" fw={500}>Example Validation Patterns:</Text>
+        <Text size="xs" fw={500}>{t.validationTab.examplesHeading}</Text>
         <Code block fz="xs">
-{`// Required field (not null and not empty)
+{`// ${t.validationTab.examples.requiredField}
 {
   "title": {
     "_nnull": true,
@@ -134,14 +143,14 @@ export function PermissionValidationTab({
   }
 }
 
-// Enum validation
+// ${t.validationTab.examples.enumValidation}
 {
   "status": {
     "_in": ["draft", "published", "archived"]
   }
 }
 
-// Date range validation
+// ${t.validationTab.examples.dateRange}
 {
   "publish_date": {
     "_gte": "$NOW",
@@ -149,7 +158,7 @@ export function PermissionValidationTab({
   }
 }
 
-// String length validation
+// ${t.validationTab.examples.stringLength}
 {
   "description": {
     "_nnull": true,
@@ -157,7 +166,7 @@ export function PermissionValidationTab({
   }
 }
 
-// Numeric range
+// ${t.validationTab.examples.numericRange}
 {
   "price": {
     "_gte": 0,
@@ -165,7 +174,7 @@ export function PermissionValidationTab({
   }
 }
 
-// Multiple conditions (AND)
+// ${t.validationTab.examples.multipleConditions}
 {
   "_and": [
     { "email": { "_contains": "@" } },
@@ -177,15 +186,15 @@ export function PermissionValidationTab({
 
       <Alert color="cyan" variant="light">
         <Stack gap="xs">
-          <Text size="sm" fw={500}>Dynamic Variables</Text>
+          <Text size="sm" fw={500}>{t.dynamicVariables.title}</Text>
           <Text size="xs" c="dimmed">
-            You can use the following dynamic variables in your validation rules:
+            {t.dynamicVariables.validationDescription}
           </Text>
           <Code block fz="xs">
-{`$CURRENT_USER    - ID of the current user
-$CURRENT_ROLE    - ID of the current user's role
-$NOW             - Current timestamp
-$NOW(+1 day)     - Relative time calculations`}
+{`$CURRENT_USER    - ${t.dynamicVariableHelp.currentUser}
+$CURRENT_ROLE    - ${t.dynamicVariableHelp.currentRole}
+$NOW             - ${t.dynamicVariableHelp.now}
+$NOW(+1 day)     - ${t.dynamicVariableHelp.nowRelative}`}
           </Code>
         </Stack>
       </Alert>
@@ -196,10 +205,10 @@ $NOW(+1 day)     - Relative time calculations`}
           <Alert color="yellow" variant="light" icon={<IconInfoCircle size={16} />}>
             <Stack gap="xs">
               <Text size="sm" fw={500}>
-                Minimum Validation (App Access)
+                {t.validationTab.appMinimal.title}
               </Text>
               <Text size="xs" c="dimmed">
-                The following validation rules are automatically applied with app access:
+                {t.validationTab.appMinimal.description}
               </Text>
               <Code block fz="xs">
                 {JSON.stringify(appMinimal, null, 2)}

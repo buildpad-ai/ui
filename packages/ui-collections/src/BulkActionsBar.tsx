@@ -11,6 +11,8 @@ import {
   IconTrash,
   IconX,
 } from "@tabler/icons-react";
+import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
+import type { CollectionsTranslations, DeepPartial } from "@buildpad/utils";
 import React from "react";
 import type { BulkAction } from "./CollectionList";
 
@@ -25,6 +27,8 @@ export interface BulkActionsBarProps {
   bulkActions: BulkAction[];
   onDeleteRequest: (ids: (string | number)[]) => void;
   onClearSelection: () => void;
+  /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+  translations?: DeepPartial<CollectionsTranslations>;
 }
 
 export const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
@@ -37,15 +41,21 @@ export const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
   bulkActions,
   onDeleteRequest,
   onClearSelection,
+  translations,
 }) => {
+  // Strings: component prop > provider dictionary > English defaults.
+  const t = useBuildpadTranslations((d) => d.collections, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+  const { formatCount } = useBuildpadI18n();
+
   return (
     <Group gap="xs" data-testid="collection-list-bulk-actions">
       <Badge variant="light" size="lg">
-        {selectedIds.length} selected
+        {formatCount(selectedIds.length, t.bulkActions.selectedCount)}
       </Badge>
 
       {enableDelete && (
-        <Tooltip label={deleteAllowed ? "Delete selected" : "Not allowed"}>
+        <Tooltip label={deleteAllowed ? t.bulkActions.deleteSelectedTooltip : common.notAllowed}>
           <Button
             variant="light"
             color="red"
@@ -55,7 +65,7 @@ export const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
             disabled={!deleteAllowed}
             data-testid="bulk-action-delete"
           >
-            Delete
+            {t.bulkActions.delete}
           </Button>
         </Tooltip>
       )}
@@ -70,7 +80,7 @@ export const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
         return (
           <Tooltip
             key={index}
-            label={permAllowed ? action.label : "Not allowed"}
+            label={permAllowed ? action.label : common.notAllowed}
           >
             <Button
               variant="light"
@@ -95,7 +105,7 @@ export const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
       <ActionIcon
         variant="subtle"
         onClick={onClearSelection}
-        title="Clear selection"
+        title={t.bulkActions.clearSelection}
         data-testid="collection-list-clear-selection"
       >
         <IconX size={16} />

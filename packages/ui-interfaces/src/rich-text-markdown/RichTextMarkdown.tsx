@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RichTextEditor, Link } from '@mantine/tiptap';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { RichTextEditor, Link, type RichTextEditorLabels } from '@mantine/tiptap';
 import '@mantine/tiptap/styles.css';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -105,6 +107,23 @@ export interface RichTextMarkdownProps {
     suffix?: string;
     box?: 'inline' | 'block';
   }>;
+  /** Per-instance overrides of the dictionary strings (`interfaces.richTextMarkdown`) */
+  translations?: DeepPartial<InterfacesTranslations['richTextMarkdown']>;
+}
+
+/**
+ * Mantine's `RichTextEditor` `labels` config from the dictionary (same shape
+ * as `toRichTextEditorLabels` in rich-text-html — kept local so this folder
+ * stays installable on its own). The two colour labels are `{color}`
+ * templates turned back into the functions Mantine expects.
+ */
+function toEditorLabels(labels: InterfacesTranslations['richTextMarkdown']['editor']): RichTextEditorLabels {
+  const { colorControlLabel, colorPickerColorLabel, ...rest } = labels;
+  return {
+    ...rest,
+    colorControlLabel: (color) => interpolate(colorControlLabel, { color }),
+    colorPickerColorLabel: (color) => interpolate(colorPickerColorLabel, { color }),
+  };
 }
 
 // 'editor' is the WYSIWYG view (Markdown renders as you type — it doubles as
@@ -130,7 +149,7 @@ export function RichTextMarkdown({
   value = '',
   onChange,
   label,
-  placeholder = 'Start typing...',
+  placeholder,
   disabled = false,
   readOnly = false,
   required = false,
@@ -139,7 +158,12 @@ export function RichTextMarkdown({
   softLength,
   editorFont = 'sans-serif',
   customSyntax = [],
+  translations,
 }: RichTextMarkdownProps) {
+  // Dictionary strings; the `placeholder` prop wins over both the
+  // `translations` prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.richTextMarkdown, translations, { placeholder });
+  const editorLabels = useMemo(() => toEditorLabels(t.editor), [t.editor]);
   const [viewMode, setViewMode] = useState<ViewMode>('editor');
   // Raw Markdown shown/edited in source mode. Seeded from the editor when
   // entering source mode; written back into the editor when leaving it.
@@ -173,7 +197,7 @@ export function RichTextMarkdown({
       TableHeader,
       TableCell,
       Placeholder.configure({
-        placeholder,
+        placeholder: t.placeholder,
       }),
       // Parse the `value` string as Markdown on load and serialize the
       // document back to Markdown via editor.storage.markdown.getMarkdown()
@@ -285,7 +309,7 @@ export function RichTextMarkdown({
         break;
       case 'link': {
         // eslint-disable-next-line no-alert
-        const url = window.prompt('Enter URL');
+        const url = window.prompt(t.link.promptUrl);
         if (url) {
           editor.chain().focus().setLink({ href: url }).run();
         }
@@ -310,16 +334,16 @@ export function RichTextMarkdown({
         }
         break;
     }
-  }, [editor]);
+  }, [editor, t]);
 
   // Handle image upload
   const handleImageUpload = useCallback((file: File) => {
     // This would typically upload to your file storage
     // For now, we'll just create a placeholder
     const imageUrl = URL.createObjectURL(file);
-    editor?.chain().focus().insertContent(`![Image](${imageUrl})`).run();
+    editor?.chain().focus().insertContent(`![${t.image.defaultAlt}](${imageUrl})`).run();
     setImageDialog(false);
-  }, [editor]);
+  }, [editor, t]);
 
   // Don't render until editor is ready
   if (!editor) {
@@ -332,7 +356,7 @@ export function RichTextMarkdown({
           </div>
         )}
         <div className="rich-text-markdown-loading">
-          Loading editor...
+          {t.loading}
         </div>
       </div>
     );
@@ -347,8 +371,9 @@ export function RichTextMarkdown({
         </div>
       )}
       
-      <RichTextEditor 
+      <RichTextEditor
         editor={editor}
+        labels={editorLabels}
         style={{
           border: error ? '1px solid var(--mantine-color-error)' : undefined,
           fontFamily: `var(--mantine-font-family-${editorFont})`,
@@ -364,7 +389,7 @@ export function RichTextMarkdown({
                   <ActionIcon
                     variant="subtle"
                     onClick={() => edit('heading', { level: 1 })}
-                    title="Heading 1"
+                    title={t.toolbar.heading1}
                     disabled={disabled}
                   >
                     <IconHeading size={16} />
@@ -373,7 +398,7 @@ export function RichTextMarkdown({
                   <ActionIcon
                     variant="subtle"
                     onClick={() => edit('heading', { level: 2 })}
-                    title="Heading 2"
+                    title={t.toolbar.heading2}
                     disabled={disabled}
                   >
                     <IconHeading size={16} />
@@ -382,7 +407,7 @@ export function RichTextMarkdown({
                   <ActionIcon
                     variant="subtle"
                     onClick={() => edit('heading', { level: 3 })}
-                    title="Heading 3"
+                    title={t.toolbar.heading3}
                     disabled={disabled}
                   >
                     <IconHeading size={16} />
@@ -428,7 +453,7 @@ export function RichTextMarkdown({
                   <ActionIcon
                     variant="subtle"
                     onClick={() => setTableDialog({ open: true, rows: 3, columns: 3 })}
-                    title="Insert Table"
+                    title={t.toolbar.insertTable}
                     disabled={disabled}
                   >
                     <IconTable size={16} />
@@ -442,7 +467,7 @@ export function RichTextMarkdown({
                   <ActionIcon
                     variant="subtle"
                     onClick={() => setImageDialog(true)}
-                    title="Insert Image"
+                    title={t.toolbar.insertImage}
                     disabled={disabled}
                   >
                     <IconPhoto size={16} />
@@ -482,7 +507,7 @@ export function RichTextMarkdown({
               leftSection={<IconEdit size={14} />}
               style={{ borderRadius: 'var(--mantine-radius-sm) 0 0 var(--mantine-radius-sm)' }}
             >
-              Edit
+              {t.viewMode.edit}
             </Button>
             <Button
               variant={viewMode === 'source' ? 'filled' : 'subtle'}
@@ -491,7 +516,7 @@ export function RichTextMarkdown({
               leftSection={<IconCode size={14} />}
               style={{ borderRadius: '0 var(--mantine-radius-sm) var(--mantine-radius-sm) 0' }}
             >
-              Source
+              {t.viewMode.source}
             </Button>
           </Group>
         </RichTextEditor.Toolbar>
@@ -520,8 +545,8 @@ export function RichTextMarkdown({
               readOnly={readOnly}
               autosize
               minRows={8}
-              aria-label={label ? `${label} (Markdown source)` : 'Markdown source'}
-              placeholder={placeholder}
+              aria-label={label ? interpolate(t.source.ariaLabelWithLabel, { label }) : t.source.ariaLabel}
+              placeholder={t.placeholder}
               variant="unstyled"
               // No minHeight here: react-textarea-autosize (behind `autosize`)
               // rejects style.minHeight — minRows provides the floor instead.
@@ -559,25 +584,25 @@ export function RichTextMarkdown({
       {/* Table Dialog - Simple implementation */}
       {tableDialog.open && (
         <div className="rich-text-markdown-dialog">
-          <Text size="sm" mb="md">Create Table</Text>
+          <Text size="sm" mb="md">{t.tableDialog.title}</Text>
           <Group mb="md">
             <div>
-              <Text size="xs" mb={4}>Rows</Text>
+              <Text size="xs" mb={4}>{t.tableDialog.rows}</Text>
               <input
                 type="number"
                 min="1"
-                aria-label="Number of rows"
+                aria-label={t.tableDialog.rowsAriaLabel}
                 value={tableDialog.rows}
                 onChange={(e) => setTableDialog(prev => ({ ...prev, rows: parseInt(e.target.value, 10) || 1 }))}
                 className="rich-text-markdown-number-input"
               />
             </div>
             <div>
-              <Text size="xs" mb={4}>Columns</Text>
+              <Text size="xs" mb={4}>{t.tableDialog.columns}</Text>
               <input
                 type="number"
                 min="1"
-                aria-label="Number of columns"
+                aria-label={t.tableDialog.columnsAriaLabel}
                 value={tableDialog.columns}
                 onChange={(e) => setTableDialog(prev => ({ ...prev, columns: parseInt(e.target.value, 10) || 1 }))}
                 className="rich-text-markdown-number-input"
@@ -592,14 +617,14 @@ export function RichTextMarkdown({
                 setTableDialog(prev => ({ ...prev, open: false }));
               }}
             >
-              Create
+              {t.tableDialog.create}
             </Button>
             <Button
               size="xs"
               variant="subtle"
               onClick={() => setTableDialog(prev => ({ ...prev, open: false }))}
             >
-              Cancel
+              {t.tableDialog.cancel}
             </Button>
           </Group>
         </div>
@@ -610,7 +635,7 @@ export function RichTextMarkdown({
         <div
           role="button"
           tabIndex={0}
-          aria-label="Close dialog"
+          aria-label={t.dialog.closeAriaLabel}
           className="rich-text-markdown-backdrop"
           onClick={() => {
             setTableDialog(prev => ({ ...prev, open: false }));
@@ -628,11 +653,11 @@ export function RichTextMarkdown({
       {/* Image Dialog - Simple implementation */}
       {imageDialog && (
         <div className="rich-text-markdown-dialog">
-          <Text size="sm" mb="md">Insert Image</Text>
+          <Text size="sm" mb="md">{t.imageDialog.title}</Text>
           <input
             type="file"
             accept="image/*"
-            aria-label="Select image file"
+            aria-label={t.imageDialog.fileAriaLabel}
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) {
@@ -647,7 +672,7 @@ export function RichTextMarkdown({
               variant="subtle"
               onClick={() => setImageDialog(false)}
             >
-              Cancel
+              {t.imageDialog.cancel}
             </Button>
           </Group>
         </div>

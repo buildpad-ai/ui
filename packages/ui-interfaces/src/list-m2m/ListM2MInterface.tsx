@@ -5,6 +5,8 @@ import { Box, Text, Stack, Alert, Paper, Group, ActionIcon, Button } from '@mant
 import { IconAlertCircle, IconPlus, IconTrash, IconList } from '@tabler/icons-react';
 import type { M2MRelationInfo, M2MItem } from '@buildpad/hooks';
 import { renderTemplate } from '../list-m2a/render-template';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 
 /**
  * Render function types for customizing ListM2M display
@@ -68,6 +70,8 @@ export interface ListM2MInterfaceProps extends ListM2MRenderProps {
   required?: boolean;
   /** Test ID for testing */
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.listM2M`) */
+  translations?: DeepPartial<InterfacesTranslations['listM2M']>;
 }
 
 /**
@@ -112,7 +116,11 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
   renderCreateModal,
   renderEditModal,
   'data-testid': testId,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.listM2M, translations);
+  const p = t.placeholder;
+
   // If no render props are provided, show a placeholder message
   const hasRenderProps = renderItemList || renderSelectModal || renderCreateModal;
 
@@ -134,22 +142,26 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
           variant="light"
         >
           <Text size="sm">
-            <strong>ListM2M Interface</strong> requires render props to be provided.
+            <strong>{p.title}</strong> {p.requiresRenderProps}
           </Text>
           <Text size="xs" mt="xs">
-            Collection: <code>{collection}</code>, Field: <code>{field}</code>
+            {p.collectionLabel} <code>{collection}</code>, {p.fieldLabel} <code>{field}</code>
           </Text>
           <Text size="xs" mt="xs">
-            Please implement:
+            {p.pleaseImplement}
           </Text>
           <ul style={{ margin: '4px 0', paddingLeft: '20px', fontSize: '12px' }}>
-            <li><code>renderItemList</code> - For displaying related items</li>
-            <li><code>renderSelectModal</code> - For selecting existing items</li>
-            <li><code>renderCreateModal</code> - For creating new items</li>
+            {/* The <code> contents are the render-prop names (code identifiers), not copy. */}
+            {/* eslint-disable-next-line buildpad/no-untranslated-literal -- render-prop name in <code> */}
+            <li><code>renderItemList</code> - {p.renderItemListHint}</li>
+            {/* eslint-disable-next-line buildpad/no-untranslated-literal -- render-prop name in <code> */}
+            <li><code>renderSelectModal</code> - {p.renderSelectModalHint}</li>
+            {/* eslint-disable-next-line buildpad/no-untranslated-literal -- render-prop name in <code> */}
+            <li><code>renderCreateModal</code> - {p.renderCreateModalHint}</li>
           </ul>
         </Alert>
         {error && (
-          <Text size="xs" c="red">{typeof error === 'string' ? error : 'Validation error'}</Text>
+          <Text size="xs" c="red">{typeof error === 'string' ? error : p.validationError}</Text>
         )}
       </Stack>
     );
@@ -183,7 +195,7 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
               leftSection={<IconPlus size={14} />}
               disabled={!renderCreateModal}
             >
-              Create New
+              {p.createNew}
             </Button>
           )}
           {enableSelect && (
@@ -193,7 +205,7 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
               leftSection={<IconList size={14} />}
               disabled={!renderSelectModal}
             >
-              Select Existing
+              {p.selectExisting}
             </Button>
           )}
         </Group>
@@ -202,9 +214,9 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
       {/* Items list */}
       <Paper withBorder p="md" radius="sm">
         {loading ? (
-          <Text size="sm" c="dimmed" ta="center">Loading...</Text>
+          <Text size="sm" c="dimmed" ta="center">{p.loading}</Text>
         ) : value.length === 0 ? (
-          <Text size="sm" c="dimmed" ta="center">No items</Text>
+          <Text size="sm" c="dimmed" ta="center">{p.noItems}</Text>
         ) : renderItemList ? (
           renderItemList(value, handleRemove)
         ) : (
@@ -213,8 +225,8 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
               <Group key={item.id || index} justify="space-between">
                 <Text size="sm">
                   {template
-                    ? renderTemplate(template, item, { fallback: `Item ${item.id || index + 1}` })
-                    : `Item ${item.id || index + 1}`}
+                    ? renderTemplate(template, item, { fallback: interpolate(p.itemFallback, { id: item.id || index + 1 }) })
+                    : interpolate(p.itemFallback, { id: item.id || index + 1 })}
                 </Text>
                 {!disabled && (
                   <ActionIcon
@@ -233,7 +245,7 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
       </Paper>
 
       {error && (
-        <Text size="xs" c="red">{typeof error === 'string' ? error : 'Validation error'}</Text>
+        <Text size="xs" c="red">{typeof error === 'string' ? error : p.validationError}</Text>
       )}
     </Stack>
   );

@@ -27,6 +27,8 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type FormsTranslations } from '@buildpad/utils';
 import { ConditionsEditor } from './ConditionsEditor';
 import { ChoicesInput, type Choice } from './ChoicesInput';
 import type { Field, FieldCondition, FormFieldConfig } from '@buildpad/types';
@@ -52,6 +54,8 @@ export interface FieldSettingsPanelProps {
   onNewFieldLabelChange?: (label: string | undefined) => void;
   /** Update the pending field's choices (new choice columns only). */
   onNewFieldChoicesChange?: (choices: Choice[] | undefined) => void;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
@@ -66,7 +70,10 @@ export function FieldSettingsPanel({
   requiresChoices = false,
   onNewFieldLabelChange,
   onNewFieldChoicesChange,
+  translations,
 }: FieldSettingsPanelProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
+  const s = t.fieldSettingsPanel;
   const displayName = schemaField.meta?.note || schemaField.field;
   const currentChoices = (schemaField.meta?.options as { choices?: Choice[] })
     ?.choices;
@@ -78,11 +85,14 @@ export function FieldSettingsPanel({
           {displayName}
         </Text>
         <Badge size="xs" variant="light" color="gray">
-          {schemaField.field} · {schemaField.type}
+          {interpolate(s.fieldBadge, {
+            field: schemaField.field,
+            type: schemaField.type,
+          })}
         </Badge>
         {isNewColumn && (
           <Text size="10px" c="dimmed" mt={2}>
-            New column — the name is locked and can’t be changed.
+            {s.newColumnLocked}
           </Text>
         )}
       </div>
@@ -91,8 +101,8 @@ export function FieldSettingsPanel({
         <>
           <TextInput
             size="xs"
-            label="Field label"
-            description="The column’s display label"
+            label={s.newLabel.label}
+            description={s.newLabel.description}
             placeholder={schemaField.field}
             value={schemaField.meta?.note ?? ''}
             onChange={(e) =>
@@ -105,6 +115,7 @@ export function FieldSettingsPanel({
               key={schemaField.field}
               value={currentChoices}
               onChange={(choices) => onNewFieldChoicesChange?.(choices)}
+              translations={translations}
             />
           )}
         </>
@@ -112,7 +123,7 @@ export function FieldSettingsPanel({
 
       <div>
         <Text size="xs" fw={500} mb={4}>
-          Width
+          {s.width.title}
         </Text>
         <SegmentedControl
           size="xs"
@@ -122,8 +133,8 @@ export function FieldSettingsPanel({
             onChange({ width: value as FormFieldConfig['width'] })
           }
           data={[
-            { label: 'Half', value: 'half' },
-            { label: 'Full', value: 'full' },
+            { label: s.width.half, value: 'half' },
+            { label: s.width.full, value: 'full' },
           ]}
         />
       </div>
@@ -131,19 +142,19 @@ export function FieldSettingsPanel({
       <Stack gap={6}>
         <Switch
           size="sm"
-          label="Required"
+          label={s.overrides.required}
           checked={config.required ?? false}
           onChange={(e) => onChange({ required: e.currentTarget.checked })}
         />
         <Switch
           size="sm"
-          label="Read-only"
+          label={s.overrides.readonly}
           checked={config.readonly ?? false}
           onChange={(e) => onChange({ readonly: e.currentTarget.checked })}
         />
         <Switch
           size="sm"
-          label="Hidden"
+          label={s.overrides.hidden}
           checked={config.hidden ?? false}
           onChange={(e) => onChange({ hidden: e.currentTarget.checked })}
         />
@@ -152,8 +163,8 @@ export function FieldSettingsPanel({
       {!isNewColumn && (
         <TextInput
           size="xs"
-          label="Label / help override"
-          description="Leave blank to use the schema display name"
+          label={s.noteOverride.label}
+          description={s.noteOverride.description}
           placeholder={displayName}
           value={config.note ?? ''}
           onChange={(e) => onChange({ note: e.currentTarget.value || undefined })}
@@ -166,6 +177,7 @@ export function FieldSettingsPanel({
         fields={fields}
         conditions={config.conditions ?? []}
         onChange={(conditions: FieldCondition[]) => onChange({ conditions })}
+        translations={translations}
       />
     </Stack>
   );

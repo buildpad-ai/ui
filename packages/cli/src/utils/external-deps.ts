@@ -82,6 +82,11 @@ export const DEPENDENCY_VERSIONS: Record<string, string> = {
   'jose': '^5',
   'axios': '^1.6.0',
   'dayjs': '^1.11.0',
+  // Locale routing (lib/i18n): Accept-Language negotiation in middleware
+  'negotiator': '^1.0.0',
+  '@types/negotiator': '^0.6.4',
+  '@formatjs/intl-localematcher': '^0.6.0',
+  'server-only': '^0.0.1',
 };
 
 /** Turn a bare dependency name into a pinned install spec (quoted for shells). */

@@ -85,33 +85,6 @@ function getLastVersion(
   return sortedVersions[sortedVersions.length - 1] ?? null;
 }
 
-/**
- * Checks if workflow instance is terminated at an end state
- */
-function isTerminatedAtEndState(workflowInstance: WorkflowInstance): boolean {
-  if (
-    !workflowInstance.terminated ||
-    !workflowInstance.workflow?.workflow_json
-  ) {
-    return false;
-  }
-
-  let workflowJson;
-  try {
-    workflowJson =
-      typeof workflowInstance.workflow.workflow_json === "string"
-        ? JSON.parse(workflowInstance.workflow.workflow_json)
-        : workflowInstance.workflow.workflow_json;
-  } catch {
-    return false;
-  }
-
-  const endStates = workflowJson.states
-    .filter((state: WorkflowState) => state.isEndState)
-    .map((state: WorkflowState) => state.name);
-
-  return endStates.includes(workflowInstance.current_state);
-}
 
 export function useWorkflowVersioning({
   versions,

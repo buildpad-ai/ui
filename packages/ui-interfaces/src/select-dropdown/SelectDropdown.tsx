@@ -1,6 +1,8 @@
 import React from 'react';
 import { Select, SelectProps, Group, ColorSwatch, Text, ComboboxItem, ComboboxLikeRenderOptionInput } from '@mantine/core';
 import { IconCheck } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 import { IconDisplay } from '../select-icon/SelectIcon';
 
 /**
@@ -54,6 +56,8 @@ export interface SelectDropdownProps {
   selectProps?: Partial<SelectProps>;
   /** Accessible name for the underlying Select input, since `label` is rendered separately by FormFieldLabel */
   'aria-label'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.selectDropdown`) */
+  translations?: DeepPartial<InterfacesTranslations['selectDropdown']>;
 }
 
 /**
@@ -93,7 +97,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
   onChange,
   choices = [],
   disabled = false,
-  placeholder = 'Select an option',
+  placeholder,
   icon,
   allowNone = false,
   allowOther = false,
@@ -106,7 +110,12 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
   maxDropdownHeight = 200,
   selectProps = {},
   'aria-label': ariaLabel,
+  translations,
 }) => {
+  // Dictionary strings; the `placeholder` prop wins over both the
+  // `translations` prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.selectDropdown, translations, { placeholder });
+
   // Check if any choice has an icon - used for global icon display logic (like DaaS)
   const applyGlobalIcon = React.useMemo(() => 
     choices?.some((choice) => choice.icon), 
@@ -403,7 +412,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
   if (showNoData && !allowOther) {
     return (
       <Text c="red" size="sm" p="xs">
-        Choices option configured incorrectly
+        {t.misconfigured}
       </Text>
     );
   }
@@ -415,7 +424,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
       onChange={handleChange}
       label={label}
       description={description}
-      placeholder={placeholder}
+      placeholder={t.placeholder}
       error={error}
       disabled={disabled}
       required={required}
@@ -425,9 +434,9 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
       searchable={searchable || allowOther}
       leftSection={leftSection}
       maxDropdownHeight={maxDropdownHeight}
-      nothingFoundMessage={allowOther ? undefined : 'No options found'}
+      nothingFoundMessage={allowOther ? undefined : t.nothingFound}
       renderOption={renderOption}
-      aria-label={ariaLabel || (!label ? placeholder : undefined)}
+      aria-label={ariaLabel || (!label ? t.placeholder : undefined)}
       data-testid="select-dropdown"
       {...selectProps}
       // allowOther: Mantine v8's <Select> has no built-in "creatable" mode,

@@ -2,6 +2,7 @@ import React from 'react';
 import type { Preview } from '@storybook/react';
 import { MantineProvider } from '@mantine/core';
 import { enterpriseTheme } from '../../storybook-enterprise-theme';
+import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../storybook-i18n';
 
 // Mantine CSS
 import '@mantine/core/styles.css';
@@ -26,6 +27,8 @@ const preview: Preview = {
     },
     layout: 'padded',
   },
+  globalTypes: i18nGlobalTypes,
+  initialGlobals: i18nInitialGlobals,
   decorators: [
     (Story: React.ComponentType) => (
       <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
@@ -34,6 +37,7 @@ const preview: Preview = {
         </div>
       </MantineProvider>
     ),
+    withBuildpadI18n,
   ],
   tags: ['autodocs'],
 };

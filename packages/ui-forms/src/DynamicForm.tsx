@@ -24,6 +24,8 @@ import { Alert, Center, Loader, Paper } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { CollectionForm } from '@buildpad/ui-collections';
 import { useFormDefinitions } from '@buildpad/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, FormsTranslations } from '@buildpad/utils';
 import type { FormDefinition } from '@buildpad/types';
 
 export interface DynamicFormProps {
@@ -48,6 +50,8 @@ export interface DynamicFormProps {
    * collection (no-op when no active scope is set). Default `true`.
    */
   injectActiveScope?: boolean;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /** Read the active scope URI from the `daas_resource_uri` cookie (browser only). */
@@ -71,7 +75,9 @@ export function DynamicForm({
   onCancel,
   scopeField = 'resource_uri',
   injectActiveScope = true,
+  translations,
 }: DynamicFormProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
   const { get } = useFormDefinitions(formsCollection);
   const [definition, setDefinition] = useState<FormDefinition | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,7 +94,7 @@ export function DynamicForm({
       .catch((err: unknown) => {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : 'Failed to load form definition',
+            err instanceof Error ? err.message : t.dynamicForm.error.loadFailed,
           );
         }
       })
@@ -99,6 +105,8 @@ export function DynamicForm({
       cancelled = true;
     };
     // `get` is stable per formsCollection; re-run only when the id changes.
+    // The dictionary (`t`) only supplies the fallback message — a locale change
+    // must not refetch the definition.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [definitionId, formsCollection]);
 
@@ -124,9 +132,9 @@ export function DynamicForm({
       <Alert
         icon={<IconAlertCircle size={16} />}
         color="red"
-        title="Could not load form"
+        title={t.dynamicForm.error.title}
       >
-        {error ?? 'Form definition not found.'}
+        {error ?? t.dynamicForm.error.notFound}
       </Alert>
     );
   }

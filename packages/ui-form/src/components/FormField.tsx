@@ -19,6 +19,8 @@ import {
   getFieldDefault,
   isConcealedField,
 } from '@buildpad/utils';
+import type { DeepPartial, FormTranslations } from '@buildpad/utils';
+import { useBuildpadTranslations } from '@buildpad/services';
 
 export interface FormFieldProps {
   /** Field definition */
@@ -51,6 +53,8 @@ export interface FormFieldProps {
   className?: string;
   /** Locale for field name translations (e.g. 'en-US'). If omitted, uses first available translation. */
   locale?: string;
+  /** Per-instance overrides of the `form` dictionary namespace (forwarded to the label and interface) */
+  translations?: DeepPartial<FormTranslations>;
 }
 
 /**
@@ -72,7 +76,11 @@ export const FormField: React.FC<FormFieldProps> = ({
   hideLabel = false,
   className,
   locale,
+  translations,
 }) => {
+  // `form` dictionary namespace: prop overrides > provider dictionary > English defaults
+  const t = useBuildpadTranslations((d) => d.form, translations);
+
   // Determine form context (create vs edit)
   const context = useMemo(() => {
     return isNewItem(primaryKey) ? 'create' : 'edit';
@@ -157,19 +165,19 @@ export const FormField: React.FC<FormFieldProps> = ({
     // Generate default message based on type
     switch (validationError.type) {
       case 'required':
-        return 'This field is required';
+        return t.validation.required;
       case 'unique':
-        return 'This value must be unique';
+        return t.validation.unique;
       case 'email':
-        return 'Must be a valid email address';
+        return t.validation.email;
       case 'url':
-        return 'Must be a valid URL';
+        return t.validation.url;
       case 'number':
-        return 'Must be a valid number';
+        return t.validation.number;
       default:
-        return 'Validation failed';
+        return t.validation.failed;
     }
-  }, [validationError, field]);
+  }, [validationError, field, t]);
 
   // Resolve the human-readable label once. Used both for the visible
   // FormFieldLabel and as the input's accessible name (aria-label).
@@ -204,6 +212,7 @@ export const FormField: React.FC<FormFieldProps> = ({
             label={displayName}
             required={isRequired}
             description={field.meta?.note ?? undefined}
+            translations={translations}
           />
         )}
 
@@ -221,6 +230,7 @@ export const FormField: React.FC<FormFieldProps> = ({
           autofocus={autofocus}
           primaryKey={primaryKey}
           accessibleName={displayName}
+          translations={translations}
         />
 
         {/* Validation Error */}

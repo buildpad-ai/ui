@@ -34,11 +34,16 @@ import {
   ItemsService,
   PermissionsService,
   apiRequest,
+  useBuildpadI18n,
+  useBuildpadTranslations,
 } from "@buildpad/services";
 import {
   interfaceRequiresChoices,
+  interpolate,
   parseChoiceValues,
   resolveChoiceLabel,
+  type CollectionsTranslations,
+  type DeepPartial,
   type InterfaceChoice,
 } from "@buildpad/utils";
 import type { CollectionActionAccess } from "@buildpad/services";
@@ -161,6 +166,12 @@ export interface CollectionListProps {
    * to the default field-type-aware renderer.
    */
   renderCell?: (item: AnyItem, header: Header) => React.ReactNode | null | undefined;
+  /**
+   * Per-instance overrides of the `collections` dictionary namespace
+   * (precedence: this prop > `BuildpadI18nProvider` > English defaults).
+   * Forwarded to the toolbar, footer, filter panel and delete dialog.
+   */
+  translations?: DeepPartial<CollectionsTranslations>;
 }
 
 // System fields to exclude from default display
@@ -225,7 +236,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   onFilterChange,
   onPermissionsLoaded,
   renderCell: consumerRenderCell,
+  translations,
 }) => {
+  // ----- Strings & formatters (prop > provider dictionary > English defaults) -----
+  const t = useBuildpadTranslations((d) => d.collections, translations);
+  const { formatDate, formatDateTime, formatNumber, formatCount } = useBuildpadI18n();
+
   // ----- Data state -----
   const [allFields, setAllFields] = useState<Field[]>([]);
   // PK column resolved from field metadata (schema.is_primary_key); null until fields load
@@ -419,15 +435,13 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
         // If no visible fields remain, stop loading with a clear message
         if (visible.length === 0 && !cancelled) {
-          setError(`No visible fields found for collection "${collection}". Verify the collection exists and has non-hidden fields.`);
+          setError(interpolate(t.list.errors.noVisibleFields, { collection }));
           setLoading(false);
         }
       } catch (err) {
         console.error("Error loading fields:", err);
         if (!cancelled) {
-          setError(
-            "Failed to load collection fields. Make sure the Storybook Host app is running (pnpm dev:host) and connected at http://localhost:3000.",
-          );
+          setError(t.list.errors.loadFieldsFailed);
           setLoading(false);
         }
       }
@@ -437,7 +451,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [collection, displayFields, primaryKeyFieldProp]);
+  }, [collection, displayFields, primaryKeyFieldProp, t]);
 
   // =========================================================================
   // Merge external filter prop with internal FilterPanel filter
@@ -602,7 +616,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     } catch (err) {
       if (isStale()) return;
       console.error("Error loading items:", err);
-      setError(err instanceof Error ? err.message : "Failed to load items");
+      setError(err instanceof Error ? err.message : t.list.errors.loadItemsFailed);
       setItems([]);
     } finally {
       if (!steppedBack && !isStale()) setLoading(false);
@@ -619,6 +633,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     archiveField,
     archiveFilterMode,
     archiveValue,
+    t,
   ]);
 
   // =========================================================================
@@ -795,14 +810,14 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       return (
         <div className="collection-list-context-menu" role="menu">
           {/* Sort */}
-          <Menu.Label>Sort</Menu.Label>
+          <Menu.Label>{t.list.headerMenu.sort}</Menu.Label>
           <div
             role="menuitem"
             className="mantine-Menu-item collection-list-context-menu-item"
             onClick={() => handleSortChange({ by: header.value, desc: false })}
           >
             <IconSortAscending size={14} />
-            <Text size="sm">Sort ascending</Text>
+            <Text size="sm">{t.list.headerMenu.sortAscending}</Text>
           </div>
           <div
             role="menuitem"
@@ -810,28 +825,28 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             onClick={() => handleSortChange({ by: header.value, desc: true })}
           >
             <IconSortDescending size={14} />
-            <Text size="sm">Sort descending</Text>
+            <Text size="sm">{t.list.headerMenu.sortDescending}</Text>
           </div>
 
           <div className="collection-list-context-menu-divider" />
 
           {/* Alignment */}
-          <Menu.Label>Alignment</Menu.Label>
+          <Menu.Label>{t.list.headerMenu.alignment}</Menu.Label>
           {[
             {
               align: "left" as Alignment,
               icon: <IconAlignLeft size={14} />,
-              label: "Align left",
+              label: t.list.headerMenu.alignLeft,
             },
             {
               align: "center" as Alignment,
               icon: <IconAlignCenter size={14} />,
-              label: "Align center",
+              label: t.list.headerMenu.alignCenter,
             },
             {
               align: "right" as Alignment,
               icon: <IconAlignRight size={14} />,
-              label: "Align right",
+              label: t.list.headerMenu.alignRight,
             },
           ].map(({ align, icon, label }) => (
             <div
@@ -856,12 +871,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             onClick={() => removeField(header.value)}
           >
             <IconEyeOff size={14} />
-            <Text size="sm">Hide field</Text>
+            <Text size="sm">{t.list.headerMenu.hideField}</Text>
           </div>
         </div>
       );
     },
-    [enableHeaderMenu, handleSortChange, handleAlignChange, removeField],
+    [enableHeaderMenu, handleSortChange, handleAlignChange, removeField, t],
   );
 
   // =========================================================================
@@ -932,7 +947,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
                 // nowrap row, so in a narrow column the count of what is
                 // hidden would itself be the first thing hidden.
                 <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
-                  +{entries.length - 3}
+                  {interpolate(t.list.cell.moreChoices, { count: formatNumber(entries.length - 3) })}
                 </Text>
               )}
             </Group>
@@ -969,9 +984,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       // ---------- Boolean ----------
       if (fieldType === "boolean") {
         return value ? (
-          <IconCheck size={16} color="var(--mantine-color-green-6)" aria-label="Yes" />
+          <IconCheck size={16} color="var(--mantine-color-green-6)" aria-label={t.list.cell.booleanTrue} />
         ) : (
-          <IconX size={16} color="var(--mantine-color-gray-4)" aria-label="No" />
+          <IconX size={16} color="var(--mantine-color-gray-4)" aria-label={t.list.cell.booleanFalse} />
         );
       }
 
@@ -987,13 +1002,20 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           if (fieldType === "date") {
             return (
               <Text size="sm" truncate="end">
-                {dateObj.toLocaleDateString()}
+                {formatDate(dateObj, { year: "numeric", month: "numeric", day: "numeric" })}
               </Text>
             );
           }
           return (
             <Text size="sm" truncate="end">
-              {dateObj.toLocaleString()}
+              {formatDateTime(dateObj, {
+                year: "numeric",
+                month: "numeric",
+                day: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+                second: "numeric",
+              })}
             </Text>
           );
         } catch {
@@ -1012,7 +1034,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         if (!isNaN(num)) {
           return (
             <Text size="sm" truncate="end">
-              {num.toLocaleString()}
+              {formatNumber(num)}
             </Text>
           );
         }
@@ -1023,7 +1045,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       if (fieldType === "json") {
         return (
           <Badge variant="light" size="sm" color="gray">
-            JSON
+            {t.list.cell.jsonBadge}
           </Badge>
         );
       }
@@ -1034,7 +1056,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         return (
           <Tooltip label={str} openDelay={300}>
             <Text size="sm" truncate="end" style={{ maxWidth: 120 }}>
-              {str.substring(0, 8)}…
+              {interpolate(t.list.cell.truncated, { value: str.substring(0, 8) })}
             </Text>
           </Tooltip>
         );
@@ -1059,7 +1081,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             return (
               <Tooltip label={keyVal} openDelay={300}>
                 <Badge variant="light" size="sm" color="blue" style={{ textTransform: "none", maxWidth: 120 }}>
-                  {keyVal.substring(0, 8)}…
+                  {interpolate(t.list.cell.truncated, { value: keyVal.substring(0, 8) })}
                 </Badge>
               </Tooltip>
             );
@@ -1082,7 +1104,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       // ---------- Default: let VTable handle it ----------
       return null;
     },
-    [permittedFields, choicesByField],
+    [permittedFields, choicesByField, t, formatDate, formatDateTime, formatNumber],
   );
 
   const renderHeaderAppend = useCallback(() => {
@@ -1090,12 +1112,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     return (
       <Menu position="bottom-end" withArrow shadow="md" closeOnItemClick>
         <Menu.Target>
-          <ActionIcon variant="subtle" size="sm" title="Add field">
+          <ActionIcon variant="subtle" size="sm" title={t.list.addField.label}>
             <IconPlus size={16} />
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Label>Add field</Menu.Label>
+          <Menu.Label>{t.list.addField.label}</Menu.Label>
           {hiddenFields.map((f) => (
             <Menu.Item key={f.field} onClick={() => addField(f.field)}>
               {f.meta?.note ||
@@ -1107,7 +1129,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         </Menu.Dropdown>
       </Menu>
     );
-  }, [enableAddField, hiddenFields, addField]);
+  }, [enableAddField, hiddenFields, addField, t]);
 
   // =========================================================================
   // Filter panel handler
@@ -1157,12 +1179,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       getTotalCount();
     } catch (err) {
       console.error("Error deleting items:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete items");
+      setError(err instanceof Error ? err.message : t.list.errors.deleteFailed);
       setDeleteConfirmOpen(false);
     } finally {
       setDeleteLoading(false);
     }
-  }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess]);
+  }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess, t]);
 
   // Manual refresh is the user saying "re-sync with the server" — which
   // includes rows other people added or removed since the pinned total was
@@ -1194,23 +1216,31 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   }, [search, filter, internalFilter, archiveField, archiveFilterMode]);
 
   const itemCountDisplay = useMemo(() => {
-    if (loading) return "Loading...";
-    if (filterCount === 0) return "No items";
+    const strings = t.list.itemCount;
+    if (loading) return strings.loading;
+    if (filterCount === 0) return strings.none;
     const from = Math.min((page - 1) * limit + 1, filterCount);
     const to = Math.min(page * limit, filterCount);
+    // `{count}` (the filtered count) drives the plural form and is formatted
+    // by formatCount; the other numbers are pre-formatted the same way.
+    const values = {
+      from: formatNumber(from),
+      to: formatNumber(to),
+      total: formatNumber(totalCount),
+    };
     // When filtered and result set is smaller than total, show both
     if (isFiltered && filterCount < totalCount) {
       if (filterCount <= limit) {
-        return `${filterCount} item${filterCount !== 1 ? "s" : ""} (filtered from ${totalCount})`;
+        return formatCount(filterCount, strings.filteredSinglePage, values);
       }
-      return `${from}–${to} of ${filterCount} items (filtered from ${totalCount})`;
+      return formatCount(filterCount, strings.filteredRange, values);
     }
     // Single page — just show count
     if (filterCount <= limit) {
-      return `${filterCount} item${filterCount !== 1 ? "s" : ""}`;
+      return formatCount(filterCount, strings.singlePage);
     }
-    return `${from}–${to} of ${filterCount} items`;
-  }, [loading, totalCount, filterCount, page, limit, isFiltered]);
+    return formatCount(filterCount, strings.range, values);
+  }, [loading, totalCount, filterCount, page, limit, isFiltered, t, formatCount, formatNumber]);
 
   // =========================================================================
   // Render
@@ -1242,6 +1272,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         onClearSelection={() => setSelectedItems([])}
         enableCreate={enableCreate}
         onCreate={onCreate}
+        translations={translations}
       />
 
       {/* ── Inline Filter Panel (collapsible) ── */}
@@ -1249,7 +1280,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         <Collapse in={filterPanelOpen}>
           <div className="collection-list-filter-panel" data-testid="collection-list-filter-panel">
             <Group justify="space-between" mb="xs">
-              <Text size="sm" fw={600}>Filters</Text>
+              <Text size="sm" fw={600}>{t.list.filterPanel.title}</Text>
               {activeFilterCount > 0 && (
                 <Button
                   variant="subtle"
@@ -1258,7 +1289,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
                   onClick={handleClearFilter}
                   data-testid="collection-list-clear-filters"
                 >
-                  Clear all
+                  {t.list.filterPanel.clearAll}
                 </Button>
               )}
             </Group>
@@ -1267,6 +1298,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
               value={internalFilter}
               onChange={handleFilterChange}
               mode="inline"
+              translations={translations}
             />
           </div>
         </Collapse>
@@ -1299,12 +1331,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         value={selectedItems}
         fixedHeader
         loading={loading}
-        loadingText="Loading items..."
-        noItemsText={
-          isFiltered
-            ? "No results — try adjusting your search or filters"
-            : "No items in this collection"
-        }
+        loadingText={t.list.table.loading}
+        noItemsText={isFiltered ? t.list.table.noResultsFiltered : t.list.table.noItems}
         rowHeight={rowHeight}
         selectionUseKeys
         clickable={!!onItemClick}
@@ -1321,6 +1349,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             page={page}
             onPageChange={setPage}
             totalPages={totalPages}
+            translations={translations}
           />
         )}
         onUpdate={setSelectedItems}
@@ -1345,6 +1374,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         loading={deleteLoading}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+        translations={translations}
       />
     </Stack>
   );

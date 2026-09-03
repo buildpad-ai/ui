@@ -4,7 +4,8 @@
  */
 
 import type { Field } from '@buildpad/types';
-import { getFieldDisplayName } from '@buildpad/utils';
+import { getFieldDisplayName, defaultTranslations } from '@buildpad/utils';
+import type { FormTranslations } from '@buildpad/utils';
 import type { FormField } from '../types';
 
 /**
@@ -22,8 +23,16 @@ interface ExtendedFieldMeta {
  * - Sorts fields by group, sort order, and id
  * - Adds system divider between system and user fields
  * - Filters out fake system fields (starting with $)
+ *
+ * @param fields        Raw collection fields
+ * @param translations  The `form` dictionary namespace (or just its
+ *                      `systemDivider` part) used to name the synthetic
+ *                      divider. Defaults to the English strings.
  */
-export function getFormFields(fields: Field[]): FormField[] {
+export function getFormFields(
+  fields: Field[],
+  translations: Pick<FormTranslations, 'systemDivider'> = defaultTranslations.form,
+): FormField[] {
   const systemFields: FormField[] = [];
   const userFields: FormField[] = [];
 
@@ -87,7 +96,7 @@ export function getFormFields(fields: Field[]): FormField[] {
       const divider: FormField = {
         collection: '',
         field: 'system-divider',
-        name: 'System Divider',
+        name: translations.systemDivider.name,
         type: 'alias',
         schema: undefined,
         meta: {

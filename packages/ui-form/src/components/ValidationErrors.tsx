@@ -13,6 +13,9 @@ import React, { useMemo, useCallback } from 'react';
 import { Alert, Text, UnstyledButton, Group, Stack } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import type { Field } from '@buildpad/types';
+import { interpolate } from '@buildpad/utils';
+import type { DeepPartial, FormTranslations, FormValidationTranslations } from '@buildpad/utils';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import type { ValidationError } from '../types';
 
 export interface ValidationErrorsProps {
@@ -22,6 +25,8 @@ export interface ValidationErrorsProps {
   fields: Field[];
   /** Callback to scroll to a specific field */
   onScrollToField?: (fieldKey: string) => void;
+  /** Per-instance overrides of the `form` dictionary namespace */
+  translations?: DeepPartial<FormTranslations>;
 }
 
 interface ErrorDetail {
@@ -70,9 +75,14 @@ function isFieldHidden(fieldKey: string, fields: Field[]): { hidden: boolean; gr
 }
 
 /**
- * Get validation message for an error
+ * Get validation message for an error.
+ * `strings` is the `form.validation` dictionary namespace (resolved by the caller).
  */
-function getErrorMessage(error: ValidationError, field: Field | undefined): string {
+function getErrorMessage(
+  error: ValidationError,
+  field: Field | undefined,
+  strings: FormValidationTranslations,
+): string {
   // Check for custom validation message
   if (field?.meta?.validation_message && error.code === 'FAILED_VALIDATION') {
     return field.meta.validation_message;
@@ -83,20 +93,20 @@ function getErrorMessage(error: ValidationError, field: Field | undefined): stri
   // Default messages by type
   switch (error.type) {
     case 'required':
-      return 'This field is required';
+      return strings.required;
     case 'unique':
     case 'RECORD_NOT_UNIQUE':
-      return 'This value must be unique';
+      return strings.unique;
     case 'email':
-      return 'Must be a valid email address';
+      return strings.email;
     case 'url':
-      return 'Must be a valid URL';
+      return strings.url;
     case 'number':
-      return 'Must be a valid number';
+      return strings.number;
     case 'FAILED_VALIDATION':
-      return 'Validation failed';
+      return strings.failed;
     default:
-      return `Validation error: ${error.type}`;
+      return interpolate(strings.generic, { type: error.type });
   }
 }
 
@@ -107,7 +117,11 @@ export const ValidationErrors: React.FC<ValidationErrorsProps> = ({
   validationErrors,
   fields,
   onScrollToField,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.form, translations);
+  const { formatCount } = useBuildpadI18n();
+
   const errorDetails = useMemo<ErrorDetail[]>(() => {
     return validationErrors.map((error) => {
       const fieldKey = error.field;
@@ -117,12 +131,12 @@ export const ValidationErrors: React.FC<ValidationErrorsProps> = ({
       return {
         field: fieldKey,
         fieldName: resolveFieldName(fieldKey, fields),
-        message: getErrorMessage(error, field),
+        message: getErrorMessage(error, field, t.validation),
         isHidden: hidden,
         groupName,
       };
     });
-  }, [validationErrors, fields]);
+  }, [validationErrors, fields, t]);
 
   const handleFieldClick = useCallback(
     (fieldKey: string) => {
@@ -150,13 +164,11 @@ export const ValidationErrors: React.FC<ValidationErrorsProps> = ({
     >
       <Stack gap={4}>
         <Text size="sm" fw={600}>
-          {errorDetails.length === 1
-            ? '1 validation error'
-            : `${errorDetails.length} validation errors`}
+          {formatCount(errorDetails.length, t.errors.summary)}
         </Text>
         {errorDetails.map((detail, index) => (
           <Group key={`${detail.field}-${index}`} gap="xs" wrap="nowrap">
-            <Text size="sm" c="dimmed">•</Text>
+            <Text size="sm" c="dimmed">{t.errors.bullet}</Text>
             <UnstyledButton
               onClick={() => handleFieldClick(detail.field)}
               style={{ textDecoration: 'underline', cursor: 'pointer' }}
@@ -166,10 +178,13 @@ export const ValidationErrors: React.FC<ValidationErrorsProps> = ({
               </Text>
             </UnstyledButton>
             <Text size="sm" c="dimmed">
-              — {detail.message}
+              {interpolate(t.errors.messageFormat, { message: detail.message })}
               {detail.isHidden && (
                 <Text component="span" size="xs" c="dimmed" fs="italic">
-                  {detail.groupName ? ` (hidden in group: ${detail.groupName})` : ' (hidden)'}
+                  {' '}
+                  {detail.groupName
+                    ? interpolate(t.errors.hiddenInGroup, { group: detail.groupName })
+                    : t.errors.hidden}
                 </Text>
               )}
             </Text>

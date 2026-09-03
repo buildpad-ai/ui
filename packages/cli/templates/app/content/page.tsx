@@ -10,14 +10,16 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Stack, Text, Button, Center } from '@mantine/core';
-import { IconBox, IconPlus } from '@tabler/icons-react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
+import { Stack, Text, Center } from '@mantine/core';
+import { IconBox } from '@tabler/icons-react';
 import { useCollections } from '@/lib/buildpad/hooks';
 import { useLocalStorage } from '@/lib/buildpad/hooks';
 
 export default function ContentIndexPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const { visibleCollections, loading } = useCollections();
   const { value: lastAccessed } = useLocalStorage<string>('last-accessed-collection');
 
@@ -52,10 +54,10 @@ export default function ContentIndexPage() {
         <Stack align="center" gap="md">
           <IconBox size={64} color="var(--mantine-color-gray-5)" stroke={1.5} />
           <Text size="xl" fw={600}>
-            No Collections
+            {t('app.content.noCollections')}
           </Text>
           <Text c="dimmed" ta="center" maw={400}>
-            There are no collections available. Create your first collection in the data model settings.
+            {t('app.content.noCollectionsHint')}
           </Text>
         </Stack>
       </Center>

@@ -45,7 +45,26 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { formatFileSize, getAssetUrl, getFileCategory } from '@buildpad/types';
+import { getAssetUrl, getFileCategory } from '@buildpad/types';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+
+/**
+ * Locale-aware file size — the same thresholds, rounding and unit symbols as
+ * `formatFileSize` in `@buildpad/types`, with the number itself formatted for
+ * the active locale (decimal separator).
+ */
+const FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
+function formatSize(
+  bytes: number,
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string,
+): string {
+  if (bytes === 0) return `0 ${FILE_SIZE_UNITS[0]}`;
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const value = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
+  return `${formatNumber(value, { maximumFractionDigits: 2, useGrouping: false })} ${FILE_SIZE_UNITS[i]}`;
+}
 
 /**
  * File upload type matching DaaS file structure
@@ -193,6 +212,8 @@ export interface LibraryPickerModalProps {
     parent: string | null;
     search?: string;
   }) => Promise<LibraryFolder[]>;
+  /** Per-instance overrides of the dictionary strings (`interfaces.upload`) */
+  translations?: DeepPartial<InterfacesTranslations['upload']>;
 }
 
 /**
@@ -218,10 +239,15 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
   folder,
   pageSize: pageSizeDefault = 24,
   defaultView = 'grid',
-  title = 'Choose from library',
+  title,
   onFetchFiles,
   onFetchFolders,
+  translations,
 }) => {
+  // Dictionary strings; the `title` prop wins over both the `translations`
+  // prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.upload, translations, { library: { title } });
+  const { formatNumber } = useBuildpadI18n();
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [folders, setFolders] = useState<LibraryFolder[]>([]);
   const [total, setTotal] = useState(0);
@@ -321,7 +347,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
         console.error('Failed to fetch library files:', err);
         setFiles([]);
         setTotal(0);
-        setError(err instanceof Error ? err.message : 'Failed to load files from the library');
+        setError(err instanceof Error ? err.message : t.library.loadError);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -330,7 +356,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [opened, debouncedSearch, page, pageSize, currentFolder]);
+  }, [opened, debouncedSearch, page, pageSize, currentFolder, t]);
 
   // Fetch folders for the current level (or matching the search).
   React.useEffect(() => {
@@ -393,14 +419,14 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
   const isEmpty = files.length === 0 && folders.length === 0;
 
   return (
-    <Modal opened={opened} onClose={onClose} title={title} size="xl" data-testid="library-modal">
+    <Modal opened={opened} onClose={onClose} title={t.library.title} size="xl" data-testid="library-modal">
       <Stack gap="sm">
         {/* Toolbar: search + layout toggle */}
         <Group gap="sm" wrap="nowrap" align="flex-start">
           <TextInput
             style={{ flex: 1 }}
-            placeholder="Search files..."
-            aria-label="Search files"
+            placeholder={t.library.searchPlaceholder}
+            aria-label={t.library.searchAriaLabel}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             leftSection={<IconSearch size={14} />}
@@ -411,7 +437,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                 <ActionIcon
                   variant="subtle"
                   onClick={() => setSearch('')}
-                  aria-label="Clear search"
+                  aria-label={t.library.clearSearch}
                 >
                   <IconX size={14} />
                 </ActionIcon>
@@ -422,7 +448,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
           <SegmentedControl
             value={view}
             onChange={(value) => setView(value as 'grid' | 'list')}
-            aria-label="Library layout"
+            aria-label={t.library.layoutAriaLabel}
             data-testid="library-view-toggle"
             data={[
               {
@@ -430,18 +456,18 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                 // Icon-only control: the visually-hidden text is what gives the
                 // radio an accessible name for screen readers.
                 label: (
-                  <Center title="Grid view">
+                  <Center title={t.library.gridView}>
                     <IconLayoutGrid size={16} />
-                    <VisuallyHidden>Grid view</VisuallyHidden>
+                    <VisuallyHidden>{t.library.gridView}</VisuallyHidden>
                   </Center>
                 ),
               },
               {
                 value: 'list',
                 label: (
-                  <Center title="List view">
+                  <Center title={t.library.listView}>
                     <IconList size={16} />
-                    <VisuallyHidden>List view</VisuallyHidden>
+                    <VisuallyHidden>{t.library.listView}</VisuallyHidden>
                   </Center>
                 ),
               },
@@ -460,7 +486,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
               onClick={() => navigateTo(null)}
               c={path.length === 0 ? 'dimmed' : undefined}
             >
-              Library
+              {t.library.breadcrumbRoot}
             </Anchor>
             {path.map((segment, index) => (
               <Group gap={4} key={segment.id} wrap="nowrap">
@@ -484,7 +510,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
           {loading ? (
             <Stack align="center" justify="center" style={{ height: 260 }}>
               <Loader />
-              <Text size="sm" c="dimmed">Loading files...</Text>
+              <Text size="sm" c="dimmed">{t.library.loading}</Text>
             </Stack>
           ) : error ? (
             <Stack align="center" justify="center" style={{ height: 260 }} gap="xs">
@@ -495,7 +521,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
             <Stack align="center" justify="center" style={{ height: 260 }} gap="xs">
               <IconFolderOpen size={44} color="var(--mantine-color-gray-5)" />
               <Text c="dimmed" data-testid="library-empty">
-                {debouncedSearch ? `No files match "${debouncedSearch}"` : 'No files found'}
+                {debouncedSearch ? interpolate(t.library.noMatch, { search: debouncedSearch }) : t.library.empty}
               </Text>
             </Stack>
           ) : view === 'grid' ? (
@@ -508,7 +534,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                   className="library-card"
                   role="button"
                   tabIndex={0}
-                  aria-label={`Open folder ${entry.name}`}
+                  aria-label={interpolate(t.library.openFolder, { name: entry.name })}
                   onClick={() => openFolder(entry)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -527,7 +553,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                     <Text size="xs" fw={500} lineClamp={1} title={entry.name}>
                       {entry.name}
                     </Text>
-                    <Text size="xs" c="dimmed">Folder</Text>
+                    <Text size="xs" c="dimmed">{t.library.folder}</Text>
                   </Box>
                 </Paper>
               ))}
@@ -543,7 +569,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                     className="library-card"
                     role="button"
                     tabIndex={0}
-                    aria-label={`Select ${name}`}
+                    aria-label={interpolate(t.library.selectFile, { name })}
                     onClick={() => onSelect(file)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -567,9 +593,9 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                           color="gray"
                           style={{ textTransform: 'capitalize' }}
                         >
-                          {category}
+                          {t.categories[category]}
                         </Badge>
-                        <Text size="xs" c="dimmed">{formatFileSize(file.filesize || 0)}</Text>
+                        <Text size="xs" c="dimmed">{formatSize(file.filesize || 0, formatNumber)}</Text>
                       </Group>
                     </Box>
                   </Paper>
@@ -581,9 +607,9 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th w={44} />
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th w={120}>Type</Table.Th>
-                  <Table.Th w={100}>Size</Table.Th>
+                  <Table.Th>{t.library.columns.name}</Table.Th>
+                  <Table.Th w={120}>{t.library.columns.type}</Table.Th>
+                  <Table.Th w={100}>{t.library.columns.size}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -603,7 +629,7 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                     </Table.Td>
                     <Table.Td><Text size="sm">{entry.name}</Text></Table.Td>
                     <Table.Td>
-                      <Badge size="xs" variant="light" color="gray">Folder</Badge>
+                      <Badge size="xs" variant="light" color="gray">{t.library.folder}</Badge>
                     </Table.Td>
                     <Table.Td />
                   </Table.Tr>
@@ -636,11 +662,11 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                           color="gray"
                           style={{ textTransform: 'capitalize' }}
                         >
-                          {category}
+                          {t.categories[category]}
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="xs" c="dimmed">{formatFileSize(file.filesize || 0)}</Text>
+                        <Text size="xs" c="dimmed">{formatSize(file.filesize || 0, formatNumber)}</Text>
                       </Table.Td>
                     </Table.Tr>
                   );
@@ -656,16 +682,22 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
             <Group gap="sm" wrap="nowrap">
               <Text size="xs" c="dimmed" data-testid="library-count">
                 {filtered
-                  ? `Showing ${rangeStart}–${rangeStart + Math.max(files.length - 1, 0)}`
-                  : `Showing ${rangeStart}–${rangeEnd} of ${total}`}
+                  ? interpolate(t.library.showingRange, {
+                      start: rangeStart,
+                      end: rangeStart + Math.max(files.length - 1, 0),
+                    })
+                  : interpolate(t.library.showingRangeOfTotal, { start: rangeStart, end: rangeEnd, total })}
               </Text>
               <Select
                 size="xs"
                 w={110}
-                aria-label="Files per page"
+                aria-label={t.library.filesPerPage}
                 value={String(pageSize)}
                 onChange={(value) => value && setPageSize(Number(value))}
-                data={['12', '24', '48', '96'].map((n) => ({ value: n, label: `${n} / page` }))}
+                data={['12', '24', '48', '96'].map((n) => ({
+                  value: n,
+                  label: interpolate(t.library.perPageOption, { count: n }),
+                }))}
                 data-testid="library-page-size"
               />
             </Group>
@@ -679,16 +711,16 @@ export const LibraryPickerModal: React.FC<LibraryPickerModalProps> = ({
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
-                  Previous
+                  {t.library.previous}
                 </Button>
-                <Text size="xs" c="dimmed">Page {page}</Text>
+                <Text size="xs" c="dimmed">{interpolate(t.library.pageNumber, { page })}</Text>
                 <Button
                   size="xs"
                   variant="default"
                   disabled={!hasMore}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  Next
+                  {t.library.next}
                 </Button>
               </Group>
             ) : (
@@ -752,6 +784,8 @@ export interface UploadProps {
   onUploadFiles?: (files: File[], options: { folder?: string; preset?: string }) => Promise<FileUpload[]>;
   /** Function to import from URL */
   onImportFromUrl?: (url: string, options: { folder?: string }) => Promise<FileUpload>;
+  /** Per-instance overrides of the dictionary strings (`interfaces.upload`) */
+  translations?: DeepPartial<InterfacesTranslations['upload']>;
 }
 
 /**
@@ -774,7 +808,10 @@ export const Upload: React.FC<UploadProps> = ({
   onFetchLibraryFolders,
   onUploadFiles,
   onImportFromUrl,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.upload, translations);
+  const { formatCount } = useBuildpadI18n();
   const [uploading, setUploading] = useState(false);
   const [urlDialogOpen, setUrlDialogOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(autoOpenLibrary);
@@ -820,21 +857,21 @@ export const Upload: React.FC<UploadProps> = ({
       }
 
       notifications.show({
-        title: 'Upload complete',
-        message: `Successfully uploaded ${uploadedFiles.length} file(s)`,
+        title: t.notifications.uploadComplete.title,
+        message: formatCount(uploadedFiles.length, t.notifications.uploadComplete.message),
         color: 'green',
       });
     } catch (error) {
       console.error('Upload error:', error);
       notifications.show({
-        title: 'Upload failed',
-        message: error instanceof Error ? error.message : 'Failed to upload files',
+        title: t.notifications.uploadFailed.title,
+        message: error instanceof Error ? error.message : t.notifications.uploadFailed.message,
         color: 'red',
       });
     } finally {
       setUploading(false);
     }
-  }, [folder, preset, multiple, onInput, onUploadFiles]);
+  }, [folder, preset, multiple, onInput, onUploadFiles, t, formatCount]);
 
   const handleFileSelect = useCallback((files: File | File[] | null) => {
     if (!files) return;
@@ -899,21 +936,21 @@ export const Upload: React.FC<UploadProps> = ({
       setImportUrl('');
 
       notifications.show({
-        title: 'Import complete',
-        message: 'File imported successfully',
+        title: t.notifications.importComplete.title,
+        message: t.notifications.importComplete.message,
         color: 'green',
       });
     } catch (error) {
       console.error('Import error:', error);
       notifications.show({
-        title: 'Import failed',
-        message: error instanceof Error ? error.message : 'Failed to import from URL',
+        title: t.notifications.importFailed.title,
+        message: error instanceof Error ? error.message : t.notifications.importFailed.message,
         color: 'red',
       });
     } finally {
       setImporting(false);
     }
-  }, [importUrl, folder, multiple, onInput, onImportFromUrl]);
+  }, [importUrl, folder, multiple, onInput, onImportFromUrl, t]);
 
   // Opening only flips state — LibraryPickerModal owns its own fetching, so the
   // modal can't issue two competing requests for the same open.
@@ -959,7 +996,7 @@ export const Upload: React.FC<UploadProps> = ({
           {uploading ? (
             <>
               <Loader size="lg" />
-              <Text size="sm" c="dimmed">Uploading...</Text>
+              <Text size="sm" c="dimmed">{t.dropzone.uploading}</Text>
             </>
           ) : (
             <>
@@ -975,10 +1012,10 @@ export const Upload: React.FC<UploadProps> = ({
 
               <Box ta="center">
                 <Text size="lg" inline>
-                  {isDragOver ? 'Drop files here' : 'Drag files here or click to select'}
+                  {isDragOver ? t.dropzone.dropHere : t.dropzone.dragHint}
                 </Text>
                 <Text size="sm" c="dimmed" inline mt={7}>
-                  {accept ? `Accepts: ${accept}` : 'All file types accepted'}
+                  {accept ? interpolate(t.dropzone.accepts, { accept: acceptString }) : t.dropzone.acceptsAll}
                 </Text>
               </Box>
 
@@ -996,7 +1033,7 @@ export const Upload: React.FC<UploadProps> = ({
                         leftSection={<IconUpload size={16} />}
                         data-testid="upload-from-device-btn"
                       >
-                        Upload from device
+                        {t.actions.fromDevice}
                       </Button>
                     )}
                   </FileButton>
@@ -1009,7 +1046,7 @@ export const Upload: React.FC<UploadProps> = ({
                     onClick={handleOpenLibrary}
                     data-testid="choose-from-library-btn"
                   >
-                    Choose from library
+                    {t.actions.fromLibrary}
                   </Button>
                 )}
 
@@ -1020,7 +1057,7 @@ export const Upload: React.FC<UploadProps> = ({
                     onClick={() => setUrlDialogOpen(true)}
                     data-testid="import-from-url-btn"
                   >
-                    Import from URL
+                    {t.actions.fromUrl}
                   </Button>
                 )}
               </Group>
@@ -1033,13 +1070,13 @@ export const Upload: React.FC<UploadProps> = ({
       <Modal
         opened={urlDialogOpen}
         onClose={() => setUrlDialogOpen(false)}
-        title="Import from URL"
+        title={t.urlDialog.title}
         data-testid="url-import-modal"
       >
         <Stack>
           <TextInput
-            label="File URL"
-            placeholder="https://example.com/file.jpg"
+            label={t.urlDialog.urlLabel}
+            placeholder={t.urlDialog.urlPlaceholder}
             value={importUrl}
             onChange={(e) => setImportUrl(e.target.value)}
             disabled={importing}
@@ -1047,7 +1084,7 @@ export const Upload: React.FC<UploadProps> = ({
           />
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setUrlDialogOpen(false)}>
-              Cancel
+              {t.urlDialog.cancel}
             </Button>
             <Button
               onClick={handleImportFromUrl}
@@ -1055,7 +1092,7 @@ export const Upload: React.FC<UploadProps> = ({
               disabled={!isValidUrl}
               data-testid="import-btn"
             >
-              Import
+              {t.urlDialog.import}
             </Button>
           </Group>
         </Stack>
@@ -1071,6 +1108,7 @@ export const Upload: React.FC<UploadProps> = ({
         defaultView={libraryDefaultView}
         onFetchFiles={onFetchLibraryFiles}
         onFetchFolders={onFetchLibraryFolders}
+        translations={translations}
       />
     </Box>
   );

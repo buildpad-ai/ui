@@ -38,6 +38,12 @@ import {
     IconX,
 } from '@tabler/icons-react';
 import type { Field } from '@buildpad/types';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import type { CollectionsTranslations, DeepPartial } from '@buildpad/utils';
+
+/** The `collections.filterPanel` slice of the dictionary. */
+type FilterPanelStrings = CollectionsTranslations['filterPanel'];
+type OperatorKey = keyof FilterPanelStrings['operators'];
 
 // ============================================================================
 // Types
@@ -75,6 +81,8 @@ export interface FilterPanelProps {
     disabled?: boolean;
     /** Maximum nesting depth for groups (default: 3) */
     maxDepth?: number;
+    /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+    translations?: DeepPartial<CollectionsTranslations>;
 }
 
 // ============================================================================
@@ -82,65 +90,66 @@ export interface FilterPanelProps {
 // ============================================================================
 
 interface OperatorDef {
-    label: string;
+    /** Key into `collections.filterPanel.operators` — the label is resolved at render time */
+    labelKey: OperatorKey;
     value: string;
     /** Whether this operator needs a value input */
     needsValue: boolean;
 }
 
 const STRING_OPERATORS: OperatorDef[] = [
-    { label: 'Equals', value: '_eq', needsValue: true },
-    { label: 'Not equals', value: '_neq', needsValue: true },
-    { label: 'Contains', value: '_contains', needsValue: true },
-    { label: 'Does not contain', value: '_ncontains', needsValue: true },
-    { label: 'Starts with', value: '_starts_with', needsValue: true },
-    { label: 'Ends with', value: '_ends_with', needsValue: true },
-    { label: 'Is empty', value: '_empty', needsValue: false },
-    { label: 'Is not empty', value: '_nempty', needsValue: false },
-    { label: 'Is null', value: '_null', needsValue: false },
-    { label: 'Is not null', value: '_nnull', needsValue: false },
+    { labelKey: 'equals', value: '_eq', needsValue: true },
+    { labelKey: 'notEquals', value: '_neq', needsValue: true },
+    { labelKey: 'contains', value: '_contains', needsValue: true },
+    { labelKey: 'doesNotContain', value: '_ncontains', needsValue: true },
+    { labelKey: 'startsWith', value: '_starts_with', needsValue: true },
+    { labelKey: 'endsWith', value: '_ends_with', needsValue: true },
+    { labelKey: 'isEmpty', value: '_empty', needsValue: false },
+    { labelKey: 'isNotEmpty', value: '_nempty', needsValue: false },
+    { labelKey: 'isNull', value: '_null', needsValue: false },
+    { labelKey: 'isNotNull', value: '_nnull', needsValue: false },
 ];
 
 const NUMBER_OPERATORS: OperatorDef[] = [
-    { label: 'Equals', value: '_eq', needsValue: true },
-    { label: 'Not equals', value: '_neq', needsValue: true },
-    { label: 'Greater than', value: '_gt', needsValue: true },
-    { label: 'Greater or equal', value: '_gte', needsValue: true },
-    { label: 'Less than', value: '_lt', needsValue: true },
-    { label: 'Less or equal', value: '_lte', needsValue: true },
-    { label: 'Is null', value: '_null', needsValue: false },
-    { label: 'Is not null', value: '_nnull', needsValue: false },
+    { labelKey: 'equals', value: '_eq', needsValue: true },
+    { labelKey: 'notEquals', value: '_neq', needsValue: true },
+    { labelKey: 'greaterThan', value: '_gt', needsValue: true },
+    { labelKey: 'greaterOrEqual', value: '_gte', needsValue: true },
+    { labelKey: 'lessThan', value: '_lt', needsValue: true },
+    { labelKey: 'lessOrEqual', value: '_lte', needsValue: true },
+    { labelKey: 'isNull', value: '_null', needsValue: false },
+    { labelKey: 'isNotNull', value: '_nnull', needsValue: false },
 ];
 
 const BOOLEAN_OPERATORS: OperatorDef[] = [
-    { label: 'Equals', value: '_eq', needsValue: true },
-    { label: 'Is null', value: '_null', needsValue: false },
-    { label: 'Is not null', value: '_nnull', needsValue: false },
+    { labelKey: 'equals', value: '_eq', needsValue: true },
+    { labelKey: 'isNull', value: '_null', needsValue: false },
+    { labelKey: 'isNotNull', value: '_nnull', needsValue: false },
 ];
 
 const DATE_OPERATORS: OperatorDef[] = [
-    { label: 'Equals', value: '_eq', needsValue: true },
-    { label: 'Not equals', value: '_neq', needsValue: true },
-    { label: 'After', value: '_gt', needsValue: true },
-    { label: 'On or after', value: '_gte', needsValue: true },
-    { label: 'Before', value: '_lt', needsValue: true },
-    { label: 'On or before', value: '_lte', needsValue: true },
-    { label: 'Is null', value: '_null', needsValue: false },
-    { label: 'Is not null', value: '_nnull', needsValue: false },
+    { labelKey: 'equals', value: '_eq', needsValue: true },
+    { labelKey: 'notEquals', value: '_neq', needsValue: true },
+    { labelKey: 'after', value: '_gt', needsValue: true },
+    { labelKey: 'onOrAfter', value: '_gte', needsValue: true },
+    { labelKey: 'before', value: '_lt', needsValue: true },
+    { labelKey: 'onOrBefore', value: '_lte', needsValue: true },
+    { labelKey: 'isNull', value: '_null', needsValue: false },
+    { labelKey: 'isNotNull', value: '_nnull', needsValue: false },
 ];
 
 const UUID_OPERATORS: OperatorDef[] = [
-    { label: 'Equals', value: '_eq', needsValue: true },
-    { label: 'Not equals', value: '_neq', needsValue: true },
-    { label: 'Is null', value: '_null', needsValue: false },
-    { label: 'Is not null', value: '_nnull', needsValue: false },
+    { labelKey: 'equals', value: '_eq', needsValue: true },
+    { labelKey: 'notEquals', value: '_neq', needsValue: true },
+    { labelKey: 'isNull', value: '_null', needsValue: false },
+    { labelKey: 'isNotNull', value: '_nnull', needsValue: false },
 ];
 
 const JSON_OPERATORS: OperatorDef[] = [
-    { label: 'Is null', value: '_null', needsValue: false },
-    { label: 'Is not null', value: '_nnull', needsValue: false },
-    { label: 'Is empty', value: '_empty', needsValue: false },
-    { label: 'Is not empty', value: '_nempty', needsValue: false },
+    { labelKey: 'isNull', value: '_null', needsValue: false },
+    { labelKey: 'isNotNull', value: '_nnull', needsValue: false },
+    { labelKey: 'isEmpty', value: '_empty', needsValue: false },
+    { labelKey: 'isNotEmpty', value: '_nempty', needsValue: false },
 ];
 
 /**
@@ -237,9 +246,11 @@ interface RuleRowProps {
     disabled?: boolean;
     onChange: (rule: FilterRule) => void;
     onRemove: () => void;
+    /** Resolved `collections.filterPanel` strings from the parent */
+    t: FilterPanelStrings;
 }
 
-const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onRemove }) => {
+const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onRemove, t }) => {
     const fieldData = useMemo(() =>
         fields.map((f) => ({
             value: f.field,
@@ -250,7 +261,7 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
 
     const selectedField = fields.find((f) => f.field === rule.field);
     const operators = getOperatorsForType(selectedField?.type || 'string');
-    const operatorData = operators.map((o) => ({ value: o.value, label: o.label }));
+    const operatorData = operators.map((o) => ({ value: o.value, label: t.operators[o.labelKey] }));
     const currentOp = operators.find((o) => o.value === rule.operator);
 
     return (
@@ -264,7 +275,7 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                     onChange({ ...rule, field: val, operator: newOps[0].value, value: null });
                 }}
                 data={fieldData}
-                placeholder="Field..."
+                placeholder={t.rule.fieldPlaceholder}
                 size="xs"
                 style={{ minWidth: 130 }}
                 disabled={disabled}
@@ -292,7 +303,7 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                             <NumberInput
                                 value={typeof rule.value === 'number' ? rule.value : undefined}
                                 onChange={(val) => onChange({ ...rule, value: val })}
-                                placeholder="Value..."
+                                placeholder={t.rule.valuePlaceholder}
                                 size="xs"
                                 style={{ minWidth: 100, flex: 1 }}
                                 disabled={disabled}
@@ -304,7 +315,7 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                             <Select
                                 value={rule.value === true ? 'true' : rule.value === false ? 'false' : ''}
                                 onChange={(val) => onChange({ ...rule, value: val === 'true' })}
-                                data={[{ value: 'true', label: 'True' }, { value: 'false', label: 'False' }]}
+                                data={[{ value: 'true', label: t.rule.booleanTrue }, { value: 'false', label: t.rule.booleanFalse }]}
                                 size="xs"
                                 style={{ minWidth: 80 }}
                                 disabled={disabled}
@@ -316,7 +327,7 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                         <TextInput
                             value={typeof rule.value === 'string' ? rule.value : ''}
                             onChange={(e) => onChange({ ...rule, value: e.currentTarget.value })}
-                            placeholder={['timestamp', 'dateTime', 'date'].includes(type) ? 'YYYY-MM-DD' : 'Value...'}
+                            placeholder={['timestamp', 'dateTime', 'date'].includes(type) ? t.rule.datePlaceholder : t.rule.valuePlaceholder}
                             size="xs"
                             style={{ minWidth: 120, flex: 1 }}
                             disabled={disabled}
@@ -331,7 +342,7 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                 size="sm"
                 onClick={onRemove}
                 disabled={disabled}
-                title="Remove filter"
+                title={t.rule.remove}
             >
                 <IconTrash size={14} />
             </ActionIcon>
@@ -352,7 +363,12 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     defaultCollapsed = true,
     disabled = false,
     maxDepth = 3,
+    translations,
 }) => {
+    // Strings: component prop > provider dictionary > English defaults.
+    const t = useBuildpadTranslations((d) => d.collections.filterPanel, translations?.filterPanel);
+    const { formatCount } = useBuildpadI18n();
+
     const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
     // Parse incoming value into internal model
@@ -435,10 +451,10 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                     rightSection={filterCount > 0 ? <Badge size="xs" circle>{filterCount}</Badge> : <IconChevronDown size={14} />}
                     onClick={() => setCollapsed(false)}
                 >
-                    Filters
+                    {t.title}
                 </Button>
                 {filterCount > 0 && (
-                    <ActionIcon variant="subtle" size="xs" color="dimmed" onClick={clearAll} title="Clear all filters">
+                    <ActionIcon variant="subtle" size="xs" color="dimmed" onClick={clearAll} title={t.clearAllFilters}>
                         <IconX size={12} />
                     </ActionIcon>
                 )}
@@ -453,15 +469,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             <Group justify="space-between">
                 <Group gap="xs">
                     <IconFilter size={16} style={{ color: 'var(--mantine-color-dimmed)' }} />
-                    <Text size="sm" fw={600}>Filters</Text>
+                    <Text size="sm" fw={600}>{t.title}</Text>
                     {filterCount > 0 && (
-                        <Badge size="xs" variant="light">{filterCount} active</Badge>
+                        <Badge size="xs" variant="light">{formatCount(filterCount, t.activeCount)}</Badge>
                     )}
                 </Group>
                 <Group gap="xs">
                     {filterCount > 0 && (
                         <Button variant="subtle" size="xs" color="dimmed" onClick={clearAll}>
-                            Clear all
+                            {t.clearAll}
                         </Button>
                     )}
                     {collapsible && (
@@ -475,27 +491,27 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             {/* Logical toggle */}
             {rootGroup.rules.length > 1 && (
                 <Group gap="xs">
-                    <Text size="xs" c="dimmed">Match</Text>
+                    <Text size="xs" c="dimmed">{t.match}</Text>
                     <Button
                         variant={rootGroup.logical === '_and' ? 'filled' : 'outline'}
                         size="compact-xs"
                         onClick={() => rootGroup.logical !== '_and' && toggleLogical()}
                     >
-                        ALL
+                        {t.matchAll}
                     </Button>
                     <Button
                         variant={rootGroup.logical === '_or' ? 'filled' : 'outline'}
                         size="compact-xs"
                         onClick={() => rootGroup.logical !== '_or' && toggleLogical()}
                     >
-                        ANY
+                        {t.matchAny}
                     </Button>
                 </Group>
             )}
 
             {/* Rules */}
             {rootGroup.rules.length === 0 ? (
-                <Text size="sm" c="dimmed">No filter rules. Click "Add filter" to get started.</Text>
+                <Text size="sm" c="dimmed">{t.emptyState}</Text>
             ) : (
                 <Stack gap={6}>
                     {rootGroup.rules.map((rule, index) => {
@@ -504,7 +520,9 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                             return (
                                 <Group key={rule.id} gap="xs">
                                     <Badge variant="outline" size="sm">
-                                        {rule.logical === '_and' ? 'AND' : 'OR'} group ({rule.rules.length} rules)
+                                        {formatCount(rule.rules.length, t.group.summary, {
+                                            logical: rule.logical === '_and' ? t.group.and : t.group.or,
+                                        })}
                                     </Badge>
                                     <ActionIcon
                                         variant="subtle" color="red" size="xs"
@@ -524,6 +542,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                                 disabled={disabled}
                                 onChange={(updated) => updateRule(index, updated)}
                                 onRemove={() => removeRule(index)}
+                                t={t}
                             />
                         );
                     })}
@@ -535,7 +554,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 <Menu position="bottom-start" withArrow shadow="sm">
                     <Menu.Target>
                         <Button variant="subtle" size="xs" leftSection={<IconPlus size={14} />}>
-                            Add filter
+                            {t.addFilter}
                         </Button>
                     </Menu.Target>
                     <Menu.Dropdown>
@@ -560,7 +579,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 </Menu>
                 {maxDepth > 1 && (
                     <Button variant="subtle" size="xs" color="dimmed" onClick={addGroup}>
-                        Add group
+                        {t.addGroup}
                     </Button>
                 )}
             </Group>

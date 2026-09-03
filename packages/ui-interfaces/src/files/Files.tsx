@@ -5,7 +5,8 @@ import { FileThumbnail, LibraryPickerModal, type FileUpload } from '../upload';
 import '../upload/Upload.css';
 import { daasAPI, type DaaSFile } from '@buildpad/hooks';
 import { useFiles, useFolders } from '@buildpad/hooks';
-import { isNewItem } from '@buildpad/utils';
+import { isNewItem, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+import { useBuildpadTranslations } from '@buildpad/services';
 
 /**
  * Convert DaaSFile to FileUpload type (adds fallback for nullable fields)
@@ -54,13 +55,15 @@ export interface FilesProps {
     junctionFieldCurrent: string;
     junctionFieldRelated: string;
   };
+  /** Per-instance overrides of the dictionary strings (`interfaces.files`) */
+  translations?: DeepPartial<InterfacesTranslations['files']>;
 }
 
 export const Files: React.FC<FilesProps> = ({
   value,
   onChange,
   label,
-  placeholder = 'No items',
+  placeholder,
   disabled = false,
   readonly: readonlyProp = false,
   readOnly: readOnlyProp = false,
@@ -72,9 +75,11 @@ export const Files: React.FC<FilesProps> = ({
   field,
   primaryKey,
   junctionConfig,
+  translations,
 }) => {
   // Accept either casing — @buildpad/ui-form passes camelCase `readOnly`.
   const readonly = readonlyProp || readOnlyProp;
+  const t = useBuildpadTranslations((d) => d.interfaces.files, translations);
   // Local state for hydrated files
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [loading, setLoading] = useState(false);
@@ -493,14 +498,14 @@ export const Files: React.FC<FilesProps> = ({
         {/* Actions */}
         {!readonly && (
           <Group gap={4}>
-            <Tooltip label="Remove">
+            <Tooltip label={t.actions.remove}>
               <ActionIcon
                 variant="subtle"
                 color="gray"
                 size="sm"
                 onClick={() => handleRemove(file.id)}
                 disabled={!deleteAllowed || disabled}
-                aria-label="Remove file"
+                aria-label={t.actions.removeFile}
               >
                 <IconTrash size={16} />
               </ActionIcon>
@@ -512,7 +517,7 @@ export const Files: React.FC<FilesProps> = ({
                   variant="subtle"
                   color="gray"
                   size="sm"
-                  aria-label="More options"
+                  aria-label={t.actions.moreOptions}
                 >
                   <IconDotsVertical size={16} />
                 </ActionIcon>
@@ -525,7 +530,7 @@ export const Files: React.FC<FilesProps> = ({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open in new tab
+                  {t.actions.openInNewTab}
                 </Menu.Item>
                 <Menu.Item
                   leftSection={<IconDownload size={14} />}
@@ -533,7 +538,7 @@ export const Files: React.FC<FilesProps> = ({
                   href={`/api/assets/${file.id}?download=true`}
                   download={file.filename_download || file.id}
                 >
-                  Download file
+                  {t.actions.downloadFile}
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
@@ -549,7 +554,7 @@ export const Files: React.FC<FilesProps> = ({
       {label && (
         <Group gap={6} align="center">
           <Text fw={500} size="sm">{label}</Text>
-          {readonly && <Badge size="xs" variant="light">Read only</Badge>}
+          {readonly && <Badge size="xs" variant="light">{t.readOnly}</Badge>}
         </Group>
       )}
 
@@ -558,7 +563,7 @@ export const Files: React.FC<FilesProps> = ({
         <Paper withBorder p="md">
           <Group justify="center">
             <Loader size="sm" />
-            <Text size="sm" c="dimmed">Loading files...</Text>
+            <Text size="sm" c="dimmed">{t.loading}</Text>
           </Group>
         </Paper>
       )}
@@ -566,7 +571,7 @@ export const Files: React.FC<FilesProps> = ({
       {/* Empty state */}
       {!loading && totalItemCount === 0 && (
         <Paper withBorder p="md">
-          <Text size="sm" c="dimmed">{placeholder}</Text>
+          <Text size="sm" c="dimmed">{placeholder ?? t.placeholder}</Text>
         </Paper>
       )}
 
@@ -591,7 +596,7 @@ export const Files: React.FC<FilesProps> = ({
               leftSection={<IconUpload size={16} />}
               onClick={() => fileInputRef.current?.click()}
             >
-              Upload File
+              {t.uploadFile}
             </Button>
           )}
           {enableSelect && selectAllowed && !disabled && (
@@ -600,7 +605,7 @@ export const Files: React.FC<FilesProps> = ({
               leftSection={<IconFolderOpen size={16} />}
               onClick={handleOpenLibrary}
             >
-              Add Existing
+              {t.addExisting}
             </Button>
           )}
         </Group>

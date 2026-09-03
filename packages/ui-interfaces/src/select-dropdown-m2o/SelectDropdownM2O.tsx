@@ -27,7 +27,8 @@ import {
   useRelationM2OItem,
   type M2OItem,
 } from "@buildpad/hooks";
-import { apiRequest } from "@buildpad/services";
+import { apiRequest, useBuildpadTranslations } from "@buildpad/services";
+import { interpolate, type DeepPartial, type InterfacesTranslations } from "@buildpad/utils";
 import {
   renderTemplate,
   DEFAULT_RELATIONAL_FIELDS,
@@ -93,6 +94,8 @@ export interface SelectDropdownM2OProps {
   readOnly?: boolean;
   /** Allow clearing the selection */
   allowNone?: boolean;
+  /** Per-instance overrides of the dictionary strings (`interfaces.selectDropdownM2O`) */
+  translations?: DeepPartial<InterfacesTranslations["selectDropdownM2O"]>;
 }
 
 /**
@@ -114,7 +117,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   disabled = false,
   enableCreate = true,
   enableLink = false,
-  placeholder = "Select an item...",
+  placeholder,
   // filter is reserved for future use to filter available items
   filter: _filter,
   searchable = true,
@@ -124,10 +127,16 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   required = false,
   readOnly = false,
   allowNone = true,
+  translations,
 }) => {
   // Suppress unused variable warnings
   void _primaryKey;
   void _filter;
+  // Dictionary strings; the `placeholder` prop wins over both the
+  // `translations` prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.selectDropdownM2O, translations, { placeholder });
+  const relatedCollectionName = (collectionName?: string) =>
+    interpolate(t.createModal.title, { collection: collectionName || t.itemFallback });
   // Use the custom hook for M2O relationship info
   const {
     relationInfo,
@@ -310,13 +319,12 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         )}
         <Alert
           icon={<IconAlertCircle size={16} />}
-          title="Configuration Error"
+          title={t.configError.title}
           color="red"
         >
           <Text size="sm">{relationError}</Text>
           <Text size="xs" c="dimmed" mt="xs">
-            Note: In Storybook, relational interfaces require API proxy routes.
-            This component works fully in a Next.js app with DaaS integration.
+            {t.configError.storybookNote}
           </Text>
         </Alert>
       </Stack>
@@ -327,10 +335,10 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     return (
       <Alert
         icon={<IconAlertCircle size={16} />}
-        title="Relationship not configured"
+        title={t.notConfigured.title}
         color="warning"
       >
-        The many-to-one relationship is not properly configured for this field.
+        {t.notConfigured.message}
       </Alert>
     );
   }
@@ -391,7 +399,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                       e.stopPropagation();
                       handleClear();
                     }}
-                    aria-label="Clear selection"
+                    aria-label={t.clearSelection}
                   />
                 ) : (
                   <IconSelector size={16} />
@@ -418,7 +426,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                 </Group>
               ) : (
                 <Text size="sm" c="dimmed">
-                  {placeholder}
+                  {t.placeholder}
                 </Text>
               )}
             </InputBase>
@@ -429,7 +437,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
               <Combobox.Search
                 value={search}
                 onChange={(event) => setSearch(event.currentTarget.value)}
-                placeholder="Search..."
+                placeholder={t.searchPlaceholder}
                 leftSection={<IconSearch size={14} />}
               />
             )}
@@ -441,12 +449,12 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                     <Group justify="center" py="xs">
                       <Loader size="sm" />
                       <Text size="sm" c="dimmed">
-                        Loading...
+                        {t.loading}
                       </Text>
                     </Group>
                   </Combobox.Empty>
                 ) : availableItems.length === 0 ? (
-                  <Combobox.Empty>No items found</Combobox.Empty>
+                  <Combobox.Empty>{t.noItemsFound}</Combobox.Empty>
                 ) : (
                   availableItems.map((item) => (
                     <Combobox.Option
@@ -480,7 +488,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                     combobox.closeDropdown();
                   }}
                 >
-                  Create New
+                  {t.createNew}
                 </Button>
               </Combobox.Footer>
             )}
@@ -490,7 +498,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         {/* Action buttons */}
         <Group gap="xs">
           {enableLink && selectedItem && (
-            <Tooltip label="View related item">
+            <Tooltip label={t.viewRelatedItem}>
               <ActionIcon
                 variant="subtle"
                 size="sm"
@@ -512,14 +520,11 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         <Modal
           opened={createModalOpened}
           onClose={closeCreateModal}
-          title={`Create New ${
-            relationInfo?.relatedCollection.collection || "Item"
-          }`}
+          title={relatedCollectionName(relationInfo?.relatedCollection.collection)}
           size="lg"
         >
           <Alert icon={<IconAlertCircle size={16} />} color="info">
-            Create functionality will be available when CollectionForm component
-            is implemented.
+            {t.createModal.notImplemented}
           </Alert>
         </Modal>
       </Stack>
@@ -562,7 +567,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
 
             <Group gap="xs">
               {enableLink && (
-                <Tooltip label="View item">
+                <Tooltip label={t.viewItem}>
                   <ActionIcon variant="subtle" size="sm">
                     <IconExternalLink size={14} />
                   </ActionIcon>
@@ -571,7 +576,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
 
               {!disabled && !readOnly && (
                 <>
-                  <Tooltip label="Change">
+                  <Tooltip label={t.change}>
                     <ActionIcon
                       variant="subtle"
                       color="gray"
@@ -583,7 +588,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                   </Tooltip>
 
                   {allowNone && (
-                    <Tooltip label="Remove">
+                    <Tooltip label={t.remove}>
                       <ActionIcon
                         variant="subtle"
                         color="red"
@@ -600,7 +605,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
           </Group>
         ) : (
           <Group justify="center" py="md">
-            <Text c="dimmed">No item selected</Text>
+            <Text c="dimmed">{t.noItemSelected}</Text>
 
             {!disabled && !readOnly && (
               <Button
@@ -608,7 +613,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                 leftSection={<IconPlus size={14} />}
                 onClick={openSelectModal}
               >
-                Select Item
+                {t.selectItem}
               </Button>
             )}
           </Group>
@@ -625,7 +630,9 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
       <Modal
         opened={selectModalOpened}
         onClose={closeSelectModal}
-        title={`Select ${relationInfo?.relatedCollection.collection || "Item"}`}
+        title={interpolate(t.selectModal.title, {
+          collection: relationInfo?.relatedCollection.collection || t.itemFallback,
+        })}
         size="xl"
       >
         {relationInfo && (
@@ -633,7 +640,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
             <Stack gap="md">
               {/* Search */}
               <TextInput
-                placeholder="Search..."
+                placeholder={t.searchPlaceholder}
                 leftSection={<IconSearch size={16} />}
                 value={search}
                 onChange={(e) => {
@@ -656,7 +663,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                           </Text>
                         </Table.Th>
                       ))}
-                      <Table.Th style={{ width: 80 }}>Actions</Table.Th>
+                      <Table.Th style={{ width: 80 }}>{t.selectModal.actionsColumn}</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -666,7 +673,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                           <Group justify="center" py="md">
                             <Loader size="sm" />
                             <Text size="sm" c="dimmed">
-                              Loading...
+                              {t.loading}
                             </Text>
                           </Group>
                         </Table.Td>
@@ -675,7 +682,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                       <Table.Tr>
                         <Table.Td colSpan={resolvedFields.length + 1}>
                           <Text ta="center" c="dimmed" py="md">
-                            No items found
+                            {t.noItemsFound}
                           </Text>
                         </Table.Td>
                       </Table.Tr>
@@ -710,7 +717,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                                 closeSelectModal();
                               }}
                             >
-                              {value === item[relationKeyField] ? "Selected" : "Select"}
+                              {value === item[relationKeyField] ? t.selectModal.selected : t.selectModal.select}
                             </Button>
                           </Table.Td>
                         </Table.Tr>
@@ -732,7 +739,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                       closeSelectModal();
                     }}
                   >
-                    Clear Selection
+                    {t.selectModal.clearSelection}
                   </Button>
                 )}
 
@@ -746,11 +753,11 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                         openCreateModal();
                       }}
                     >
-                      Create New
+                      {t.createNew}
                     </Button>
                   )}
                   <Button variant="default" onClick={closeSelectModal}>
-                    Cancel
+                    {t.selectModal.cancel}
                   </Button>
                 </Group>
               </Group>
@@ -763,14 +770,11 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
       <Modal
         opened={createModalOpened}
         onClose={closeCreateModal}
-        title={`Create New ${
-          relationInfo?.relatedCollection.collection || "Item"
-        }`}
+        title={relatedCollectionName(relationInfo?.relatedCollection.collection)}
         size="lg"
       >
         <Alert icon={<IconAlertCircle size={16} />} color="info">
-          Create functionality will be available when CollectionForm component
-          is implemented.
+          {t.createModal.notImplemented}
         </Alert>
       </Modal>
     </Stack>

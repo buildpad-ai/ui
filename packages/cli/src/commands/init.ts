@@ -8,8 +8,11 @@ import {
   getBundledRegistry,
   resolveBundledTemplate,
   bundledTemplateExists,
+  resolveSourceFile,
+  sourceFileExists,
 } from '../resolver.js';
 import { copyLibModule } from './add.js';
+import { applyLocales, parseLocalesOption } from '../utils/i18n-locales.js';
 
 /**
  * Per-file state (v3).
@@ -192,8 +195,41 @@ async function copyTemplateFile(sourceRelativePath: string, targetPath: string, 
   console.log(chalk.green(`✓ Created ${path.relative(cwd, targetPath)}`));
 }
 
-export async function init(options: { yes?: boolean; cwd: string }) {
+export interface InitOptions {
+  yes?: boolean;
+  cwd: string;
+  /** Comma-separated locale codes for app/[lang], e.g. "en,id". Default: "en". */
+  locales?: string;
+  /** Default locale (must be in `locales`). Default: the first locale. */
+  defaultLocale?: string;
+}
+
+/**
+ * Sources for the modules `init` installs offline: `cli/templates/*` come
+ * from the CLI bundle; anything else (the `services` chain the i18n module
+ * depends on) goes through the normal resolver — the monorepo on disk in
+ * local mode, the pinned release tag otherwise.
+ */
+const BUNDLED_FIRST = {
+  readSource: async (source: string) =>
+    (await bundledTemplateExists(source)) ? resolveBundledTemplate(source) : resolveSourceFile(source),
+  // A template can be absent from the bundle (tsup's d.ts clean removes
+  // types/modules.d.ts from dist/templates) — fall through to the resolver
+  // rather than reporting it missing.
+  sourceExists: async (source: string) =>
+    (await bundledTemplateExists(source)) || sourceFileExists(source),
+};
+
+export async function init(options: InitOptions) {
   const { cwd, yes } = options;
+  // Validate up front so a typo fails before anything is written.
+  const localeList = parseLocalesOption(options.locales);
+  if (options.defaultLocale && localeList && !localeList.includes(options.defaultLocale)) {
+    console.error(
+      chalk.red(`\n✗ --default-locale '${options.defaultLocale}' is not in --locales (${localeList.join(', ')})\n`)
+    );
+    process.exit(1);
+  }
 
   console.log(chalk.bold('\n🚀 Welcome to Buildpad!\n'));
   console.log(chalk.dim('Copy & Own Model - Components become part of your codebase.\n'));
@@ -273,10 +309,16 @@ export async function init(options: { yes?: boolean; cwd: string }) {
         '@supabase/ssr': '^0.5',
         '@supabase/supabase-js': '^2',
         'jose': '^5',
+        // Locale routing (lib/i18n): Accept-Language negotiation in middleware,
+        // server-only dictionary loading in app/[lang]/layout.tsx.
+        'negotiator': '^1.0.0',
+        '@formatjs/intl-localematcher': '^0.6.0',
+        'server-only': '^0.0.1',
         'clsx': '^2.0.0',
         'tailwind-merge': '^2.0.0'
       },
       devDependencies: {
+        '@types/negotiator': '^0.6.4',
         '@types/node': '^22',
         '@types/react': '^19',
         '@types/react-dom': '^19',
@@ -409,16 +451,45 @@ export async function init(options: { yes?: boolean; cwd: string }) {
       await fs.ensureDir(libRoot);
       await fs.ensureDir(componentsRoot);
 
+      // Locale routing first: the root layout, middleware and app shell all
+      // import from lib/i18n, so the module must exist before they are copied.
+      // The i18n module depends on the `services` chain (BuildpadI18nProvider),
+      // which is not bundled — BUNDLED_FIRST reads it through the resolver.
+      const bundledRegistry = await getBundledRegistry();
+      const i18nSpinner = ora('Installing locale routing (i18n)...').start();
+      try {
+        await copyLibModule('i18n', bundledRegistry, config, cwd, i18nSpinner, true, BUNDLED_FIRST);
+        await fs.writeJSON(configPath, config, { spaces: 2 });
+        if (localeList) {
+          const result = await applyLocales({
+            cwd,
+            srcDir: config.srcDir,
+            locales: localeList,
+            defaultLocale: options.defaultLocale,
+          });
+          console.log(
+            chalk.green(`✓ Locales: ${result.locales.join(', ')} (default: ${result.defaultLocale})`)
+          );
+          result.created.forEach(f => console.log(chalk.dim(`  seeded ${f} from en.json — translate it`)));
+        }
+      } catch (err: any) {
+        i18nSpinner.warn(
+          `i18n module skipped: ${err.message}\n  Install it later with: npx @buildpad/cli@latest add i18n`
+        );
+      }
+
       // Plain skeleton files (not part of the upgradeable design system).
-      await copyTemplateFile('app/layout.tsx', path.join(appDir, 'layout.tsx'), cwd);
-      // Home page lives INSIDE the (authenticated) group so "/" renders within
-      // AuthenticatedShell (header + sidebar) once api-routes adds the layout.
-      // (No root app/page.tsx — that would render "/" outside the shell and
-      // conflict with this route.) Unauthenticated "/" is redirected to /login
-      // by the Supabase middleware.
+      // Every page is locale-prefixed: the root layout lives at app/[lang]/
+      // and there must be NO app/layout.tsx beside it.
+      await copyTemplateFile('app/layout.tsx', path.join(appDir, '[lang]', 'layout.tsx'), cwd);
+      // Home page lives INSIDE the (authenticated) group so "/<lang>" renders
+      // within AuthenticatedShell (header + sidebar) once api-routes adds the
+      // layout. (No app/[lang]/page.tsx — that would render "/" outside the
+      // shell and conflict with this route.) Unauthenticated "/" is redirected
+      // to /<lang>/login by the Supabase middleware.
       await copyTemplateFile(
         'app/authenticated-page.tsx',
-        path.join(appDir, '(authenticated)', 'page.tsx'),
+        path.join(appDir, '[lang]', '(authenticated)', 'page.tsx'),
         cwd
       );
 
@@ -426,9 +497,10 @@ export async function init(options: { yes?: boolean; cwd: string }) {
       // tracked lib module from the bundled CLI templates — offline and
       // version-matched to this CLI. Recording it in buildpad.json gives
       // `upgrade --design` a baseline to three-way merge against later.
+      // (It depends on i18n, installed above; a bundled-only resolver keeps
+      // this step offline even when the i18n install failed.)
       const dsSpinner = ora('Installing design system...').start();
       try {
-        const bundledRegistry = await getBundledRegistry();
         await copyLibModule('design-system', bundledRegistry, config, cwd, dsSpinner, true, {
           readSource: resolveBundledTemplate,
           sourceExists: bundledTemplateExists,
@@ -456,6 +528,10 @@ export async function init(options: { yes?: boolean; cwd: string }) {
       '@supabase/ssr',
       '@supabase/supabase-js',
       'jose',
+      // Locale routing (lib/i18n), loaded by middleware.ts and the root layout.
+      'negotiator',
+      '@formatjs/intl-localematcher',
+      'server-only',
       'react',
       'react-dom',
     ];

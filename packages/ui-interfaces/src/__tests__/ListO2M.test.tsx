@@ -15,9 +15,15 @@ import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
 
-jest.mock("@buildpad/services", () => ({
-  apiRequest: jest.fn(),
-}));
+jest.mock("@buildpad/services", () => {
+  // The i18n hooks are real: without a provider they return the English defaults.
+  const actual = jest.requireActual("@buildpad/services");
+  return {
+    apiRequest: jest.fn(),
+    useBuildpadI18n: actual.useBuildpadI18n,
+    useBuildpadTranslations: actual.useBuildpadTranslations,
+  };
+});
 
 jest.mock("@buildpad/hooks", () => ({
   useRelationO2M: jest.fn(),

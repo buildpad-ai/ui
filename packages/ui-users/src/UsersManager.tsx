@@ -33,34 +33,24 @@ import {
   useUrlListParams,
   useUsers,
 } from '@buildpad/hooks';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import type { Role, User, UserStatus } from '@buildpad/types';
 import { VTable } from '@buildpad/ui-table';
 import type { Header, HeaderRaw, Item, Sort } from '@buildpad/ui-table';
+import { interpolate, type DeepPartial, type UsersTranslations } from '@buildpad/utils';
 import { UserAvatar } from './UserAvatar';
 import { UserStatusBadge } from './UserStatusBadge';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { ListFooter } from './ListFooter';
 import { RowActionsMenu } from './RowActionsMenu';
 import { SearchInput } from './SearchInput';
+import { DATE_FORMAT_OPTIONS } from './accessUtils';
 import { getUserDisplayName } from './userDisplay';
 
-const STATUS_OPTIONS: Array<{ value: UserStatus; label: string }> = [
-  { value: 'active', label: 'Active' },
-  { value: 'suspended', label: 'Suspended' },
-  { value: 'invited', label: 'Invited' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'terminated', label: 'Terminated' },
-];
+/** Order of the status filter / bulk "Set status" options; labels come from `users.status`. */
+const STATUS_VALUES: UserStatus[] = ['active', 'suspended', 'invited', 'draft', 'terminated'];
 
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-
-const USER_HEADERS: HeaderRaw[] = [
-  { text: 'User', value: 'first_name', sortable: true, width: 260 },
-  { text: 'Email', value: 'email', sortable: true },
-  { text: 'Role', value: 'roles', sortable: false },
-  { text: 'Status', value: 'status', sortable: true },
-  { text: 'Last Access', value: 'last_access', sortable: true },
-];
 
 /** A role entry as it may appear on `User.roles`: a bare ID, a flattened
  * `{id,name,icon}` object, or a junction row shaped `{id, role_id: {...}}`. */
@@ -104,6 +94,8 @@ export interface UsersManagerProps {
    * Default: '' (unprefixed).
    */
   urlParamPrefix?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 interface BulkRolesModalProps {
@@ -113,6 +105,7 @@ interface BulkRolesModalProps {
   count: number;
   busy: boolean;
   onApply: (addRoles: string[], removeRoles: string[]) => void;
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /** Staged add/remove role picks applied in a single `bulkUpdateUsers` call. */
@@ -123,7 +116,11 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
   count,
   busy,
   onApply,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+  const { formatCount } = useBuildpadI18n();
   const [addRoles, setAddRoles] = useState<string[]>([]);
   const [removeRoles, setRemoveRoles] = useState<string[]>([]);
 
@@ -138,17 +135,16 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Update roles"
+      title={t.usersManager.bulkRoles.title}
       data-testid="users-manager-bulk-roles-modal"
     >
       <Stack gap="md">
         <Text size="sm" c="dimmed">
-          Add and/or remove roles for {count} selected {count === 1 ? 'user' : 'users'}. Users can
-          hold multiple roles.
+          {formatCount(count, t.usersManager.bulkRoles.description)}
         </Text>
         <MultiSelect
-          label="Add roles"
-          placeholder="Select roles to add"
+          label={t.usersManager.bulkRoles.addLabel}
+          placeholder={t.usersManager.bulkRoles.addPlaceholder}
           data={roles.map((role) => ({
             value: role.id,
             label: role.name,
@@ -162,8 +158,8 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
           data-testid="users-manager-bulk-roles-add"
         />
         <MultiSelect
-          label="Remove roles"
-          placeholder="Select roles to remove"
+          label={t.usersManager.bulkRoles.removeLabel}
+          placeholder={t.usersManager.bulkRoles.removePlaceholder}
           data={roles.map((role) => ({ value: role.id, label: role.name }))}
           value={removeRoles}
           onChange={setRemoveRoles}
@@ -173,7 +169,7 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
         />
         <Group justify="flex-end" gap="sm">
           <Button variant="default" onClick={onClose} disabled={busy}>
-            Cancel
+            {common.cancel}
           </Button>
           <Button
             onClick={() => onApply(addRoles, removeRoles)}
@@ -181,7 +177,7 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
             disabled={addRoles.length === 0 && removeRoles.length === 0}
             data-testid="users-manager-bulk-roles-apply"
           >
-            Apply
+            {common.apply}
           </Button>
         </Group>
       </Stack>
@@ -199,7 +195,7 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
 /** Accept only real statuses from the URL; anything else means "no filter". */
 function parseStatusParam(raw: string | null): UserStatus | null {
   if (!raw) return null;
-  return STATUS_OPTIONS.some((option) => option.value === raw) ? (raw as UserStatus) : null;
+  return STATUS_VALUES.some((value) => value === raw) ? (raw as UserStatus) : null;
 }
 
 /** Parse the DaaS-style sort string (`-last_access` = descending). */
@@ -240,18 +236,37 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
   usersCollection = 'daas_users',
   urlParams = true,
   urlParamPrefix = '',
+  translations,
 }) => {
   const { fetchUsers, updateUser, deleteUser, bulkUpdateUsers } = useUsers();
   const { fetchRoles } = useRoles();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [usersCollection],
   });
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+  const { formatDate, formatCount } = useBuildpadI18n();
 
   // Optimistic while permissions resolve, then enforce; admins bypass.
   const createAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'create');
   const updateAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'update');
   const deleteAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'delete');
   const selectable = updateAllowed || deleteAllowed;
+
+  const statusOptions = useMemo<Array<{ value: UserStatus; label: string }>>(
+    () => STATUS_VALUES.map((value) => ({ value, label: t.status[value] })),
+    [t]
+  );
+  const headers = useMemo<HeaderRaw[]>(
+    () => [
+      { text: t.usersManager.columns.user, value: 'first_name', sortable: true, width: 260 },
+      { text: t.usersManager.columns.email, value: 'email', sortable: true },
+      { text: t.usersManager.columns.role, value: 'roles', sortable: false },
+      { text: t.usersManager.columns.status, value: 'status', sortable: true },
+      { text: t.usersManager.columns.lastAccess, value: 'last_access', sortable: true },
+    ],
+    [t]
+  );
 
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -357,14 +372,14 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
       setTotalPages(result.totalPages);
       setLoadError(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load users';
+      const message = err instanceof Error ? err.message : t.usersManager.notifications.loadFailed;
       setUsers([]);
       setLoadError(message);
-      notifications.show({ title: 'Failed to load users', message, color: 'red' });
+      notifications.show({ title: t.usersManager.notifications.loadFailed, message, color: 'red' });
     } finally {
       setLoading(false);
     }
-  }, [fetchUsers, page, limit, debouncedSearch, selectedRole, selectedStatus, sort]);
+  }, [fetchUsers, page, limit, debouncedSearch, selectedRole, selectedStatus, sort, t]);
 
   useEffect(() => {
     void load();
@@ -409,14 +424,14 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
     } catch (err) {
       // Keep the modal open so the administrator can retry or cancel.
       notifications.show({
-        title: 'Failed to delete user',
-        message: err instanceof Error ? err.message : 'Failed to delete user',
+        title: t.usersManager.notifications.deleteFailed,
+        message: err instanceof Error ? err.message : t.usersManager.notifications.deleteFailed,
         color: 'red',
       });
     } finally {
       setDeleting(false);
     }
-  }, [deleteUser, deleteModal.id, load]);
+  }, [deleteUser, deleteModal.id, load, t]);
 
   const bulkApplyRoles = useCallback(
     async (addRoles: string[], removeRoles: string[]) => {
@@ -427,8 +442,8 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
           removeRoles: removeRoles.length > 0 ? removeRoles : undefined,
         });
         notifications.show({
-          title: 'Roles updated',
-          message: `Roles updated for ${selection.length} ${selection.length === 1 ? 'user' : 'users'}`,
+          title: t.usersManager.notifications.rolesUpdatedTitle,
+          message: formatCount(selection.length, t.usersManager.notifications.rolesUpdated),
           color: 'green',
         });
         setBulkRolesOpen(false);
@@ -436,15 +451,15 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         await load();
       } catch (err) {
         notifications.show({
-          title: 'Error',
-          message: err instanceof Error ? err.message : 'Failed to update roles',
+          title: common.error,
+          message: err instanceof Error ? err.message : t.usersManager.notifications.rolesUpdateFailed,
           color: 'red',
         });
       } finally {
         setBulkBusy(false);
       }
     },
-    [bulkUpdateUsers, selection, clearSelection, load]
+    [bulkUpdateUsers, selection, clearSelection, load, t, common, formatCount]
   );
 
   // No bulk-status/bulk-delete endpoints exist — fan out per user.
@@ -458,11 +473,20 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         const failed = results.filter((r) => r.status === 'rejected').length;
         const succeeded = results.length - failed;
         notifications.show({
-          title: failed > 0 ? 'Completed with errors' : 'Status updated',
+          title:
+            failed > 0
+              ? t.usersManager.notifications.completedWithErrors
+              : t.usersManager.notifications.statusUpdatedTitle,
           message:
             failed > 0
-              ? `Status updated for ${succeeded} of ${results.length} users (${failed} failed)`
-              : `Status set to "${status}" for ${succeeded} ${succeeded === 1 ? 'user' : 'users'}`,
+              ? interpolate(t.usersManager.notifications.statusPartial, {
+                  succeeded,
+                  total: results.length,
+                  failed,
+                })
+              : formatCount(succeeded, t.usersManager.notifications.statusUpdated, {
+                  status: t.statusBadge[status] ?? status,
+                }),
           color: failed > 0 ? 'orange' : 'green',
         });
         clearSelection();
@@ -471,7 +495,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         setBulkBusy(false);
       }
     },
-    [selection, updateUser, clearSelection, load]
+    [selection, updateUser, clearSelection, load, t, formatCount]
   );
 
   const bulkDelete = useCallback(async () => {
@@ -481,11 +505,18 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
       const failed = results.filter((r) => r.status === 'rejected').length;
       const succeeded = results.length - failed;
       notifications.show({
-        title: failed > 0 ? 'Completed with errors' : 'Users deleted',
+        title:
+          failed > 0
+            ? t.usersManager.notifications.completedWithErrors
+            : t.usersManager.notifications.usersDeletedTitle,
         message:
           failed > 0
-            ? `Deleted ${succeeded} of ${results.length} users (${failed} failed)`
-            : `Deleted ${succeeded} ${succeeded === 1 ? 'user' : 'users'}`,
+            ? interpolate(t.usersManager.notifications.deletePartial, {
+                succeeded,
+                total: results.length,
+                failed,
+              })
+            : formatCount(succeeded, t.usersManager.notifications.deleted),
         color: failed > 0 ? 'orange' : 'green',
       });
       setBulkDeleteOpen(false);
@@ -494,12 +525,12 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
     } finally {
       setBulkBusy(false);
     }
-  }, [selection, deleteUser, clearSelection, load]);
+  }, [selection, deleteUser, clearSelection, load, t, formatCount]);
 
   const addButton =
     createAllowed && onCreateUser ? (
       <Button leftSection={<IconPlus size={16} />} onClick={onCreateUser} data-testid="users-manager-add-btn">
-        Add User
+        {t.usersManager.addUser}
       </Button>
     ) : null;
 
@@ -539,18 +570,18 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
           );
         }
         case 'status':
-          return <UserStatusBadge status={user.status} />;
+          return <UserStatusBadge status={user.status} translations={translations} />;
         case 'last_access':
           return (
             <Text size="xs" c="dimmed">
-              {user.last_access ? new Date(user.last_access).toLocaleDateString() : 'Never'}
+              {user.last_access ? formatDate(user.last_access, DATE_FORMAT_OPTIONS) : t.never}
             </Text>
           );
         default:
           return null;
       }
     },
-    []
+    [t, formatDate, translations]
   );
 
   const renderRowAppend =
@@ -561,6 +592,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
             <RowActionsMenu
               onEdit={updateAllowed ? () => onUserClick?.(user) : undefined}
               onDelete={deleteAllowed ? () => requestDelete(user.id) : undefined}
+              translations={translations}
             />
           );
         }
@@ -571,10 +603,10 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
       {!hideHeader && (
         <Box>
           <Title order={2} mb={4}>
-            Users
+            {t.usersManager.title}
           </Title>
           <Text size="sm" c="dimmed">
-            Manage user accounts, roles, and access permissions
+            {t.usersManager.subtitle}
           </Text>
         </Box>
       )}
@@ -583,7 +615,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         <Paper p="sm" radius="md" withBorder data-testid="users-manager-bulk-toolbar">
           <Group>
             <Text size="sm" fw={500}>
-              {selectionCount} selected
+              {formatCount(selectionCount, common.selectedCount)}
             </Text>
             <Button
               variant="subtle"
@@ -592,7 +624,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
               onClick={clearSelection}
               data-testid="users-manager-bulk-clear"
             >
-              Clear
+              {common.clear}
             </Button>
             <Group gap="xs" style={{ marginLeft: 'auto' }}>
               {updateAllowed && (
@@ -604,16 +636,16 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
                     onClick={() => setBulkRolesOpen(true)}
                     data-testid="users-manager-bulk-roles"
                   >
-                    Update roles…
+                    {t.usersManager.bulk.updateRoles}
                   </Button>
                   <Menu position="bottom-end" withinPortal>
                     <Menu.Target>
                       <Button variant="light" size="xs" data-testid="users-manager-bulk-status">
-                        Set status
+                        {t.usersManager.bulk.setStatus}
                       </Button>
                     </Menu.Target>
                     <Menu.Dropdown>
-                      {STATUS_OPTIONS.map((option) => (
+                      {statusOptions.map((option) => (
                         <Menu.Item
                           key={option.value}
                           onClick={() => void bulkSetStatus(option.value)}
@@ -635,7 +667,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
                   onClick={() => setBulkDeleteOpen(true)}
                   data-testid="users-manager-bulk-delete"
                 >
-                  Delete
+                  {common.delete}
                 </Button>
               )}
             </Group>
@@ -646,14 +678,15 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
       <div className="bp-manager-card">
         <Group className="bp-manager-toolbar" wrap="wrap">
           <SearchInput
-            placeholder="Search users..."
+            placeholder={t.usersManager.searchPlaceholder}
             value={search}
             onChange={setSearch}
             style={{ flex: 1, minWidth: 200, maxWidth: 360 }}
             data-testid="users-manager-search"
+            translations={translations}
           />
           <Select
-            placeholder="Role"
+            placeholder={t.usersManager.filters.role}
             data={roles.map((role) => ({ value: role.id, label: role.name }))}
             value={selectedRole}
             onChange={setSelectedRole}
@@ -663,8 +696,8 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
             data-testid="users-manager-role-filter"
           />
           <Select
-            placeholder="Status"
-            data={STATUS_OPTIONS}
+            placeholder={t.usersManager.filters.status}
+            data={statusOptions}
             value={selectedStatus}
             onChange={(value) => setSelectedStatus(value as UserStatus | null)}
             clearable
@@ -675,7 +708,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
           <Group gap="sm" style={{ marginLeft: 'auto' }}>
             {totalCount > 0 && (
               <Badge variant="light" color="gray" size="lg" radius="sm">
-                {totalCount} {totalCount === 1 ? 'user' : 'users'}
+                {formatCount(totalCount, t.count.users)}
               </Badge>
             )}
             {addButton}
@@ -683,7 +716,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         </Group>
 
         <VTable
-          headers={USER_HEADERS}
+          headers={headers}
           items={users as unknown as Item[]}
           itemKey="id"
           sort={sort}
@@ -694,10 +727,10 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
           loading={loading}
           noItemsText={
             loadError
-              ? `Failed to load users — ${loadError}`
+              ? interpolate(t.usersManager.emptyState.loadError, { error: loadError })
               : hasFilters
-                ? 'No users found — try adjusting your filters'
-                : 'No users found — get started by adding your first user'
+                ? t.usersManager.emptyState.filtered
+                : t.usersManager.emptyState.pristine
           }
           clickable={updateAllowed}
           renderCell={renderCell}
@@ -706,7 +739,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
             <ListFooter
               shown={users.length}
               totalCount={totalCount}
-              itemsLabel="users"
+              itemsLabel={t.usersManager.itemsLabel}
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
@@ -714,6 +747,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
               sizeOptions={sizeOptions}
               onLimitChange={setLimit}
               data-testid="users-manager-page-size"
+              translations={translations}
             />
           )}
           onUpdate={(value) => setSelection(value as string[])}
@@ -728,8 +762,9 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         onClose={() => setDeleteModal({ opened: false, id: '' })}
         onConfirm={confirmDelete}
         loading={deleting}
-        title="Delete user"
-        description="Are you sure you want to delete this user? This action cannot be undone."
+        title={t.usersManager.deleteModal.title}
+        description={t.usersManager.deleteModal.description}
+        translations={translations}
       />
 
       <DeleteConfirmModal
@@ -737,8 +772,9 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         onClose={() => setBulkDeleteOpen(false)}
         onConfirm={bulkDelete}
         loading={bulkBusy}
-        title="Delete users"
-        description={`Are you sure you want to delete ${selectionCount} ${selectionCount === 1 ? 'user' : 'users'}? This action cannot be undone.`}
+        title={t.usersManager.bulkDeleteModal.title}
+        description={formatCount(selectionCount, t.usersManager.bulkDeleteModal.description)}
+        translations={translations}
       />
 
       <BulkRolesModal
@@ -748,6 +784,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         count={selectionCount}
         busy={bulkBusy}
         onApply={(addRoles, removeRoles) => void bulkApplyRoles(addRoles, removeRoles)}
+        translations={translations}
       />
     </Stack>
   );

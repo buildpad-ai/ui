@@ -6,6 +6,7 @@ import type { Collection } from '@buildpad/types';
 
 // Mock @buildpad/services apiRequest
 jest.mock('@buildpad/services', () => ({
+  ...jest.requireActual('@buildpad/services'),
   apiRequest: jest.fn(),
 }));
 

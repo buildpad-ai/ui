@@ -10,7 +10,10 @@
 "use client";
 
 import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
+import { stripLocale } from '@/lib/i18n/config';
 import { ContentLayout } from '@/components/ui/content-layout';
 import { ContentNavigation } from '@/components/ui/content-navigation';
 import { useCollections } from '@/lib/buildpad/hooks';
@@ -20,11 +23,12 @@ export default function ContentModuleLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const pathname = usePathname();
 
-  // Extract current collection from URL: /content/[collection]/...
-  const segments = pathname.split('/');
+  // Extract current collection from URL: /[lang]/content/[collection]/...
+  const segments = stripLocale(pathname).split('/');
   const currentCollection = segments.length > 2 ? segments[2] : undefined;
 
   const {
@@ -41,7 +45,7 @@ export default function ContentModuleLayout({
 
   return (
     <ContentLayout
-      breadcrumbs={[{ label: 'Content', href: '/content' }]}
+      breadcrumbs={[{ label: t('app.content.breadcrumb'), href: router.href('/content') }]}
       sidebar={
         <ContentNavigation
           rootCollections={rootCollections}

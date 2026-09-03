@@ -10,11 +10,11 @@
 "use client";
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { RolesManager } from '@/components/ui/users-management';
 
 export default function RolesPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return (
     <RolesManager

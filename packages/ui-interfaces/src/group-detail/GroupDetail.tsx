@@ -14,6 +14,8 @@ import {
   IconExclamationCircle,
   IconEdit,
 } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 
 // Interface definition matching DaaS group-detail
 export interface GroupDetailProps {
@@ -88,6 +90,9 @@ export interface GroupDetailProps {
 
   /** Callback when apply button is clicked */
   onApply?: (values: Record<string, any>) => void;
+
+  /** Per-instance overrides of the dictionary strings (`interfaces.groupDetail`) */
+  translations?: DeepPartial<InterfacesTranslations['groupDetail']>;
 }
 
 // Helper function to format field names as titles
@@ -131,7 +136,10 @@ export function GroupDetail({
   children,
   onChange: _onChange,
   onApply: _onApply,
+  translations,
 }: GroupDetailProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.groupDetail, translations);
+
   // Get validation messages for this group first
   const validationMessages = useMemo(() => {
     if (!validationErrors || validationErrors.length === 0) {
@@ -146,17 +154,22 @@ export function GroupDetail({
       }
 
       if (error.code === 'RECORD_NOT_UNIQUE') {
-        acc.push(`${formatTitle(error.field)} must be unique`);
+        acc.push(interpolate(t.validation.unique, { field: formatTitle(error.field) }));
       } else {
         // Generic error message formatting
-        acc.push(`${formatTitle(error.field)} ${error.type?.toLowerCase() || 'error'}`);
+        acc.push(
+          interpolate(t.validation.generic, {
+            field: formatTitle(error.field),
+            type: error.type?.toLowerCase() || t.validation.fallbackType,
+          }),
+        );
       }
 
       return acc;
     }, [] as string[]);
 
     return errors;
-  }, [validationErrors, fields]);
+  }, [validationErrors, fields, t]);
 
   // Initialize state, auto-open if there are validation errors
   const [isOpen, setIsOpen] = useState(start === 'open' || validationMessages.length > 0);
@@ -228,7 +241,7 @@ export function GroupDetail({
                     h={4}
                     bg="gray.6"
                     style={{ borderRadius: '50%' }}
-                    title="Edited"
+                    title={t.edited}
                   />
                 )}
                 <Text fw={500} size="sm" data-variant="label">
@@ -295,13 +308,13 @@ export function GroupDetail({
           <Paper withBorder radius="md" p="md">
             {loading ? (
               <Text c="dimmed" ta="center" py="xl">
-                Loading...
+                {t.loading}
               </Text>
             ) : children ? (
               children
             ) : (
               <Text c="dimmed" ta="center" py="md">
-                No content available
+                {t.empty}
               </Text>
             )}
           </Paper>

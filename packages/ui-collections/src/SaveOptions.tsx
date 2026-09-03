@@ -27,6 +27,8 @@ import {
   IconChevronDown,
   IconDeviceFloppy,
 } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { CollectionsTranslations, DeepPartial } from '@buildpad/utils';
 
 export type SaveAction = 'save-and-stay' | 'save-and-add-new' | 'save-as-copy' | 'discard-and-stay';
 
@@ -45,6 +47,8 @@ export interface SaveOptionsProps {
   disabled?: boolean;
   /** Platform for keyboard shortcut display (default: auto-detect) */
   platform?: 'mac' | 'win';
+  /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+  translations?: DeepPartial<CollectionsTranslations>;
 }
 
 /**
@@ -76,12 +80,18 @@ export const SaveOptions: React.FC<SaveOptionsProps> = ({
   onDiscardAndStay,
   disabled = false,
   platform,
+  translations,
 }) => {
+  // Strings: component prop > provider dictionary > English defaults.
+  const t = useBuildpadTranslations((d) => d.collections.saveOptions, translations?.saveOptions);
+
   const isMac = platform
     ? platform === 'mac'
     : typeof navigator !== 'undefined' && /Mac/.test(navigator.userAgent);
 
-  const metaKey = isMac ? '⌘' : 'Ctrl';
+  // Key caps: the ⌘ / ⇧ / S glyphs are the physical keys of the binding and
+  // stay as they are; only the "Ctrl" cap has locale variants (e.g. "Strg").
+  const metaKey = isMac ? '⌘' : t.kbd.ctrl;
 
   const isDisabled = (action: SaveAction) => disabledOptions.includes(action);
 
@@ -92,7 +102,7 @@ export const SaveOptions: React.FC<SaveOptionsProps> = ({
           variant="filled"
           size="input-sm"
           disabled={disabled}
-          aria-label="More save options"
+          aria-label={t.moreOptions}
           style={{
             borderTopLeftRadius: 0,
             borderBottomLeftRadius: 0,
@@ -115,7 +125,7 @@ export const SaveOptions: React.FC<SaveOptionsProps> = ({
             </Group>
           }
         >
-          Save and Stay
+          {t.saveAndStay}
         </Menu.Item>
 
         <Menu.Item
@@ -130,7 +140,7 @@ export const SaveOptions: React.FC<SaveOptionsProps> = ({
             </Group>
           }
         >
-          Save and Create New
+          {t.saveAndCreateNew}
         </Menu.Item>
 
         <Menu.Item
@@ -138,7 +148,7 @@ export const SaveOptions: React.FC<SaveOptionsProps> = ({
           disabled={isDisabled('save-as-copy')}
           onClick={onSaveAsCopy}
         >
-          Save as Copy
+          {t.saveAsCopy}
         </Menu.Item>
 
         <Menu.Divider />
@@ -149,7 +159,7 @@ export const SaveOptions: React.FC<SaveOptionsProps> = ({
           onClick={onDiscardAndStay}
           color="red"
         >
-          Discard Changes
+          {t.discardChanges}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

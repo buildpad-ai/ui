@@ -2,18 +2,22 @@
 
 import React, { useEffect, useState } from 'react';
 import { Button, Group, Modal, Stack, TextInput } from '@mantine/core';
+import { useBuildpadTranslations } from '@buildpad/hooks';
+import type { DeepPartial, FilesTranslations } from '@buildpad/utils';
 
 export interface NewFolderDialogProps {
   opened: boolean;
   loading?: boolean;
   /** Pre-fill the name (used when renaming). */
   initialName?: string;
-  /** Modal title. */
+  /** Modal title. Defaults to the dictionary's `files.newFolderDialog.title`. */
   title?: string;
-  /** Submit button label. */
+  /** Submit button label. Defaults to the dictionary's `files.newFolderDialog.submitLabel`. */
   submitLabel?: string;
   onSubmit: (name: string) => void;
   onClose: () => void;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 /**
@@ -23,11 +27,14 @@ export const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   opened,
   loading = false,
   initialName = '',
-  title = 'New Folder',
-  submitLabel = 'Create',
+  title,
+  submitLabel,
   onSubmit,
   onClose,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
+  const common = useBuildpadTranslations((d) => d.common);
   const [name, setName] = useState(initialName);
 
   useEffect(() => {
@@ -42,11 +49,17 @@ export const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title={title} centered size="sm">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={title ?? t.newFolderDialog.title}
+      centered
+      size="sm"
+    >
       <Stack gap="md">
         <TextInput
-          label="Folder name"
-          placeholder="My folder"
+          label={t.newFolderDialog.nameLabel}
+          placeholder={t.newFolderDialog.namePlaceholder}
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
           data-autofocus
@@ -57,7 +70,7 @@ export const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
         />
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose} disabled={loading}>
-            Cancel
+            {common.cancel}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -65,7 +78,7 @@ export const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
             disabled={!trimmed}
             data-testid="new-folder-submit"
           >
-            {submitLabel}
+            {submitLabel ?? t.newFolderDialog.submitLabel}
           </Button>
         </Group>
       </Stack>

@@ -3,6 +3,8 @@
 import React, { useState, useCallback } from 'react';
 import { Container, Group, Text, Alert, Select, Button, Stack, Card, Textarea, Badge } from '@mantine/core';
 import { IconMap, IconMapPin, IconLine, IconSquare, IconTrash } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 
 // Geometry types supported by the map interface
 export type GeometryType = 
@@ -96,6 +98,9 @@ export interface MapProps {
   
   /** Callback fired when basemap changes */
   onBasemapChange?: (basemap: string) => void;
+
+  /** Per-instance overrides of the dictionary strings (`interfaces.map`) */
+  translations?: DeepPartial<InterfacesTranslations['map']>;
 }
 
 // Default basemap sources
@@ -163,7 +168,9 @@ export const Map: React.FC<MapProps> = ({
   showBasemapSelector = true,
   onChange,
   onBasemapChange,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.map, translations);
   const [currentBasemap, setCurrentBasemap] = useState(selectedBasemap || basemaps[0]?.name);
   const [textValue, setTextValue] = useState(() => {
     if (!value) {
@@ -192,7 +199,7 @@ export const Map: React.FC<MapProps> = ({
             coordinates: [coords[1], coords[0]], // Assume input is lat,lng, convert to lng,lat
           };
         } else {
-          throw new Error('Invalid CSV coordinates format');
+          throw new Error(t.error.invalidCsvCoordinates);
         }
       } else {
         // JSON format
@@ -201,13 +208,13 @@ export const Map: React.FC<MapProps> = ({
 
       // Validate geometry structure
       if (!geometry.type) {
-        throw new Error('Geometry must have a type property');
+        throw new Error(t.error.missingType);
       }
 
       // Check geometry type restriction
       if (geometryType && geometry.type !== geometryType) {
         if (!geometryType.startsWith('Multi') || !geometry.type.startsWith(geometryType.replace('Multi', ''))) {
-          throw new Error(`Expected ${geometryType} but got ${geometry.type}`);
+          throw new Error(interpolate(t.error.typeMismatch, { expected: geometryType, actual: geometry.type }));
         }
       }
 
@@ -228,9 +235,11 @@ export const Map: React.FC<MapProps> = ({
           return geometry;
       }
     } catch (err) {
-      throw new Error(`Invalid geometry: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      throw new Error(
+        interpolate(t.error.invalidGeometry, { message: err instanceof Error ? err.message : t.error.unknown }),
+      );
     }
-  }, [geometryType, geometryFormat]);
+  }, [geometryType, t]);
 
   // Handle text input changes
   const handleTextChange = useCallback((newText: string) => {
@@ -246,9 +255,9 @@ export const Map: React.FC<MapProps> = ({
       const converted = convertGeometry(newText, geometryFormat);
       onChange?.(converted);
     } catch (err) {
-      setValidationError(err instanceof Error ? err.message : 'Invalid geometry format');
+      setValidationError(err instanceof Error ? err.message : t.error.invalidFormat);
     }
-  }, [convertGeometry, geometryFormat, onChange]);
+  }, [convertGeometry, geometryFormat, onChange, t]);
 
   // Handle basemap change
   const handleBasemapChange = useCallback((newBasemap: string | null) => {
@@ -345,10 +354,10 @@ export const Map: React.FC<MapProps> = ({
             <IconMap size={48} color="var(--mantine-color-gray-5)" />
             <Stack align="center" gap="xs">
               <Text size="lg" fw={500} c="dimmed">
-                Map Visualization
+                {t.placeholder.title}
               </Text>
               <Text size="sm" c="dimmed" ta="center">
-                Install maplibre-gl and @mapbox/mapbox-gl-draw for full map functionality
+                {t.placeholder.installHint}
               </Text>
               <Group gap="xs">
                 {geometryType && (
@@ -395,7 +404,7 @@ export const Map: React.FC<MapProps> = ({
           <Stack gap="md">
             <Group justify="space-between" align="center">
               <Text size="sm" fw={500}>
-                Geometry Data
+                {t.geometryData.title}
               </Text>
               <Group gap="xs">
                 {geometryType && (
@@ -406,7 +415,7 @@ export const Map: React.FC<MapProps> = ({
                     onClick={generateSample}
                     disabled={disabled || readOnly}
                   >
-                    Generate {geometryType}
+                    {interpolate(t.geometryData.generate, { geometryType })}
                   </Button>
                 )}
                 <Button
@@ -417,7 +426,7 @@ export const Map: React.FC<MapProps> = ({
                   onClick={clearGeometry}
                   disabled={disabled || readOnly || !textValue}
                 >
-                  Clear
+                  {t.geometryData.clear}
                 </Button>
               </Group>
             </Group>
@@ -426,9 +435,9 @@ export const Map: React.FC<MapProps> = ({
               value={textValue}
               onChange={(event) => handleTextChange(event.currentTarget.value)}
               placeholder={
-                geometryFormat === 'csv' 
-                  ? 'Enter coordinates as: latitude,longitude (e.g., 40.7128,-74.0060)'
-                  : 'Enter GeoJSON geometry...'
+                geometryFormat === 'csv'
+                  ? t.geometryData.placeholderCsv
+                  : t.geometryData.placeholderGeoJson
               }
               minRows={6}
               maxRows={12}
@@ -440,7 +449,7 @@ export const Map: React.FC<MapProps> = ({
 
             {geometryFormat === 'csv' && (
               <Text size="xs" c="dimmed">
-                CSV format: Enter coordinates as "latitude,longitude" (e.g., 40.7128,-74.0060)
+                {t.geometryData.csvHint}
               </Text>
             )}
 

@@ -2,7 +2,9 @@
 
 import React, { useCallback } from 'react';
 import { useUsers } from '@buildpad/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
 import type { Policy } from '@buildpad/types';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 import { PolicyAttachmentManager } from './PolicyAttachmentManager';
 
 export interface UserPoliciesManagerProps {
@@ -12,6 +14,8 @@ export interface UserPoliciesManagerProps {
   onUpdate?: () => void;
   /** Called when a policy row's "open" action is clicked. Hidden when omitted. */
   onPolicyClick?: (policy: Policy) => void;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -25,8 +29,10 @@ export const UserPoliciesManager: React.FC<UserPoliciesManagerProps> = ({
   userId,
   onUpdate,
   onPolicyClick,
+  translations,
 }) => {
   const { fetchUserPolicies, attachUserPolicy, detachUserPolicy } = useUsers();
+  const t = useBuildpadTranslations((d) => d.users, translations);
 
   const fetchAttached = useCallback(
     () => fetchUserPolicies(userId),
@@ -48,7 +54,8 @@ export const UserPoliciesManager: React.FC<UserPoliciesManagerProps> = ({
       detach={detach}
       onUpdate={onUpdate}
       onPolicyClick={onPolicyClick}
-      emptyMessage="No policies attached directly to this user"
+      emptyMessage={t.userPolicies.emptyState}
+      translations={translations}
     />
   );
 };

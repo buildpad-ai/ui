@@ -15,12 +15,15 @@ import {
 } from '@mantine/core';
 import { IconAlertTriangle, IconBraces, IconChevronDown, IconInfoCircle, IconListTree } from '@tabler/icons-react';
 import type { Field, Filter, Permission } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import type { FilterNode, RelationInfo } from './PermissionFilterTypes';
 import {
   addNodeToGroup,
   createFieldNode,
   createGroupNode,
   hasRelationalFilterKeys,
+  interpolateNodes,
   nodesToFilter,
   parseFilterToNodes,
   removeNodeById,
@@ -49,6 +52,8 @@ export interface FilterRuleBuilderProps {
   appMinimal?: Filter | null;
   onChange: (permission: Partial<Permission>) => void;
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemPermissions`) */
+  translations?: DeepPartial<InterfacesTranslations['systemPermissions']>;
 }
 
 /**
@@ -65,7 +70,9 @@ export function FilterRuleBuilder({
   appMinimal,
   onChange,
   'data-testid': testId,
+  translations,
 }: FilterRuleBuilderProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemPermissions, translations);
   const [isJsonMode, setIsJsonMode] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
 
@@ -126,7 +133,7 @@ export function FilterRuleBuilder({
         permissions: Object.keys(parsed).length > 0 ? parsed : null,
       });
     } catch (error) {
-      setJsonError(error instanceof Error ? error.message : 'Invalid JSON');
+      setJsonError(error instanceof Error ? error.message : t.invalidJson);
     }
   };
 
@@ -177,14 +184,14 @@ export function FilterRuleBuilder({
 
   const actionText =
     permission.action === 'delete'
-      ? 'can delete'
+      ? t.filterRuleBuilder.action.canDelete
       : permission.action === 'create'
-      ? 'can create'
+      ? t.filterRuleBuilder.action.canCreate
       : permission.action === 'update'
-      ? 'can update'
+      ? t.filterRuleBuilder.action.canUpdate
       : permission.action === 'share'
-      ? 'can share'
-      : 'can read';
+      ? t.filterRuleBuilder.action.canShare
+      : t.filterRuleBuilder.action.canRead;
 
   return (
     <Stack gap="md" data-testid={testId}>
@@ -200,7 +207,7 @@ export function FilterRuleBuilder({
           },
         }}
       >
-        Items the {policyName || 'Policy'} {actionText}.
+        {interpolate(t.filterRuleBuilder.intro, { policyName: policyName || t.policyFallback, action: actionText })}
       </Alert>
 
       {/* Create-action info: filters don't apply to inserts */}
@@ -217,7 +224,11 @@ export function FilterRuleBuilder({
           }}
         >
           <Text size="xs">
-            Filter rules do not apply to create actions. Use the <b>Fields</b>, <b>Validation</b>, and <b>Presets</b> tabs to restrict inserts.
+            {interpolateNodes(t.filterRuleBuilder.createActionInfo, {
+              fields: <b>{t.filterRuleBuilder.createActionTabs.fields}</b>,
+              validation: <b>{t.filterRuleBuilder.createActionTabs.validation}</b>,
+              presets: <b>{t.filterRuleBuilder.createActionTabs.presets}</b>,
+            })}
           </Text>
         </Alert>
       )}
@@ -225,9 +236,9 @@ export function FilterRuleBuilder({
       {/* Header with JSON toggle */}
       <Box style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text size="sm" fw={600}>
-          • Rule
+          {t.filterRuleBuilder.ruleHeading}
         </Text>
-        <Tooltip label={isJsonMode ? 'Switch to Visual Editor' : 'Switch to JSON Editor'}>
+        <Tooltip label={isJsonMode ? t.filterRuleBuilder.switchToVisual : t.filterRuleBuilder.switchToJson}>
           <ActionIcon
             variant="subtle"
             size="sm"
@@ -242,7 +253,7 @@ export function FilterRuleBuilder({
       {isJsonMode ? (
         <Stack gap="sm">
           <Text size="xs" c="dimmed">
-            Enter a filter object using Directus filter syntax. Leave empty for no restrictions.
+            {t.filterRuleBuilder.jsonHint}
           </Text>
           <Textarea
             value={filterJson}
@@ -282,7 +293,11 @@ export function FilterRuleBuilder({
                 return (
                   <Alert icon={<IconAlertTriangle size={16} />} color="yellow" variant="light">
                     <Text size="xs">
-                      This filter contains operators with limited relational enforcement (<code>_has</code>, dot-notation, or <code>_some</code>/<code>_none</code>). A two-step query fallback is used for child mutations.
+                      {interpolateNodes(t.filterRuleBuilder.relationalWarning, {
+                        has: <code>_has</code>,
+                        some: <code>_some</code>,
+                        none: <code>_none</code>,
+                      })}
                     </Text>
                   </Alert>
                 );
@@ -309,7 +324,7 @@ export function FilterRuleBuilder({
           >
             {nodes.length === 0 ? (
               <Text size="sm" c="dimmed" style={{ fontStyle: 'italic' }}>
-                No configured rules
+                {t.filterRuleBuilder.noRules}
               </Text>
             ) : (
               <Stack gap="xs">
@@ -327,6 +342,7 @@ export function FilterRuleBuilder({
                     onAddGroup={handleAddGroup}
                     onToggleGroupLogical={handleToggleGroupLogical}
                     data-testid={testId ? `${testId}-node-${index}` : undefined}
+                    translations={translations}
                   />
                 ))}
               </Stack>
@@ -347,7 +363,7 @@ export function FilterRuleBuilder({
                 }}
                 data-testid={testId ? `${testId}-add-filter` : undefined}
               >
-                Add Filter <IconChevronDown size={14} />
+                {t.filterEditor.addFilter} <IconChevronDown size={14} />
               </UnstyledButton>
             </Menu.Target>
 
@@ -356,12 +372,12 @@ export function FilterRuleBuilder({
                 onClick={() => handleAddGroup(null)}
                 style={{ fontWeight: 500 }}
               >
-                And / Or group
+                {t.filterEditor.andOrGroup}
               </Menu.Item>
               <Menu.Divider />
               {fields.length === 0 ? (
                 <Menu.Item disabled>
-                  Loading fields...
+                  {t.filterEditor.loadingFields}
                 </Menu.Item>
               ) : (
                 <>
@@ -377,7 +393,7 @@ export function FilterRuleBuilder({
                   {relations && relations.length > 0 && (
                     <>
                       <Menu.Divider />
-                      <Menu.Label>Related Fields</Menu.Label>
+                      <Menu.Label>{t.filterEditor.relatedFields}</Menu.Label>
                       {relations.map((rel) => (
                         <Menu.Item
                           key={`rel-${rel.field}`}
@@ -403,10 +419,10 @@ export function FilterRuleBuilder({
           <Alert color="yellow" variant="light" icon={<IconInfoCircle size={16} />}>
             <Stack gap="xs">
               <Text size="sm" fw={500}>
-                Minimum Permissions (App Access)
+                {t.filterRuleBuilder.appMinimal.title}
               </Text>
               <Text size="xs" c="dimmed">
-                The following filter rules are automatically applied with app access:
+                {t.filterRuleBuilder.appMinimal.description}
               </Text>
               <Code block fz="xs">
                 {JSON.stringify(appMinimal, null, 2)}

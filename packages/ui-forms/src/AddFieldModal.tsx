@@ -33,10 +33,14 @@ import {
   TextInput,
 } from '@mantine/core';
 import { IconAlertCircle, IconColumns, IconBraces } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
 import {
   interfaceForFieldType,
   interfaceRequiresChoices,
+  interpolate,
   provisionableInterfacesForType,
+  type DeepPartial,
+  type FormsTranslations,
 } from '@buildpad/utils';
 import type {
   ExtraFieldDescriptor,
@@ -44,6 +48,7 @@ import type {
   FieldStore,
 } from '@buildpad/types';
 import { ChoicesInput, type Choice } from './ChoicesInput';
+import { catalogGroupLabel, catalogInterfaceLabel } from './FieldPalette';
 import { toFieldKey, fieldKeyError } from './field-name';
 
 /** Result handed to the parent when the author submits the modal. */
@@ -90,22 +95,27 @@ export interface AddFieldModalProps {
    * open (so the in-progress field isn't lost). Resolve to close + reset.
    */
   onCreate: (result: AddFieldResult) => Promise<void>;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
-/** Scalar-first field types the builder can provision out of the box. */
-const TYPE_OPTIONS = [
-  { value: 'string', label: 'Text (short)' },
-  { value: 'text', label: 'Text (long)' },
-  { value: 'integer', label: 'Number (integer)' },
-  { value: 'bigInteger', label: 'Number (big integer)' },
-  { value: 'float', label: 'Number (decimal)' },
-  { value: 'decimal', label: 'Number (fixed decimal)' },
-  { value: 'boolean', label: 'Boolean' },
-  { value: 'date', label: 'Date' },
-  { value: 'time', label: 'Time' },
-  { value: 'dateTime', label: 'Date & time' },
-  { value: 'json', label: 'JSON' },
-  { value: 'csv', label: 'CSV (list of values)' },
+/**
+ * Scalar-first field types the builder can provision out of the box, in picker
+ * order. Each value doubles as its label key in `forms.addFieldModal.typeOptions`.
+ */
+const TYPE_VALUES: (keyof FormsTranslations['addFieldModal']['typeOptions'])[] = [
+  'string',
+  'text',
+  'integer',
+  'bigInteger',
+  'float',
+  'decimal',
+  'boolean',
+  'date',
+  'time',
+  'dateTime',
+  'json',
+  'csv',
 ];
 
 /**
@@ -120,7 +130,11 @@ export function AddFieldModal({
   defaultType,
   defaultInterface,
   onCreate,
+  translations,
 }: AddFieldModalProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
+  const s = t.addFieldModal;
+
   // In a full collection (no extras tail) every field must be a real column.
   // Otherwise fall back to extras only when real-column provisioning is unavailable.
   const defaultStorage: FieldStore =
@@ -155,6 +169,11 @@ export function AddFieldModal({
   const resolvedInterface = interfaceId || interfaceForFieldType(type);
   const isChoiceInterface = interfaceRequiresChoices(resolvedInterface);
 
+  const typeOptions = useMemo(
+    () => TYPE_VALUES.map((value) => ({ value, label: s.typeOptions[value] })),
+    [s],
+  );
+
   // Type-aware interface picker: only interfaces compatible with the chosen type,
   // grouped, plus an "Auto (from type)" default — mirroring how the DaaS data-model
   // UI filters interfaces by type.
@@ -162,14 +181,22 @@ export function AddFieldModal({
     const groups = new Map<string, { value: string; label: string }[]>();
     for (const i of provisionableInterfacesForType(type)) {
       const items = groups.get(i.group) ?? [];
-      items.push({ value: i.value, label: i.label });
+      items.push({ value: i.value, label: catalogInterfaceLabel(t, i) });
       groups.set(i.group, items);
     }
     return [
-      { value: '', label: `Auto (${interfaceForFieldType(type)})` },
-      ...[...groups.entries()].map(([group, items]) => ({ group, items })),
+      {
+        value: '',
+        label: interpolate(s.interface.autoOption, {
+          interface: interfaceForFieldType(type),
+        }),
+      },
+      ...[...groups.entries()].map(([group, items]) => ({
+        group: catalogGroupLabel(t, group),
+        items,
+      })),
     ];
-  }, [type]);
+  }, [type, t, s]);
 
   // Changing the type can make the chosen interface incompatible → reset to Auto.
   const handleTypeChange = (next: string) => {
@@ -183,8 +210,8 @@ export function AddFieldModal({
   };
 
   const keyError = useMemo(
-    () => fieldKeyError(effectiveKey, existingFieldNames),
-    [effectiveKey, existingFieldNames],
+    () => fieldKeyError(effectiveKey, existingFieldNames, t.fieldName.error),
+    [effectiveKey, existingFieldNames, t],
   );
 
   const reset = () => {
@@ -236,7 +263,7 @@ export function AddFieldModal({
       onClose();
     } catch (err) {
       // Keep the modal open with the draft intact (Req 10.6).
-      setError(err instanceof Error ? err.message : 'Failed to create the field');
+      setError(err instanceof Error ? err.message : s.error.createFailed);
     } finally {
       setSubmitting(false);
     }
@@ -246,22 +273,22 @@ export function AddFieldModal({
     <Modal
       opened={opened}
       onClose={handleClose}
-      title="Add a field"
+      title={s.title}
       centered
       data-testid="add-field-modal"
     >
       <Stack gap="sm">
         <TextInput
-          label="Label"
-          placeholder="e.g. Steps to reproduce"
+          label={s.label.label}
+          placeholder={s.label.placeholder}
           value={label}
           onChange={(e) => setLabel(e.currentTarget.value)}
           data-autofocus
         />
         <TextInput
-          label="Field key"
-          description="Column / property name (snake_case)"
-          placeholder="steps_to_reproduce"
+          label={s.fieldKey.label}
+          description={s.fieldKey.description}
+          placeholder={s.fieldKey.placeholder}
           value={effectiveKey}
           onChange={(e) => {
             setKeyTouched(true);
@@ -273,16 +300,16 @@ export function AddFieldModal({
 
         <Group grow align="flex-start">
           <Select
-            label="Type"
-            data={TYPE_OPTIONS}
+            label={s.type.label}
+            data={typeOptions}
             value={type}
             onChange={(v) => handleTypeChange(v ?? 'string')}
             allowDeselect={false}
             comboboxProps={{ withinPortal: true }}
           />
           <Select
-            label="Interface"
-            description="Only interfaces compatible with the type"
+            label={s.interface.label}
+            description={s.interface.description}
             data={interfaceData}
             value={interfaceId}
             onChange={(v) => setInterfaceId(v ?? '')}
@@ -296,12 +323,13 @@ export function AddFieldModal({
             key={`${opened}-${resolvedInterface}`}
             value={choices}
             onChange={setChoices}
+            translations={translations}
           />
         )}
 
         <div>
           <Text size="sm" fw={500} mb={4}>
-            Storage
+            {s.storage.title}
           </Text>
           {supportsExtras ? (
             <>
@@ -316,7 +344,7 @@ export function AddFieldModal({
                     label: (
                       <Group gap={6} justify="center" wrap="nowrap">
                         <IconColumns size={14} />
-                        <span>Real column</span>
+                        <span>{s.storage.column}</span>
                       </Group>
                     ),
                   },
@@ -325,7 +353,7 @@ export function AddFieldModal({
                     label: (
                       <Group gap={6} justify="center" wrap="nowrap">
                         <IconBraces size={14} />
-                        <span>Extra (jsonb)</span>
+                        <span>{s.storage.extras}</span>
                       </Group>
                     ),
                   },
@@ -333,14 +361,11 @@ export function AddFieldModal({
                 data-testid="add-field-storage"
               />
               <Text size="xs" c="dimmed" mt={4}>
-                {storage === 'column'
-                  ? 'A real, searchable/sortable DaaS column provisioned via the schema API.'
-                  : 'Stored in the collection’s extras jsonb column — not server-searchable or individually permissioned.'}
+                {storage === 'column' ? s.storage.columnHint : s.storage.extrasHint}
               </Text>
               {!canProvisionSchema && (
                 <Text size="xs" c="dimmed" mt={2}>
-                  Real-column provisioning needs DaaS schema rights, which you
-                  don’t have — new fields are stored as extras.
+                  {s.storage.noSchemaRights}
                 </Text>
               )}
             </>
@@ -348,9 +373,7 @@ export function AddFieldModal({
             <Group gap={6} wrap="nowrap" data-testid="add-field-storage-full">
               <IconColumns size={14} />
               <Text size="xs" c={cannotAddField ? 'red' : 'dimmed'}>
-                {cannotAddField
-                  ? 'This full-storage collection has no extras tail, and adding a real column needs DaaS schema rights you don’t have.'
-                  : 'Full-storage collection — every field is a real, searchable DaaS column (no extras tail).'}
+                {cannotAddField ? s.storage.fullNoRights : s.storage.fullHint}
               </Text>
             </Group>
           )}
@@ -358,7 +381,7 @@ export function AddFieldModal({
 
         <Switch
           size="sm"
-          label="Required"
+          label={s.required.label}
           checked={required}
           onChange={(e) => setRequired(e.currentTarget.checked)}
         />
@@ -366,8 +389,8 @@ export function AddFieldModal({
         {storage === 'column' && (
           <Switch
             size="sm"
-            label="Index this column"
-            description="Create a B-tree index — pick this if the field will be filtered or sorted."
+            label={s.index.label}
+            description={s.index.description}
             checked={addIndex}
             onChange={(e) => setAddIndex(e.currentTarget.checked)}
           />
@@ -385,7 +408,7 @@ export function AddFieldModal({
 
         <Group justify="flex-end" mt="xs">
           <Button variant="subtle" onClick={handleClose} disabled={submitting}>
-            Cancel
+            {s.cancel}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -393,7 +416,7 @@ export function AddFieldModal({
             disabled={!!keyError || cannotAddField}
             data-testid="add-field-submit"
           >
-            {storage === 'column' ? 'Create field' : 'Add extra field'}
+            {storage === 'column' ? s.submitColumn : s.submitExtras}
           </Button>
         </Group>
       </Stack>

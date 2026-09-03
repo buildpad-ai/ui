@@ -13,6 +13,8 @@ import {
   ColorSwatch,
 } from '@mantine/core';
 import { IconPlus, IconX } from '@tabler/icons-react';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import { paletteNameFromColor } from '../select-icon/SelectIcon';
 
 // `IconDisplay` resolves a Material icon NAME through select-icon's ICON_MAP,
@@ -77,6 +79,8 @@ export interface SelectMultipleCheckboxProps {
    * control out and drop it from the tab order.
    */
   readOnly?: boolean;
+  /** Per-instance overrides of the dictionary strings (`interfaces.selectMultipleCheckbox`) */
+  translations?: DeepPartial<InterfacesTranslations['selectMultipleCheckbox']>;
 }
 
 export function SelectMultipleCheckbox({
@@ -95,7 +99,10 @@ export function SelectMultipleCheckbox({
   iconOff: _iconOff = 'check_box_outline_blank',
   color = 'blue',
   itemsShown = 8,
+  translations,
 }: SelectMultipleCheckboxProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.selectMultipleCheckbox, translations);
+  const { formatCount } = useBuildpadI18n();
   const [showAll, setShowAll] = useState(false);
   const [otherValues, setOtherValues] = useState<{ key: string; value: string }[]>([]);
 
@@ -285,7 +292,7 @@ export function SelectMultipleCheckbox({
           </Text>
         )}
         <Text size="sm" c="orange">
-          Choices option configured incorrectly
+          {t.misconfigured}
         </Text>
         {error && (
           <Text size="xs" c="red">
@@ -345,7 +352,7 @@ export function SelectMultipleCheckbox({
               // reference nor valid CSS and computes the checked box to
               // transparent.
               color={item.color ?? mantineColor}
-              aria-label={`Select ${item.text}`}
+              aria-label={interpolate(t.selectOption, { text: item.text })}
               // `wrapperProps.style` is spread directly onto the root element's
               // props *after* Mantine's own computed `style` (which carries
               // `--checkbox-color` and friends), so a raw wrapperProps.style
@@ -378,7 +385,7 @@ export function SelectMultipleCheckbox({
           onClick={() => setShowAll(true)}
           disabled={disabled}
         >
-          Show {hiddenCount} more option{hiddenCount !== 1 ? 's' : ''}
+          {formatCount(hiddenCount, t.showMore)}
         </Button>
       )}
 
@@ -395,7 +402,7 @@ export function SelectMultipleCheckbox({
               disabled={disabled}
               size="sm"
               color={mantineColor}
-              aria-label={`Selected custom value: ${String(otherVal)}`}
+              aria-label={interpolate(t.selectedCustomValue, { value: String(otherVal) })}
               wrapperProps={{
                 style: {
                   padding: '12px',
@@ -418,10 +425,10 @@ export function SelectMultipleCheckbox({
                 disabled={disabled || !otherItem.value.trim()}
                 size="sm"
                 color={mantineColor}
-                aria-label={`Custom value checkbox: ${otherItem.value || 'empty'}`}
+                aria-label={interpolate(t.customValueCheckbox, { value: otherItem.value || t.emptyValue })}
               />
               <TextInput
-                placeholder="Enter custom value"
+                placeholder={t.customValuePlaceholder}
                 value={otherItem.value}
                 onChange={(event) => handleOtherValueChange(otherItem.key, event.currentTarget.value)}
                 disabled={disabled}
@@ -454,7 +461,7 @@ export function SelectMultipleCheckbox({
               color: 'var(--mantine-color-gray-6)',
             }}
           >
-            Other
+            {t.other}
           </Button>
         </Stack>
       )}

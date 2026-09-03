@@ -1,6 +1,8 @@
 import React from 'react';
 import { LoadingOverlay, Stack, Text } from '@mantine/core';
 import type { Field, Filter, Permission } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 import type { RelationInfo } from './PermissionFilterTypes';
 import { FilterRuleBuilder } from './FilterRuleBuilder';
 
@@ -17,6 +19,8 @@ export interface PermissionFilterTabProps {
   appMinimal?: Filter | null;
   onChange: (permission: Partial<Permission>) => void;
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemPermissions`) */
+  translations?: DeepPartial<InterfacesTranslations['systemPermissions']>;
 }
 
 /**
@@ -32,12 +36,15 @@ export function PermissionFilterTab({
   appMinimal,
   onChange,
   'data-testid': testId,
+  translations,
 }: PermissionFilterTabProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemPermissions, translations);
+
   if (loading) {
     return (
       <Stack gap="md" pos="relative" mih={200} data-testid={testId}>
         <LoadingOverlay visible />
-        <Text size="sm" c="dimmed">Loading fields...</Text>
+        <Text size="sm" c="dimmed">{t.filterEditor.loadingFields}</Text>
       </Stack>
     );
   }
@@ -52,6 +59,7 @@ export function PermissionFilterTab({
       appMinimal={appMinimal}
       onChange={onChange}
       data-testid={testId}
+      translations={translations}
     />
   );
 }

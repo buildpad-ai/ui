@@ -10,11 +10,11 @@
 "use client";
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { FileManager } from '@/components/ui/file-manager';
 
 export default function FilesPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return <FileManager onFileClick={(file) => router.push(`/files/${file.id}`)} />;
 }

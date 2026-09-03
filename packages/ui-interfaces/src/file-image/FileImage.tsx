@@ -18,6 +18,10 @@ import { notifications } from '@mantine/notifications';
 import { Upload, type UploadProps, type FileUpload } from '../upload';
 import { daasAPI, type DaaSFile } from '@buildpad/hooks';
 import { useFiles, useFolders } from '@buildpad/hooks';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+
+type FileImageTranslations = InterfacesTranslations['fileImage'];
 
 /**
  * Convert DaaSFile to FileUpload type (adds fallback for nullable fields)
@@ -40,7 +44,7 @@ function toFileUpload(file: DaaSFile): FileUpload {
   };
 }
 
-export interface FileImageProps extends Omit<UploadProps, 'onInput' | 'multiple' | 'accept'> {
+export interface FileImageProps extends Omit<UploadProps, 'onInput' | 'multiple' | 'accept' | 'translations'> {
   value?: string | FileUpload | null;
   onChange?: (value: string | FileUpload | null) => void;
   label?: string;
@@ -59,6 +63,8 @@ export interface FileImageProps extends Omit<UploadProps, 'onInput' | 'multiple'
   field?: string; // for parity, not used
   enableCreate?: boolean; // enable upload new images
   enableSelect?: boolean; // enable selecting from library
+  /** Per-instance overrides of the dictionary strings (`interfaces.fileImage`) */
+  translations?: DeepPartial<FileImageTranslations>;
 }
 
 /**
@@ -110,6 +116,9 @@ function VImageBase64({
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const t = useBuildpadTranslations((d) => d.interfaces.fileImage);
+  const tRef = useRef(t);
+  tRef.current = t;
 
   const load = useCallback(async () => {
     if (!src) {
@@ -121,7 +130,7 @@ function VImageBase64({
       const bytes = new Uint8Array(response.data as ArrayBuffer);
       // guard: 5MB
       if (bytes.length > 5 * 1024 * 1024) {
-        setError('Image too large to preview');
+        setError(tRef.current.errors.tooLarge);
         return;
       }
       let raw = '';
@@ -129,7 +138,7 @@ function VImageBase64({
       const base64 = btoa(raw);
       setDataUrl(`data:${contentType};base64,${base64}`);
     } catch (e: any) {
-      setError(e?.message || 'Failed to load image');
+      setError(e?.message || tRef.current.errors.loadFailed);
     }
   }, [src]);
 
@@ -179,7 +188,7 @@ export const FileImage: React.FC<FileImageProps> = ({
   value,
   onChange,
   label,
-  placeholder = 'No image selected',
+  placeholder,
   disabled = false,
   readonly: readonlyProp = false,
   readOnly: readOnlyProp = false,
@@ -196,9 +205,16 @@ export const FileImage: React.FC<FileImageProps> = ({
   preset,
   enableCreate = true,
   enableSelect = true,
+  translations,
 }) => {
   // Accept either casing — @buildpad/ui-form passes camelCase `readOnly`.
   const readonly = readonlyProp || readOnlyProp;
+  const t = useBuildpadTranslations((d) => d.interfaces.fileImage, translations);
+  const { formatNumber } = useBuildpadI18n();
+  // Read through a ref inside the fetch effect so a dictionary change never re-fetches the image.
+  const tRef = useRef(t);
+  tRef.current = t;
+  const effectivePlaceholder = placeholder ?? t.placeholder;
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<FileUpload | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -259,7 +275,7 @@ export const FileImage: React.FC<FileImageProps> = ({
       } catch (e: any) {
         if (mounted) {
           setImage(null);
-          setImageError('Failed to load image');
+          setImageError(tRef.current.errors.loadFailed);
         }
       } finally {
         if (mounted) {
@@ -315,14 +331,22 @@ export const FileImage: React.FC<FileImageProps> = ({
   const meta = useMemo(() => {
     if (!image) return null;
     const { filesize, width, height, type } = image;
-    const sizeStr = filesize ? `${Math.round(filesize / 1024)} KB` : '';
+    const sep = t.meta.separator;
+    // No digit grouping: the KB figure is rendered exactly as before, only the digits follow the locale.
+    const sizeStr = filesize
+      ? interpolate(t.meta.kilobytes, { size: formatNumber(Math.round(filesize / 1024), { useGrouping: false }) })
+      : '';
     
     if (width && height) {
-      return `${width}×${height}${sizeStr ? ` • ${sizeStr}` : ''}${type ? ` • ${type}` : ''}`;
+      const dimensions = interpolate(t.meta.dimensions, {
+        width: formatNumber(width, { useGrouping: false }),
+        height: formatNumber(height, { useGrouping: false }),
+      });
+      return `${dimensions}${sizeStr ? `${sep}${sizeStr}` : ''}${type ? `${sep}${type}` : ''}`;
     }
     
-    return `${sizeStr}${type ? ` • ${type}` : ''}`;
-  }, [image]);
+    return `${sizeStr}${type ? `${sep}${type}` : ''}`;
+  }, [image, t, formatNumber]);
 
   const handleDeselect = useCallback(() => {
     if (internalDisabled || readonly) {
@@ -370,11 +394,15 @@ export const FileImage: React.FC<FileImageProps> = ({
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      notifications.show({ title: 'Download started', message: `Downloading ${image.filename_download || image.id}`, color: 'green' });
+      notifications.show({
+        title: t.notifications.downloadStarted.title,
+        message: interpolate(t.notifications.downloadStarted.message, { name: image.filename_download || image.id }),
+        color: 'green',
+      });
     } catch (e) {
-      notifications.show({ title: 'Download failed', message: 'Unable to download file', color: 'red' });
+      notifications.show({ title: t.notifications.downloadFailed.title, message: t.notifications.downloadFailed.message, color: 'red' });
     }
-  }, [image]);
+  }, [image, t]);
 
   const handleSaveDetails = useCallback(async () => {
     if (!image) {
@@ -387,11 +415,11 @@ export const FileImage: React.FC<FileImageProps> = ({
       });
       setImage({ ...image, ...toFileUpload(updated) });
       setEditOpen(false);
-      notifications.show({ title: 'Saved', message: 'Image details updated', color: 'green' });
+      notifications.show({ title: t.notifications.saved.title, message: t.notifications.saved.message, color: 'green' });
     } catch (e) {
-      notifications.show({ title: 'Error', message: 'Failed to update image details', color: 'red' });
+      notifications.show({ title: t.notifications.updateFailed.title, message: t.notifications.updateFailed.message, color: 'red' });
     }
-  }, [image, editTitle, editDescription]);
+  }, [image, editTitle, editDescription, t]);
 
   const handleApplyImageEdits = useCallback(async () => {
     if (!image) {
@@ -404,7 +432,7 @@ export const FileImage: React.FC<FileImageProps> = ({
       const sourceUrl = `/api/assets/${image.id}`;
       const loaded = await new Promise<HTMLImageElement>((resolve, reject) => {
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('Failed to load image'));
+        img.onerror = () => reject(new Error(t.errors.loadFailed));
         img.src = sourceUrl;
       });
 
@@ -418,7 +446,7 @@ export const FileImage: React.FC<FileImageProps> = ({
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        throw new Error('Canvas not supported');
+        throw new Error(t.errors.canvasNotSupported);
       }
 
       canvas.width = canvasW;
@@ -456,7 +484,7 @@ export const FileImage: React.FC<FileImageProps> = ({
         c2.height = size;
         const c2ctx = c2.getContext('2d');
         if (!c2ctx) {
-          throw new Error('Canvas not supported');
+          throw new Error(t.errors.canvasNotSupported);
         }
         c2ctx.drawImage(canvas, sx, sy, size, size, 0, 0, size, size);
         outputCanvas = c2;
@@ -480,12 +508,12 @@ export const FileImage: React.FC<FileImageProps> = ({
         setImageEditorOpen(false);
         setRotate(0);
         setCropSquare(false);
-        notifications.show({ title: 'Image updated', message: 'Applied edits and saved new image', color: 'green' });
+        notifications.show({ title: t.notifications.editsApplied.title, message: t.notifications.editsApplied.message, color: 'green' });
       }
     } catch (e: any) {
-      notifications.show({ title: 'Edit failed', message: e?.message || 'Unable to apply edits', color: 'red' });
+      notifications.show({ title: t.notifications.editFailed.title, message: e?.message || t.notifications.editFailed.message, color: 'red' });
     }
-  }, [image, rotate, cropSquare, onUploadFiles, onChange, folder, preset]);
+  }, [image, rotate, cropSquare, onUploadFiles, onChange, folder, preset, t]);
 
   // Handler for uploading files to the server (real API)
   const handleUploadFiles = useCallback(async (
@@ -536,7 +564,7 @@ export const FileImage: React.FC<FileImageProps> = ({
       {label && (
         <Group gap={6} align="center">
           <Text fw={500} size="sm" data-testid="file-image-label">{label}</Text>
-          {readonly && <Badge size="xs" variant="light" data-testid="file-image-readonly-badge">Read only</Badge>}
+          {readonly && <Badge size="xs" variant="light" data-testid="file-image-readonly-badge">{t.readOnly}</Badge>}
         </Group>
       )}
 
@@ -563,7 +591,7 @@ export const FileImage: React.FC<FileImageProps> = ({
           >
             <Group gap={8} c="dimmed">
               <IconPhotoOff size={24} />
-              <Text size="sm">{disabled ? 'Disabled' : 'No image selected'}</Text>
+              <Text size="sm">{disabled ? t.disabled : t.noImage}</Text>
             </Group>
           </Paper>
         ) : image ? (
@@ -588,7 +616,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                   style={{ height: '100%', color: 'var(--mantine-color-red-6)' }}
                 >
                   <IconInfoCircle size={24} />
-                  <Text size="xs">{imageError || 'Unsupported media type'}</Text>
+                  <Text size="xs">{imageError || t.errors.unsupportedMedia}</Text>
                 </Stack>
               ) : isImage ? (
                 <VImageBase64
@@ -606,7 +634,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                   style={{ height: '100%' }}
                 >
                   <IconPhoto size={48} color="var(--mantine-color-gray-5)" />
-                  <Text size="xs" c="dimmed">No preview available</Text>
+                  <Text size="xs" c="dimmed">{t.noPreview}</Text>
                 </Stack>
               )}
 
@@ -641,7 +669,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                   }}
                   className="file-image-actions"
                 >
-                  <Tooltip label="Zoom">
+                  <Tooltip label={t.actions.zoom}>
                     <Button 
                       variant="white" 
                       size="xs" 
@@ -652,7 +680,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                       <IconZoomIn size={16} />
                     </Button>
                   </Tooltip>
-                  <Tooltip label="Download">
+                  <Tooltip label={t.actions.download}>
                     <Button 
                       variant="white" 
                       size="xs" 
@@ -665,7 +693,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                   </Tooltip>
                   {!internalDisabled && (
                     <>
-                      <Tooltip label="Edit details">
+                      <Tooltip label={t.actions.editDetails}>
                         <Button 
                           variant="white" 
                           size="xs" 
@@ -677,7 +705,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                           <IconPencil size={16} />
                         </Button>
                       </Tooltip>
-                      <Tooltip label="Edit image">
+                      <Tooltip label={t.actions.editImage}>
                         <Button 
                           variant="white" 
                           size="xs" 
@@ -689,7 +717,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                           <IconAdjustments size={16} />
                         </Button>
                       </Tooltip>
-                      <Tooltip label="Deselect">
+                      <Tooltip label={t.actions.deselect}>
                         <Button 
                           variant="white" 
                           size="xs" 
@@ -750,8 +778,8 @@ export const FileImage: React.FC<FileImageProps> = ({
       </Box>
 
       {/* Placeholder text when no image */}
-      {!image && !loading && !internalDisabled && placeholder && (
-        <Text size="sm" c="dimmed" data-testid="file-image-placeholder">{placeholder}</Text>
+      {!image && !loading && !internalDisabled && effectivePlaceholder && (
+        <Text size="sm" c="dimmed" data-testid="file-image-placeholder">{effectivePlaceholder}</Text>
       )}
 
       {/* Zoom Lightbox Modal */}
@@ -759,7 +787,7 @@ export const FileImage: React.FC<FileImageProps> = ({
         opened={lightboxOpen} 
         onClose={() => setLightboxOpen(false)} 
         size="xl" 
-        title={image?.title || 'Image Preview'}
+        title={image?.title || t.lightbox.title}
         data-testid="file-image-lightbox-modal"
       >
         {image && (
@@ -777,7 +805,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                 onClick={handleDownload}
                 data-testid="file-image-lightbox-download"
               >
-                Download
+                {t.lightbox.download}
               </Button>
             </Group>
           </Box>
@@ -788,7 +816,7 @@ export const FileImage: React.FC<FileImageProps> = ({
       <Modal 
         opened={editOpen} 
         onClose={() => setEditOpen(false)} 
-        title="Edit Image Details"
+        title={t.editModal.title}
         data-testid="file-image-edit-modal"
       >
         <Stack>
@@ -811,14 +839,14 @@ export const FileImage: React.FC<FileImageProps> = ({
             </Paper>
           )}
           <TextInput 
-            label="Title" 
+            label={t.editModal.titleLabel} 
             value={editTitle} 
             onChange={(e) => setEditTitle(e.currentTarget.value)} 
             disabled={!updateAllowed}
             data-testid="file-image-edit-title"
           />
           <Textarea 
-            label="Description" 
+            label={t.editModal.descriptionLabel} 
             value={editDescription} 
             onChange={(e) => setEditDescription(e.currentTarget.value)} 
             disabled={!updateAllowed} 
@@ -831,14 +859,14 @@ export const FileImage: React.FC<FileImageProps> = ({
               onClick={() => setEditOpen(false)}
               data-testid="file-image-edit-cancel"
             >
-              Cancel
+              {t.editModal.cancel}
             </Button>
             <Button 
               onClick={handleSaveDetails} 
               disabled={!updateAllowed}
               data-testid="file-image-edit-save"
             >
-              Save
+              {t.editModal.save}
             </Button>
           </Group>
         </Stack>
@@ -848,7 +876,7 @@ export const FileImage: React.FC<FileImageProps> = ({
       <Modal 
         opened={imageEditorOpen} 
         onClose={() => setImageEditorOpen(false)} 
-        title="Edit Image"
+        title={t.editor.title}
         size="lg"
         data-testid="file-image-editor-modal"
       >
@@ -864,7 +892,7 @@ export const FileImage: React.FC<FileImageProps> = ({
             </Box>
           )}
           
-          <Text size="sm" fw={500}>Rotation</Text>
+          <Text size="sm" fw={500}>{t.editor.rotation}</Text>
           <Group data-testid="file-image-editor-rotation">
             <Button 
               size="xs" 
@@ -872,7 +900,7 @@ export const FileImage: React.FC<FileImageProps> = ({
               onClick={() => setRotate(0)}
               data-testid="file-image-rotate-0"
             >
-              0°
+              {interpolate(t.editor.degrees, { value: formatNumber(0) })}
             </Button>
             <Button 
               size="xs" 
@@ -880,7 +908,7 @@ export const FileImage: React.FC<FileImageProps> = ({
               onClick={() => setRotate(90)}
               data-testid="file-image-rotate-90"
             >
-              90°
+              {interpolate(t.editor.degrees, { value: formatNumber(90) })}
             </Button>
             <Button 
               size="xs" 
@@ -888,7 +916,7 @@ export const FileImage: React.FC<FileImageProps> = ({
               onClick={() => setRotate(180)}
               data-testid="file-image-rotate-180"
             >
-              180°
+              {interpolate(t.editor.degrees, { value: formatNumber(180) })}
             </Button>
             <Button 
               size="xs" 
@@ -896,11 +924,11 @@ export const FileImage: React.FC<FileImageProps> = ({
               onClick={() => setRotate(270)}
               data-testid="file-image-rotate-270"
             >
-              270°
+              {interpolate(t.editor.degrees, { value: formatNumber(270) })}
             </Button>
           </Group>
           
-          <Text size="sm" fw={500}>Crop</Text>
+          <Text size="sm" fw={500}>{t.editor.crop}</Text>
           <Group data-testid="file-image-editor-crop">
             <Button 
               size="xs" 
@@ -908,7 +936,7 @@ export const FileImage: React.FC<FileImageProps> = ({
               onClick={() => setCropSquare((v) => !v)}
               data-testid="file-image-crop-square"
             >
-              {cropSquare ? 'Square crop ✓' : 'Square crop'}
+              {cropSquare ? t.editor.squareCropActive : t.editor.squareCrop}
             </Button>
           </Group>
           
@@ -918,14 +946,14 @@ export const FileImage: React.FC<FileImageProps> = ({
               onClick={() => setImageEditorOpen(false)}
               data-testid="file-image-editor-cancel"
             >
-              Cancel
+              {t.editor.cancel}
             </Button>
             <Button 
               onClick={handleApplyImageEdits} 
               disabled={!updateAllowed}
               data-testid="file-image-editor-apply"
             >
-              Apply Changes
+              {t.editor.apply}
             </Button>
           </Group>
         </Stack>

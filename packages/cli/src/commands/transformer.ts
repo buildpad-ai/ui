@@ -93,6 +93,12 @@ export function getImportMappings(config: Config): ImportMapping[] {
       from: /from ['"]@buildpad\/utils['"]/g,
       to: `from '${libAlias}/utils'`,
     },
+    // The i18n core ships as lib/buildpad/i18n/* (not under utils/), so its
+    // subpath must be mapped BEFORE the generic utils subpath rule below.
+    {
+      from: /from ['"]@buildpad\/utils\/i18n(\/[^'"]+)?['"]/g,
+      to: `from '${libAlias}/i18n$1'`,
+    },
     {
       from: /from ['"]@buildpad\/utils\/([^'"]+)['"]/g,
       to: `from '${libAlias}/utils/$1'`,
@@ -606,6 +612,15 @@ ${sha256Line} *
  */
 
 `;
+}
+
+/**
+ * Whether a copied file can carry the `/** @buildpad-origin *\/` header.
+ * JSON (dictionaries), Markdown and plain-text targets cannot — a comment
+ * makes them invalid — so they are copied verbatim and hashed as-is.
+ */
+export function originHeaderApplies(target: string): boolean {
+  return !/\.(json|jsonc|md|mdx|txt|svg|ya?ml)$/i.test(target);
 }
 
 /**

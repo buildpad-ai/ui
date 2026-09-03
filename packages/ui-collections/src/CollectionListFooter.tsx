@@ -4,6 +4,8 @@ import {
   Select,
   Text,
 } from "@mantine/core";
+import { useBuildpadTranslations } from "@buildpad/services";
+import type { CollectionsTranslations, DeepPartial } from "@buildpad/utils";
 import React from "react";
 
 export interface CollectionListFooterProps {
@@ -13,6 +15,8 @@ export interface CollectionListFooterProps {
   page: number;
   onPageChange: (page: number) => void;
   totalPages: number;
+  /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+  translations?: DeepPartial<CollectionsTranslations>;
 }
 
 export const CollectionListFooter: React.FC<CollectionListFooterProps> = ({
@@ -22,7 +26,11 @@ export const CollectionListFooter: React.FC<CollectionListFooterProps> = ({
   page,
   onPageChange,
   totalPages,
+  translations,
 }) => {
+  // Strings: component prop > provider dictionary > English defaults.
+  const t = useBuildpadTranslations((d) => d.collections, translations);
+
   return (
     <div className="collection-list-footer" data-testid="collection-list-footer">
       <Text size="sm" c="dimmed" data-testid="collection-list-footer-count">
@@ -30,7 +38,7 @@ export const CollectionListFooter: React.FC<CollectionListFooterProps> = ({
       </Text>
       <Group gap="sm">
         <Group gap={4}>
-          <Text size="xs" c="dimmed">Per page:</Text>
+          <Text size="xs" c="dimmed">{t.listFooter.perPage}</Text>
           <Select
             value={String(limit)}
             onChange={(value) => {

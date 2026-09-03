@@ -20,6 +20,8 @@ import {
 } from '@tabler/icons-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, FormsTranslations } from '@buildpad/utils';
 import type { Field, FormFieldConfig } from '@buildpad/types';
 
 export interface BuilderFieldRowProps {
@@ -33,6 +35,8 @@ export interface BuilderFieldRowProps {
   onSelect: () => void;
   /** Remove the field from the section (returns it to the palette). */
   onRemove: () => void;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
@@ -44,13 +48,17 @@ export function BuilderFieldRow({
   selected,
   onSelect,
   onRemove,
+  translations,
 }: BuilderFieldRowProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
+  const { formatCount } = useBuildpadI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: config.field });
 
   // Half-width fields occupy a single grid track (so two pair up side by side);
   // everything else spans the full row — mirroring the rendered form layout.
-  const isHalf = (config.width ?? 'full') === 'half';
+  const width = config.width ?? 'full';
+  const isHalf = width === 'half';
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -86,7 +94,7 @@ export function BuilderFieldRow({
             {...attributes}
             {...listeners}
             onClick={(e) => e.stopPropagation()}
-            aria-label="Drag to reorder"
+            aria-label={t.builderFieldRow.dragHandle}
             style={{ cursor: 'grab' }}
           >
             <IconGripVertical size={16} />
@@ -96,38 +104,38 @@ export function BuilderFieldRow({
           </Text>
           {missing && (
             <Badge size="xs" color="red" variant="light">
-              missing
+              {t.builderFieldRow.badge.missing}
             </Badge>
           )}
           {isExtra && (
             <Badge size="xs" color="grape" variant="light">
-              extra
+              {t.builderFieldRow.badge.extra}
             </Badge>
           )}
         </Group>
 
         <Group gap={4} wrap="nowrap">
           <Badge size="xs" variant="light" color="gray">
-            {config.width ?? 'full'}
+            {t.builderFieldRow.badge.width[width]}
           </Badge>
           {config.required && (
             <Badge size="xs" variant="light" color="orange">
-              req
+              {t.builderFieldRow.badge.required}
             </Badge>
           )}
           {(config.conditions?.length ?? 0) > 0 && (
             <Badge size="xs" variant="light" color="grape">
-              {config.conditions!.length} cond
+              {formatCount(config.conditions!.length, t.builderFieldRow.badge.conditions)}
             </Badge>
           )}
           {config.hidden ? (
-            <Tooltip label="Hidden by default">
+            <Tooltip label={t.builderFieldRow.hiddenTooltip}>
               <IconEyeOff size={14} color="var(--mantine-color-dimmed)" />
             </Tooltip>
           ) : (
             <IconEye size={14} color="var(--mantine-color-dimmed)" />
           )}
-          <Tooltip label="Remove field">
+          <Tooltip label={t.builderFieldRow.remove}>
             <ActionIcon
               variant="subtle"
               color="red"
@@ -136,7 +144,7 @@ export function BuilderFieldRow({
                 e.stopPropagation();
                 onRemove();
               }}
-              aria-label="Remove field"
+              aria-label={t.builderFieldRow.remove}
             >
               <IconTrash size={14} />
             </ActionIcon>

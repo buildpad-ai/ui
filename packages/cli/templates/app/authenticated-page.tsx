@@ -1,41 +1,39 @@
 "use client";
 
 import { Button, Card, Group, Stack, Text, Title } from "@mantine/core";
+import { useI18n } from "@/lib/i18n/provider";
 
 /**
- * Authenticated home page (served at "/").
+ * Authenticated home page (served at "/<lang>").
  *
- * Lives under app/(authenticated)/ so it renders inside AuthenticatedShell
- * (header, sidebar, profile menu). Add more pages under app/(authenticated)/
- * and they inherit the same chrome. No ColorSchemeToggle here — the shell
- * provides one; no outer padding — AppShell.Main already pads the content.
+ * Lives under app/[lang]/(authenticated)/ so it renders inside
+ * AuthenticatedShell (header, sidebar, profile menu). Add more pages under
+ * app/[lang]/(authenticated)/ and they inherit the same chrome. No
+ * ColorSchemeToggle here — the shell provides one; no outer padding —
+ * AppShell.Main already pads the content.
  */
 export default function HomePage() {
+  const { t } = useI18n();
+
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>Welcome</Title>
+        <Title order={2}>{t("app.home.welcome")}</Title>
         <Text c="dimmed" mt="xs">
-          You&apos;re signed in. This is your app home, rendered inside the
-          AuthenticatedShell. Customize the sidebar nav and brand in
-          app/(authenticated)/layout.tsx.
+          {t("app.home.intro")}
         </Text>
       </div>
 
       <Card withBorder radius="md" padding="lg">
         <Stack gap="sm">
-          <Title order={4}>Next steps</Title>
+          <Title order={4}>{t("app.home.nextSteps")}</Title>
           <Text size="sm" c="dimmed">
-            Install components with{" "}
-            <Text span ff="monospace">
-              npx buildpad add
-            </Text>
-            , then build your screens under app/(authenticated)/.
+            {t("app.home.installHint", { command: "npx buildpad add" })}
           </Text>
           <Group>
-            <Button>Primary Action</Button>
+            <Button>{t("app.home.primaryAction")}</Button>
             <Button variant="light" color="secondary">
-              Secondary Action
+              {t("app.home.secondaryAction")}
             </Button>
           </Group>
         </Stack>

@@ -8,6 +8,8 @@ import {
   IconList,
   IconSearch,
 } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/hooks';
+import type { DeepPartial, FilesTranslations } from '@buildpad/utils';
 
 export type FilesView = 'grid' | 'list';
 
@@ -19,6 +21,8 @@ export interface FilesToolbarProps {
   onNewFolder?: () => void;
   /** Extra controls rendered on the right (e.g. the Upload affordance). */
   actions?: React.ReactNode;
+  /** Per-instance overrides of the `files` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 /**
@@ -32,11 +36,14 @@ export const FilesToolbar: React.FC<FilesToolbarProps> = ({
   onViewChange,
   onNewFolder,
   actions,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
+
   return (
     <Group justify="space-between" wrap="wrap" gap="sm" data-testid="files-toolbar">
       <TextInput
-        placeholder="Search files…"
+        placeholder={t.filesToolbar.searchPlaceholder}
         value={search}
         onChange={(e) => onSearchChange(e.currentTarget.value)}
         leftSection={<IconSearch size={16} />}
@@ -52,7 +59,7 @@ export const FilesToolbar: React.FC<FilesToolbarProps> = ({
             onClick={onNewFolder}
             data-testid="files-new-folder"
           >
-            New Folder
+            {t.filesToolbar.newFolder}
           </Button>
         )}
 
@@ -68,7 +75,7 @@ export const FilesToolbar: React.FC<FilesToolbarProps> = ({
               label: (
                 <>
                   <IconLayoutGrid size={16} />
-                  <VisuallyHidden>Grid view</VisuallyHidden>
+                  <VisuallyHidden>{t.filesToolbar.gridView}</VisuallyHidden>
                 </>
               ),
             },
@@ -77,7 +84,7 @@ export const FilesToolbar: React.FC<FilesToolbarProps> = ({
               label: (
                 <>
                   <IconList size={16} />
-                  <VisuallyHidden>List view</VisuallyHidden>
+                  <VisuallyHidden>{t.filesToolbar.listView}</VisuallyHidden>
                 </>
               ),
             },

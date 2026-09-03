@@ -10,9 +10,9 @@
 "use client";
 
 import React, { use, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button, Group } from '@mantine/core';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
+import { IconTrash } from '@tabler/icons-react';
 import { CollectionList } from '@/components/ui/collection-list';
 import { useLocalStorage } from '@/lib/buildpad/hooks';
 import type { BulkAction } from '@/components/ui/collection-list';
@@ -23,7 +23,8 @@ export default function CollectionPage({
   params: Promise<{ collection: string }>;
 }) {
   const { collection } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const { setValue: setLastAccessed } = useLocalStorage<string>('last-accessed-collection');
 
   // Track last accessed collection
@@ -33,11 +34,11 @@ export default function CollectionPage({
 
   const bulkActions: BulkAction[] = [
     {
-      label: 'Delete',
+      label: t('app.common.delete'),
       icon: <IconTrash size={16} />,
       color: 'red',
       action: async (selectedIds) => {
-        if (!confirm(`Delete ${selectedIds.length} item(s)?`)) return;
+        if (!confirm(t('app.content.deleteConfirm', { count: selectedIds.length }))) return;
         try {
           await fetch(`/api/items/${collection}`, {
             method: 'DELETE',

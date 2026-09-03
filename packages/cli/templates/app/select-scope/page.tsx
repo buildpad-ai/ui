@@ -11,13 +11,15 @@
  * Add to middleware / layout to redirect here when daas_resource_uri is absent.
  *
  * @buildpad/origin: scope-routes/select-scope-page
- * @buildpad/version: 1.0.0
+ * @buildpad/version: 2.0.0
  */
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
 import {
   Stack,
   Title,
@@ -46,7 +48,8 @@ interface ScopeItem {
 export default function SelectScopePage() {
   const [scopes, setScopes] = useState<ScopeItem[] | null>(null); // null = loading
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
   const { buildUrl, getHeaders } = useDaaSContext();
@@ -72,8 +75,9 @@ export default function SelectScopePage() {
         setScopes(selectable);
       })
       .catch((err: unknown) => {
-        setFetchError(err instanceof Error ? err.message : 'Failed to load scopes');
+        setFetchError(err instanceof Error ? err.message : t('app.scope.loadFailed'));
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   const selectScope = (uri: string) => {
@@ -84,7 +88,7 @@ export default function SelectScopePage() {
   if (fetchError) {
     return (
       <Center h="100vh">
-        <Alert color="red" icon={<IconAlertCircle size={16} />} title="Error">
+        <Alert color="red" icon={<IconAlertCircle size={16} />} title={t('app.scope.errorTitle')}>
           {fetchError}
         </Alert>
       </Center>
@@ -104,9 +108,9 @@ export default function SelectScopePage() {
       <Center h="100vh">
         <Stack align="center" gap="md">
           <IconSitemap size={48} stroke={1} color="var(--mantine-color-gray-5)" />
-          <Title order={3}>No access</Title>
+          <Title order={3}>{t('app.scope.noAccessTitle')}</Title>
           <Text c="dimmed" ta="center">
-            You have not been assigned to any scope. Contact your administrator.
+            {t('app.scope.noAccessBody')}
           </Text>
         </Stack>
       </Center>
@@ -117,20 +121,20 @@ export default function SelectScopePage() {
     <Center h="100vh">
       <Stack gap="lg" w={400}>
         <Stack gap={4}>
-          <Title order={2}>Select your workspace</Title>
+          <Title order={2}>{t('app.scope.selectTitle')}</Title>
           <Text c="dimmed" size="sm">
-            Choose the scope you want to work in.
+            {t('app.scope.selectSubtitle')}
           </Text>
         </Stack>
 
         {errorParam === 'access_denied' && (
           <Alert color="orange" icon={<IconAlertCircle size={16} />}>
-            You don&apos;t have access to that scope. Please select another.
+            {t('app.scope.accessDenied')}
           </Alert>
         )}
         {errorParam === 'invalid_scope' && (
           <Alert color="yellow" icon={<IconAlertCircle size={16} />}>
-            Your previous session scope is no longer valid. Please select again.
+            {t('app.scope.invalidScope')}
           </Alert>
         )}
 
@@ -147,7 +151,7 @@ export default function SelectScopePage() {
                   )}
                 </Stack>
                 <Button size="xs" variant="light">
-                  Select
+                  {t('app.scope.select')}
                 </Button>
               </Group>
             </Paper>

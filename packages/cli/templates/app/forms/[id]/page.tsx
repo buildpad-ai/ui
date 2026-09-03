@@ -11,7 +11,8 @@
 
 import React, { use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useLocaleHref, useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
 import { Anchor, Breadcrumbs, Button, Group, Stack, Text } from '@mantine/core';
 import { IconPlayerPlay } from '@tabler/icons-react';
 import { FormBuilder } from '@/components/ui/form-builder';
@@ -22,23 +23,25 @@ export default function EditFormPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const href = useLocaleHref();
+  const { t } = useI18n();
 
   return (
     <Stack gap="md">
       <Group justify="space-between">
         <Breadcrumbs>
-          <Anchor component={Link} href="/forms" size="sm">
-            Forms
+          <Anchor component={Link} href={href('/forms')} size="sm">
+            {t('app.forms.title')}
           </Anchor>
-          <Text size="sm">Edit form</Text>
+          <Text size="sm">{t('app.forms.editForm')}</Text>
         </Breadcrumbs>
         <Button
           variant="light"
           leftSection={<IconPlayerPlay size={16} />}
           onClick={() => router.push(`/forms/${id}/fill`)}
         >
-          Fill out
+          {t('app.forms.fillOut')}
         </Button>
       </Group>
       <FormBuilder definitionId={id} />

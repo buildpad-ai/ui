@@ -71,6 +71,7 @@ import {
   transformVFormImports,
   addOriginHeader,
   hashTransformed,
+  originHeaderApplies,
 } from './transformer.js';
 import {
   computeEntryStaleness,
@@ -79,7 +80,7 @@ import {
 } from '../utils/staleness.js';
 import { threeWayMerge } from '../utils/three-way-merge.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
-import { applyNavItems } from './add.js';
+import { applyNavItems, copyLibModule } from './add.js';
 
 async function getRegistry(): Promise<Registry> {
   try {
@@ -120,7 +121,7 @@ async function transformContent(
  */
 function transformLibContent(
   rawContent: string,
-  file: { source: string },
+  file: { source: string; target: string },
   moduleName: string,
   config: Config,
   sourcePackage: string,
@@ -128,7 +129,9 @@ function transformLibContent(
 ): string {
   let content = transformImports(rawContent, config);
   const fileName = path.basename(file.source, path.extname(file.source));
-  content = addOriginHeader(content, `${moduleName}/${fileName}`, sourcePackage, version);
+  if (originHeaderApplies(file.target)) {
+    content = addOriginHeader(content, `${moduleName}/${fileName}`, sourcePackage, version);
+  }
   return content;
 }
 
@@ -344,6 +347,33 @@ function reportRemovedFiles(
   return removed;
 }
 
+/**
+ * Install lib modules an entry depends on that the project does not have yet.
+ * Returns true when something was installed (the manifest must be saved).
+ */
+async function installMissingLibDeps(
+  deps: string[] | undefined,
+  registry: Registry,
+  config: Config,
+  cwd: string,
+  dryRun: boolean,
+  externalDeps: Set<string>
+): Promise<boolean> {
+  let installed = false;
+  for (const dep of deps ?? []) {
+    if (config.installedLib.includes(dep) || !registry.lib[dep]) continue;
+    if (dryRun) {
+      console.log(chalk.dim(`    would install missing lib dependency: ${dep}`));
+      continue;
+    }
+    const depSpinner = ora(`    Installing missing lib dependency: ${dep}...`).start();
+    await copyLibModule(dep, registry, config, cwd, depSpinner);
+    registry.lib[dep].dependencies?.forEach(d => externalDeps.add(d.replace(/@[^@/]*$/, '')));
+    installed = true;
+  }
+  return installed;
+}
+
 export async function upgrade(options: UpgradeOptions) {
   const {
     components: requestedComponents,
@@ -465,6 +495,10 @@ export async function upgrade(options: UpgradeOptions) {
     const sourcePackage = regComponent.sourcePackage ?? '@buildpad/ui-interfaces';
     const installedRecord = config.components?.[componentName];
     const staleness = computeEntryStaleness(registryFilesOf(regComponent), installedRecord);
+
+    if (await installMissingLibDeps(regComponent.internalDependencies, registry, config, cwd, dryRun, externalDeps)) {
+      dirty = true;
+    }
 
     if (!staleness.stale && !staleness.needsMigrate && !staleness.untracked && !force) {
       console.log(chalk.dim(`  ${componentName} — already up to date`));
@@ -594,6 +628,13 @@ export async function upgrade(options: UpgradeOptions) {
     const sourcePackage = mod.sourcePackage ?? '@buildpad/cli';
     const installedRecord = config.lib?.[moduleName];
     const isAdoption = !installedRecord;
+
+    // A release can give a module a new dependency (design-system → i18n).
+    // Install what is missing BEFORE writing files that import from it, or
+    // the upgraded copy fails to compile until the user runs `add` by hand.
+    if (await installMissingLibDeps(mod.internalDependencies, registry, config, cwd, dryRun, externalDeps)) {
+      dirty = true;
+    }
     // Iterate the same list staleness is computed from. Older lib modules
     // declare a single file as `path`/`target` rather than in `files`; counting
     // it as stale but never writing it would leave the module permanently

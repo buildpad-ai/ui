@@ -14,41 +14,9 @@ import {
   IconArrowRight,
   IconAlertCircle,
 } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
 import { useWorkflow } from './use-workflow';
 import type { WorkflowButtonProps, CommandOption } from './types';
-
-// Default API client using fetch
-const defaultApiClient = {
-  get: async (url: string, config?: { params?: Record<string, unknown> }) => {
-    const params = new URLSearchParams();
-    if (config?.params) {
-      Object.entries(config.params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, typeof value === 'string' ? value : JSON.stringify(value));
-        }
-      });
-    }
-    const queryString = params.toString();
-    const fullUrl = queryString ? `${url}?${queryString}` : url;
-    const response = await fetch(fullUrl, {
-      method: 'GET',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return { data: await response.json() };
-  },
-  post: async (url: string, data?: unknown) => {
-    const response = await fetch(url, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return { data: await response.json() };
-  },
-};
 
 /**
  * WorkflowButton Interface Component
@@ -75,7 +43,7 @@ const defaultApiClient = {
 export function WorkflowButton({
   disabled = false,
   readOnly = false,
-  placeholder = 'Initial State',
+  placeholder,
   choices = [],
   alwaysVisible = true,
   workflowField = 'status',
@@ -85,8 +53,14 @@ export function WorkflowButton({
   translationId,
   onChange,
   onTransition,
+  translations,
 }: WorkflowButtonProps) {
-  // Use workflow hook
+  // Dictionary strings; the `placeholder` prop wins over both the
+  // `translations` prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.workflowButton, translations, { placeholder });
+
+  // Use workflow hook (its default fetch client carries the dictionary's HTTP
+  // error message, so no separate client is needed here)
   const {
     workflowInstance,
     workflowInstanceId,
@@ -100,7 +74,7 @@ export function WorkflowButton({
     collection,
     versionKey,
     translationId,
-    apiClient: defaultApiClient,
+    translations,
   });
 
   const [currentState, setCurrentState] = useState<CommandOption | null>(null);
@@ -120,7 +94,7 @@ export function WorkflowButton({
   useEffect(() => {
     if (workflowInstance) {
       setCurrentState({
-        text: workflowInstance.current_state || 'Unknown',
+        text: workflowInstance.current_state || t.unknownCurrentState,
         value: workflowInstance.current_state || '',
         command: '',
         nextState: '',
@@ -130,7 +104,7 @@ export function WorkflowButton({
       setCurrentState(null);
       setTerminated(false);
     }
-  }, [workflowInstance]);
+  }, [workflowInstance, t]);
 
   // Handle transition selection
   const handleSelection = useCallback(
@@ -159,7 +133,7 @@ export function WorkflowButton({
       <Group gap="xs">
         <Loader size="sm" />
         <Text size="sm" c="dimmed">
-          Loading workflow...
+          {t.loading}
         </Text>
       </Group>
     );
@@ -180,7 +154,7 @@ export function WorkflowButton({
       <Group gap="sm" mb={errorMessage ? 'sm' : 0}>
         {workflowInstance ? (
           <Tooltip
-            label="You have unsaved edits"
+            label={t.unsavedEditsTooltip}
             disabled={!disabled}
             withArrow
           >
@@ -202,7 +176,7 @@ export function WorkflowButton({
                     loading={transitioning}
                     style={{ minWidth: 180 }}
                   >
-                    {transitioning ? 'Processing...' : currentState?.text || placeholder}
+                    {transitioning ? t.processing : currentState?.text || t.placeholder}
                   </Button>
                 </Menu.Target>
 
@@ -231,7 +205,7 @@ export function WorkflowButton({
           </Tooltip>
         ) : (
           <Text size="sm" c="dimmed">
-            {placeholder}
+            {t.placeholder}
           </Text>
         )}
       </Group>

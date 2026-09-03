@@ -1,6 +1,8 @@
 import { Box, Switch, SwitchProps, Text, useMantineTheme } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import React from "react";
+import { useBuildpadTranslations } from "@buildpad/services";
+import type { DeepPartial, InterfacesTranslations } from "@buildpad/utils";
 
 /**
  * Props for the Toggle interface component
@@ -63,6 +65,9 @@ export interface ToggleProps {
 
   /** Test ID for testing */
   "data-testid"?: string;
+
+  /** Per-instance overrides of the dictionary strings (`interfaces.toggle`) */
+  translations?: DeepPartial<InterfacesTranslations["toggle"]>;
 }
 
 /**
@@ -114,14 +119,18 @@ export const Toggle: React.FC<ToggleProps> = ({
   colorOff,
   size = "md",
   onChange,
-  labelOn = "On",
-  labelOff = "Off",
+  labelOn,
+  labelOff,
   showStateLabels = false,
   switchProps = {},
   "data-testid": testId,
+  translations,
   ...rest
 }) => {
   const theme = useMantineTheme();
+  // Dictionary strings; the `labelOn` / `labelOff` props win over both the
+  // `translations` prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.toggle, translations, { on: labelOn, off: labelOff });
 
   // Handle the change event
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,7 +170,7 @@ export const Toggle: React.FC<ToggleProps> = ({
     size,
     onLabel: defaultIconOn,
     offLabel: defaultIconOff,
-    "aria-label": switchProps?.["aria-label"] || label || "Toggle",
+    "aria-label": switchProps?.["aria-label"] || label || t.ariaLabel,
     ...(readOnly && { 'aria-readonly': true }),
     ...rest,
   };
@@ -201,7 +210,7 @@ export const Toggle: React.FC<ToggleProps> = ({
             fw={!checked ? 500 : 400}
             data-testid={testId ? `${testId}-label-off` : undefined}
           >
-            {labelOff}
+            {t.off}
           </Text>
           <Switch {...switchComponentProps} label={undefined} />
           <Text
@@ -210,7 +219,7 @@ export const Toggle: React.FC<ToggleProps> = ({
             fw={checked ? 500 : 400}
             data-testid={testId ? `${testId}-label-on` : undefined}
           >
-            {labelOn}
+            {t.on}
           </Text>
         </Box>
         {label && (

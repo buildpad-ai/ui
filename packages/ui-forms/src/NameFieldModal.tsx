@@ -20,7 +20,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, FormsTranslations } from '@buildpad/utils';
 import { toFieldKey, fieldKeyError } from './field-name';
+import { interpolateNodes } from './FormsEmptyState';
 
 export interface NameFieldModalProps {
   /** Whether the modal is open. */
@@ -33,6 +36,8 @@ export interface NameFieldModalProps {
   existingFieldNames: ReadonlySet<string>;
   /** Confirm with the derived, validated column key. */
   onConfirm: (fieldKey: string) => void;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
@@ -44,7 +49,9 @@ export function NameFieldModal({
   interfaceLabel,
   existingFieldNames,
   onConfirm,
+  translations,
 }: NameFieldModalProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
   const [name, setName] = useState('');
 
   // Start blank each time the modal opens.
@@ -54,8 +61,8 @@ export function NameFieldModal({
 
   const fieldKey = toFieldKey(name);
   const keyError = useMemo(
-    () => fieldKeyError(fieldKey, existingFieldNames),
-    [fieldKey, existingFieldNames],
+    () => fieldKeyError(fieldKey, existingFieldNames, t.fieldName.error),
+    [fieldKey, existingFieldNames, t],
   );
 
   const handleConfirm = () => {
@@ -64,24 +71,28 @@ export function NameFieldModal({
     setName('');
   };
 
+  const s = t.nameFieldModal;
+
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Name the new field"
+      title={s.title}
       centered
       data-testid="name-field-modal"
     >
       <Stack gap="sm">
         {interfaceLabel && (
           <Text size="xs" c="dimmed">
-            New <strong>{interfaceLabel}</strong> field
+            {interpolateNodes(s.interfaceHint, {
+              interfaceLabel: <strong>{interfaceLabel}</strong>,
+            })}
           </Text>
         )}
         <TextInput
-          label="Column name"
-          description="The real column name (snake_case). This can’t be changed later."
-          placeholder="e.g. steps_to_reproduce"
+          label={s.columnName.label}
+          description={s.columnName.description}
+          placeholder={s.columnName.placeholder}
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
           onKeyDown={(e) => {
@@ -93,19 +104,19 @@ export function NameFieldModal({
         />
         {fieldKey && fieldKey !== name.trim() && (
           <Text size="xs" c="dimmed">
-            Column: <strong>{fieldKey}</strong>
+            {interpolateNodes(s.derivedKey, { fieldKey: <strong>{fieldKey}</strong> })}
           </Text>
         )}
         <Group justify="flex-end" mt="xs">
           <Button variant="subtle" onClick={onClose}>
-            Cancel
+            {s.cancel}
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={!!keyError}
             data-testid="name-field-submit"
           >
-            Add field
+            {s.submit}
           </Button>
         </Group>
       </Stack>

@@ -28,6 +28,8 @@ import {
   type O2MRelationInfo,
 } from "@buildpad/hooks";
 import { CollectionForm, CollectionList } from "@buildpad/ui-collections";
+import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
+import { interpolate, type DeepPartial, type InterfacesTranslations } from "@buildpad/utils";
 import {
   IconAlertCircle,
   IconChevronDown,
@@ -155,6 +157,8 @@ export interface ListO2MProps {
   mockItems?: O2MItem[];
   /** Mock relationship info for demo/testing — partial O2MRelationInfo for demo purposes */
   mockRelationInfo?: Partial<O2MRelationInfo>;
+  /** Per-instance overrides of the dictionary strings (`interfaces.listO2M`) */
+  translations?: DeepPartial<InterfacesTranslations['listO2M']>;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -183,15 +187,6 @@ function interpolateFilter(
   } catch {
     return filter;
   }
-}
-
-/**
- * Format count with singular/plural.
- */
-function formatCount(n: number): string {
-  if (n === 0) return "No items";
-  if (n === 1) return "1 item";
-  return `${n.toLocaleString()} items`;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -241,7 +236,12 @@ export const ListO2M: React.FC<ListO2MProps> = ({
   parentValues,
   mockItems,
   mockRelationInfo,
+  translations,
 }) => {
+  // Precedence: `translations` prop > provider dictionary > English defaults.
+  const t = useBuildpadTranslations((d) => d.interfaces.listO2M, translations);
+  const { formatCount } = useBuildpadI18n();
+
   // `value` is accepted for interface parity with the other relational
   // components but is not read: this component is the source of truth for its
   // own pending changes and emits them through `onChange`.
@@ -731,9 +731,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           // authoritative and answers by deselecting every other child.
           // Withhold the emit and surface it — the staged change is visible
           // in the list but has NOT been handed to the parent form.
-          setPreserveError(
-            "Couldn't load the currently linked items, so the pending change was not staged for save.",
-          );
+          setPreserveError(t.errors.preserveFailed);
         }
         // With a cache, the synchronous emit above already delivered the
         // last known-good payload; a failed refresh only skips
@@ -993,7 +991,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
       }
     } catch (err) {
       console.error("Error staging items:", err);
-      setSelectError("Failed to select items. Please try again.");
+      setSelectError(t.errors.selectFailed);
     }
   };
 
@@ -1149,14 +1147,13 @@ export const ListO2M: React.FC<ListO2MProps> = ({
         )}
         <Alert
           icon={<IconAlertCircle size={16} />}
-          title="Configuration Error"
+          title={t.configError.title}
           color="red"
           data-testid="o2m-error"
         >
           <Text size="sm">{relationError}</Text>
           <Text size="xs" c="dimmed" mt="xs">
-            Note: In Storybook, relational interfaces require API proxy routes.
-            This component works fully in a Next.js app with DaaS integration.
+            {t.configError.storybookHint}
           </Text>
         </Alert>
       </Stack>
@@ -1167,11 +1164,11 @@ export const ListO2M: React.FC<ListO2MProps> = ({
     return (
       <Alert
         icon={<IconAlertCircle size={16} />}
-        title="Relationship not configured"
+        title={t.notConfigured.title}
         color="warning"
         data-testid="o2m-not-configured"
       >
-        The one-to-many relationship is not properly configured for this field.
+        {t.notConfigured.message}
       </Alert>
     );
   }
@@ -1232,7 +1229,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           color="warning"
           data-testid="o2m-singleton-warning"
         >
-          The related collection is a singleton. Only one item can exist.
+          {t.singletonWarning}
         </Alert>
       )}
 
@@ -1243,8 +1240,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           color="info"
           data-testid="o2m-unique-fk-notice"
         >
-          This relationship has a unique constraint. Only one related item is
-          allowed.
+          {t.uniqueConstraintNotice}
         </Alert>
       )}
 
@@ -1266,7 +1262,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
               onClick={() => setPreserveEpoch((v) => v + 1)}
               data-testid="o2m-preserve-retry"
             >
-              Retry
+              {t.retry}
             </Button>
           </Group>
         </Alert>
@@ -1280,7 +1276,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           <Group>
             {enableSearchFilter && layout === "table" && (
               <TextInput
-                placeholder="Search..."
+                placeholder={t.searchPlaceholder}
                 leftSection={<IconSearch size={16} />}
                 value={search}
                 onChange={(e) => {
@@ -1296,7 +1292,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           <Group>
             {totalCount > 0 && (
               <Text size="sm" c="dimmed" data-testid="o2m-count">
-                {formatCount(totalCount)}
+                {formatCount(totalCount, t.itemCount)}
               </Text>
             )}
 
@@ -1316,8 +1312,10 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                 onClick={handleBatchRemove}
                 data-testid="o2m-batch-remove"
               >
-                {effectiveRemoveAction === "delete" ? "Delete" : "Unlink"}{" "}
-                {selectedIds.size} selected
+                {formatCount(
+                  selectedIds.size,
+                  effectiveRemoveAction === "delete" ? t.batchRemove.delete : t.batchRemove.unlink,
+                )}
               </Button>
             )}
 
@@ -1328,7 +1326,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                 onClick={openSelectModal}
                 data-testid="o2m-select-btn"
               >
-                Add Existing
+                {t.addExisting}
               </Button>
             )}
 
@@ -1338,7 +1336,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                 onClick={handleCreateNew}
                 data-testid="o2m-create-btn"
               >
-                Create New
+                {t.createNew}
               </Button>
             )}
           </Group>
@@ -1347,7 +1345,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
         {/* Content */}
         {displayItems.length === 0 && !loading ? (
           <Paper p="xl" style={{ textAlign: "center" }} data-testid="o2m-empty">
-            <Text c="dimmed">No related items</Text>
+            <Text c="dimmed">{t.noItems}</Text>
           </Paper>
         ) : layout === "table" ? (
           /* ── Table Layout ─────────────────────────────────────────────── */
@@ -1388,7 +1386,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                           );
                         }
                       }}
-                      aria-label="Select all"
+                      aria-label={t.selectAll}
                       data-testid="o2m-select-all"
                     />
                   </Table.Th>
@@ -1419,7 +1417,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                     </Group>
                   </Table.Th>
                 ))}
-                <Table.Th style={{ width: 120 }}>Actions</Table.Th>
+                <Table.Th style={{ width: 120 }}>{t.columns.actions}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -1432,7 +1430,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                         size="xs"
                         checked={selectedIds.has(getPk(item))}
                         onChange={() => toggleSelection(getPk(item))}
-                        aria-label={`Select item ${getPk(item)}`}
+                        aria-label={interpolate(t.selectItem, { id: getPk(item) })}
                         data-testid={`o2m-check-${getPk(item)}`}
                       />
                     </Table.Td>
@@ -1472,19 +1470,19 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                     );
                     return (
                       <Table.Td key={fieldName}>
-                        <Text size="sm">{String(cellValue ?? "-")}</Text>
+                        <Text size="sm">{String(cellValue ?? t.emptyCell)}</Text>
                       </Table.Td>
                     );
                   })}
                   <Table.Td>
                     <Group gap="xs">
                       {enableLink && (
-                        <Tooltip label="View item">
+                        <Tooltip label={t.actions.viewItem}>
                           <ActionIcon
                             variant="subtle"
                             size="sm"
                             data-testid={`o2m-link-${getPk(item)}`}
-                            aria-label="View item"
+                            aria-label={t.actions.viewItem}
                           >
                             <IconExternalLink size={14} />
                           </ActionIcon>
@@ -1492,14 +1490,14 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                       )}
 
                       {!isDisabled && updateAllowed && (
-                        <Tooltip label="Edit">
+                        <Tooltip label={t.actions.edit}>
                           <ActionIcon
                             variant="subtle"
                             color="gray"
                             size="sm"
                             onClick={() => handleEditItem(item)}
                             data-testid={`o2m-edit-${getPk(item)}`}
-                            aria-label="Edit item"
+                            aria-label={t.actions.editItem}
                           >
                             <IconEdit size={14} />
                           </ActionIcon>
@@ -1513,8 +1511,8 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                           <Tooltip
                             label={
                               effectiveRemoveAction === "delete"
-                                ? "Delete"
-                                : "Unlink"
+                                ? t.actions.delete
+                                : t.actions.unlink
                             }
                           >
                             <ActionIcon
@@ -1525,8 +1523,8 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                               data-testid={`o2m-remove-${getPk(item)}`}
                               aria-label={
                                 effectiveRemoveAction === "delete"
-                                  ? "Delete item"
-                                  : "Unlink item"
+                                  ? t.actions.deleteItem
+                                  : t.actions.unlinkItem
                               }
                             >
                               {effectiveRemoveAction === "delete" ? (
@@ -1638,13 +1636,16 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           <Group justify="space-between" mt="md" data-testid="o2m-pagination">
             <Group>
               <Text size="sm" c="dimmed">
-                Showing {(currentPage - 1) * limit + 1} to{" "}
-                {Math.min(currentPage * limit, totalCount)} of {totalCount}
+                {interpolate(t.showingRange, {
+                  start: (currentPage - 1) * limit + 1,
+                  end: Math.min(currentPage * limit, totalCount),
+                  total: totalCount,
+                })}
               </Text>
             </Group>
 
             <Group>
-              <Text size="sm">Items per page:</Text>
+              <Text size="sm">{t.perPage}</Text>
               <Select
                 value={String(limit)}
                 onChange={(val) => {
@@ -1672,7 +1673,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
 
       {error && (
         <Text size="xs" c="red" data-testid="o2m-error-text">
-          {typeof error === "string" ? error : "Invalid value"}
+          {typeof error === "string" ? error : t.invalidValue}
         </Text>
       )}
 
@@ -1680,7 +1681,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
       <Modal
         opened={editModalOpened}
         onClose={closeEditModal}
-        title={isCreatingNew ? "Create New Item" : "Edit Item"}
+        title={isCreatingNew ? t.editModal.createTitle : t.editModal.editTitle}
         size="lg"
       >
         {relationInfo && relationInfo.relatedCollection && (
@@ -1716,13 +1717,13 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           closeSelectModal();
           setSelectError(null);
         }}
-        title="Select Existing Items"
+        title={t.selectModal.title}
         size="xl"
       >
         {selectError && (
           <Alert
             icon={<IconAlertCircle size={16} />}
-            title="Error"
+            title={t.selectModal.errorTitle}
             color="red"
             mb="md"
             withCloseButton
@@ -1735,11 +1736,11 @@ export const ListO2M: React.FC<ListO2MProps> = ({
         {!selectError && (
           <Alert
             icon={<IconAlertCircle size={16} />}
-            title="Items will be linked when you save"
+            title={t.selectModal.stagedTitle}
             color="info"
             mb="md"
           >
-            Selected items will be linked after you save the current item.
+            {t.selectModal.stagedMessage}
           </Alert>
         )}
 
@@ -1776,7 +1777,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                 }
                 bulkActions={[
                   {
-                    label: "Add Selected",
+                    label: t.selectModal.addSelected,
                     icon: <IconPlus size={14} />,
                     action: handleSelectItems,
                   },

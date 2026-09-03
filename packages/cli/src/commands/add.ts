@@ -20,7 +20,8 @@ import {
   transformIntraComponentImports,
   transformVFormImports,
   addOriginHeader,
-  hashTransformed
+  hashTransformed,
+  originHeaderApplies,
 } from './transformer.js';
 import { verifySourceSha256 } from '../utils/checksum.js';
 import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
@@ -282,7 +283,9 @@ export async function copyLibModule(
       let content = await readSource(libModule.path);
       verifySourceSha256(libModule.path, content, libModule.sourceSha256);
       content = transformImports(content, config);
-      content = addOriginHeader(content, moduleName, libSourcePackage, release);
+      if (originHeaderApplies(libModule.target)) {
+        content = addOriginHeader(content, moduleName, libSourcePackage, release);
+      }
       await fs.ensureDir(path.dirname(targetPath));
       await fs.writeFile(targetPath, content);
       writtenFiles.push({
@@ -319,20 +322,38 @@ export async function copyLibModule(
       // through here for consumers who already have the other twelve. Without
       // this guard every one of them is rewritten, silently discarding local
       // edits to files the header explicitly invites customising. Only write
-      // what is genuinely missing unless an overwrite was asked for.
+      // what is genuinely missing unless an overwrite was asked for —
+      // EXCEPT a file that is stale upstream and still pristine on disk: it is
+      // refreshed in place (nothing to lose), the same self-heal `add` applies
+      // to components. Otherwise a module gaining a file (i18n/*) would ship
+      // with a barrel that does not export what the new files need.
       if (!overwrite && fs.existsSync(targetPath)) {
         const existing = await fs.readFile(targetPath, 'utf-8');
-        writtenFiles.push(keepExisting(file, existing));
-        continue;
+        const prior = existingRecord?.files?.find(f => f.target === file.target);
+        const staleUpstream =
+          !!prior?.sourceSha256 && !!file.sourceSha256 && prior.sourceSha256 !== file.sourceSha256;
+        const pristine = !!prior && hashTransformed(existing) === prior.sha256;
+        if (!staleUpstream || !pristine) {
+          if (staleUpstream) {
+            spinner.warn(
+              `${file.target} is outdated but locally modified — keeping yours. Merge with: npx buildpad upgrade ${moduleName} --three-way`
+            );
+          }
+          writtenFiles.push(keepExisting(file, existing));
+          continue;
+        }
+        spinner.info(`${file.target} — refreshing unmodified copy (changed upstream)`);
       }
 
       if (await checkSource(file.source)) {
         let content = await readSource(file.source);
         verifySourceSha256(file.source, content, file.sourceSha256);
         content = transformImports(content, config);
-        // Extract filename for origin tracking
+        // Extract filename for origin tracking (JSON etc. cannot carry a comment header)
         const fileName = path.basename(file.source, path.extname(file.source));
-        content = addOriginHeader(content, `${moduleName}/${fileName}`, libSourcePackage, release);
+        if (originHeaderApplies(file.target)) {
+          content = addOriginHeader(content, `${moduleName}/${fileName}`, libSourcePackage, release);
+        }
         await fs.ensureDir(path.dirname(targetPath));
         await fs.writeFile(targetPath, content);
         writtenFiles.push({
@@ -392,8 +413,11 @@ export async function applyNavItems(
   const navPath = path.join(srcDir, 'components/layout/navigation.ts');
 
   const entryLine = (i: NonNullable<LibModule['navItems']>[number], indent = '  ') =>
-    `${indent}{ label: "${i.label}", href: "${i.href}", icon: ${i.icon}` +
+    `${indent}{ label: "${i.label}", ` +
+    (i.labelKey ? `labelKey: "${i.labelKey}", ` : '') +
+    `href: "${i.href}", icon: ${i.icon}` +
     (i.section ? `, section: "${i.section}"` : '') +
+    (i.sectionKey ? `, sectionKey: "${i.sectionKey}"` : '') +
     ` },`;
 
   const manualHint = () => {
@@ -959,9 +983,17 @@ export async function add(
     console.log(chalk.bold('\n🔌 Installing API routes and Supabase auth...\n'));
     const spinner = ora('Processing lib modules...').start();
 
-    // Install supabase-auth first (dependency of api-routes)
+    // Install supabase-auth first (dependency of api-routes). Its own
+    // dependency, i18n, is pulled in by copyLibModule's recursion.
     if (registry.lib['supabase-auth'] && !config.installedLib.includes('supabase-auth')) {
       await copyLibModule('supabase-auth', registry, config, cwd, spinner);
+    }
+
+    // Install i18n explicitly too: the login page (api-routes), the middleware
+    // (supabase-auth) and the app shell (design-system) all import from
+    // lib/i18n, so it must be complete before any of them is written.
+    if (registry.lib['i18n'] && !config.installedLib.includes('i18n')) {
+      await copyLibModule('i18n', registry, config, cwd, spinner);
     }
 
     // Install api-routes

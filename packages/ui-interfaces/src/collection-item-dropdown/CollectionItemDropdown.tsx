@@ -35,6 +35,8 @@ import {
 } from "@tabler/icons-react";
 import { useDisclosure, useDebouncedValue } from "@mantine/hooks";
 import { renderTemplate, resolveDisplayTemplate } from "../list-m2a/render-template";
+import { useBuildpadTranslations } from "@buildpad/services";
+import { interpolate, type DeepPartial, type InterfacesTranslations } from "@buildpad/utils";
 
 /**
  * Value type for CollectionItemDropdown
@@ -119,6 +121,8 @@ export interface CollectionItemDropdownProps {
     allowNone?: boolean;
     /** Items data for demo/mock mode */
     mockItems?: DisplayItem[];
+    /** Per-instance overrides of the dictionary strings (`interfaces.collectionItemDropdown`) */
+    translations?: DeepPartial<InterfacesTranslations['collectionItemDropdown']>;
 }
 
 /**
@@ -167,14 +171,16 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
     error,
     required = false,
     readOnly = false,
-    placeholder = "Select an item...",
+    placeholder,
     fields = ['id'],
     primaryKey = 'id',
     enableLink = false,
     searchable = true,
     allowNone = true,
     mockItems,
+    translations,
 }) => {
+    const t = useBuildpadTranslations((d) => d.interfaces.collectionItemDropdown, translations);
 
     // Internal collection state (for collection selection mode)
     const [internalCollection, setInternalCollection] = useState<string>(selectedCollectionProp || '');
@@ -582,8 +588,8 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
     // Check if we have valid configuration (only if collection selection is not enabled)
     if (!selectedCollection && !showCollectionSelect) {
         return (
-            <Alert icon={<IconAlertCircle size={16} />} title="Configuration Error" color="red" data-testid="collection-item-dropdown-config-error">
-                The selectedCollection prop is required for CollectionItemDropdown, or enable showCollectionSelect.
+            <Alert icon={<IconAlertCircle size={16} />} title={t.configError.title} color="red" data-testid="collection-item-dropdown-config-error">
+                {t.configError.message}
             </Alert>
         );
     }
@@ -614,10 +620,10 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                     value={collectionDraft}
                     onChange={(e) => handleCollectionInputChange(e.target.value)}
                     onBlur={handleCollectionInputBlur}
-                    placeholder="Select a collection..."
+                    placeholder={t.collectionSelect.placeholder}
                     disabled={disabled || readOnly}
-                    label="Collection"
-                    description="Select which collection to pick items from"
+                    label={t.collectionSelect.label}
+                    description={t.collectionSelect.description}
                     styles={{
                         input: {
                             fontFamily: 'var(--mantine-font-family-monospace, monospace)',
@@ -639,7 +645,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                     <ActionIcon
                                         variant="subtle"
                                         onClick={() => setCollectionMenuOpened(!collectionMenuOpened)}
-                                        title="Select existing collection"
+                                        title={t.collectionSelect.menuTooltip}
                                         data-testid="collection-select-menu-trigger"
                                     >
                                         {collectionsLoading ? <Loader size={14} /> : <IconList size={16} />}
@@ -676,7 +682,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                             <>
                                                 <Divider my="xs" />
                                                 <Text size="xs" c="dimmed" px="xs" py={4}>
-                                                    System
+                                                    {t.collectionSelect.systemSection}
                                                 </Text>
                                                 {systemCollections.map((col) => (
                                                     <Menu.Item
@@ -701,7 +707,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                         {/* Empty state */}
                                         {userCollections.length === 0 && systemCollections.length === 0 && !collectionsLoading && (
                                             <Text size="sm" c="dimmed" ta="center" p="md">
-                                                No collections found
+                                                {t.collectionSelect.empty}
                                             </Text>
                                         )}
 
@@ -754,7 +760,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                         e.stopPropagation();
                                         handleClear();
                                     }}
-                                    aria-label="Clear selection"
+                                    aria-label={t.clearSelection}
                                     data-testid="collection-item-dropdown-clear"
                                 />
                             ) : (
@@ -781,7 +787,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                             </Group>
                         ) : (
                             <Text size="sm" c="dimmed" data-testid="collection-item-dropdown-placeholder">
-                                {placeholder}
+                                {placeholder ?? t.placeholder}
                             </Text>
                         )}
                     </InputBase>
@@ -792,7 +798,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                         <Combobox.Search
                             value={search}
                             onChange={(event) => setSearch(event.currentTarget.value)}
-                            placeholder="Search..."
+                            placeholder={t.searchPlaceholder}
                             leftSection={<IconSearch size={14} />}
                             data-testid="collection-item-dropdown-search"
                         />
@@ -804,12 +810,12 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                 <Combobox.Empty>
                                     <Group justify="center" py="xs">
                                         <Loader size="sm" />
-                                        <Text size="sm" c="dimmed">Loading...</Text>
+                                        <Text size="sm" c="dimmed">{t.loading}</Text>
                                     </Group>
                                 </Combobox.Empty>
                             ) : availableItems.length === 0 ? (
                                 <Combobox.Empty data-testid="collection-item-dropdown-empty">
-                                    No items found
+                                    {t.noItems}
                                 </Combobox.Empty>
                             ) : (
                                 availableItems.map((item, index) => {
@@ -841,7 +847,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
             {enableLink && !disabled && !readOnly && (
                 <Group gap="xs">
                     {displayItem && (
-                        <Tooltip label="View item">
+                        <Tooltip label={t.viewItem}>
                             <ActionIcon
                                 variant="subtle"
                                 size="sm"
@@ -864,7 +870,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
             <Modal
                 opened={selectModalOpened}
                 onClose={closeSelectModal}
-                title={`Select from ${selectedCollection}`}
+                title={interpolate(t.selectModal.title, { collection: selectedCollection })}
                 size="xl"
                 data-testid="collection-item-dropdown-select-modal"
             >
@@ -872,7 +878,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                     <Stack gap="md">
                         {/* Search */}
                         <TextInput
-                            placeholder="Search..."
+                            placeholder={t.searchPlaceholder}
                             leftSection={<IconSearch size={16} />}
                             value={search}
                             onChange={(e) => {
@@ -894,7 +900,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                                 </Text>
                                             </Table.Th>
                                         ))}
-                                        <Table.Th style={{ width: 120 }}>Actions</Table.Th>
+                                        <Table.Th style={{ width: 120 }}>{t.selectModal.actionsColumn}</Table.Th>
                                     </Table.Tr>
                                 </Table.Thead>
                                 <Table.Tbody>
@@ -903,14 +909,14 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                             <Table.Td colSpan={fields.length + 1}>
                                                 <Group justify="center" py="md">
                                                     <Loader size="sm" />
-                                                    <Text size="sm" c="dimmed">Loading...</Text>
+                                                    <Text size="sm" c="dimmed">{t.loading}</Text>
                                                 </Group>
                                             </Table.Td>
                                         </Table.Tr>
                                     ) : availableItems.length === 0 ? (
                                         <Table.Tr>
                                             <Table.Td colSpan={fields.length + 1}>
-                                                <Text ta="center" c="dimmed" py="md">No items found</Text>
+                                                <Text ta="center" c="dimmed" py="md">{t.noItems}</Text>
                                             </Table.Td>
                                         </Table.Tr>
                                     ) : (
@@ -932,12 +938,12 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                                 >
                                                     {fields.map(f => (
                                                         <Table.Td key={f}>
-                                                            <Text size="sm">{String(item[f] || '-')}</Text>
+                                                            <Text size="sm">{String(item[f] || t.selectModal.emptyCell)}</Text>
                                                         </Table.Td>
                                                     ))}
                                                     <Table.Td>
                                                         <Group gap="xs">
-                                                            <Tooltip label="Select">
+                                                            <Tooltip label={t.selectModal.select}>
                                                                 <ActionIcon
                                                                     variant={isSelected ? 'filled' : 'light'}
                                                                     size="sm"
@@ -951,7 +957,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                                                 </ActionIcon>
                                                             </Tooltip>
                                                             {enableLink && (
-                                                                <Tooltip label="View">
+                                                                <Tooltip label={t.selectModal.view}>
                                                                     <ActionIcon
                                                                         variant="subtle"
                                                                         color="gray"

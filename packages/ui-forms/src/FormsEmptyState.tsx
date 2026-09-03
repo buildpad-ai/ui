@@ -12,11 +12,34 @@
 
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Alert, Button, Code, Group, List, Stack, Text } from '@mantine/core';
 import { IconDatabaseOff, IconDatabasePlus } from '@tabler/icons-react';
-import { CollectionsService } from '@buildpad/services';
+import { CollectionsService, useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, FormsTranslations } from '@buildpad/utils';
 import type { CollectionSpec } from '@buildpad/types';
+
+/**
+ * `interpolate()` for copy whose `{placeholders}` render as React nodes
+ * (`<strong>`, `<Code>`), so a translation keeps control of the word order
+ * around the markup. Unknown placeholders stay visible, like `interpolate()`.
+ *
+ * Shared by the builder's rich-text copy (`FormBuilder`, `NameFieldModal`); it
+ * lives here rather than in a module of its own because the registry copies the
+ * package into consumer apps file by file.
+ */
+export function interpolateNodes(
+  template: string,
+  values: Record<string, ReactNode>,
+): ReactNode {
+  return template.split(/(\{\w+\})/).map((part, index) => {
+    const match = /^\{(\w+)\}$/.exec(part);
+    if (match && Object.prototype.hasOwnProperty.call(values, match[1])) {
+      return <Fragment key={index}>{values[match[1]]}</Fragment>;
+    }
+    return part;
+  });
+}
 
 export interface FormsEmptyStateProps {
   /** The configured definitions collection name (default `fb_definitions`). */
@@ -31,9 +54,16 @@ export interface FormsEmptyStateProps {
   canCreateCollection?: boolean;
   /** Called after the collection is successfully created (e.g. to reload). */
   onCreated?: () => void;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
-/** Field specs for the definitions collection (beyond the baseline id + extras). */
+/**
+ * Field specs for the definitions collection (beyond the baseline id + extras).
+ * The labels are persisted as DaaS schema metadata of the provisioned
+ * collection (not rendered here), so they stay English rather than baking the
+ * clicking user's locale into a shared schema.
+ */
 function definitionsFields(): CollectionSpec['fields'] {
   return [
     { field: 'name', type: 'string', label: 'Name', required: true },
@@ -58,7 +88,9 @@ export function FormsEmptyState({
   error,
   canCreateCollection = false,
   onCreated,
+  translations,
 }: FormsEmptyStateProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -68,55 +100,61 @@ export function FormsEmptyState({
     try {
       await new CollectionsService().createCollection({
         collection: formsCollection,
+        // Persisted collection description (schema metadata), not UI copy.
         note: 'Form builder form definitions',
         fields: definitionsFields(),
       });
       onCreated?.();
     } catch (err) {
       setCreateError(
-        err instanceof Error ? err.message : 'Failed to create the collection',
+        err instanceof Error ? err.message : t.formsEmptyState.error.createFailed,
       );
     } finally {
       setCreating(false);
     }
   };
 
+  const s = t.formsEmptyState;
+
   return (
     <Alert
       icon={<IconDatabaseOff size={18} />}
       color="yellow"
-      title="Form definitions collection not found"
+      title={s.title}
       data-testid="forms-empty-state"
     >
       <Stack gap="xs">
         <Text size="sm">
-          The form builder stores form definitions as items in a collection named{' '}
-          <Code>{formsCollection}</Code>, which doesn&apos;t exist yet.
-          {canCreateCollection
-            ? ' Create it in one click below, or set it up manually with these fields:'
-            : ' Create it once via the Data Model editor (or the DDL API) with these fields:'}
+          {interpolateNodes(s.intro, { collection: <Code>{formsCollection}</Code> })}{' '}
+          {canCreateCollection ? s.introCanCreate : s.introManual}
         </Text>
         <List size="sm" spacing={2}>
           <List.Item>
-            <Code>id</Code> — uuid (primary key)
+            {interpolateNodes(s.fields.id, { field: <Code>id</Code> })}
           </List.Item>
           <List.Item>
-            <Code>name</Code> — string (form name)
+            {interpolateNodes(s.fields.name, { field: <Code>name</Code> })}
           </List.Item>
           <List.Item>
-            <Code>target_collection</Code> — string (collection the form
-            targets)
+            {interpolateNodes(s.fields.targetCollection, {
+              field: <Code>target_collection</Code>,
+            })}
           </List.Item>
           <List.Item>
-            <Code>key</Code> — string, nullable (optional form discriminator)
+            {interpolateNodes(s.fields.key, { field: <Code>key</Code> })}
           </List.Item>
           <List.Item>
-            <Code>definition</Code> — json (the form definition body)
+            {interpolateNodes(s.fields.definition, { field: <Code>definition</Code> })}
           </List.Item>
         </List>
         <Text size="xs" c="dimmed">
-          It must not be a <Code>daas_</Code>-prefixed system collection.
-          {!canCreateCollection && ' Once created, reload this page.'}
+          {interpolateNodes(s.systemPrefixWarning, { prefix: <Code>daas_</Code> })}
+          {!canCreateCollection && (
+            <>
+              {' '}
+              {s.reloadHint}
+            </>
+          )}
         </Text>
 
         {canCreateCollection && (
@@ -128,7 +166,7 @@ export function FormsEmptyState({
               onClick={handleCreate}
               data-testid="forms-create-collection"
             >
-              Create collection
+              {s.createCollection}
             </Button>
           </Group>
         )}

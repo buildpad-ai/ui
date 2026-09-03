@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { notifications } from '@mantine/notifications';
+import { interpolate } from '@buildpad/utils';
+import { useBuildpadI18n, useBuildpadTranslations } from './useBuildpadI18n';
 import type { M2MRelationInfo } from './useRelationM2M';
 import { apiRequest, isValidPrimaryKey } from './utils';
 
@@ -62,6 +64,10 @@ export function useRelationM2MItems(
 
   // Check if operations can be performed (item must be saved first)
   const canPerformOperations = isValidPrimaryKey(primaryKey);
+
+  // Notification strings from the shared dictionary (English without a provider).
+  const t = useBuildpadTranslations((d) => d.hooks.relations);
+  const { formatCount } = useBuildpadI18n();
 
   // Resolved once, defensively — matching the sibling hooks. A hand-built
   // `relationInfo` (a supported pattern) without this field used to throw
@@ -169,14 +175,14 @@ export function useRelationM2MItems(
 
     } catch {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to load related items',
+        title: t.errorTitle,
+        message: t.loadItemsFailed,
         color: 'red',
       });
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
-  }, [relationInfo, primaryKey, junctionPKField, junctionFieldName, relatedPKField]);
+  }, [relationInfo, primaryKey, junctionPKField, junctionFieldName, relatedPKField, t]);
 
   /** Re-run the last successful load, so state isn't stale after a mutation. */
   const refresh = useCallback(async () => {
@@ -206,8 +212,8 @@ export function useRelationM2MItems(
 
     if (!isValidPrimaryKey(primaryKey)) {
       notifications.show({
-        title: 'Save Required',
-        message: 'Please save the item first before adding related items',
+        title: t.saveRequiredTitle,
+        message: t.saveFirst,
         color: 'yellow',
       });
       return null;
@@ -231,8 +237,8 @@ export function useRelationM2MItems(
       );
 
       notifications.show({
-        title: 'Success',
-        message: 'Item added successfully',
+        title: t.successTitle,
+        message: t.itemAdded,
         color: 'green',
       });
       await refresh();
@@ -242,13 +248,13 @@ export function useRelationM2MItems(
       return result?.data ? aliasJunctionPk(result.data, junctionPKField) : null;
     } catch {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to add item',
+        title: t.errorTitle,
+        message: t.addItemFailed,
         color: 'red',
       });
       throw new Error('Failed to add item');
     }
-  }, [relationInfo, primaryKey, junctionPKField, nextSortValue, refresh]);
+  }, [relationInfo, primaryKey, junctionPKField, nextSortValue, refresh, t]);
 
   // Select existing items from the RELATED collection
   const selectItems = useCallback(async (selectedIds: (string | number)[]) => {
@@ -258,8 +264,8 @@ export function useRelationM2MItems(
 
     if (!isValidPrimaryKey(primaryKey)) {
       notifications.show({
-        title: 'Save Required',
-        message: 'Please save the item first before adding related items',
+        title: t.saveRequiredTitle,
+        message: t.saveFirst,
         color: 'yellow',
       });
       return;
@@ -300,10 +306,10 @@ export function useRelationM2MItems(
       const failed = results.length - created.length;
 
       notifications.show({
-        title: failed ? 'Partially added' : 'Success',
+        title: failed ? t.partiallyAddedTitle : t.successTitle,
         message: failed
-          ? `Added ${created.length} of ${results.length} items; ${failed} failed`
-          : `Added ${created.length} items`,
+          ? interpolate(t.addedPartial, { added: created.length, total: results.length, failed })
+          : formatCount(created.length, t.addedCount),
         color: failed ? 'yellow' : 'green',
       });
 
@@ -313,13 +319,13 @@ export function useRelationM2MItems(
       return created;
     } catch {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to add selected items',
+        title: t.errorTitle,
+        message: t.addSelectedFailed,
         color: 'red',
       });
       throw new Error('Failed to add selected items');
     }
-  }, [relationInfo, primaryKey, junctionPKField, nextSortValue, refresh]);
+  }, [relationInfo, primaryKey, junctionPKField, nextSortValue, refresh, t, formatCount]);
 
   // Remove item (delete junction record)
   const removeItem = useCallback(async (item: M2MItem) => {
@@ -334,8 +340,8 @@ export function useRelationM2MItems(
     const pk = (item[junctionPKField] ?? item.id) as string | number | undefined;
     if (!isValidPrimaryKey(pk)) {
       notifications.show({
-        title: 'Error',
-        message: 'Cannot remove this item: it has no primary key',
+        title: t.errorTitle,
+        message: t.removeNoPrimaryKey,
         color: 'red',
       });
       throw new Error('Failed to remove item: missing primary key');
@@ -349,20 +355,20 @@ export function useRelationM2MItems(
         }
       );
       notifications.show({
-        title: 'Success',
-        message: 'Item removed successfully',
+        title: t.successTitle,
+        message: t.itemRemoved,
         color: 'green',
       });
       await refresh();
     } catch {
       notifications.show({
-        title: 'Error',
-        message: 'Failed to remove item',
+        title: t.errorTitle,
+        message: t.removeItemFailed,
         color: 'red',
       });
       throw new Error('Failed to remove item');
     }
-  }, [relationInfo, junctionPKField, refresh]);
+  }, [relationInfo, junctionPKField, refresh, t]);
 
   // Update sort order for items
   /**
@@ -391,8 +397,8 @@ export function useRelationM2MItems(
     const unresolved = targets.filter(t => !isValidPrimaryKey(t.pk));
     if (unresolved.length > 0) {
       notifications.show({
-        title: 'Error',
-        message: 'Cannot reorder: some items have no primary key',
+        title: t.errorTitle,
+        message: t.reorderNoPrimaryKey,
         color: 'red',
       });
       throw new Error('Failed to update sort order: missing primary key');
@@ -418,8 +424,8 @@ export function useRelationM2MItems(
     const failed = results.filter(r => r.status === 'rejected').length;
     if (failed > 0) {
       notifications.show({
-        title: 'Error',
-        message: `Failed to reorder ${failed} of ${results.length} items`,
+        title: t.errorTitle,
+        message: interpolate(t.reorderFailed, { failed, total: results.length }),
         color: 'red',
       });
       // Re-read rather than trusting the requested order: some writes landed.
@@ -428,7 +434,7 @@ export function useRelationM2MItems(
     }
 
     setItems(sortedItems.map(item => aliasJunctionPk(item, junctionPKField)));
-  }, [relationInfo, junctionPKField, refresh]);
+  }, [relationInfo, junctionPKField, refresh, t]);
 
   // Move item up in sort order
   const moveItemUp = useCallback(async (index: number) => {

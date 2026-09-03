@@ -3,15 +3,22 @@
 import React from 'react';
 import { Button, Group, Modal, Stack, Text } from '@mantine/core';
 import { IconAlertTriangle } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 
 export interface DeleteConfirmModalProps {
   opened: boolean;
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
+  /** Default: the dictionary's "Confirm deletion". */
   title?: string;
+  /** Default: the dictionary's generic "Are you sure you want to delete this item? …". */
   description?: string;
+  /** Default: the dictionary's "Delete" (`common.delete`). */
   confirmLabel?: string;
   loading?: boolean;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -23,11 +30,15 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   opened,
   onClose,
   onConfirm,
-  title = 'Confirm deletion',
-  description = 'Are you sure you want to delete this item? This action cannot be undone.',
-  confirmLabel = 'Delete',
+  title,
+  description,
+  confirmLabel,
   loading = false,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+
   return (
     <Modal
       opened={opened}
@@ -35,7 +46,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
       title={
         <Group gap="xs">
           <IconAlertTriangle size={20} color="var(--mantine-color-red-6)" />
-          <Text fw={600}>{title}</Text>
+          <Text fw={600}>{title ?? t.deleteConfirm.title}</Text>
         </Group>
       }
       size="sm"
@@ -44,11 +55,11 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
     >
       <Stack gap="md">
         <Text size="sm" c="dimmed">
-          {description}
+          {description ?? t.deleteConfirm.description}
         </Text>
         <Group justify="flex-end" gap="sm">
           <Button variant="default" onClick={onClose} disabled={loading}>
-            Cancel
+            {common.cancel}
           </Button>
           <Button
             color="red"
@@ -56,7 +67,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             loading={loading}
             data-testid="users-delete-confirm-btn"
           >
-            {confirmLabel}
+            {confirmLabel ?? common.delete}
           </Button>
         </Group>
       </Stack>

@@ -11,6 +11,8 @@
  * @package @buildpad/ui-collections
  */
 
+import { defaultTranslations, interpolate } from '@buildpad/utils';
+
 /** The single jsonb column on the target collection that holds all extra answers. */
 export const EXTRAS_COLUMN = 'extras';
 
@@ -74,11 +76,14 @@ export function mergeExtras(
 /**
  * A clear, actionable error for when a screen uses `store: 'extras'` fields but
  * the target collection has no `extras` jsonb column to store them in.
+ *
+ * `template` is the `collections.form.errors.missingExtrasColumn` dictionary
+ * string (`{collection}` / `{extrasColumn}` placeholders); it defaults to the
+ * English text so callers outside React keep the previous behaviour.
  */
-export function missingExtrasColumnMessage(collection: string): string {
-  return (
-    `This screen has "extras" fields, but the "${collection}" collection has no ` +
-    `"${EXTRAS_COLUMN}" (json) column to store them. Add a "${EXTRAS_COLUMN}" json ` +
-    `column to "${collection}" (or switch those fields to real columns).`
-  );
+export function missingExtrasColumnMessage(
+  collection: string,
+  template: string = defaultTranslations.collections.form.errors.missingExtrasColumn,
+): string {
+  return interpolate(template, { collection, extrasColumn: EXTRAS_COLUMN });
 }

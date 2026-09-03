@@ -1,5 +1,7 @@
 import { Switch, SwitchProps } from "@mantine/core";
 import React from "react";
+import { useBuildpadTranslations } from "@buildpad/services";
+import { interpolate, type DeepPartial, type InterfacesTranslations } from "@buildpad/utils";
 
 /**
  * Props for the Boolean interface component
@@ -50,6 +52,9 @@ export interface BooleanProps {
     SwitchProps,
     "checked" | "onChange" | "disabled" | "label" | "size"
   >;
+
+  /** Per-instance overrides of the dictionary strings (`interfaces.boolean`) */
+  translations?: DeepPartial<InterfacesTranslations["boolean"]>;
 }
 
 /**
@@ -84,8 +89,11 @@ export const Boolean: React.FC<BooleanProps> = ({
   size = "sm",
   onChange,
   switchProps = {},
+  translations,
   ...rest
 }) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.boolean, translations);
+
   // Handle the change event
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (disabled || readOnly) {
@@ -106,7 +114,7 @@ export const Boolean: React.FC<BooleanProps> = ({
     checked,
     onChange: handleChange,
     disabled,
-    label: label ? (required ? `${label} *` : label) : undefined,
+    label: label ? (required ? interpolate(t.requiredLabel, { label }) : label) : undefined,
     description,
     error,
     size,

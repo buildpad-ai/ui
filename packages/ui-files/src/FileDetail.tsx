@@ -25,12 +25,14 @@ import {
 import { notifications } from '@mantine/notifications';
 import { getAssetUrl, formatFileSize, getFileCategory } from '@buildpad/types';
 import {
+  useBuildpadTranslations,
   useFiles,
   useFolders,
   usePermissions,
   type FileUpload,
   type Folder,
 } from '@buildpad/hooks';
+import { interpolate, type DeepPartial, type FilesTranslations } from '@buildpad/utils';
 import { FilePreview } from './FilePreview';
 import { FileMetadataForm, type FileMetadataValues, type FolderOption } from './FileMetadataForm';
 import { FileInfoPanel } from './FileInfoPanel';
@@ -45,6 +47,11 @@ export interface FileDetailProps {
   onBack?: () => void;
   /** DaaS collection used for RBAC checks. */
   filesCollection?: string;
+  /**
+   * Per-instance overrides of the `files` dictionary namespace, forwarded to
+   * every sub-component (prop > `BuildpadI18nProvider` > English defaults).
+   */
+  translations?: DeepPartial<FilesTranslations>;
 }
 
 /**
@@ -57,7 +64,10 @@ export const FileDetail: React.FC<FileDetailProps> = ({
   onDeleted,
   onBack,
   filesCollection = 'daas_files',
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.files, translations);
+  const common = useBuildpadTranslations((d) => d.common);
   const { getFile, updateFile, replaceFile, deleteFile, getDownloadUrl } = useFiles();
   const { fetchFolders } = useFolders();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
@@ -87,8 +97,8 @@ export const FileDetail: React.FC<FileDetailProps> = ({
         if (!cancelled) {
           notifications.show({
             color: 'red',
-            title: 'Failed to load file',
-            message: err instanceof Error ? err.message : 'Unknown error',
+            title: t.fileDetail.notifications.loadFailedTitle,
+            message: err instanceof Error ? err.message : t.unknownError,
           });
         }
       })
@@ -98,7 +108,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [id, getFile]);
+  }, [id, getFile, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,18 +141,18 @@ export const FileDetail: React.FC<FileDetailProps> = ({
           focal_point_y: values.focal_point_y,
         });
         setFile(updated);
-        notifications.show({ color: 'green', message: 'Changes saved' });
+        notifications.show({ color: 'green', message: t.fileDetail.notifications.saved });
       } catch (err) {
         notifications.show({
           color: 'red',
-          title: 'Save failed',
-          message: err instanceof Error ? err.message : 'Unknown error',
+          title: t.fileDetail.notifications.saveFailedTitle,
+          message: err instanceof Error ? err.message : t.unknownError,
         });
       } finally {
         setSaving(false);
       }
     },
-    [id, updateFile]
+    [id, updateFile, t]
   );
 
   const handleReplace = useCallback(
@@ -152,18 +162,18 @@ export const FileDetail: React.FC<FileDetailProps> = ({
       try {
         const updated = await replaceFile(id, newFile);
         setFile(updated);
-        notifications.show({ color: 'green', message: 'File replaced' });
+        notifications.show({ color: 'green', message: t.fileDetail.notifications.replaced });
       } catch (err) {
         notifications.show({
           color: 'red',
-          title: 'Replace failed',
-          message: err instanceof Error ? err.message : 'Unknown error',
+          title: t.fileDetail.notifications.replaceFailedTitle,
+          message: err instanceof Error ? err.message : t.unknownError,
         });
       } finally {
         setReplacing(false);
       }
     },
-    [id, replaceFile]
+    [id, replaceFile, t]
   );
 
   const handleDownload = useCallback(async () => {
@@ -179,19 +189,19 @@ export const FileDetail: React.FC<FileDetailProps> = ({
     setDeleting(true);
     try {
       await deleteFile(id);
-      notifications.show({ color: 'green', message: 'File deleted' });
+      notifications.show({ color: 'green', message: t.fileDetail.notifications.deleted });
       setDeleteOpen(false);
       onDeleted?.();
     } catch (err) {
       notifications.show({
         color: 'red',
-        title: 'Delete failed',
-        message: err instanceof Error ? err.message : 'Unknown error',
+        title: t.fileDetail.notifications.deleteFailedTitle,
+        message: err instanceof Error ? err.message : t.unknownError,
       });
     } finally {
       setDeleting(false);
     }
-  }, [id, deleteFile, onDeleted]);
+  }, [id, deleteFile, onDeleted, t]);
 
   if (loading) {
     return (
@@ -204,7 +214,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
   if (!file) {
     return (
       <Center mih={320}>
-        <Text c="dimmed">File not found.</Text>
+        <Text c="dimmed">{t.fileDetail.notFound}</Text>
       </Center>
     );
   }
@@ -216,7 +226,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
           {onBack && (
-            <ActionIcon variant="subtle" onClick={onBack} aria-label="Back">
+            <ActionIcon variant="subtle" onClick={onBack} aria-label={t.fileDetail.backAriaLabel}>
               <IconArrowLeft size={18} />
             </ActionIcon>
           )}
@@ -225,7 +235,10 @@ export const FileDetail: React.FC<FileDetailProps> = ({
               {file.title || file.filename_download}
             </Title>
             <Text size="xs" c="dimmed">
-              {file.type || 'Unknown'} · {formatFileSize(file.filesize)}
+              {interpolate(t.fileDetail.subtitle, {
+                type: file.type || t.fileDetail.unknownType,
+                size: formatFileSize(file.filesize),
+              })}
             </Text>
           </Stack>
         </Group>
@@ -238,7 +251,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
             onClick={() => setDeleteOpen(true)}
             data-testid="file-detail-delete"
           >
-            Delete
+            {common.delete}
           </Button>
         )}
       </Group>
@@ -247,13 +260,13 @@ export const FileDetail: React.FC<FileDetailProps> = ({
         <Grid.Col span={{ base: 12, md: 8 }}>
           <Tabs defaultValue="preview">
             <Tabs.List>
-              <Tabs.Tab value="preview">Preview</Tabs.Tab>
-              <Tabs.Tab value="details">Details</Tabs.Tab>
+              <Tabs.Tab value="preview">{t.fileDetail.tabs.preview}</Tabs.Tab>
+              <Tabs.Tab value="details">{t.fileDetail.tabs.details}</Tabs.Tab>
             </Tabs.List>
 
             <Tabs.Panel value="preview" pt="md">
               <Paper withBorder radius="md" p="md">
-                <FilePreview file={file} />
+                <FilePreview file={file} translations={translations} />
               </Paper>
             </Tabs.Panel>
 
@@ -265,6 +278,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
                 folderOptions={folderOptions}
                 showFocalPoint={isImage}
                 onSave={handleSave}
+                translations={translations}
               />
             </Tabs.Panel>
           </Tabs>
@@ -272,12 +286,12 @@ export const FileDetail: React.FC<FileDetailProps> = ({
 
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Stack gap="md">
-            <FileInfoPanel file={file} />
+            <FileInfoPanel file={file} translations={translations} />
 
             <Paper withBorder radius="md" p="md">
               <Stack gap="xs">
                 <Text size="sm" fw={600}>
-                  Actions
+                  {t.fileDetail.actions.heading}
                 </Text>
                 <Button
                   variant="default"
@@ -286,7 +300,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
                   fullWidth
                   data-testid="file-detail-download"
                 >
-                  Download
+                  {common.download}
                 </Button>
                 <Button
                   variant="default"
@@ -297,7 +311,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
                   rel="noopener noreferrer"
                   fullWidth
                 >
-                  Open in new tab
+                  {t.fileDetail.actions.openInNewTab}
                 </Button>
                 {updateAllowed && (
                   <FileButton onChange={handleReplace}>
@@ -310,7 +324,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
                         fullWidth
                         data-testid="file-detail-replace"
                       >
-                        Replace file
+                        {t.fileDetail.actions.replaceFile}
                       </Button>
                     )}
                   </FileButton>
@@ -327,6 +341,7 @@ export const FileDetail: React.FC<FileDetailProps> = ({
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteOpen(false)}
+        translations={translations}
       />
     </Stack>
   );
