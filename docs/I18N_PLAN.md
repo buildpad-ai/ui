@@ -160,4 +160,4 @@ Also decided: the app-level `I18nProvider` (lib/i18n) mounts `BuildpadI18nProvid
 | B4 Storybook decorator (`packages/storybook-i18n.tsx`, Locale toolbar in every preview) | done |
 | B2 ESLint rule `buildpad/no-untranslated-literal` (warn; error per migrated package via `I18N_MIGRATED`) | done |
 | B2 package migration (`ui-form`, `ui-table`, `ui-collections`, `ui-interfaces`, `ui-files`, `ui-users`, `ui-forms`, relation hooks) + B3 dates | done — ~1,700 literals, all packages at lint error level (`I18N_MIGRATED`), `id` catalog complete |
-| `add-i18n` skill update (already-prefixed default, `buildpad.*` = `BuildpadTranslations`) | patch prepared, to be applied in `buildpad-ai/skills` |
+| `add-i18n` skill update (already-prefixed default, `buildpad.*` = `BuildpadTranslations`) | patch in `docs/skill-patches/add-i18n-phase-2.patch`, to be applied in `buildpad-ai/skills` |
