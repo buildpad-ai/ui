@@ -19,6 +19,8 @@
  * - Inline styling option
  */
 
+import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
+import type { DeepPartial, TableTranslations } from "@buildpad/utils";
 import {
   closestCenter,
   DndContext,
@@ -78,10 +80,17 @@ export interface VTableProps {
   fixedHeader?: boolean;
   /** Show loading state */
   loading?: boolean;
-  /** Loading state text */
+  /** Loading state text (overrides `translations.loading`) */
   loadingText?: string;
-  /** Empty state text */
+  /** Empty state text (overrides `translations.noItems`) */
   noItemsText?: string;
+  /**
+   * Per-instance overrides for the `table` dictionary namespace (loading /
+   * empty text, control aria-labels, default cell formatting). Precedence:
+   * `loadingText` / `noItemsText` > `translations` > `BuildpadI18nProvider` >
+   * English defaults.
+   */
+  translations?: DeepPartial<TableTranslations>;
   /** Row height in pixels */
   rowHeight?: number;
   /** Use item keys instead of full items for selection */
@@ -139,6 +148,8 @@ interface SortableTableRowProps {
   hasClickListener: boolean;
   rowHeight: number;
   disabled: boolean;
+  /** Resolved `table` strings from the parent VTable */
+  translations: TableTranslations;
   renderCell?: (item: Item, header: Header) => React.ReactNode;
   renderAppend?: (item: Item) => React.ReactNode;
   onClick?: (event: React.MouseEvent) => void;
@@ -157,6 +168,7 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
   hasClickListener,
   rowHeight,
   disabled,
+  translations,
   renderCell,
   renderAppend,
   onClick,
@@ -201,6 +213,7 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
       // alongside the keyboard listeners — that is the element users actually
       // grab to reorder.
       dragHandleProps={{ ...attributes, ...listeners }}
+      translations={translations}
       renderCell={renderCell}
       renderAppend={renderAppend}
       onClick={onClick}
@@ -226,14 +239,15 @@ export const VTable: React.FC<VTableProps> = ({
   value = [],
   fixedHeader = false,
   loading = false,
-  loadingText = "Loading...",
-  noItemsText = "No items",
+  loadingText,
+  noItemsText,
   rowHeight = 48,
   selectionUseKeys = false,
   inline = false,
   disabled = false,
   clickable = true,
   className,
+  translations,
   renderCell,
   renderHeader,
   renderRowAppend,
@@ -249,6 +263,14 @@ export const VTable: React.FC<VTableProps> = ({
   onItemSelected,
   onManualSort,
 }) => {
+  // Strings: prop > provider dictionary > English defaults. The legacy
+  // loadingText / noItemsText props stay the top override of their two keys.
+  const t = useBuildpadTranslations((d) => d.table, translations, {
+    loading: loadingText,
+    noItems: noItemsText,
+  });
+  const { locale } = useBuildpadI18n();
+
   // Local reordering state
   const [reordering, setReordering] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -261,6 +283,17 @@ export const VTable: React.FC<VTableProps> = ({
       width: header.width && header.width < 24 ? 24 : header.width ?? null,
     })) as Header[];
   }, [headersProp]);
+
+  // <table summary> names the columns for assistive tech; the list separator
+  // follows the locale ("A, B, C" in English and Indonesian).
+  const summary = useMemo(() => {
+    const texts = internalHeaders.map((h) => h.text);
+    try {
+      return new Intl.ListFormat(locale, { type: "unit", style: "short" }).format(texts);
+    } catch {
+      return texts.join(", ");
+    }
+  }, [internalHeaders, locale]);
 
   // Internal sort state (fallback if not controlled)
   const internalSort = useMemo<Sort>(() => {
@@ -520,9 +553,10 @@ export const VTable: React.FC<VTableProps> = ({
       ref={tableRef}
       className={tableClasses}
     >
-      <table summary={internalHeaders.map((h) => h.text).join(", ")}>
+      <table summary={summary}>
         <TableHeader
           headers={internalHeaders}
+          translations={t}
           sort={internalSort}
           reordering={reordering}
           allowHeaderReorder={allowHeaderReorder}
@@ -563,7 +597,7 @@ export const VTable: React.FC<VTableProps> = ({
               <td className="full-colspan">
                 <Stack gap="xs" py="md">
                   <Text c="dimmed" ta="center" size="sm">
-                    {loadingText}
+                    {t.loading}
                   </Text>
                   {[1, 2, 3].map((i) => (
                     <Skeleton key={i} height={rowHeight} />
@@ -580,7 +614,7 @@ export const VTable: React.FC<VTableProps> = ({
             <tr className="no-items-text">
               <td className="full-colspan">
                 <Text c="dimmed" ta="center" py="xl">
-                  {noItemsText}
+                  {t.noItems}
                 </Text>
               </td>
             </tr>
@@ -610,6 +644,7 @@ export const VTable: React.FC<VTableProps> = ({
                     hasClickListener={!disabled && clickable}
                     rowHeight={rowHeight}
                     disabled={disabled || internalSort.by !== manualSortKey}
+                    translations={t}
                     renderCell={renderCell}
                     renderAppend={renderRowAppend}
                     onClick={(e) => handleRowClick(item, e)}

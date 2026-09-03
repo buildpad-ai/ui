@@ -120,6 +120,9 @@ function DaaSTable() {
 | `showManualSort` | `boolean` | `false` | Enable row drag-and-drop |
 | `allowHeaderReorder` | `boolean` | `false` | Enable column reordering |
 | `loading` | `boolean` | `false` | Show loading state |
+| `loadingText` | `string` | dictionary `table.loading` | Loading state text |
+| `noItemsText` | `string` | dictionary `table.noItems` | Empty state text |
+| `translations` | `DeepPartial<TableTranslations>` | - | Per-instance overrides of the `table` dictionary namespace (prop > `BuildpadI18nProvider` > English defaults) |
 | `disabled` | `boolean` | `false` | Disable interactions |
 | `value` | `any[]` | `[]` | Selected items |
 | `onUpdate` | `(value: any[]) => void` | - | Selection change handler |
