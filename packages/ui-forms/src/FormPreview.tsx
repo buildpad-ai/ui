@@ -28,7 +28,12 @@ import { Alert, Text } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { CollectionForm } from '@buildpad/ui-collections';
 import { VForm } from '@buildpad/ui-form';
-import { buildFieldsFromDefinition } from '@buildpad/utils';
+import { useBuildpadTranslations } from '@buildpad/services';
+import {
+  buildFieldsFromDefinition,
+  type DeepPartial,
+  type FormsTranslations,
+} from '@buildpad/utils';
 import type { Field, FormDefinition } from '@buildpad/types';
 
 export interface FormPreviewProps {
@@ -40,12 +45,19 @@ export interface FormPreviewProps {
    * on the auto-create flow; ignored once a `target_collection` is bound.
    */
   schemaFields?: Field[];
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
  * Render the draft definition as a non-persisting create-form preview.
  */
-export function FormPreview({ definition, schemaFields = [] }: FormPreviewProps) {
+export function FormPreview({
+  definition,
+  schemaFields = [],
+  translations,
+}: FormPreviewProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
   const hasFields = (definition.sections ?? []).some(
     (s) => (s.fields ?? []).length > 0,
   );
@@ -60,7 +72,7 @@ export function FormPreview({ definition, schemaFields = [] }: FormPreviewProps)
   if (!hasFields) {
     return (
       <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-        Add fields to a section to see a live preview.
+        {t.formPreview.emptyState}
       </Alert>
     );
   }
@@ -70,8 +82,7 @@ export function FormPreview({ definition, schemaFields = [] }: FormPreviewProps)
     return (
       <>
         <Text size="xs" c="dimmed" mb="xs">
-          Preview — the new collection isn’t created yet, so this renders your
-          in-progress fields. Conditions are live; submitting does nothing.
+          {t.formPreview.offlineHint}
         </Text>
         <VForm
           fields={offlineFields}
@@ -88,7 +99,7 @@ export function FormPreview({ definition, schemaFields = [] }: FormPreviewProps)
   return (
     <>
       <Text size="xs" c="dimmed" mb="xs">
-        Preview — submitting here does not create a record.
+        {t.formPreview.boundHint}
       </Text>
       {/* `key` forces a fresh mount when the target collection changes so the
           schema is re-loaded; the definition signature itself drives the

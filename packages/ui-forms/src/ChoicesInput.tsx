@@ -18,6 +18,8 @@
 
 import { useState } from 'react';
 import { Textarea } from '@mantine/core';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, FormsTranslations } from '@buildpad/utils';
 
 /** A single option: display `text` + stored `value`. */
 export interface Choice {
@@ -52,10 +54,12 @@ export interface ChoicesInputProps {
   value?: Choice[];
   /** Emit the parsed choices (or `undefined` when empty). */
   onChange: (choices: Choice[] | undefined) => void;
-  /** Field label. @default 'Choices' */
+  /** Field label. Defaults to the dictionary's `forms.choicesInput.label` ("Choices"). */
   label?: string;
-  /** Helper text. */
+  /** Helper text. Defaults to `forms.choicesInput.description`. */
   description?: string;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
@@ -64,16 +68,18 @@ export interface ChoicesInputProps {
 export function ChoicesInput({
   value,
   onChange,
-  label = 'Choices',
-  description = 'One per line. Use label=value to set a separate value.',
+  label,
+  description,
+  translations,
 }: ChoicesInputProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
   const [raw, setRaw] = useState(() => choicesToRaw(value));
 
   return (
     <Textarea
-      label={label}
-      description={description}
-      placeholder={'Low\nMedium\nHigh'}
+      label={label ?? t.choicesInput.label}
+      description={description ?? t.choicesInput.description}
+      placeholder={t.choicesInput.placeholder}
       autosize
       minRows={2}
       maxRows={6}

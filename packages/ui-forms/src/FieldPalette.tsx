@@ -59,9 +59,13 @@ import {
   type IconProps,
 } from '@tabler/icons-react';
 import { useDraggable } from '@dnd-kit/core';
+import { useBuildpadTranslations } from '@buildpad/services';
 import {
   PROVISIONABLE_INTERFACES,
+  type DeepPartial,
+  type FormsTranslations,
   type ProvisionableInterface,
+  type ProvisionableInterfaceGroup,
 } from '@buildpad/utils';
 import type { Field } from '@buildpad/types';
 
@@ -105,6 +109,42 @@ function interfaceIcon(value: string): TablerIcon {
   return INTERFACE_ICONS[value] ?? IconForms;
 }
 
+/** Dictionary key (`forms.interfaceCatalog.group`) of each catalog group. */
+const CATALOG_GROUP_KEYS: Record<
+  ProvisionableInterfaceGroup,
+  keyof FormsTranslations['interfaceCatalog']['group']
+> = {
+  Text: 'text',
+  'Rich content': 'richContent',
+  Selection: 'selection',
+  'Numeric & date': 'numericAndDate',
+  Geospatial: 'geospatial',
+};
+
+/** camelCase an interface id (`select-multiple-checkbox-tree` → `selectMultipleCheckboxTree`). */
+function catalogLabelKey(value: string): string {
+  return value.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+}
+
+/**
+ * Display label of a provisionable interface from the dictionary
+ * (`forms.interfaceCatalog.label`), falling back to the catalog's own label for
+ * an interface the dictionary does not know yet.
+ */
+export function catalogInterfaceLabel(
+  t: FormsTranslations,
+  descriptor: ProvisionableInterface,
+): string {
+  const labels = t.interfaceCatalog.label as Record<string, string | undefined>;
+  return labels[catalogLabelKey(descriptor.value)] ?? descriptor.label;
+}
+
+/** Display label of a catalog group (`forms.interfaceCatalog.group`). */
+export function catalogGroupLabel(t: FormsTranslations, group: string): string {
+  const key = CATALOG_GROUP_KEYS[group as ProvisionableInterfaceGroup];
+  return key ? t.interfaceCatalog.group[key] : group;
+}
+
 /**
  * The provisionable interfaces grouped by `ProvisionableInterface.group`, in
  * catalog order, for the field-type catalog.
@@ -142,6 +182,8 @@ export interface FieldPaletteProps {
    * @default false
    */
   canProvisionSchema?: boolean;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
@@ -194,9 +236,12 @@ function PaletteItem({
  */
 function NewFieldChip({
   descriptor,
+  label,
   onAddFieldType,
 }: {
   descriptor: ProvisionableInterface;
+  /** The chip's display label (resolved from the dictionary by the palette). */
+  label: string;
   onAddFieldType?: (interfaceValue: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -222,7 +267,7 @@ function NewFieldChip({
       <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
         <Icon size={14} color="var(--mantine-color-blue-6)" />
         <Text size="xs" truncate>
-          {descriptor.label}
+          {label}
         </Text>
       </Group>
     </UnstyledButton>
@@ -238,7 +283,9 @@ export function FieldPalette({
   onAddNewField,
   onAddFieldType,
   canProvisionSchema = false,
+  translations,
 }: FieldPaletteProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
   // Which catalog group is expanded (single-open accordion; first group open by
@@ -268,21 +315,22 @@ export function FieldPalette({
           group,
           items.filter(
             (i) =>
+              catalogInterfaceLabel(t, i).toLowerCase().includes(q) ||
               i.label.toLowerCase().includes(q) ||
               i.value.toLowerCase().includes(q),
           ),
         ] as [string, ProvisionableInterface[]],
     ).filter(([, items]) => items.length > 0);
-  }, [showCatalog, q]);
+  }, [showCatalog, q, t]);
 
   return (
     <Stack gap="xs" h="100%">
       <Text size="sm" fw={600}>
-        Fields
+        {t.fieldPalette.title}
       </Text>
       <TextInput
         size="xs"
-        placeholder="Search fields"
+        placeholder={t.fieldPalette.searchPlaceholder}
         leftSection={<IconSearch size={14} />}
         value={query}
         onChange={(e) => setQuery(e.currentTarget.value)}
@@ -292,11 +340,11 @@ export function FieldPalette({
           {showCatalog && (
             <Stack gap={4} data-testid="palette-catalog">
               <Text size="xs" c="dimmed" fw={500}>
-                Field types
+                {t.fieldPalette.catalog.title}
               </Text>
               {filteredCatalog.length === 0 ? (
                 <Text size="xs" c="dimmed" py={4}>
-                  No matching field types
+                  {t.fieldPalette.catalog.noMatch}
                 </Text>
               ) : (
                 <Accordion
@@ -335,7 +383,7 @@ export function FieldPalette({
                             fw={700}
                             style={{ letterSpacing: '0.04em' }}
                           >
-                            {group}
+                            {catalogGroupLabel(t, group)}
                           </Text>
                           <Badge
                             size="xs"
@@ -353,6 +401,7 @@ export function FieldPalette({
                             <NewFieldChip
                               key={descriptor.value}
                               descriptor={descriptor}
+                              label={catalogInterfaceLabel(t, descriptor)}
                               onAddFieldType={onAddFieldType}
                             />
                           ))}
@@ -373,23 +422,23 @@ export function FieldPalette({
               onClick={onAddNewField}
               data-testid="palette-add-new-field"
             >
-              Add extra field
+              {t.fieldPalette.addExtraField}
             </Button>
           )}
 
           <Stack gap={4} data-testid="palette-existing">
             {showCatalog && (
               <Text size="xs" c="dimmed" fw={500}>
-                Existing fields
+                {t.fieldPalette.existing.title}
               </Text>
             )}
             {filtered.length === 0 ? (
               <Text size="xs" c="dimmed" ta="center" py="sm">
                 {fields.length === 0
                   ? showCatalog
-                    ? 'Drag a field type above, or use “Add extra field”'
-                    : 'All fields placed'
-                  : 'No matching fields'}
+                    ? t.fieldPalette.existing.emptyWithCatalog
+                    : t.fieldPalette.existing.allPlaced
+                  : t.fieldPalette.existing.noMatch}
               </Text>
             ) : (
               filtered.map((field) => (

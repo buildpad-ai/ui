@@ -17,6 +17,8 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, FormsTranslations } from '@buildpad/utils';
 import { BuilderSection, SECTION_ID_PREFIX } from './BuilderSection';
 import type { Field, FormSection } from '@buildpad/types';
 
@@ -29,6 +31,8 @@ export interface BuilderCanvasProps {
   onRenameSection: (sectionId: string, title: string) => void;
   onRemoveSection: (sectionId: string) => void;
   onAddSection: () => void;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
@@ -43,15 +47,16 @@ export function BuilderCanvas({
   onRenameSection,
   onRemoveSection,
   onAddSection,
+  translations,
 }: BuilderCanvasProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
   const sectionIds = sections.map((s) => `${SECTION_ID_PREFIX}${s.id}`);
 
   return (
     <Stack gap="sm" data-testid="builder-canvas">
       {sections.length === 0 && (
         <Text size="sm" c="dimmed" ta="center" py="lg">
-          Add a section, then drag fields from the palette to start building the
-          form.
+          {t.builderCanvas.emptyState}
         </Text>
       )}
 
@@ -67,6 +72,7 @@ export function BuilderCanvas({
               onRemoveField={onRemoveField}
               onRenameSection={(title) => onRenameSection(section.id, title)}
               onRemoveSection={() => onRemoveSection(section.id)}
+              translations={translations}
             />
           ))}
         </Stack>
@@ -78,7 +84,7 @@ export function BuilderCanvas({
         onClick={onAddSection}
         data-testid="builder-add-section"
       >
-        Add section
+        {t.builderCanvas.addSection}
       </Button>
     </Stack>
   );

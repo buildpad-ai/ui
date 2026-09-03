@@ -28,6 +28,8 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, FormsTranslations } from '@buildpad/utils';
 import { BuilderFieldRow } from './BuilderFieldRow';
 import type { Field, FormSection } from '@buildpad/types';
 
@@ -46,6 +48,8 @@ export interface BuilderSectionProps {
   onRemoveField: (field: string) => void;
   onRenameSection: (title: string) => void;
   onRemoveSection: () => void;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
 /**
@@ -59,7 +63,9 @@ export function BuilderSection({
   onRemoveField,
   onRenameSection,
   onRemoveSection,
+  translations,
 }: BuilderSectionProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: `${SECTION_ID_PREFIX}${section.id}` });
   const { setNodeRef: setBodyRef, isOver } = useDroppable({
@@ -91,7 +97,7 @@ export function BuilderSection({
             size="sm"
             {...attributes}
             {...listeners}
-            aria-label="Drag to reorder section"
+            aria-label={t.builderSection.dragHandle}
             style={{ cursor: 'grab' }}
           >
             <IconGripVertical size={16} />
@@ -99,20 +105,20 @@ export function BuilderSection({
           <TextInput
             size="xs"
             variant="unstyled"
-            placeholder="Section title"
+            placeholder={t.builderSection.titlePlaceholder}
             value={section.title ?? ''}
             onChange={(e) => onRenameSection(e.currentTarget.value)}
             style={{ flex: 1 }}
             fw={600}
           />
         </Group>
-        <Tooltip label="Remove section">
+        <Tooltip label={t.builderSection.remove}>
           <ActionIcon
             variant="subtle"
             color="red"
             size="sm"
             onClick={onRemoveSection}
-            aria-label="Remove section"
+            aria-label={t.builderSection.remove}
           >
             <IconTrash size={16} />
           </ActionIcon>
@@ -141,7 +147,7 @@ export function BuilderSection({
         >
           {section.fields.length === 0 ? (
             <Text size="xs" c="dimmed" ta="center" style={{ gridColumn: '1 / -1' }}>
-              Drag fields here
+              {t.builderSection.emptyState}
             </Text>
           ) : (
             section.fields.map((config) => (
@@ -152,6 +158,7 @@ export function BuilderSection({
                 selected={selectedField === config.field}
                 onSelect={() => onSelectField(config.field)}
                 onRemove={() => onRemoveField(config.field)}
+                translations={translations}
               />
             ))
           )}

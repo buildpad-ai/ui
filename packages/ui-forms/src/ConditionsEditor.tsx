@@ -29,6 +29,8 @@ import {
 } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { FilterPanel } from '@buildpad/ui-collections';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type FormsTranslations } from '@buildpad/utils';
 import type { Field, FieldCondition } from '@buildpad/types';
 
 export interface ConditionsEditorProps {
@@ -38,11 +40,20 @@ export interface ConditionsEditorProps {
   conditions: FieldCondition[];
   /** Emits the updated conditions array (verbatim `FieldCondition[]`). */
   onChange: (conditions: FieldCondition[]) => void;
+  /** Per-instance overrides of the dictionary strings (`forms` namespace). */
+  translations?: DeepPartial<FormsTranslations>;
 }
 
-/** A reasonable empty condition: no rule (never matches until authored). */
-function emptyCondition(index: number): FieldCondition {
-  return { name: `Condition ${index + 1}`, rule: {}, hidden: false };
+/**
+ * A reasonable empty condition: no rule (never matches until authored).
+ * `nameTemplate` is `forms.conditionsEditor.defaultName` ("Condition {number}").
+ */
+function emptyCondition(index: number, nameTemplate: string): FieldCondition {
+  return {
+    name: interpolate(nameTemplate, { number: index + 1 }),
+    rule: {},
+    hidden: false,
+  };
 }
 
 /**
@@ -52,7 +63,10 @@ export function ConditionsEditor({
   fields,
   conditions,
   onChange,
+  translations,
 }: ConditionsEditorProps) {
+  const t = useBuildpadTranslations((d) => d.forms, translations);
+
   const update = (index: number, patch: Partial<FieldCondition>) => {
     onChange(
       conditions.map((c, i) => (i === index ? { ...c, ...patch } : c)),
@@ -64,14 +78,17 @@ export function ConditionsEditor({
   };
 
   const add = () => {
-    onChange([...conditions, emptyCondition(conditions.length)]);
+    onChange([
+      ...conditions,
+      emptyCondition(conditions.length, t.conditionsEditor.defaultName),
+    ]);
   };
 
   return (
     <Stack gap="sm">
       <Group justify="space-between" align="center">
         <Text size="sm" fw={500}>
-          Conditions
+          {t.conditionsEditor.title}
         </Text>
         <Button
           size="xs"
@@ -79,19 +96,17 @@ export function ConditionsEditor({
           leftSection={<IconPlus size={14} />}
           onClick={add}
         >
-          Add condition
+          {t.conditionsEditor.add}
         </Button>
       </Group>
 
       {conditions.length === 0 ? (
         <Text size="xs" c="dimmed">
-          No conditions. The field is always shown with its default settings.
-          Add a condition to show/hide, require, or lock the field based on
-          other fields&apos; values.
+          {t.conditionsEditor.emptyState}
         </Text>
       ) : (
         <Text size="xs" c="dimmed">
-          When several conditions match, the last matching one wins.
+          {t.conditionsEditor.precedenceHint}
         </Text>
       )}
 
@@ -101,19 +116,19 @@ export function ConditionsEditor({
             <Group justify="space-between" align="flex-start">
               <TextInput
                 size="xs"
-                label="Name"
-                placeholder="e.g. Show when bug"
+                label={t.conditionsEditor.name.label}
+                placeholder={t.conditionsEditor.name.placeholder}
                 value={condition.name ?? ''}
                 onChange={(e) => update(index, { name: e.currentTarget.value })}
                 style={{ flex: 1 }}
               />
-              <Tooltip label="Remove condition">
+              <Tooltip label={t.conditionsEditor.remove}>
                 <ActionIcon
                   color="red"
                   variant="subtle"
                   mt={22}
                   onClick={() => remove(index)}
-                  aria-label="Remove condition"
+                  aria-label={t.conditionsEditor.remove}
                 >
                   <IconTrash size={16} />
                 </ActionIcon>
@@ -122,7 +137,7 @@ export function ConditionsEditor({
 
             <div>
               <Text size="xs" fw={500} mb={4}>
-                When
+                {t.conditionsEditor.when}
               </Text>
               <FilterPanel
                 fields={fields}
@@ -134,12 +149,12 @@ export function ConditionsEditor({
 
             <div>
               <Text size="xs" fw={500} mb={4}>
-                Then
+                {t.conditionsEditor.then}
               </Text>
               <Group gap="lg">
                 <Switch
                   size="sm"
-                  label="Hidden"
+                  label={t.conditionsEditor.overrides.hidden}
                   checked={condition.hidden ?? false}
                   onChange={(e) =>
                     update(index, { hidden: e.currentTarget.checked })
@@ -147,7 +162,7 @@ export function ConditionsEditor({
                 />
                 <Switch
                   size="sm"
-                  label="Required"
+                  label={t.conditionsEditor.overrides.required}
                   checked={condition.required ?? false}
                   onChange={(e) =>
                     update(index, { required: e.currentTarget.checked })
@@ -155,7 +170,7 @@ export function ConditionsEditor({
                 />
                 <Switch
                   size="sm"
-                  label="Read-only"
+                  label={t.conditionsEditor.overrides.readonly}
                   checked={condition.readonly ?? false}
                   onChange={(e) =>
                     update(index, { readonly: e.currentTarget.checked })
