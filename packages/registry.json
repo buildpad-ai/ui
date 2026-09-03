@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-03T01:05:39.737Z",
+  "generatedAt": "2026-09-03T01:10:28.104Z",
   "version": "2.2.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -477,7 +477,7 @@
         {
           "source": "cli/templates/types/modules.d.ts",
           "target": "types/modules.d.ts",
-          "sourceSha256": "ed4bc8b049b79bfab2a006d8734758d2b8fea8df87c40c5c57892523fa432da2"
+          "sourceSha256": "485eb66103612e1242b0f0e5f4a17c055624b88f0f7d723dcedb14a2f8ad39b7"
         }
       ],
       "internalDependencies": [
@@ -593,7 +593,7 @@
         {
           "source": "services/src/auth/enforcer.ts",
           "target": "lib/buildpad/services/auth/enforcer.ts",
-          "sourceSha256": "f222b9302d45d14c88417179f23357ea0cf90823953b5ec5745c6817f0c3ddcf"
+          "sourceSha256": "deb345580666d5438b1fb7487d913c9e0be6e3aed5472f88a1f686b2a036ae51"
         },
         {
           "source": "services/src/auth/filter-to-query.ts",
@@ -630,7 +630,7 @@
         {
           "source": "hooks/src/api.ts",
           "target": "lib/buildpad/hooks/api.ts",
-          "sourceSha256": "5de2deee001827a84c1b4f1179290c5b0105894bf8157f225e719d24c93073fd"
+          "sourceSha256": "c9bd41b7882d2fa59a5c6319d5b8411e6e32cd0322bd3e1f8e0eec2df28a8f48"
         },
         {
           "source": "hooks/src/utils.ts",
@@ -715,7 +715,7 @@
         {
           "source": "hooks/src/useWorkflowVersioning.ts",
           "target": "lib/buildpad/hooks/useWorkflowVersioning.ts",
-          "sourceSha256": "8e803d387ecd6fa69021810226060adf5ad1f580b13b921c9cdc98f56bd0398b"
+          "sourceSha256": "099d33635074b0ecae80bff75346c7292fb07e012b72e79c473ea0ae9687bdfd"
         },
         {
           "source": "hooks/src/useCollections.ts",
