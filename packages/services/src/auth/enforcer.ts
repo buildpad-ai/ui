@@ -19,7 +19,6 @@ import { createAuthenticatedClient, type User } from './session';
 import { 
   applyFilterToQuery as applyFilterInternal, 
   resolveFilterDynamicValues as resolveInternal,
-  type FilterObject as FilterType 
 } from './filter-to-query';
 
 // Re-export filter utilities with proper naming

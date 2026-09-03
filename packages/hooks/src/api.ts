@@ -271,7 +271,7 @@ class DaaSAPI {
   /**
    * Batch update items matching a filter
    */
-  async batchUpdateItems<T = unknown>(
+  async batchUpdateItems(
     collection: string,
     filter: Record<string, unknown>,
     data: Record<string, unknown>

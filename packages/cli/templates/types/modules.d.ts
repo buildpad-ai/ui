@@ -24,6 +24,16 @@ declare module '@editorjs/editorjs' {
     data: Record<string, unknown>;
   }
 
+  /** Nested translation table: `{ ui: { toolbar: { toolbox: { Add: '…' } } }, toolNames: { Text: '…' } }`. */
+  export interface I18nDictionary {
+    [key: string]: string | I18nDictionary;
+  }
+
+  export interface I18nConfig {
+    messages?: I18nDictionary;
+    direction?: 'ltr' | 'rtl';
+  }
+
   export interface EditorConfig {
     holder?: string | HTMLElement;
     data?: OutputData;
@@ -32,6 +42,8 @@ declare module '@editorjs/editorjs' {
     minHeight?: number;
     autofocus?: boolean;
     tools?: Record<string, ToolConstructable | ToolSettings>;
+    /** UI / tool-name translations — the InputBlockEditor interface fills this from the Buildpad dictionary. */
+    i18n?: I18nConfig;
     onChange?: (api: API, event: CustomEvent) => void;
     onReady?: () => void;
   }
