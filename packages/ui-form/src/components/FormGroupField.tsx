@@ -12,6 +12,7 @@ import { Box } from '@mantine/core';
 import type { Field } from '@buildpad/types';
 import { GroupDetail, GroupAccordion, GroupRaw } from '@buildpad/ui-interfaces';
 import { getFieldInterface, getFieldDisplayName } from '@buildpad/utils';
+import type { DeepPartial, FormTranslations } from '@buildpad/utils';
 import type { FormField as TFormField, ValidationError } from '../types';
 import { FormField } from './FormField';
 import { isFieldVisible } from '../utils/get-form-fields';
@@ -49,6 +50,8 @@ export interface FormGroupFieldProps {
   className?: string;
   /** Locale for field name translations */
   locale?: string;
+  /** Per-instance overrides of the `form` dictionary namespace (forwarded to every child field) */
+  translations?: DeepPartial<FormTranslations>;
 }
 
 /**
@@ -83,6 +86,7 @@ function ChildFieldsRenderer({
   nonEditableFields,
   locale,
   autofocusFieldKey,
+  translations,
 }: {
   childFields: TFormField[];
   values: Record<string, any>;
@@ -99,6 +103,7 @@ function ChildFieldsRenderer({
   nonEditableFields?: Set<string>;
   locale?: string;
   autofocusFieldKey?: string | null;
+  translations?: DeepPartial<FormTranslations>;
 }) {
   // Lay children out in the same two-column `.form-grid` the top-level VForm
   // uses, so each child's `field-width-*` class (which controls `grid-column`)
@@ -128,6 +133,7 @@ function ChildFieldsRenderer({
               nonEditableFields={nonEditableFields}
               locale={locale}
               autofocusFieldKey={autofocusFieldKey}
+              translations={translations}
             />
           );
         }
@@ -149,6 +155,7 @@ function ChildFieldsRenderer({
             validationError={getFieldError(child.field)}
             primaryKey={primaryKey}
             locale={locale}
+            translations={translations}
           />
         );
       })}
@@ -176,6 +183,7 @@ export const FormGroupField: React.FC<FormGroupFieldProps> = ({
   autofocusFieldKey,
   className,
   locale,
+  translations,
 }) => {
   const interfaceConfig = useMemo(() => getFieldInterface(field), [field]);
   const interfaceType = interfaceConfig.type;
@@ -209,6 +217,7 @@ export const FormGroupField: React.FC<FormGroupFieldProps> = ({
     nonEditableFields,
     locale,
     autofocusFieldKey,
+    translations,
   };
 
   // Render based on group interface type
@@ -298,6 +307,7 @@ export const FormGroupField: React.FC<FormGroupFieldProps> = ({
                 validationError={getFieldError(section.field)}
                 primaryKey={primaryKey}
                 locale={locale}
+                translations={translations}
               />
             );
           }}

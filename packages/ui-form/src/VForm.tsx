@@ -18,10 +18,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import './VForm.css';
 import { Stack, Box, Alert, Text, Skeleton } from '@mantine/core';
-import { isNewItem, isFieldReadOnly, isPresentationField } from '@buildpad/utils';
+import { isNewItem, isFieldReadOnly, isPresentationField, interpolate } from '@buildpad/utils';
+import type { DeepPartial, FormTranslations } from '@buildpad/utils';
 import { IconInfoCircle, IconLock } from '@tabler/icons-react';
 import type { Field } from '@buildpad/types';
-import { FieldsService, useDaaSContextOptional } from '@buildpad/services';
+import { FieldsService, useDaaSContextOptional, useBuildpadTranslations } from '@buildpad/services';
 // isPresentationField is available from @buildpad/utils if needed for filtering
 import type { ValidationError, FieldValues } from './types';
 import { FormField } from './components/FormField';
@@ -107,6 +108,12 @@ export interface VFormProps {
   onScrollToField?: (fieldKey: string) => void;
   /** Locale for field name translations (e.g. 'en-US'). If omitted, uses first available translation. */
   locale?: string;
+  /**
+   * Per-instance overrides of the `form` dictionary namespace, merged over
+   * the `BuildpadI18nProvider` dictionary and the English defaults. Forwarded
+   * to every field, group and the validation summary this form renders.
+   */
+  translations?: DeepPartial<FormTranslations>;
 }
 
 // Stable empty references to prevent re-renders
@@ -168,6 +175,7 @@ export const VForm: React.FC<VFormProps> = ({
   onPermissionsLoaded,
   onScrollToField,
   locale,
+  translations,
 }) => {
   // Use stable references for optional props
   const stableModelValue = useMemo(
@@ -189,7 +197,14 @@ export const VForm: React.FC<VFormProps> = ({
   
   const [fields, setFields] = useState<Field[]>([]);
   const [loadingFields, setLoadingFields] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  /**
+   * Field-load error. A dictionary key is stored rather than the resolved
+   * string so the message follows a locale switch without re-running the load
+   * effect; a runtime `Error.message` is kept verbatim.
+   */
+  const [error, setError] = useState<
+    { key: keyof FormTranslations['vForm']['error'] } | { message: string } | null
+  >(null);
   const [accessibleFields, setAccessibleFields] = useState<string[] | null>(null);
   /** Fields that are readable but NOT writable — shown as nonEditable */
   const [readOnlyPermFields, setReadOnlyPermFields] = useState<Set<string>>(EMPTY_SET);
@@ -197,6 +212,9 @@ export const VForm: React.FC<VFormProps> = ({
   
   // Get DaaS context for authenticated requests (optional — works without DaaSProvider)
   const daasContext = useDaaSContextOptional();
+
+  // `form` dictionary namespace: prop overrides > provider dictionary > English defaults
+  const t = useBuildpadTranslations((d) => d.form, translations);
   
   // Determine the action based on primaryKey if not explicitly provided
   const effectiveAction: FormAction = useMemo(() => {
@@ -214,7 +232,7 @@ export const VForm: React.FC<VFormProps> = ({
     }
 
     if (!collection) {
-      setError('Either collection or fields prop must be provided');
+      setError({ key: 'missingCollectionOrFields' });
       return;
     }
 
@@ -228,7 +246,7 @@ export const VForm: React.FC<VFormProps> = ({
         setFields(loadedFields);
       } catch (err) {
         console.error('Error loading fields:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load fields');
+        setError(err instanceof Error ? { message: err.message } : { key: 'loadFieldsFailed' });
       } finally {
         setLoadingFields(false);
       }
@@ -331,7 +349,7 @@ export const VForm: React.FC<VFormProps> = ({
   // Pipeline: getFormFields → group filter → exclude filter → applyConditions
   //   → pushGroupOptionsDown → permissions filter → updateSystemDivider → updateFieldWidths
   const formFields = useMemo(() => {
-    let processed = getFormFields(fields);
+    let processed = getFormFields(fields, t);
 
     // Filter by group if specified
     if (group !== null) {
@@ -371,7 +389,7 @@ export const VForm: React.FC<VFormProps> = ({
     processed = updateFieldWidths(processed);
 
     return processed;
-  }, [fields, group, stableExcludeFields, enforcePermissions, accessibleFields, allValues, primaryKey]);
+  }, [fields, group, stableExcludeFields, enforcePermissions, accessibleFields, allValues, primaryKey, t]);
 
   // Collect all group field names so we can filter out their children
   const groupFieldNames = useMemo(() => {
@@ -475,7 +493,7 @@ export const VForm: React.FC<VFormProps> = ({
   // Show loading skeleton
   if (loadingFields || loadingProp || permissionsLoading) {
     return (
-      <Box className={className} aria-busy="true" aria-label="Loading form">
+      <Box className={className} aria-busy="true" aria-label={t.vForm.loading.ariaLabel}>
         <Stack gap="md">
           <Skeleton height={60} />
           <Skeleton height={60} />
@@ -489,7 +507,7 @@ export const VForm: React.FC<VFormProps> = ({
   if (error) {
     return (
       <Alert icon={<IconInfoCircle size={16} />} color="red" className={className} role="alert">
-        {error}
+        {'message' in error ? error.message : t.vForm.error[error.key]}
       </Alert>
     );
   }
@@ -498,9 +516,9 @@ export const VForm: React.FC<VFormProps> = ({
   if (enforcePermissions && accessibleFields !== null && accessibleFields.length === 0) {
     return (
       <Alert icon={<IconLock size={16} />} color="warning" className={className} role="alert">
-        <Text size="sm" fw={600}>No field access</Text>
+        <Text size="sm" fw={600}>{t.vForm.noFieldAccess.title}</Text>
         <Text size="sm" c="dimmed" mt="xs">
-          You don&apos;t have permission to {effectiveAction} fields in this collection.
+          {interpolate(t.vForm.noFieldAccess.message, { action: t.vForm.action[effectiveAction] })}
         </Text>
       </Alert>
     );
@@ -512,9 +530,11 @@ export const VForm: React.FC<VFormProps> = ({
 
     return (
       <Alert icon={<IconInfoCircle size={16} />} color="info" className={className} role="status">
-        <Text size="sm" fw={600}>No visible fields</Text>
+        <Text size="sm" fw={600}>{t.vForm.noVisibleFields.title}</Text>
         <Text size="sm" c="dimmed" mt="xs">
-          {collection ? `Collection "${collection}" has no visible fields` : 'No fields to display'}
+          {collection
+            ? interpolate(t.vForm.noVisibleFields.collectionMessage, { collection })
+            : t.vForm.noVisibleFields.message}
         </Text>
       </Alert>
     );
@@ -528,6 +548,7 @@ export const VForm: React.FC<VFormProps> = ({
           validationErrors={stableValidationErrors}
           fields={fields}
           onScrollToField={onScrollToField}
+          translations={translations}
         />
       )}
       <div className="form-grid">
@@ -567,6 +588,7 @@ export const VForm: React.FC<VFormProps> = ({
                 nonEditableFields={readOnlyPermFields}
                 className={field.meta?.width || 'full'}
                 locale={locale}
+                translations={translations}
               />
             );
           }
@@ -587,6 +609,7 @@ export const VForm: React.FC<VFormProps> = ({
               autofocus={isFirstEditable}
               className={field.meta?.width || 'full'}
               locale={locale}
+              translations={translations}
             />
           );
         })}
