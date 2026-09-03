@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-03T01:10:28.104Z",
+  "generatedAt": "2026-09-03T01:29:33.813Z",
   "version": "2.2.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -901,7 +901,7 @@
         {
           "source": "cli/templates/api/auth-user-route.ts",
           "target": "app/api/auth/user/route.ts",
-          "sourceSha256": "534f86126713aabfbdfc3fab99f73d06c64a043965a3b87db58854324ba8af73"
+          "sourceSha256": "cb624b22e8e8a917a16105a74ff53da96693dcabd14748f6591e4c9075e0d16a"
         },
         {
           "source": "cli/templates/api/auth-callback-route.ts",

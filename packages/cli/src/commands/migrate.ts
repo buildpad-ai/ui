@@ -602,12 +602,24 @@ export async function migrateI18n(options: MigrateI18nOptions) {
   }
 
   console.log(chalk.bold('\nNext steps:'));
-  console.log(chalk.cyan('  1. ') + chalk.dim('npx @buildpad/cli@latest upgrade --all --three-way'));
-  console.log(chalk.dim('     → pulls the locale-aware middleware, login page, app shell and route pages'));
+  // Numbered at print time: the layout-merge step only exists when a pre-i18n
+  // layout was actually kept, and a gap in the numbering reads like a bug.
+  let step = 0;
+  const next = (line: string, detail?: string) => {
+    console.log(chalk.cyan(`  ${++step}. `) + chalk.dim(line));
+    if (detail) console.log(chalk.dim(`     ${detail}`));
+  };
+  next(
+    'npx @buildpad/cli@latest upgrade --all --three-way',
+    '→ pulls the locale-aware middleware, login page, app shell and route pages'
+  );
   if (fs.existsSync(keptLayout) || (dryRun && fs.existsSync(oldLayout))) {
-    console.log(chalk.cyan('  2. ') + chalk.dim(`merge your providers from app/[lang]/${PRE_I18N_LAYOUT} into app/[lang]/layout.tsx, then delete it`));
+    next(`merge your providers from app/[lang]/${PRE_I18N_LAYOUT} into app/[lang]/layout.tsx, then delete it`);
   }
-  console.log(chalk.cyan('  3. ') + chalk.dim("replace useRouter() with useLocaleRouter() and href=\"/x\" with localeHref in your own pages:"));
-  console.log(chalk.dim("     grep -rn \"router\\.\\(push\\|replace\\)(['\\\"\\\`]/\\|href=['\\\"]/\" app/ components/ --include=*.tsx | grep -v /api/"));
-  console.log(chalk.cyan('  4. ') + chalk.dim('pnpm build — unknown locales 404, / redirects to /<locale>\n'));
+  next(
+    'replace useRouter() with useLocaleRouter() and href="/x" with localeHref in your own pages:',
+    "grep -rn \"router\\.\\(push\\|replace\\)(['\\\"\\\`]/\\|href=['\\\"]/\" app/ components/ --include=*.tsx | grep -v /api/"
+  );
+  next('pnpm build — unknown locales 404, / redirects to /<locale>');
+  console.log();
 }
