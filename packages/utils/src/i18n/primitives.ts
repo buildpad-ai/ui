@@ -40,3 +40,23 @@ export type TextDirection = 'ltr' | 'rtl';
 
 /** Values substituted into `{key}` placeholders. */
 export type InterpolationValues = Record<string, string | number | boolean | null | undefined>;
+
+/** The CLDR categories a `PluralForms` object may carry. */
+export const PLURAL_CATEGORIES = ['zero', 'one', 'two', 'few', 'many', 'other'] as const;
+
+const PLURAL_CATEGORY_SET: ReadonlySet<string> = new Set(PLURAL_CATEGORIES);
+
+/**
+ * Runtime counterpart of the type-level `IsPluralForms`: an object is a plural
+ * entry only when it has an `other` string AND every one of its keys is a CLDR
+ * category. A namespace that merely happens to contain an `other` key next to
+ * unrelated ones — `interfaces.selectRadio.other` ("Other" radio option),
+ * `interfaces.upload.categories.other` (the file category) — is a namespace,
+ * not a plural entry, and must be merged key by key.
+ */
+export function isPluralFormsValue(value: unknown): value is PluralForms {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  if (typeof record.other !== 'string') return false;
+  return Object.keys(record).every((key) => PLURAL_CATEGORY_SET.has(key));
+}

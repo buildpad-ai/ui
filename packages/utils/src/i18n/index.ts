@@ -28,6 +28,7 @@ export type {
 } from './types';
 export { defaultTranslations } from './defaults';
 export { en, id, bundledLocales, bundledTranslationsFor } from './locales';
+export { isPluralFormsValue, PLURAL_CATEGORIES } from './primitives';
 export { mergeTranslations } from './merge';
 export { interpolate, hasPlaceholders } from './interpolate';
 export { pluralCategory, selectPlural, formatCount } from './plural';

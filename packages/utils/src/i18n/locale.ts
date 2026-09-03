@@ -3,6 +3,7 @@
  * dotted-path lookup used by `t()`.
  */
 import { interpolate } from './interpolate';
+import { isPluralFormsValue } from './primitives';
 import { formatCount } from './plural';
 import type { InterpolationValues, PluralForms, TextDirection } from './types';
 
@@ -23,14 +24,6 @@ export function directionForLocale(locale: string | undefined | null): TextDirec
   return RTL_LANGUAGES.has(languageOf(locale)) ? 'rtl' : 'ltr';
 }
 
-function isPluralForms(value: unknown): value is PluralForms {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    typeof (value as { other?: unknown }).other === 'string'
-  );
-}
-
 /**
  * Resolve a dotted path (`"form.validation.required"`) in a dictionary.
  * Returns the string or `PluralForms` found, or `undefined`.
@@ -42,7 +35,7 @@ export function lookupTranslation(dictionary: object, path: string): string | Pl
     dictionary,
   );
   if (typeof value === 'string') return value;
-  if (isPluralForms(value)) return value;
+  if (isPluralFormsValue(value)) return value;
   return undefined;
 }
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-03T01:29:33.813Z",
+  "generatedAt": "2026-09-03T01:43:11.377Z",
   "version": "2.2.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -192,7 +192,7 @@
         {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts",
-          "sourceSha256": "34dc26039e0c98287edd1230f7b38fc08035f518befb7b85a068dbe72e4da8e3"
+          "sourceSha256": "ed12f01cfca2ffe0f9b7fdd5987617cf776c9425c444e4edfc553ff647db2afd"
         },
         {
           "source": "utils/src/i18n/namespaces/common.ts",
@@ -432,7 +432,7 @@
         {
           "source": "utils/src/i18n/merge.ts",
           "target": "lib/buildpad/i18n/merge.ts",
-          "sourceSha256": "da6e2334407bf98641954130f0b5944b842e8969b2ca5f32c4980aaf820905f1"
+          "sourceSha256": "761ab325dfd4084bb03b70579a1105d2f94e02997dcd9f49020937fbc47f82a9"
         },
         {
           "source": "utils/src/i18n/interpolate.ts",
@@ -447,7 +447,7 @@
         {
           "source": "utils/src/i18n/locale.ts",
           "target": "lib/buildpad/i18n/locale.ts",
-          "sourceSha256": "a7a66900859aac8e75d2d66bb66e676a64536412c7ffc896018780bfdc567fee"
+          "sourceSha256": "68c9d24b0622e78291e84ea55b564f00681b3f2e8b884bfae62a133de12523b9"
         },
         {
           "source": "utils/src/i18n/locales/id.ts",
@@ -462,7 +462,7 @@
         {
           "source": "utils/src/i18n/index.ts",
           "target": "lib/buildpad/i18n/index.ts",
-          "sourceSha256": "b8069f3ad71b131e28755217e875e998eeab873150480d4ab3ee9d256229151d"
+          "sourceSha256": "de64dbaaca3d0dd63ebb268d9eeba066c81a996f38aa7aa34c25d86fb4ba3ba0"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",

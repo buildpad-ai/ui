@@ -13,6 +13,7 @@ import {
   hasPlaceholders,
   id,
   interpolate,
+  isPluralFormsValue,
   languageOf,
   lookupTranslation,
   mergeTranslations,
@@ -85,6 +86,33 @@ describe('mergeTranslations', () => {
     expect(defaultTranslations.common.itemCount.one).toBe('{count} item');
   });
 
+  it('merges a namespace that merely contains an `other` key, key by key', () => {
+    // `interfaces.selectRadio` is a namespace whose keys include `other`, the
+    // "Other" radio option. Overriding only that key must not drop its
+    // siblings: the replace-as-a-unit rule is for real plural entries only.
+    const merged = mergeTranslations(defaultTranslations, {
+      interfaces: { selectRadio: { other: 'Autre' } },
+    });
+    expect(merged.interfaces.selectRadio.other).toBe('Autre');
+    expect(merged.interfaces.selectRadio.misconfigured).toBe(
+      defaultTranslations.interfaces.selectRadio.misconfigured,
+    );
+    expect(merged.interfaces.selectRadio.customValuePlaceholder).toBe(
+      defaultTranslations.interfaces.selectRadio.customValuePlaceholder,
+    );
+  });
+
+  it('replaces a real plural entry as a unit, extra categories included', () => {
+    const merged = mergeTranslations(defaultTranslations, {
+      common: { itemCount: { two: 'عنصران', few: '{count} عناصر', other: '{count} عنصر' } },
+    });
+    expect(merged.common.itemCount).toEqual({
+      two: 'عنصران',
+      few: '{count} عناصر',
+      other: '{count} عنصر',
+    });
+  });
+
   it('ignores prototype-polluting keys from parsed JSON', () => {
     const hostile = JSON.parse('{"__proto__":{"polluted":"yes"},"common":{"save":"Ok"}}');
     const merged = mergeTranslations(defaultTranslations, hostile);
@@ -129,6 +157,29 @@ describe('plural', () => {
 
   it('formatCount survives an invalid locale tag', () => {
     expect(formatCount('not a locale', 2, forms)).toBe('2 items');
+  });
+});
+
+describe('isPluralFormsValue', () => {
+  it('accepts only objects whose keys are all CLDR categories', () => {
+    expect(isPluralFormsValue({ other: 'x' })).toBe(true);
+    expect(isPluralFormsValue({ one: 'a', other: 'x' })).toBe(true);
+    expect(
+      isPluralFormsValue({ zero: 'z', one: 'a', two: 'b', few: 'c', many: 'd', other: 'x' }),
+    ).toBe(true);
+    // a namespace that merely carries an `other` key is not a plural entry
+    expect(isPluralFormsValue({ other: 'Other', misconfigured: 'oops' })).toBe(false);
+    expect(isPluralFormsValue({ one: 'a' })).toBe(false);
+    expect(isPluralFormsValue('x')).toBe(false);
+    expect(isPluralFormsValue(null)).toBe(false);
+    expect(isPluralFormsValue(['other'])).toBe(false);
+  });
+
+  it('translate() does not treat such a namespace as a plural entry', () => {
+    expect(translate(defaultTranslations, 'en', 'interfaces.selectRadio')).toBe(
+      'interfaces.selectRadio',
+    );
+    expect(translate(defaultTranslations, 'en', 'interfaces.selectRadio.other')).toBe('Other');
   });
 });
 
