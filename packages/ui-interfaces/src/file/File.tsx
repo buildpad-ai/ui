@@ -35,6 +35,8 @@ import { Upload, type FileUpload } from '../upload';
 import { daasAPI, type DaaSFile } from '@buildpad/hooks';
 import { useFiles, useFolders } from '@buildpad/hooks';
 import { formatFileSize, getAssetUrl, getFileCategory } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 
 /**
  * Convert DaaSFile to FileUpload type (adds fallback for nullable fields)
@@ -208,6 +210,8 @@ export interface FileProps {
   fromUser?: boolean;
   fromUrl?: boolean;
   fromLibrary?: boolean;
+  /** Per-instance overrides of the dictionary strings (`interfaces.file`) */
+  translations?: DeepPartial<InterfacesTranslations['file']>;
 }
 
 /**
@@ -220,7 +224,7 @@ export const File: React.FC<FileProps> = ({
   disabled = false,
   folder,
   // collection and field are kept for API parity with DaaS interfaces
-  placeholder = "No file selected",
+  placeholder,
   readonly: readonlyProp = false,
   readOnly: readOnlyProp = false,
   label,
@@ -228,9 +232,12 @@ export const File: React.FC<FileProps> = ({
   fromUser = true,
   fromUrl = true,
   fromLibrary = true,
+  translations,
 }) => {
   // Accept either casing — @buildpad/ui-form passes camelCase `readOnly`.
   const readonly = readonlyProp || readOnlyProp;
+  const t = useBuildpadTranslations((d) => d.interfaces.file, translations);
+  const effectivePlaceholder = placeholder ?? t.placeholder;
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<FileUpload | null>(null);
   const [editDrawerActive, setEditDrawerActive] = useState(false);
@@ -273,7 +280,7 @@ export const File: React.FC<FileProps> = ({
       } catch {
         if (mounted) {
           setFile(null);
-          setFileError('Failed to load file');
+          setFileError(t.loadFailed);
         }
       } finally {
         if (mounted) {
@@ -285,7 +292,7 @@ export const File: React.FC<FileProps> = ({
     return () => {
       mounted = false;
     };
-  }, [fileId, value]);
+  }, [fileId, value, t]);
 
   // Check permissions
   useEffect(() => {
@@ -366,9 +373,9 @@ export const File: React.FC<FileProps> = ({
       a.remove();
       URL.revokeObjectURL(url);
     } catch {
-      notifications.show({ title: 'Download failed', message: 'Unable to download file', color: 'red' });
+      notifications.show({ title: t.notifications.downloadFailed.title, message: t.notifications.downloadFailed.message, color: 'red' });
     }
-  }, [file]);
+  }, [file, t]);
 
   const handleSaveDetails = useCallback(async () => {
     if (!file) return;
@@ -379,11 +386,11 @@ export const File: React.FC<FileProps> = ({
       });
       setFile({ ...file, ...toFileUpload(updated) });
       setEditDrawerActive(false);
-      notifications.show({ title: 'Saved', message: 'File details updated', color: 'green' });
+      notifications.show({ title: t.notifications.saved.title, message: t.notifications.saved.message, color: 'green' });
     } catch {
-      notifications.show({ title: 'Error', message: 'Failed to update file details', color: 'red' });
+      notifications.show({ title: t.notifications.updateFailed.title, message: t.notifications.updateFailed.message, color: 'red' });
     }
-  }, [file, editTitle, editDescription]);
+  }, [file, editTitle, editDescription, t]);
 
   // Handler for uploading files to the server (real API)
   const handleUploadFiles = useCallback(async (
@@ -431,10 +438,10 @@ export const File: React.FC<FileProps> = ({
           {label && (
             <Group gap={6} align="center">
               <Text fw={500} size="sm">{label}</Text>
-              <Badge size="xs" variant="light">Read only</Badge>
+              <Badge size="xs" variant="light">{t.readOnly}</Badge>
             </Group>
           )}
-          <Text c="dimmed" size="sm" data-testid="file-placeholder">{placeholder}</Text>
+          <Text c="dimmed" size="sm" data-testid="file-placeholder">{effectivePlaceholder}</Text>
         </Stack>
       );
     }
@@ -444,7 +451,7 @@ export const File: React.FC<FileProps> = ({
         {label && (
           <Group gap={6} align="center">
             <Text fw={500} size="sm">{label}</Text>
-            <Badge size="xs" variant="light">Read only</Badge>
+            <Badge size="xs" variant="light">{t.readOnly}</Badge>
           </Group>
         )}
         <Paper 
@@ -458,7 +465,7 @@ export const File: React.FC<FileProps> = ({
             </Box>
             <Box style={{ flex: 1 }}>
               <Text size="sm" fw={500}>{file.title || file.filename_download}</Text>
-              <Text size="xs" c="dimmed">{file.type} • {formatFileSize(file.filesize || 0)}</Text>
+              <Text size="xs" c="dimmed">{interpolate(t.meta, { type: file.type, size: formatFileSize(file.filesize || 0) })}</Text>
             </Box>
           </Group>
         </Paper>
@@ -489,7 +496,7 @@ export const File: React.FC<FileProps> = ({
         >
           <Group gap={8} c="dimmed" justify="center">
             <IconX size={16} />
-            <Text size="sm">Disabled</Text>
+            <Text size="sm">{t.disabled}</Text>
           </Group>
         </Paper>
       </Stack>
@@ -533,7 +540,7 @@ export const File: React.FC<FileProps> = ({
                   {file.title || file.filename_download}
                 </Text>
                 <Text size="xs" c="dimmed" data-testid="file-meta">
-                  {file.type} • {formatFileSize(file.filesize || 0)}
+                  {interpolate(t.meta, { type: file.type, size: formatFileSize(file.filesize || 0) })}
                 </Text>
               </Box>
             </Group>
@@ -557,7 +564,7 @@ export const File: React.FC<FileProps> = ({
                     onClick={handleDownload}
                     data-testid="file-download-btn"
                   >
-                    Download
+                    {t.actions.download}
                   </Menu.Item>
                   
                   <Menu.Item
@@ -566,7 +573,7 @@ export const File: React.FC<FileProps> = ({
                     disabled={!updateAllowed}
                     data-testid="file-edit-btn"
                   >
-                    Edit details
+                    {t.actions.editDetails}
                   </Menu.Item>
                   
                   {!disabled && (
@@ -578,7 +585,7 @@ export const File: React.FC<FileProps> = ({
                         onClick={handleRemove}
                         data-testid="file-remove-btn"
                       >
-                        Remove
+                        {t.actions.remove}
                       </Menu.Item>
                     </>
                   )}
@@ -592,7 +599,7 @@ export const File: React.FC<FileProps> = ({
         <Drawer
           opened={editDrawerActive}
           onClose={() => setEditDrawerActive(false)}
-          title="Edit File Details"
+          title={t.editDrawer.title}
           position="right"
           size="md"
         >
@@ -604,13 +611,13 @@ export const File: React.FC<FileProps> = ({
                 </Box>
                 <Box>
                   <Text fw={500}>{file.filename_download}</Text>
-                  <Text size="xs" c="dimmed">{file.type} • {formatFileSize(file.filesize || 0)}</Text>
+                  <Text size="xs" c="dimmed">{interpolate(t.meta, { type: file.type, size: formatFileSize(file.filesize || 0) })}</Text>
                 </Box>
               </Group>
             </Paper>
             
             <TextInput
-              label="Title"
+              label={t.editDrawer.titleLabel}
               value={editTitle}
               onChange={(e) => setEditTitle(e.currentTarget.value)}
               disabled={!updateAllowed}
@@ -618,7 +625,7 @@ export const File: React.FC<FileProps> = ({
             />
             
             <Textarea
-              label="Description"
+              label={t.editDrawer.descriptionLabel}
               value={editDescription}
               onChange={(e) => setEditDescription(e.currentTarget.value)}
               disabled={!updateAllowed}
@@ -632,14 +639,14 @@ export const File: React.FC<FileProps> = ({
                 onClick={() => setEditDrawerActive(false)}
                 data-testid="file-edit-cancel"
               >
-                Cancel
+                {t.editDrawer.cancel}
               </Button>
               <Button 
                 onClick={handleSaveDetails}
                 disabled={!updateAllowed}
                 data-testid="file-edit-save"
               >
-                Save
+                {t.editDrawer.save}
               </Button>
             </Group>
           </Stack>

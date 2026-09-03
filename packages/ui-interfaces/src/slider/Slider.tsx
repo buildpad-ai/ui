@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Box, Text, Group, Slider as MantineSlider, SliderProps as MantineSliderProps } from '@mantine/core';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 
 export type SliderValueType = 'integer' | 'bigInteger' | 'decimal' | 'float';
 
@@ -46,6 +48,8 @@ export interface SliderProps {
   sliderProps?: Partial<MantineSliderProps>;
   /** Test ID for testing */
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.slider`) */
+  translations?: DeepPartial<InterfacesTranslations['slider']>;
 }
 
 /**
@@ -98,7 +102,11 @@ export const Slider: React.FC<SliderProps> = ({
   onChangeEnd,
   sliderProps = {},
   'data-testid': testId,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.slider, translations);
+  const { formatNumber } = useBuildpadI18n();
+
   /**
    * Parse the value to a number based on the type
    */
@@ -168,16 +176,21 @@ export const Slider: React.FC<SliderProps> = ({
     { value: maxValue, label: String(maxValue) },
   ] : marks;
 
-  // Determine the label format function based on type
+  // Determine the label format function based on type. Locale-aware decimal
+  // separator; no digit grouping, so the label reads like the raw value.
   const getLabelFormat = (val: number): string => {
     if (type === 'decimal' || type === 'float') {
       // Show decimal places based on step interval
-      const decimalPlaces = stepInterval < 1 
+      const decimalPlaces = stepInterval < 1
         ? Math.max(2, String(stepInterval).split('.')[1]?.length || 0)
         : 0;
-      return val.toFixed(decimalPlaces);
+      return formatNumber(val, {
+        minimumFractionDigits: decimalPlaces,
+        maximumFractionDigits: decimalPlaces,
+        useGrouping: false,
+      });
     }
-    return String(Math.round(val));
+    return formatNumber(Math.round(val), { useGrouping: false });
   };
 
   // Build slider props
@@ -198,8 +211,8 @@ export const Slider: React.FC<SliderProps> = ({
     marks: defaultMarks,
     label: alwaysShowValue ? getLabelFormat : (val) => getLabelFormat(val),
     labelAlwaysOn: alwaysShowValue,
-    thumbLabel: alwaysShowValue ? undefined : 'Press to set value',
-    'aria-label': label || 'Slider',
+    thumbLabel: alwaysShowValue ? undefined : t.thumbLabel,
+    'aria-label': label || t.ariaLabel,
     styles: {
       root: {
         marginTop: alwaysShowValue ? '24px' : '12px',
@@ -240,17 +253,17 @@ export const Slider: React.FC<SliderProps> = ({
       {/* Value display */}
       <Group justify="space-between" mt="xs">
         <Text size="xs" c="dimmed">
-          Min: {minValue}
+          {interpolate(t.min, { min: minValue })}
         </Text>
-        <Text 
-          size="sm" 
-          fw={500} 
+        <Text
+          size="sm"
+          fw={500}
           data-testid={testId ? `${testId}-value` : undefined}
         >
-          Value: {numericValue !== undefined ? getLabelFormat(numericValue) : '—'}
+          {interpolate(t.value, { value: numericValue !== undefined ? getLabelFormat(numericValue) : '—' })}
         </Text>
         <Text size="xs" c="dimmed">
-          Max: {maxValue}
+          {interpolate(t.max, { max: maxValue })}
         </Text>
       </Group>
 

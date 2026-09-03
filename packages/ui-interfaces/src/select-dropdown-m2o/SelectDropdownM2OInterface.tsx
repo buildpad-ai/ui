@@ -4,6 +4,22 @@ import React from 'react';
 import { Box, Text, Stack, Alert, Paper, Group, ActionIcon, Button } from '@mantine/core';
 import { IconAlertCircle, IconPlus, IconTrash, IconList, IconX } from '@tabler/icons-react';
 import type { M2ORelationInfo, M2OItem } from '@buildpad/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+
+/**
+ * Render a `{key}` template with React nodes substituted for the placeholders,
+ * so a translated sentence can keep its bold / code fragments in place.
+ */
+function withNodes(template: string, nodes: Record<string, React.ReactNode>): React.ReactNode[] {
+  return template.split(/(\{\w+\})/g).map((part, index) => {
+    const match = /^\{(\w+)\}$/.exec(part);
+    if (match && match[1] in nodes) {
+      return <React.Fragment key={index}>{nodes[match[1]]}</React.Fragment>;
+    }
+    return part;
+  });
+}
 
 /**
  * Render function types for customizing SelectDropdownM2O display
@@ -55,6 +71,8 @@ export interface SelectDropdownM2OInterfaceProps extends SelectDropdownM2ORender
   allowNone?: boolean;
   /** Test ID for testing */
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.selectDropdownM2O`) */
+  translations?: DeepPartial<InterfacesTranslations['selectDropdownM2O']>;
 }
 
 /**
@@ -86,7 +104,9 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
   renderSelectModal,
   renderCreateModal,
   'data-testid': testId,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.selectDropdownM2O, translations);
   const hasRenderProps = renderSelectedItem || renderSelectModal || renderCreateModal;
 
   if (!hasRenderProps) {
@@ -101,20 +121,25 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
         {description && (
           <Text size="xs" c="dimmed">{description}</Text>
         )}
-        <Alert 
-          icon={<IconAlertCircle size={16} />} 
-          color="info" 
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          color="info"
           variant="light"
         >
           <Text size="sm">
-            <strong>SelectDropdownM2O Interface</strong> requires render props to be provided.
+            {withNodes(t.placeholderInterface.missingRenderProps, {
+              component: <strong>{t.placeholderInterface.componentName}</strong>,
+            })}
           </Text>
           <Text size="xs" mt="xs">
-            Collection: <code>{collection}</code>, Field: <code>{field}</code>
+            {withNodes(t.placeholderInterface.collectionField, {
+              collection: <code>{collection}</code>,
+              field: <code>{field}</code>,
+            })}
           </Text>
         </Alert>
         {error && (
-          <Text size="xs" c="red">{typeof error === 'string' ? error : 'Validation error'}</Text>
+          <Text size="xs" c="red">{typeof error === 'string' ? error : t.placeholderInterface.validationError}</Text>
         )}
       </Stack>
     );
@@ -150,10 +175,10 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
       {/* Selected item display */}
       <Paper withBorder p="md" radius="sm">
         {loading ? (
-          <Text size="sm" c="dimmed" ta="center">Loading...</Text>
+          <Text size="sm" c="dimmed" ta="center">{t.loading}</Text>
         ) : !currentId ? (
           <Group>
-            <Text size="sm" c="dimmed">No item selected</Text>
+            <Text size="sm" c="dimmed">{t.noItemSelected}</Text>
             {!disabled && (enableCreate || enableSelect) && (
               <Group gap="xs" ml="auto">
                 {enableSelect && (
@@ -163,7 +188,7 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
                     leftSection={<IconList size={14} />}
                     disabled={!renderSelectModal}
                   >
-                    Select
+                    {t.placeholderInterface.select}
                   </Button>
                 )}
                 {enableCreate && (
@@ -173,7 +198,7 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
                     leftSection={<IconPlus size={14} />}
                     disabled={!renderCreateModal}
                   >
-                    Create
+                    {t.placeholderInterface.create}
                   </Button>
                 )}
               </Group>
@@ -192,7 +217,7 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
         ) : (
           <Group justify="space-between">
             <Text size="sm">
-              {template || `Item ${currentId}`}
+              {template || interpolate(t.placeholderInterface.itemFallback, { id: currentId })}
             </Text>
             {!disabled && allowNone && (
               <ActionIcon
@@ -209,7 +234,7 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
       </Paper>
 
       {error && (
-        <Text size="xs" c="red">{typeof error === 'string' ? error : 'Validation error'}</Text>
+        <Text size="xs" c="red">{typeof error === 'string' ? error : t.placeholderInterface.validationError}</Text>
       )}
     </Stack>
   );

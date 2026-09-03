@@ -1,6 +1,13 @@
-/** `interfaces.boolean` — strings of the Boolean interface (filled in by the ui-interfaces migration). */
-export interface BooleanTranslations {}
+/** `interfaces.boolean` — strings of the Boolean interface. */
+export interface BooleanTranslations {
+  /** "{label} *" — label of a required switch (marker position is locale-specific) */
+  requiredLabel: string;
+}
 
-export const booleanDefaults: BooleanTranslations = {};
+export const booleanDefaults: BooleanTranslations = {
+  requiredLabel: '{label} *',
+};
 
-export const booleanId: BooleanTranslations = {};
+export const booleanId: BooleanTranslations = {
+  requiredLabel: '{label} *',
+};

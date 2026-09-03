@@ -10,7 +10,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Box, Text, Paper } from '@mantine/core';
-import EditorJS, { OutputData } from '@editorjs/editorjs';
+import EditorJS, { type I18nDictionary, type OutputData } from '@editorjs/editorjs';
 import Header from '@editorjs/header';
 import NestedList from '@editorjs/nested-list';
 import Paragraph from '@editorjs/paragraph';
@@ -22,6 +22,10 @@ import Table from '@editorjs/table';
 import Underline from '@editorjs/underline';
 import InlineCode from '@editorjs/inline-code';
 import './InputBlockEditor.css';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
+
+type InputBlockEditorTranslations = InterfacesTranslations['inputBlockEditor'];
 
 export interface InputBlockEditorProps {
   /** Current value as EditorJS OutputData or null */
@@ -46,15 +50,78 @@ export interface InputBlockEditorProps {
   error?: string;
   /** Available tools */
   tools?: string[];
+  /** Per-instance overrides of the dictionary strings (`interfaces.inputBlockEditor`) */
+  translations?: DeepPartial<InputBlockEditorTranslations>;
 }
 
 // Default tools like DaaS
 const DEFAULT_TOOLS = ['header', 'nestedlist', 'code', 'paragraph', 'checklist', 'quote', 'underline'];
 
+/**
+ * Map the dictionary onto EditorJS's `i18n.messages` shape. EditorJS keys its
+ * dictionary by the English string, so a partial dictionary is safe: any key
+ * it does not find falls back to that English string.
+ */
+function buildEditorMessages(e: InputBlockEditorTranslations['editor']): I18nDictionary {
+  return {
+    ui: {
+      blockTunes: {
+        toggler: { 'Click to tune': e.ui.clickToTune, 'or drag to move': e.ui.orDragToMove },
+      },
+      inlineToolbar: {
+        converter: { 'Convert to': e.ui.convertTo },
+      },
+      toolbar: {
+        toolbox: { Add: e.ui.add, Filter: e.ui.filter, 'Nothing found': e.ui.nothingFound },
+      },
+      popover: {
+        Filter: e.ui.filter,
+        'Nothing found': e.ui.nothingFound,
+        'Convert to': e.ui.convertTo,
+      },
+    },
+    toolNames: {
+      Text: e.toolNames.text,
+      Heading: e.toolNames.heading,
+      List: e.toolNames.list,
+      Code: e.toolNames.code,
+      Quote: e.toolNames.quote,
+      Checklist: e.toolNames.checklist,
+      Delimiter: e.toolNames.delimiter,
+      Table: e.toolNames.table,
+      Underline: e.toolNames.underline,
+      InlineCode: e.toolNames.inlineCode,
+    },
+    tools: {
+      quote: { 'Enter a quote': e.tools.quote.enterQuote, 'Enter a caption': e.tools.quote.enterCaption },
+      code: { 'Enter a code': e.tools.code.enterCode },
+      nestedlist: { Ordered: e.tools.list.ordered, Unordered: e.tools.list.unordered },
+      table: {
+        'Add column to left': e.tools.table.addColumnLeft,
+        'Add column to right': e.tools.table.addColumnRight,
+        'Delete column': e.tools.table.deleteColumn,
+        'Add row above': e.tools.table.addRowAbove,
+        'Add row below': e.tools.table.addRowBelow,
+        'Delete row': e.tools.table.deleteRow,
+        'With headings': e.tools.table.withHeadings,
+        'Without headings': e.tools.table.withoutHeadings,
+        Heading: e.tools.table.heading,
+        Collapse: e.tools.table.collapse,
+        Stretch: e.tools.table.stretch,
+      },
+    },
+    blockTunes: {
+      delete: { Delete: e.blockTunes.delete, 'Click to delete': e.blockTunes.clickToDelete },
+      moveUp: { 'Move up': e.blockTunes.moveUp },
+      moveDown: { 'Move down': e.blockTunes.moveDown },
+    },
+  };
+}
+
 export function InputBlockEditor({
   value,
   onChange,
-  placeholder = 'Start writing or press Tab to add a block...',
+  placeholder,
   font = 'sans-serif',
   disabled = false,
   readOnly = false,
@@ -63,7 +130,12 @@ export function InputBlockEditor({
   description,
   error,
   tools: toolSelection = DEFAULT_TOOLS,
+  translations,
 }: InputBlockEditorProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.inputBlockEditor, translations);
+  // Like `placeholder`, the EditorJS i18n config is read once at mount (the
+  // editor is created a single time below).
+  const effectivePlaceholder = placeholder ?? t.placeholder;
   const editorRef = useRef<EditorJS | null>(null);
   const holderRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
@@ -152,7 +224,8 @@ export function InputBlockEditor({
       try {
         const editor = new EditorJS({
           holder: holderRef.current!,
-          placeholder,
+          placeholder: effectivePlaceholder,
+          i18n: { messages: buildEditorMessages(t.editor) },
           readOnly: disabled || readOnly,
           minHeight: 100,
           tools: getTools(),

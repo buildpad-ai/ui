@@ -1,7 +1,11 @@
 /**
  * ListM2M strings. Keys are snake_case for backward compatibility with the
- * pre-existing `translations` prop of `ListM2M`.
+ * pre-existing `translations` prop of `ListM2M`; keys added by the i18n
+ * migration (`itemCount`, `cell`, `placeholder`) follow the camelCase
+ * convention of the other namespaces.
  */
+import type { PluralForms } from '../../primitives';
+
 export interface ListM2MTranslations {
   // Header Actions
   create_new: string;
@@ -54,6 +58,38 @@ export interface ListM2MTranslations {
   // Validation
   field_required: string;
   invalid_value: string;
+  /**
+   * "{count} items" — plural form of the item count; supersedes the
+   * `item_count_one` / `item_count_other` pair (kept for compatibility).
+   */
+  itemCount: PluralForms;
+  /** Table cell rendering of raw values */
+  cell: {
+    /** Rendered for null / undefined */
+    empty: string;
+    yes: string;
+    no: string;
+    /** "[{count} items]" — plural; rendered for an array value */
+    arrayCount: PluralForms;
+  };
+  /** ListM2MInterface — the render-props placeholder component */
+  placeholder: {
+    title: string;
+    requiresRenderProps: string;
+    collectionLabel: string;
+    fieldLabel: string;
+    pleaseImplement: string;
+    renderItemListHint: string;
+    renderSelectModalHint: string;
+    renderCreateModalHint: string;
+    validationError: string;
+    createNew: string;
+    selectExisting: string;
+    loading: string;
+    noItems: string;
+    /** "Item {id}" */
+    itemFallback: string;
+  };
 }
 
 export const listM2MDefaults: ListM2MTranslations = {
@@ -111,6 +147,29 @@ export const listM2MDefaults: ListM2MTranslations = {
   // Validation
   field_required: 'This field is required',
   invalid_value: 'Invalid value',
+  itemCount: { one: '{count} item', other: '{count} items' },
+  cell: {
+    empty: '-',
+    yes: 'Yes',
+    no: 'No',
+    arrayCount: { other: '[{count} items]' },
+  },
+  placeholder: {
+    title: 'ListM2M Interface',
+    requiresRenderProps: 'requires render props to be provided.',
+    collectionLabel: 'Collection:',
+    fieldLabel: 'Field:',
+    pleaseImplement: 'Please implement:',
+    renderItemListHint: 'For displaying related items',
+    renderSelectModalHint: 'For selecting existing items',
+    renderCreateModalHint: 'For creating new items',
+    validationError: 'Validation error',
+    createNew: 'Create New',
+    selectExisting: 'Select Existing',
+    loading: 'Loading...',
+    noItems: 'No items',
+    itemFallback: 'Item {id}',
+  },
 };
 
 export const listM2MId: ListM2MTranslations = {
@@ -158,4 +217,27 @@ export const listM2MId: ListM2MTranslations = {
   badge_edited: 'DIUBAH',
   field_required: 'Kolom ini wajib diisi',
   invalid_value: 'Nilai tidak valid',
+  itemCount: { other: '{count} item' },
+  cell: {
+    empty: '-',
+    yes: 'Ya',
+    no: 'Tidak',
+    arrayCount: { other: '[{count} item]' },
+  },
+  placeholder: {
+    title: 'Antarmuka ListM2M',
+    requiresRenderProps: 'memerlukan render props.',
+    collectionLabel: 'Koleksi:',
+    fieldLabel: 'Kolom:',
+    pleaseImplement: 'Silakan implementasikan:',
+    renderItemListHint: 'Untuk menampilkan item terkait',
+    renderSelectModalHint: 'Untuk memilih item yang ada',
+    renderCreateModalHint: 'Untuk membuat item baru',
+    validationError: 'Kesalahan validasi',
+    createNew: 'Buat Baru',
+    selectExisting: 'Pilih yang Ada',
+    loading: 'Memuat...',
+    noItems: 'Tidak ada item',
+    itemFallback: 'Item {id}',
+  },
 };

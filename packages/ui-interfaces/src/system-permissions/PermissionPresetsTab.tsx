@@ -11,6 +11,9 @@ import {
 } from '@mantine/core';
 import { IconAlertTriangle, IconInfoCircle } from '@tabler/icons-react';
 import type { Field, Permission } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+import { interpolateNodes } from './PermissionFilterUtils';
 
 export interface PermissionPresetsTabProps {
   /** Draft permission being edited (must carry `collection` and `action`). */
@@ -20,6 +23,8 @@ export interface PermissionPresetsTabProps {
   fields?: Field[];
   onChange: (permission: Partial<Permission>) => void;
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemPermissions`) */
+  translations?: DeepPartial<InterfacesTranslations['systemPermissions']>;
 }
 
 /**
@@ -32,13 +37,15 @@ export function PermissionPresetsTab({
   fields = [],
   onChange,
   'data-testid': testId,
+  translations,
 }: PermissionPresetsTabProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemPermissions, translations);
   const [presetsJson, setPresetsJson] = useState<string>(
     JSON.stringify(permission.presets || {}, null, 2),
   );
   const [jsonError, setJsonError] = useState<string | null>(null);
 
-  const actionText = permission.action === 'create' ? 'creating' : 'updating';
+  const actionText = permission.action === 'create' ? t.actionGerund.creating : t.actionGerund.updating;
 
   // UUID fields (likely relational) assigned array values need detailed syntax
   const warnings = (() => {
@@ -68,7 +75,7 @@ export function PermissionPresetsTab({
       });
     } catch (error) {
       // Invalid JSON — keep the draft untouched until it parses again
-      setJsonError(error instanceof Error ? error.message : 'Invalid JSON');
+      setJsonError(error instanceof Error ? error.message : t.invalidJson);
     }
   };
 
@@ -84,12 +91,15 @@ export function PermissionPresetsTab({
   return (
     <Stack gap="md" data-testid={testId}>
       <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-        Define default values for fields when {actionText} items in{' '}
-        <strong>{permission.collection}</strong> by {policyName || 'this policy'}.
+        {interpolateNodes(t.presetsTab.intro, {
+          action: actionText,
+          collection: <strong>{permission.collection}</strong>,
+          policyName: policyName || t.thisPolicyFallback,
+        })}
       </Alert>
 
       <Group justify="space-between" wrap="nowrap">
-        <Text size="sm" fw={500}>Field Presets</Text>
+        <Text size="sm" fw={500}>{t.presetsTab.heading}</Text>
         <Anchor
           component="button"
           type="button"
@@ -100,23 +110,22 @@ export function PermissionPresetsTab({
           style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
           data-testid={testId ? `${testId}-clear` : undefined}
         >
-          Clear
+          {t.clear}
         </Anchor>
       </Group>
 
       {warnings.length > 0 && (
         <Alert color="orange" variant="light" icon={<IconAlertTriangle size={16} />}>
           <Stack gap="xs">
-            <Text size="sm" fw={500}>Warning: Relational Field Preset Syntax</Text>
+            <Text size="sm" fw={500}>{t.presetsTab.relationalWarning.title}</Text>
             <Text size="xs" c="dimmed">
-              The following relational fields use array syntax which may not work correctly in
-              the app interface:
+              {t.presetsTab.relationalWarning.description}
             </Text>
             <Code block fz="xs">
               {warnings.join(', ')}
             </Code>
             <Text size="xs" c="dimmed">
-              Consider using the detailed syntax for relational fields (see examples below).
+              {t.presetsTab.relationalWarning.hint}
             </Text>
           </Stack>
         </Alert>
@@ -124,8 +133,7 @@ export function PermissionPresetsTab({
 
       <Stack gap="sm">
         <Text size="xs" c="dimmed">
-          Enter default field values that will be automatically applied when {actionText} items.
-          These values can be static or dynamic.
+          {interpolate(t.presetsTab.jsonHint, { action: actionText })}
         </Text>
         <Textarea
           value={presetsJson}
@@ -153,33 +161,33 @@ export function PermissionPresetsTab({
       <Divider />
 
       <Stack gap="xs">
-        <Text size="xs" fw={500}>Example Preset Patterns:</Text>
+        <Text size="xs" fw={500}>{t.presetsTab.examplesHeading}</Text>
         <Code block fz="xs">
-{`// Static values
+{`// ${t.presetsTab.examples.staticValues}
 {
   "status": "draft",
   "published": false,
   "priority": 1
 }
 
-// Current user
+// ${t.presetsTab.examples.currentUser}
 {
   "user_created": "$CURRENT_USER",
   "author_id": "$CURRENT_USER"
 }
 
-// Timestamps
+// ${t.presetsTab.examples.timestamps}
 {
   "date_created": "$NOW",
   "last_modified": "$NOW"
 }
 
-// Simple relational field (array syntax)
+// ${t.presetsTab.examples.simpleRelational}
 {
   "category_ids": ["uuid-1", "uuid-2"]
 }
 
-// Relational field (detailed syntax - RECOMMENDED)
+// ${t.presetsTab.examples.detailedRelational}
 {
   "categories": {
     "create": [
@@ -188,7 +196,7 @@ export function PermissionPresetsTab({
   }
 }
 
-// One-to-Many relationship
+// ${t.presetsTab.examples.oneToMany}
 {
   "related_items": {
     "create": [
@@ -200,7 +208,7 @@ export function PermissionPresetsTab({
   }
 }
 
-// Computed values
+// ${t.presetsTab.examples.computedValues}
 {
   "slug": "$SLUG(title)",
   "full_name": "$CONCAT(first_name, ' ', last_name)"
@@ -210,32 +218,32 @@ export function PermissionPresetsTab({
 
       <Alert color="cyan" variant="light">
         <Stack gap="xs">
-          <Text size="sm" fw={500}>Dynamic Variables</Text>
+          <Text size="sm" fw={500}>{t.dynamicVariables.title}</Text>
           <Text size="xs" c="dimmed">
-            You can use the following dynamic variables in your presets:
+            {t.dynamicVariables.presetsDescription}
           </Text>
           <Code block fz="xs">
-{`$CURRENT_USER         - ID of the current user
-$CURRENT_ROLE         - ID of the current user's role
-$NOW                  - Current timestamp
-$NOW(+1 day)          - Relative time calculations
-$SLUG(field)          - Generate URL slug from field
-$UUID                 - Generate new UUID`}
+{`$CURRENT_USER         - ${t.dynamicVariableHelp.currentUser}
+$CURRENT_ROLE         - ${t.dynamicVariableHelp.currentRole}
+$NOW                  - ${t.dynamicVariableHelp.now}
+$NOW(+1 day)          - ${t.dynamicVariableHelp.nowRelative}
+$SLUG(field)          - ${t.dynamicVariableHelp.slug}
+$UUID                 - ${t.dynamicVariableHelp.uuid}`}
           </Code>
         </Stack>
       </Alert>
 
       <Alert color="yellow" variant="light">
         <Stack gap="xs">
-          <Text size="sm" fw={500}>Important Notes</Text>
+          <Text size="sm" fw={500}>{t.presetsTab.importantNotes.title}</Text>
           <Text size="xs" c="dimmed">
-            • Presets are applied before validation rules
+            {t.presetsTab.importantNotes.appliedBeforeValidation}
             <br />
-            • Users cannot override preset values in the app
+            {t.presetsTab.importantNotes.cannotOverride}
             <br />
-            • For relational fields used in app interfaces, use detailed syntax instead of arrays
+            {t.presetsTab.importantNotes.useDetailedSyntax}
             <br />
-            • Presets can be combined with validation to ensure data consistency
+            {t.presetsTab.importantNotes.combineWithValidation}
           </Text>
         </Stack>
       </Alert>

@@ -20,6 +20,8 @@ import type { Map as MaplibreMap, LngLatLike } from 'maplibre-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { defaultTranslations, interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 
 // GeoJSON types for geometry handling
 interface GeoJSONGeometry {
@@ -104,6 +106,9 @@ export interface MapWithRealMapProps {
   
   /** Callback fired when basemap changes */
   onBasemapChange?: (basemap: string) => void;
+
+  /** Per-instance overrides of the dictionary strings (`interfaces.map`) */
+  translations?: DeepPartial<InterfacesTranslations['map']>;
 }
 
 // Default basemap sources matching DaaS
@@ -134,19 +139,22 @@ const DEFAULT_BASEMAPS: BasemapSource[] = [
   },
 ];
 
-// Custom control for fit bounds
+// Custom control for fit bounds. Not a React component, so the button title
+// is handed in by the component that owns the dictionary.
 class FitBoundsControl {
   private map: maplibregl.Map | undefined;
   private container: HTMLDivElement | undefined;
+
+  constructor(private readonly title: string = defaultTranslations.interfaces.map.controls.fitBounds) {}
 
   onAdd(map: maplibregl.Map) {
     this.map = map;
     this.container = document.createElement('div');
     this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
-    
+
     const button = document.createElement('button');
     button.type = 'button';
-    button.title = 'Fit to bounds';
+    button.title = this.title;
     button.innerHTML = '⌄';
     button.style.fontSize = '18px';
     button.style.fontWeight = 'bold';
@@ -267,7 +275,10 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
   showFitBounds = true,
   onChange,
   onBasemapChange,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.map, translations);
+  const { formatCount } = useBuildpadI18n();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const draw = useRef<MapboxDraw | null>(null);
@@ -312,7 +323,7 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
       // Validate geometry type if specified
       if (geometryType && geometry.type !== geometryType) {
         if (!geometryType.startsWith('Multi') || !geometry.type.startsWith(geometryType.replace('Multi', ''))) {
-          setValidationError(`Expected ${geometryType} but got ${geometry.type}`);
+          setValidationError(interpolate(t.error.typeMismatch, { expected: geometryType, actual: geometry.type }));
           return;
         }
       }
@@ -339,9 +350,9 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
 
       onChange?.(output);
     } catch (err) {
-      setValidationError(err instanceof Error ? err.message : 'Invalid geometry');
+      setValidationError(err instanceof Error ? err.message : t.error.invalidGeometryFallback);
     }
-  }, [geometryType, geometryFormat, onChange]);
+  }, [geometryType, geometryFormat, onChange, t]);
 
   // Handle selection changes
   const handleSelectionChange = useCallback((e: any) => {
@@ -385,7 +396,7 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
     }
 
     if (showFitBounds) {
-      map.current.addControl(new FitBoundsControl(), 'top-left');
+      map.current.addControl(new FitBoundsControl(t.controls.fitBounds), 'top-left');
     }
 
     // Add attribution
@@ -586,7 +597,7 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
                 zIndex: 1000,
               }}
             >
-              <Text>Loading map...</Text>
+              <Text>{t.loading}</Text>
             </div>
           )}
         </div>
@@ -605,11 +616,11 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
               </Badge>
               {selection.length > 0 && (
                 <Badge variant="light" color="green">
-                  {selection.length} selected
+                  {formatCount(selection.length, t.selectedCount)}
                 </Badge>
               )}
             </Group>
-            
+
             <Button
               size="xs"
               variant="light"
@@ -618,14 +629,14 @@ export const MapWithRealMap: React.FC<MapWithRealMapProps> = ({
               onClick={clearGeometry}
               disabled={disabled || readOnly}
             >
-              Clear
+              {t.geometryData.clear}
             </Button>
           </Group>
         )}
 
         {/* Validation errors */}
         {validationError && (
-          <Alert color="red" title="Invalid Geometry">
+          <Alert color="red" title={t.error.invalidGeometryTitle}>
             {validationError}
           </Alert>
         )}

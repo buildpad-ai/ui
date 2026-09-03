@@ -230,14 +230,20 @@ import {
   IconTypography,
   IconHighlight,
 } from '@tabler/icons-react';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+
+/** Dictionary key of an icon category heading (`interfaces.selectIcon.category`). */
+type IconCategoryKey = keyof InterfacesTranslations['selectIcon']['category'];
 
 /**
  * Icon categories based on Material Design icon categories
- * Adapted from DaaS icons.json structure
+ * Adapted from DaaS icons.json structure. `name` is the dictionary key of the
+ * category heading, not the display text.
  */
-const ICON_CATEGORIES_RAW = [
+const ICON_CATEGORIES_RAW: { name: IconCategoryKey; icons: string[] }[] = [
   {
-    name: 'Action',
+    name: 'action',
     icons: [
       'home', 'search', 'settings', 'info', 'help', 'check_circle', 'delete',
       'done', 'favorite', 'lock', 'visibility', 'bookmark', 'star', 'thumb_up',
@@ -249,13 +255,13 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'Alert',
+    name: 'alert',
     icons: [
       'error', 'warning', 'notification_important', 'add_alert',
     ],
   },
   {
-    name: 'Communication',
+    name: 'communication',
     icons: [
       'email', 'call', 'chat', 'comment', 'forum', 'message', 'phone', 'contact_mail',
       'contact_phone', 'contacts', 'vpn_key', 'mail', 'headset', 'headset_mic',
@@ -263,7 +269,7 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'Content',
+    name: 'content',
     icons: [
       'add', 'remove', 'add_box', 'add_circle', 'archive', 'block', 'clear',
       'content_copy', 'content_cut', 'content_paste', 'create', 'delete_forever',
@@ -274,14 +280,14 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'Device',
+    name: 'device',
     icons: [
       'smartphone', 'tablet', 'laptop', 'desktop_windows', 'computer', 'keyboard',
       'mouse', 'memory', 'storage', 'sd_card', 'usb', 'battery_full', 'bluetooth', 'wifi',
     ],
   },
   {
-    name: 'Editor',
+    name: 'editor',
     icons: [
       'format_bold', 'format_italic', 'format_underlined', 'format_strikethrough',
       'format_align_left', 'format_align_center', 'format_align_right', 'format_align_justify',
@@ -291,7 +297,7 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'File',
+    name: 'file',
     icons: [
       'folder', 'folder_open', 'folder_shared', 'create_new_folder', 'file_copy',
       'file_download', 'file_upload', 'cloud', 'cloud_upload', 'cloud_download',
@@ -299,7 +305,7 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'Image',
+    name: 'image',
     icons: [
       'image', 'photo', 'photo_camera', 'camera', 'panorama',
       'crop', 'rotate_left', 'rotate_right', 'flip', 'filter', 'adjust',
@@ -308,7 +314,7 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'Maps',
+    name: 'maps',
     icons: [
       'map', 'place', 'location_on', 'my_location', 'near_me', 'navigation',
       'directions', 'directions_car', 'directions_bike', 'directions_walk',
@@ -318,7 +324,7 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'Navigation',
+    name: 'navigation',
     icons: [
       'arrow_back', 'arrow_forward', 'arrow_upward', 'arrow_downward',
       'arrow_back_ios', 'arrow_forward_ios', 'arrow_left', 'arrow_right',
@@ -329,14 +335,14 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'Notification',
+    name: 'notification',
     icons: [
       'notifications', 'notifications_active', 'notifications_none', 'notifications_off',
       'sync', 'sync_disabled', 'wifi', 'wifi_off', 'bluetooth', 'bluetooth_disabled',
     ],
   },
   {
-    name: 'Social',
+    name: 'social',
     icons: [
       'group', 'group_add', 'groups', 'person', 'person_add', 'person_remove',
       'people', 'public', 'share', 'mood', 'mood_bad', 'sentiment_satisfied', 
@@ -344,14 +350,14 @@ const ICON_CATEGORIES_RAW = [
     ],
   },
   {
-    name: 'Toggle',
+    name: 'toggle',
     icons: [
       'check_box', 'check_box_outline_blank', 'radio_button_checked',
       'radio_button_unchecked', 'star', 'star_border', 'star_half', 'toggle_off', 'toggle_on',
     ],
   },
   {
-    name: 'Security & Identity',
+    name: 'securityIdentity',
     icons: [
       'security', 'shield', 'verified_user', 'admin_panel_settings', 'policy',
       'lock', 'key', 'vpn_key', 'fingerprint', 'badge', 'supervised_user_circle', 'edit',
@@ -773,6 +779,8 @@ export interface SelectIconProps {
    * unmatched key would otherwise reach the DOM as an invalid attribute.
    */
   autofocus?: boolean;
+  /** Per-instance overrides of the dictionary strings (`interfaces.selectIcon`) */
+  translations?: DeepPartial<InterfacesTranslations['selectIcon']>;
 
   // DaaS schema metadata props — declared so they can be destructured and
   // discarded below, preventing them from being forwarded to DOM elements
@@ -833,7 +841,7 @@ export function SelectIcon({
   value,
   onChange: onChangeProp,
   label,
-  placeholder = 'Search for an icon...',
+  placeholder,
   disabled = false,
   readOnly = false,
   required = false,
@@ -843,6 +851,7 @@ export function SelectIcon({
   'aria-label': ariaLabel,
   autoFocus = false,
   autofocus,
+  translations,
   // DaaS schema metadata props — destructured and discarded to prevent them
   // from being forwarded to DOM elements (which causes React unknown-prop
   // warnings, and for `type` would turn the trigger into a submit button).
@@ -863,6 +872,10 @@ export function SelectIcon({
   // Neutralise the emitter so neither picking an icon nor clearing can mutate
   // the value while read-only.
   const onChange = disabled || readOnly ? undefined : onChangeProp;
+  // Dictionary strings; the `placeholder` prop wins over both the
+  // `translations` prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.selectIcon, translations, { placeholder });
+  const { formatCount } = useBuildpadI18n();
   const [searchValue, setSearchValue] = useState('');
   const [opened, setOpened] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -1007,7 +1020,7 @@ export function SelectIcon({
               type="button"
               disabled={disabled}
               data-testid="select-icon-trigger"
-              aria-label={!label ? (ariaLabel || 'Select an icon') : undefined}
+              aria-label={!label ? (ariaLabel || t.triggerAriaLabel) : undefined}
               autoFocus={shouldAutoFocus}
               styles={{
                 root: {
@@ -1030,7 +1043,7 @@ export function SelectIcon({
                   </>
                 ) : (
                   <Text size="sm" c="dimmed">
-                    {placeholder}
+                    {t.placeholder}
                   </Text>
                 )}
               </Group>
@@ -1042,7 +1055,7 @@ export function SelectIcon({
             {/* Search Input */}
             <TextInput
               ref={searchInputRef}
-              placeholder="Search icons..."
+              placeholder={t.searchPlaceholder}
               value={searchValue}
               onChange={handleSearchChange}
               leftSection={<IconSearch size={16} />}
@@ -1076,7 +1089,7 @@ export function SelectIcon({
                       <Divider
                         label={
                           <Text size="xs" fw={600} c="dimmed">
-                            {category.name}
+                            {t.category[category.name]}
                           </Text>
                         }
                         labelPosition="left"
@@ -1123,7 +1136,7 @@ export function SelectIcon({
                 </Stack>
               ) : (
                 <Text ta="center" c="dimmed" py="xl" data-testid="no-icons-message">
-                  No icons found for &quot;{searchValue}&quot;
+                  {interpolate(t.noIconsFound, { search: searchValue })}
                 </Text>
               )}
             </ScrollArea.Autosize>
@@ -1131,8 +1144,7 @@ export function SelectIcon({
             {/* Footer with count */}
             {filteredCategories.length > 0 && (
               <Text size="xs" c="dimmed" ta="right" mt="sm">
-                {totalFilteredIcons} icon{totalFilteredIcons !== 1 ? 's' : ''}
-                {searchValue && ' found'}
+                {formatCount(totalFilteredIcons, searchValue ? t.iconCountFound : t.iconCount)}
               </Text>
             )}
           </Box>
@@ -1145,7 +1157,7 @@ export function SelectIcon({
             variant="subtle"
             size="sm"
             onClick={handleClear}
-            title="Clear selection"
+            title={t.clearSelection}
             data-testid="clear-icon-button"
           >
             <IconX size={16} />

@@ -3,6 +3,8 @@
 import React, { forwardRef, useRef, useState, useMemo } from 'react';
 import { Box, Text, Paper, Tooltip, Button } from '@mantine/core';
 import { IconPlaylistAdd } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 
 /**
  * Normalizes an incoming value to a string suitable for the code editor.
@@ -51,6 +53,8 @@ export interface InputCodeProps extends Omit<React.ComponentPropsWithRef<'textar
   template?: string;
   /** Test ID for testing */
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.inputCode`) */
+  translations?: DeepPartial<InterfacesTranslations['inputCode']>;
 }
 
 /**
@@ -89,16 +93,18 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
   disabled = false,
   readOnly = false,
   required = false,
-  placeholder = 'Enter code...',
+  placeholder,
   error,
   language = 'plaintext',
   lineNumber = true,
   lineWrapping = true,
   template,
   'data-testid': testId,
+  translations,
   className,
   ...props
 }, ref) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.inputCode, translations);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [internalValue, setInternalValue] = useState(toEditorString(value));
 
@@ -221,7 +227,7 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
               value={internalValue}
               onChange={handleChange}
               onScroll={handleScroll}
-              placeholder={placeholder}
+              placeholder={placeholder ?? t.placeholder}
               disabled={disabled}
               required={required}
               spellCheck={false}
@@ -248,7 +254,7 @@ export const InputCode = forwardRef<HTMLTextAreaElement, InputCodeProps>(({
 
             {/* Template fill button */}
             {template && (
-              <Tooltip label="Fill Template" position="left">
+              <Tooltip label={t.fillTemplate} position="left">
                 <Button
                   variant="subtle"
                   size="xs"

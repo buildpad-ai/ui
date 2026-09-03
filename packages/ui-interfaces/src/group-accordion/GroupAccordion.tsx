@@ -11,6 +11,10 @@ import {
   IconExclamationCircle,
   IconStarFilled,
 } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+
+type GroupAccordionTranslations = InterfacesTranslations['groupAccordion'];
 
 /**
  * GroupAccordion - Accordion-style group that renders ALL direct child fields
@@ -120,6 +124,9 @@ export interface GroupAccordionProps {
 
   /** Callback when form values change */
   onChange?: (values: Record<string, any>) => void;
+
+  /** Per-instance overrides of the dictionary strings (`interfaces.groupAccordion`) */
+  translations?: DeepPartial<GroupAccordionTranslations>;
 }
 
 // Helper to format field names as titles
@@ -141,7 +148,9 @@ export function GroupAccordion({
   disabled = false,
   renderSection,
   children,
+  translations,
 }: GroupAccordionProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.groupAccordion, translations);
   const groupFieldName = field?.meta?.field;
 
   // Find ALL direct child fields that belong to this accordion group.
@@ -232,10 +241,15 @@ export function GroupAccordion({
     (sectionField: string) => {
       const error = validationErrors.find((e) => e.field === sectionField);
       if (!error) return undefined;
-      if (error.code === 'RECORD_NOT_UNIQUE') return `${formatTitle(sectionField)} must be unique`;
-      return `${formatTitle(sectionField)} ${error.type?.toLowerCase() || 'error'}`;
+      if (error.code === 'RECORD_NOT_UNIQUE') {
+        return interpolate(t.validation.unique, { field: formatTitle(sectionField) });
+      }
+      return interpolate(t.validation.generic, {
+        field: formatTitle(sectionField),
+        type: error.type?.toLowerCase() || t.validation.fallbackType,
+      });
     },
-    [validationErrors],
+    [validationErrors, t],
   );
 
   // If there are no section fields and children provided, render children directly
@@ -270,6 +284,7 @@ export function GroupAccordion({
             onToggle={() => toggleSection(section.field)}
             onShiftClick={toggleAll}
             accordionMode={accordionMode}
+            t={t}
           >
             {renderSection ? renderSection(section) : null}
           </AccordionSection>
@@ -290,6 +305,7 @@ interface AccordionSectionProps {
   onToggle: () => void;
   onShiftClick: () => void;
   accordionMode: boolean;
+  t: GroupAccordionTranslations;
   children?: React.ReactNode;
 }
 
@@ -303,6 +319,7 @@ function AccordionSection({
   onToggle,
   onShiftClick,
   accordionMode,
+  t,
   children,
 }: AccordionSectionProps) {
   // Lazy-mount: only render section content once the section has been opened
@@ -370,7 +387,7 @@ function AccordionSection({
               top: 14,
               left: -7,
             }}
-            title="Edited"
+            title={t.edited}
           />
         )}
 
@@ -435,7 +452,7 @@ function AccordionSection({
           {children || (
             <Stack gap="md">
               <Text c="dimmed" size="sm">
-                No content for this section
+                {t.emptySection}
               </Text>
             </Stack>
           )}

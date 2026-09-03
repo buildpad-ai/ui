@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isNewItem } from '@buildpad/utils';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { defaultTranslations, interpolate, isNewItem } from '@buildpad/utils';
 import type {
   UseWorkflowOptions,
   UseWorkflowReturn,
@@ -9,38 +10,49 @@ import type {
   CommandOption,
 } from './types';
 
-// Default API client using fetch
-const defaultApiClient = {
-  get: async (url: string, config?: { params?: Record<string, unknown> }) => {
-    const params = new URLSearchParams();
-    if (config?.params) {
-      Object.entries(config.params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, typeof value === 'string' ? value : JSON.stringify(value));
-        }
+type WorkflowApiClient = NonNullable<UseWorkflowOptions['apiClient']>;
+
+/**
+ * Default API client on `fetch`. Not a hook, so the HTTP error message (a GET
+ * failure reaches the user through `errorMessage`) is handed in; it defaults
+ * to the English dictionary entry `interfaces.workflowButton.error.http`.
+ */
+export function createDefaultApiClient(
+  httpErrorMessage: string = defaultTranslations.interfaces.workflowButton.error.http,
+): WorkflowApiClient {
+  const httpError = (status: number) => new Error(interpolate(httpErrorMessage, { status }));
+  return {
+    get: async (url, config) => {
+      const params = new URLSearchParams();
+      if (config?.params) {
+        Object.entries(config.params).forEach(([key, value]) => {
+          if (value !== undefined) {
+            params.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+          }
+        });
+      }
+      const queryString = params.toString();
+      const fullUrl = queryString ? `${url}?${queryString}` : url;
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
       });
-    }
-    const queryString = params.toString();
-    const fullUrl = queryString ? `${url}?${queryString}` : url;
-    const response = await fetch(fullUrl, {
-      method: 'GET',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return { data: await response.json() };
-  },
-  post: async (url: string, data?: unknown) => {
-    const response = await fetch(url, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return { data: await response.json() };
-  },
-};
+      if (!response.ok) throw httpError(response.status);
+      return { data: await response.json() };
+    },
+    post: async (url, data) => {
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw httpError(response.status);
+      return { data: await response.json() };
+    },
+  };
+}
 
 /**
  * useWorkflow Hook
@@ -79,8 +91,17 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
     collection,
     versionKey: initialVersionKey,
     translationId: initialTranslationId,
-    apiClient = defaultApiClient,
+    apiClient: apiClientOption,
+    translations,
   } = options;
+
+  const t = useBuildpadTranslations((d) => d.interfaces.workflowButton, translations);
+  // The default client is memoised on the (stable) dictionary string so it
+  // keeps one identity across renders, as the module-level constant did.
+  const apiClient = useMemo(
+    () => apiClientOption ?? createDefaultApiClient(t.error.http),
+    [apiClientOption, t.error.http],
+  );
 
   const [workflowInstance, setWorkflowInstance] = useState<WorkflowInstance | null>(null);
   const [workflowInstanceId, setWorkflowInstanceId] = useState<number | null>(null);
@@ -185,7 +206,7 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
               : instance.workflow?.id;
 
           if (!workflowId) {
-            setErrorMessage('Workflow ID is missing');
+            setErrorMessage(t.error.missingWorkflowId);
             setWorkflowInstance(null);
             setWorkflowInstanceId(null);
             setCommands([]);
@@ -203,7 +224,7 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
           }
 
           if (!workflowDef?.workflow_json) {
-            setErrorMessage('Workflow configuration is missing');
+            setErrorMessage(t.error.missingConfig);
             setWorkflowInstance(null);
             setWorkflowInstanceId(null);
             setCommands([]);
@@ -262,10 +283,13 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
           // Populate the command options
           setCommands(
             filteredCommands.map((command) => ({
-              text: `${command.name} -> ${command.next_state || 'Unknown'}`,
+              text: interpolate(t.commandText, {
+                name: command.name,
+                nextState: command.next_state || t.unknown,
+              }),
               value: command.name,
-              command: command.name || 'Unknown Command',
-              nextState: command.next_state || 'Unknown State',
+              command: command.name || t.unknownCommand,
+              nextState: command.next_state || t.unknownState,
             }))
           );
         } else {
@@ -276,7 +300,7 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
         }
       } catch (error) {
         console.error('Failed to fetch workflow instance:', error);
-        setErrorMessage(error instanceof Error ? error.message : 'Fetch error');
+        setErrorMessage(error instanceof Error ? error.message : t.error.fetch);
         setWorkflowInstance(null);
         setWorkflowInstanceId(null);
         setCommands([]);
@@ -284,14 +308,14 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
         setLoading(false);
       }
     },
-    [itemId, collection, fetchUserPolicies, initialVersionKey, initialTranslationId, apiClient]
+    [itemId, collection, fetchUserPolicies, initialVersionKey, initialTranslationId, apiClient, t]
   );
 
   // Execute a workflow transition
   const executeTransition = useCallback(
     async (commandName: string | number, workflowField: string = 'status') => {
       if (!workflowInstanceId) {
-        throw new Error('No workflow instance available');
+        throw new Error(t.error.noInstance);
       }
 
       await apiClient.post('/api/workflow/transition', {
@@ -306,7 +330,7 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
       // Increment transition count to notify parent components
       setTransitionCount((prev) => prev + 1);
     },
-    [workflowInstanceId, apiClient, fetchWorkflowInstance]
+    [workflowInstanceId, apiClient, fetchWorkflowInstance, t]
   );
 
   const clearError = useCallback(() => {

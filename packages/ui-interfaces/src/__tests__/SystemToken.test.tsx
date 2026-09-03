@@ -3,8 +3,9 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core';
 import { SystemToken, SystemTokenProps } from '../system-token';
 
-// Mock @buildpad/services apiRequest
+// Mock @buildpad/services apiRequest (keep the real i18n hooks the component reads its strings from)
 jest.mock('@buildpad/services', () => ({
+  ...jest.requireActual('@buildpad/services'),
   apiRequest: jest.fn(),
 }));
 

@@ -11,6 +11,8 @@
 import React, { useMemo, useState } from 'react';
 import { MultiSelect, Text, Stack, ColorSwatch } from '@mantine/core';
 import { IconChevronDown, IconCheck } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 import { IconDisplay } from '../select-icon/SelectIcon';
 
 export interface DropdownChoice {
@@ -53,6 +55,8 @@ export interface SelectMultipleDropdownProps {
   /** Value is visible but not editable. Mantine's MultiSelect supports this natively. */
   readOnly?: boolean;
   'aria-label'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.selectMultipleCheckbox`) */
+  translations?: DeepPartial<InterfacesTranslations['selectMultipleCheckbox']>;
 }
 
 export function SelectMultipleDropdown({
@@ -75,7 +79,9 @@ export function SelectMultipleDropdown({
   width,
   color = 'blue',
   'aria-label': ariaLabel,
+  translations,
 }: SelectMultipleDropdownProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.selectMultipleCheckbox, translations);
   // Normalize a raw csv-string value to an array before anything below reads
   // it. `type === 'csv'` is the documented signal, but also trust what was
   // actually observed (a string) — some backends report the underlying
@@ -289,7 +295,7 @@ export function SelectMultipleDropdown({
           </Text>
         )}
         <Text size="sm" c="orange" role="alert">
-          Choices option configured incorrectly
+          {t.misconfigured}
         </Text>
         {error && (
           <Text size="xs" c="red" role="alert" aria-live="polite">
@@ -330,14 +336,14 @@ export function SelectMultipleDropdown({
         maxValues={maxValues}
         hidePickedOptions={hidePickedOptions}
         withAsterisk={required}
-        nothingFoundMessage={allowOther ? undefined : 'No options found'}
+        nothingFoundMessage={allowOther ? undefined : t.dropdown.nothingFound}
         maxDropdownHeight={300}
         comboboxProps={{
           transitionProps: { transition: 'pop', duration: 200 },
           shadow: 'var(--mantine-shadow-md)',
         }}
         rightSection={<IconChevronDown size={16} />}
-        aria-label={ariaLabel || label || 'Multiple select dropdown'}
+        aria-label={ariaLabel || label || t.dropdown.ariaLabel}
         renderOption={({ option, checked }) => {
           const choice = data.find((d) => d.value === option.value);
           return (

@@ -11,6 +11,9 @@ import {
 } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import type { Field, Permission } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
+import { interpolateNodes } from './PermissionFilterUtils';
 
 /**
  * Format field name to Title Case (e.g., "user_created" -> "User Created")
@@ -32,6 +35,8 @@ export interface PermissionFieldsTabProps {
   appMinimal?: string[] | null;
   onChange: (permission: Partial<Permission>) => void;
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemPermissions`) */
+  translations?: DeepPartial<InterfacesTranslations['systemPermissions']>;
 }
 
 /**
@@ -47,7 +52,9 @@ export function PermissionFieldsTab({
   appMinimal,
   onChange,
   'data-testid': testId,
+  translations,
 }: PermissionFieldsTabProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemPermissions, translations);
   const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
 
   // Initialize selected fields from permission
@@ -110,21 +117,24 @@ export function PermissionFieldsTab({
     });
   };
 
-  const actionText = permission.action ?? 'access';
+  const actionText = permission.action ? t.actions[permission.action] : t.fieldsTab.actionFallback;
 
   return (
     <Stack gap="md" pos="relative" data-testid={testId}>
       <LoadingOverlay visible={loading} />
 
       <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-        Select which fields {policyName || 'this policy'} can {actionText} in{' '}
-        <strong>{permission.collection}</strong>.
+        {interpolateNodes(t.fieldsTab.intro, {
+          policyName: policyName || t.thisPolicyFallback,
+          action: actionText,
+          collection: <strong>{permission.collection}</strong>,
+        })}
       </Alert>
 
       <Group justify="space-between">
-        <Text size="sm" fw={500}>Fields</Text>
+        <Text size="sm" fw={500}>{t.fieldsTab.fieldsHeading}</Text>
         <Group gap={4}>
-          <Text size="xs" c="dimmed">Select:</Text>
+          <Text size="xs" c="dimmed">{t.fieldsTab.selectLabel}</Text>
           <Text
             size="xs"
             c="blue"
@@ -132,7 +142,7 @@ export function PermissionFieldsTab({
             onClick={handleSelectAll}
             data-testid={testId ? `${testId}-select-all` : undefined}
           >
-            all
+            {t.fieldsTab.selectAll}
           </Text>
           <Text size="xs" c="dimmed">/</Text>
           <Text
@@ -142,7 +152,7 @@ export function PermissionFieldsTab({
             onClick={handleSelectNone}
             data-testid={testId ? `${testId}-select-none` : undefined}
           >
-            none
+            {t.fieldsTab.selectNone}
           </Text>
         </Group>
       </Group>
@@ -150,7 +160,7 @@ export function PermissionFieldsTab({
       <Stack gap="xs">
         {fields.length === 0 && !loading && (
           <Text size="sm" c="dimmed" ta="center" py="md">
-            No fields found for this collection
+            {t.fieldsTab.noFields}
           </Text>
         )}
 
@@ -169,17 +179,17 @@ export function PermissionFieldsTab({
                   </Code>
                   {field.schema?.is_primary_key && (
                     <Text size="xs" c="blue" fw={500}>
-                      PK
+                      {t.fieldsTab.pkBadge}
                     </Text>
                   )}
                   {field.type === 'alias' && (
                     <Text size="xs" c="violet" fw={500}>
-                      Alias
+                      {t.fieldsTab.aliasBadge}
                     </Text>
                   )}
                   {isAppMinimal && (
                     <Text size="xs" c="cyan" fw={500}>
-                      App Minimal
+                      {t.fieldsTab.appMinimalBadge}
                     </Text>
                   )}
                 </Group>
@@ -202,11 +212,10 @@ export function PermissionFieldsTab({
           <Alert color="yellow" variant="light" icon={<IconInfoCircle size={16} />}>
             <Stack gap="xs">
               <Text size="sm" fw={500}>
-                Minimum Permissions (App Access)
+                {t.fieldsTab.appMinimal.title}
               </Text>
               <Text size="xs" c="dimmed">
-                The following fields are automatically included with app access and cannot be
-                removed:
+                {t.fieldsTab.appMinimal.description}
               </Text>
               <Code block fz="xs">
                 {JSON.stringify(appMinimal, null, 2)}

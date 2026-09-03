@@ -27,7 +27,8 @@ import {
   IconSettings,
   IconX,
 } from '@tabler/icons-react';
-import { apiRequest } from '@buildpad/services';
+import { apiRequest, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import type { Field, Permission, PermissionAction, Collection } from '@buildpad/types';
 import { PermissionDetailModal } from './PermissionDetailModal';
 import type { RelationInfo } from './PermissionFilterTypes';
@@ -37,15 +38,10 @@ import './SystemPermissions.css';
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const PERMISSION_ACTIONS: PermissionAction[] = ['create', 'read', 'update', 'delete', 'share'];
+/** Resolved dictionary strings (`interfaces.systemPermissions`), passed to the internal row / toggle components. */
+type SystemPermissionsStrings = InterfacesTranslations['systemPermissions'];
 
-const PERMISSION_LABELS: Record<PermissionAction, string> = {
-  create: 'C',
-  read: 'R',
-  update: 'U',
-  delete: 'D',
-  share: 'S',
-};
+const PERMISSION_ACTIONS: PermissionAction[] = ['create', 'read', 'update', 'delete', 'share'];
 
 const DISABLED_ACTIONS: Record<string, PermissionAction[]> = {
   daas_extensions: ['create', 'delete'],
@@ -116,6 +112,8 @@ export interface SystemPermissionsProps {
   description?: string;
   error?: string;
   'data-testid'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemPermissions`) */
+  translations?: DeepPartial<InterfacesTranslations['systemPermissions']>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -165,12 +163,14 @@ interface PermissionsToggleProps {
   onSetNoAccess: () => void;
   onEdit: () => void;
   'data-testid'?: string;
+  t: SystemPermissionsStrings;
 }
 
 function PermissionsToggle({
   action, permission, appMinimal, disabled,
   onSetFullAccess, onSetNoAccess, onEdit,
   'data-testid': testId,
+  t,
 }: PermissionsToggleProps) {
   const level = getPermissionLevel(permission);
 
@@ -188,7 +188,7 @@ function PermissionsToggle({
             variant="filled"
             size="sm"
             style={{ cursor: disabled ? 'default' : 'pointer' }}
-            title="Required for app access"
+            title={t.toggle.requiredForAppAccess}
             data-testid={testId}
             data-level={minimalLevel}
             data-action={action}
@@ -196,7 +196,7 @@ function PermissionsToggle({
             role="button"
             tabIndex={disabled ? -1 : 0}
           >
-            {PERMISSION_LABELS[action]}
+            {t.actionShort[action]}
           </Badge>
         </Menu.Target>
         {!disabled && (
@@ -207,7 +207,7 @@ function PermissionsToggle({
               onClick={onSetFullAccess}
               data-testid={testId ? `${testId}-full` : undefined}
             >
-              All Access
+              {t.toggle.allAccess}
             </Menu.Item>
             <Menu.Divider />
             <Menu.Item
@@ -215,7 +215,7 @@ function PermissionsToggle({
               onClick={onEdit}
               data-testid={testId ? `${testId}-custom` : undefined}
             >
-              Use Custom
+              {t.toggle.useCustom}
             </Menu.Item>
           </Menu.Dropdown>
         )}
@@ -231,14 +231,14 @@ function PermissionsToggle({
           variant={level === 'none' ? 'outline' : 'filled'}
           size="sm"
           style={{ cursor: disabled ? 'default' : 'pointer' }}
-          title={`${action} - ${level}`}
+          title={interpolate(t.toggle.titleFormat, { action: t.actions[action], level: t.levels[level] })}
           data-testid={testId}
           data-level={level}
           data-action={action}
           role="button"
           tabIndex={disabled ? -1 : 0}
         >
-          {PERMISSION_LABELS[action]}
+          {t.actionShort[action]}
         </Badge>
       </Menu.Target>
       {!disabled && (
@@ -249,7 +249,7 @@ function PermissionsToggle({
             onClick={onSetFullAccess}
             data-testid={testId ? `${testId}-full` : undefined}
           >
-            All Access
+            {t.toggle.allAccess}
           </Menu.Item>
           <Menu.Item
             leftSection={<IconBlockquote size={14} />}
@@ -257,7 +257,7 @@ function PermissionsToggle({
             onClick={onSetNoAccess}
             data-testid={testId ? `${testId}-none` : undefined}
           >
-            No Access
+            {t.toggle.noAccess}
           </Menu.Item>
           <Menu.Divider />
           <Menu.Item
@@ -265,7 +265,7 @@ function PermissionsToggle({
             onClick={onEdit}
             data-testid={testId ? `${testId}-custom` : undefined}
           >
-            Use Custom
+            {t.toggle.useCustom}
           </Menu.Item>
         </Menu.Dropdown>
       )}
@@ -290,6 +290,7 @@ interface PermissionsRowProps {
   onSetFullAccess: (action: PermissionAction) => void;
   onSetNoAccess: (action: PermissionAction) => void;
   'data-testid'?: string;
+  t: SystemPermissionsStrings;
 }
 
 function PermissionsRow({
@@ -297,6 +298,7 @@ function PermissionsRow({
   onEditItem, onRemoveRow, onSetFullAccessAll, onSetNoAccessAll,
   onSetFullAccess, onSetNoAccess,
   'data-testid': testId,
+  t,
 }: PermissionsRowProps) {
   return (
     <Table.Tr data-testid={testId ? `${testId}-row-${collection.collection}` : undefined}>
@@ -325,7 +327,7 @@ function PermissionsRow({
                 tabIndex={0}
                 data-testid={testId ? `${testId}-all-${collection.collection}` : undefined}
               >
-                all
+                {t.row.all}
               </span>
               {' / '}
               <span
@@ -335,7 +337,7 @@ function PermissionsRow({
                 tabIndex={0}
                 data-testid={testId ? `${testId}-none-${collection.collection}` : undefined}
               >
-                none
+                {t.row.none}
               </span>
             </Text>
           )}
@@ -358,6 +360,7 @@ function PermissionsRow({
               onSetNoAccess={() => onSetNoAccess(action)}
               onEdit={() => onEditItem(action)}
               data-testid={testId ? `${testId}-toggle-${collection.collection}-${action}` : undefined}
+              t={t}
             />
           )}
         </Table.Td>
@@ -365,7 +368,7 @@ function PermissionsRow({
 
       <Table.Td>
         {!disabled && (
-          <Tooltip label="Remove collection">
+          <Tooltip label={t.row.removeCollection}>
             <ActionIcon
               variant="subtle"
               color="red"
@@ -401,7 +404,9 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
   description,
   error,
   'data-testid': testId,
+  translations,
 }, ref) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemPermissions, translations);
   const [fetchedPermissions, setFetchedPermissions] = useState<Permission[]>([]);
   const [fetchedCollections, setFetchedCollections] = useState<CollectionInfo[]>([]);
   const [localCollections, setLocalCollections] = useState<string[]>([]);
@@ -812,7 +817,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
         {label && <Text fw={500} size="sm" mb={4}>{label}</Text>}
         <Paper p="md" withBorder>
           <Text c="dimmed" ta="center" data-testid={testId ? `${testId}-admin-notice` : undefined}>
-            Admin Access is enabled. This policy has full access to all collections and actions.
+            {t.adminNotice}
           </Text>
         </Paper>
       </div>
@@ -830,7 +835,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
             onClick={() => setAddCollectionOpened(true)}
             data-testid={testId ? `${testId}-add-btn` : undefined}
           >
-            Add Collection
+            {t.addCollection}
           </Button>
         )}
       </Group>
@@ -842,11 +847,11 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
           <Table striped highlightOnHover withTableBorder={false} style={{ minWidth: '600px' }}>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th style={{ minWidth: '200px' }}>Collection</Table.Th>
+                <Table.Th style={{ minWidth: '200px' }}>{t.table.collectionHeader}</Table.Th>
                 {PERMISSION_ACTIONS.map((action) => (
                   <Table.Th key={action} style={{ width: '60px', textAlign: 'center' }}>
                     <Text size="xs" tt="uppercase" fw={600}>
-                      {action}
+                      {t.actions[action]}
                     </Text>
                   </Table.Th>
                 ))}
@@ -858,7 +863,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
                 <Table.Tr>
                   <Table.Td colSpan={7}>
                     <Text ta="center" c="dimmed" py="xl" data-testid={testId ? `${testId}-empty` : undefined}>
-                      No permissions configured. Click &quot;Add Collection&quot; to get started.
+                      {t.table.empty}
                     </Text>
                   </Table.Td>
                 </Table.Tr>
@@ -878,6 +883,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
                       onSetFullAccess={(action) => setFullAccess(group.collection.collection, action)}
                       onSetNoAccess={(action) => setNoAccess(group.collection.collection, action)}
                       data-testid={testId}
+                      t={t}
                     />
                   ))}
 
@@ -887,7 +893,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
                         <Divider
                           label={
                             <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-                              System Collections
+                              {t.systemCollections}
                             </Text>
                           }
                           labelPosition="center"
@@ -911,6 +917,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
                       onSetFullAccess={(action) => setFullAccess(group.collection.collection, action)}
                       onSetNoAccess={(action) => setNoAccess(group.collection.collection, action)}
                       data-testid={testId}
+                      t={t}
                     />
                   ))}
                 </>
@@ -922,10 +929,10 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
 
       {appAccess && (
         <Text size="xs" c="dimmed" mt="xs">
-          <strong>App Access is enabled.</strong> Minimal permissions are automatically applied and cannot be removed.
+          <strong>{t.appAccessNotice.title}</strong> {t.appAccessNotice.message}
           {' '}
           <span>
-            Reset system permissions to:{' '}
+            {t.resetPrompt}{' '}
             <span
               onClick={() => { setResetMode('minimum'); setResetDialogOpen(true); }}
               style={{ cursor: 'pointer', color: 'var(--mantine-primary-color-6)', textDecoration: 'underline' }}
@@ -933,7 +940,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
               tabIndex={0}
               data-testid={testId ? `${testId}-reset-minimum` : undefined}
             >
-              app access minimum
+              {t.resetMinimum}
             </span>
             {' / '}
             <span
@@ -943,7 +950,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
               tabIndex={0}
               data-testid={testId ? `${testId}-reset-recommended` : undefined}
             >
-              recommended defaults
+              {t.resetRecommended}
             </span>
           </span>
         </Text>
@@ -957,14 +964,14 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
       <Modal
         opened={addCollectionOpened}
         onClose={() => { setAddCollectionOpened(false); setCollectionSearch(''); }}
-        title="Add Collection"
+        title={t.addModal.title}
         size="md"
         transitionProps={{ duration: 0 }}
         data-testid={testId ? `${testId}-add-modal` : undefined}
       >
         <Stack gap="sm">
           <TextInput
-            placeholder="Search collections..."
+            placeholder={t.addModal.searchPlaceholder}
             leftSection={<IconSearch size={14} />}
             value={collectionSearch}
             onChange={(e) => setCollectionSearch(e.currentTarget.value)}
@@ -978,8 +985,8 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
                   <IconDatabaseOff size={40} stroke={1.2} color="var(--mantine-color-dimmed)" />
                   <Text c="dimmed" size="sm" ta="center">
                     {collectionSearch
-                      ? `No collections matching "${collectionSearch}"`
-                      : 'All collections have been configured'}
+                      ? interpolate(t.addModal.noMatch, { search: collectionSearch })
+                      : t.addModal.allConfigured}
                   </Text>
                 </Stack>
               ) : (
@@ -1001,14 +1008,14 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
                   ))}
                   {availableCollections.userCollections.length > 0 && availableCollections.systemCollections.length > 0 && (
                     <Divider
-                      label={<Text size="xs" c="dimmed" fw={600} tt="uppercase">System Collections</Text>}
+                      label={<Text size="xs" c="dimmed" fw={600} tt="uppercase">{t.systemCollections}</Text>}
                       labelPosition="left"
                       my="xs"
                     />
                   )}
                   {availableCollections.systemCollections.length > 0 && availableCollections.userCollections.length === 0 && (
                     <Text size="xs" c="dimmed" fw={600} tt="uppercase" mb={4}>
-                      System Collections
+                      {t.systemCollections}
                     </Text>
                   )}
                   {availableCollections.systemCollections.map((col) => (
@@ -1025,7 +1032,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
                         <Highlight highlight={collectionSearch} size="sm" fw={500} ff="monospace">
                           {col.collection}
                         </Highlight>
-                        <Badge size="xs" variant="light" color="accent">System</Badge>
+                        <Badge size="xs" variant="light" color="accent">{t.addModal.systemBadge}</Badge>
                       </Group>
                     </Paper>
                   ))}
@@ -1040,25 +1047,26 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
       <Modal
         opened={resetDialogOpen}
         onClose={() => setResetDialogOpen(false)}
-        title="Reset System Permissions"
+        title={t.resetDialog.title}
         centered
         size="sm"
         transitionProps={{ duration: 0 }}
         data-testid={testId ? `${testId}-reset-dialog` : undefined}
       >
         <Text size="sm" mb="md">
-          Are you sure you want to reset all system collection permissions
-          {resetMode === 'recommended' ? ' to recommended defaults' : ' to app access minimum'}?
+          {interpolate(t.resetDialog.message, {
+            target: resetMode === 'recommended' ? t.resetDialog.targetRecommended : t.resetDialog.targetMinimum,
+          })}
         </Text>
         <Group justify="flex-end">
           <Button variant="default" onClick={() => setResetDialogOpen(false)}>
-            Cancel
+            {t.resetDialog.cancel}
           </Button>
           <Button
             onClick={() => resetSystemPermissions(resetMode === 'recommended')}
             data-testid={testId ? `${testId}-reset-confirm` : undefined}
           >
-            Reset
+            {t.resetDialog.confirm}
           </Button>
         </Group>
       </Modal>
@@ -1083,6 +1091,7 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
           onSave={handleDetailSave}
           onDelete={editingPermission ? handleDetailDelete : undefined}
           data-testid={testId ? `${testId}-detail` : undefined}
+          translations={translations}
         />
       )}
     </div>

@@ -23,6 +23,11 @@ import {
 } from '@mantine/core';
 import { IconChevronRight, IconChevronDown, IconSearch, IconX } from '@tabler/icons-react';
 import { useDebouncedValue } from '@mantine/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
+
+/** Resolved dictionary strings of the tree (`interfaces.selectMultipleCheckbox.tree`). */
+type TreeStrings = InterfacesTranslations['selectMultipleCheckbox']['tree'];
 
 // Depth cap for the recursive tree walkers (S4.10). `choices` is normally
 // plain JSON, which can't encode a cycle — but a programmatic consumer could
@@ -92,6 +97,8 @@ export interface SelectMultipleCheckboxTreeProps {
    * would be announced as the same literal string.
    */
   'aria-label'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.selectMultipleCheckbox`) */
+  translations?: DeepPartial<InterfacesTranslations['selectMultipleCheckbox']>;
 }
 
 interface TreeNodeProps {
@@ -115,17 +122,23 @@ interface TreeNodeProps {
    * stringify-colliding sibling values don't share one testid (S4.8).
    */
   nodePath: string;
+  /** Resolved dictionary strings (expand / collapse labels) */
+  t: TreeStrings;
 }
 
-// Inline SearchInput component to avoid external dependency
-function SearchInput({ 
-  onSearch, 
-  placeholder = 'Search...', 
+// Inline SearchInput component to avoid external dependency. The strings are
+// resolved by the tree (which owns the `translations` prop) and passed in.
+function SearchInput({
+  onSearch,
+  placeholder,
+  clearLabel,
   showClearButton = true,
   disabled = false,
 }: {
   onSearch: (value: string) => void;
-  placeholder?: string;
+  placeholder: string;
+  /** aria-label of the clear button */
+  clearLabel: string;
   showClearButton?: boolean;
   disabled?: boolean;
 }) {
@@ -153,7 +166,7 @@ function SearchInput({
             variant="subtle"
             size="sm"
             onClick={handleClear}
-            aria-label="Clear search"
+            aria-label={clearLabel}
           >
             <IconX size={12} />
           </ActionIcon>
@@ -179,7 +192,9 @@ export function SelectMultipleCheckboxTree({
   width,
   color = 'blue',
   'aria-label': ariaLabel,
+  translations,
 }: SelectMultipleCheckboxTreeProps) {
+  const t = useBuildpadTranslations((d) => d.interfaces.selectMultipleCheckbox, translations);
   const [search, setSearch] = useState('');
   const [showSelectionOnly, setShowSelectionOnly] = useState(false);
   const [debouncedSearch] = useDebouncedValue(search, 250);
@@ -531,7 +546,7 @@ export function SelectMultipleCheckboxTree({
           </Text>
         )}
         <Text size="sm" c="orange" role="alert">
-          Choices option configured incorrectly
+          {t.misconfigured}
         </Text>
         {error && (
           <Text size="xs" c="red" role="alert" aria-live="polite">
@@ -570,7 +585,7 @@ export function SelectMultipleCheckboxTree({
         // the visible label itself and forwards a name here instead, so falling
         // back to the constant would give every tree field on a form the same
         // announcement.
-        aria-label={label ? `${label} tree` : (ariaLabel ?? 'Tree selection')}
+        aria-label={label ? interpolate(t.tree.treeLabelWithLabel, { label }) : (ariaLabel ?? t.tree.treeLabel)}
       >
         {/* Search input */}
         {choices.length > 10 && (
@@ -582,7 +597,8 @@ export function SelectMultipleCheckboxTree({
             }}
           >
             <SearchInput
-              placeholder="Search..."
+              placeholder={t.tree.searchPlaceholder}
+              clearLabel={t.tree.clearSearch}
               onSearch={setSearch}
               disabled={disabled}
               showClearButton
@@ -613,6 +629,7 @@ export function SelectMultipleCheckboxTree({
                 // filtering even though __key itself (the React key) was
                 // already stable.
                 nodePath={String(choice.__index)}
+                t={t.tree}
               />
             ))}
           </Stack>
@@ -634,7 +651,7 @@ export function SelectMultipleCheckboxTree({
             onClick={() => setShowSelectionOnly(false)}
             disabled={disabled}
           >
-            Show All
+            {t.tree.showAll}
           </Button>
           <Text size="xs" c="dimmed">/</Text>
           <Button
@@ -643,7 +660,7 @@ export function SelectMultipleCheckboxTree({
             onClick={() => setShowSelectionOnly(true)}
             disabled={disabled}
           >
-            Show Selected
+            {t.tree.showSelected}
           </Button>
         </Group>
       </Box>
@@ -671,6 +688,7 @@ function TreeNode({
   color,
   autoExpandValues,
   nodePath,
+  t,
 }: TreeNodeProps) {
   const hasChildren = choice.children && choice.children.length > 0;
 
@@ -819,7 +837,7 @@ function TreeNode({
             marginLeft: level * 16,
           }}
           disabled={disabled}
-          aria-label={expanded ? 'Collapse' : 'Expand'}
+          aria-label={expanded ? t.collapse : t.expand}
         >
           {expanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
         </ActionIcon>
@@ -870,6 +888,7 @@ function TreeNode({
                 // V3-7: same stable child.__key used for the React key, not
                 // the filtered-position childIndex.
                 nodePath={`${nodePath}-${child.__index}`}
+                t={t}
               />
             ))}
           </Stack>

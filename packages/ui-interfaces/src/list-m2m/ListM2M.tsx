@@ -88,7 +88,9 @@ import { CollectionList, CollectionForm } from "@buildpad/ui-collections";
 import { renderTemplate, resolveDisplayTemplate, splitJunctionTemplateFields, DEFAULT_RELATIONAL_FIELDS } from "../list-m2a/render-template";
 import { useRelationMultipleM2M, type M2MDisplayItem, type M2MChangesItem } from "@buildpad/hooks";
 import { useRelationPermissionsM2M } from "@buildpad/hooks";
-import { mergeTranslations, interpolate, formatItemCount, type M2MTranslations } from "./translations";
+import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
+import type { DeepPartial, PluralForms } from "@buildpad/utils";
+import { interpolate, type M2MTranslations } from "./translations";
 
 // ── Props ──────────────────────────────────────────────────────────
 
@@ -152,10 +154,11 @@ export interface ListM2MProps {
      */
     mockRelationInfo?: M2MRelationInfo;
     /**
-     * Partial i18n overrides. Merged with English defaults.
+     * Partial i18n overrides, layered on top of the `BuildpadI18nProvider`
+     * dictionary (`interfaces.listM2M`) and the English defaults.
      * @see M2MTranslations
      */
-    translations?: Partial<M2MTranslations>;
+    translations?: DeepPartial<M2MTranslations>;
     /**
      * Enable batch edit mode (table layout only).
      * Shows checkboxes for multi-select and a batch edit button.
@@ -217,6 +220,7 @@ const SortableM2MTableRow: React.FC<SortableM2MTableRowProps> = ({
     onToggleSelect,
     getItemLink,
 }) => {
+    const { formatCount } = useBuildpadI18n();
     const {
         attributes,
         listeners,
@@ -322,7 +326,7 @@ const SortableM2MTableRow: React.FC<SortableM2MTableRowProps> = ({
                 const value = relatedData?.[fieldName] ?? item[fieldName];
                 return (
                     <Table.Td key={fieldName}>
-                        <Text size="sm">{formatCellValue(value)}</Text>
+                        <Text size="sm">{formatCellValue(value, t, formatCount)}</Text>
                     </Table.Td>
                 );
             })}
@@ -550,11 +554,15 @@ const SortableM2MListItem: React.FC<SortableM2MListItemProps> = ({
 
 // ── Helper: format cell values ─────────────────────────────────────
 
-function formatCellValue(value: unknown): string {
-    if (value === null || value === undefined) return "-";
-    if (typeof value === "boolean") return value ? "Yes" : "No";
+function formatCellValue(
+    value: unknown,
+    t: M2MTranslations,
+    formatCount: (count: number, forms: PluralForms) => string,
+): string {
+    if (value === null || value === undefined) return t.cell.empty;
+    if (typeof value === "boolean") return value ? t.cell.yes : t.cell.no;
     if (typeof value === "object") {
-        if (Array.isArray(value)) return `[${value.length} items]`;
+        if (Array.isArray(value)) return formatCount(value.length, t.cell.arrayCount);
         return JSON.stringify(value);
     }
     return String(value);
@@ -594,7 +602,21 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     versionId,
 }) => {
     // ── i18n ────────────────────────────────────────────────────────
-    const t = useMemo(() => mergeTranslations(translationOverrides), [translationOverrides]);
+    // Precedence: `translations` prop > provider dictionary > English defaults.
+    const t = useBuildpadTranslations((d) => d.interfaces.listM2M, translationOverrides);
+    const { formatCount } = useBuildpadI18n();
+    // `itemCount` (PluralForms) is the source of truth for the item count; a
+    // legacy prop override of the `item_count_one` / `item_count_other` pair
+    // still wins so existing consumers keep their copy.
+    const itemCountForms = useMemo<PluralForms>(() => {
+        const legacyOverride =
+            translationOverrides?.item_count_one !== undefined ||
+            translationOverrides?.item_count_other !== undefined;
+        if (legacyOverride && !translationOverrides?.itemCount) {
+            return { one: t.item_count_one, other: t.item_count_other };
+        }
+        return t.itemCount;
+    }, [t, translationOverrides]);
 
     // ── Mock mode (Storybook / tests) ──────────────────────────────
     const isMockMode = !!(mockItems || mockRelationInfo);
@@ -1409,7 +1431,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
 
                         {totalCount > 0 && (
                             <Text size="sm" c="dimmed">
-                                {formatItemCount(totalCount, t)}
+                                {formatCount(totalCount, itemCountForms)}
                                 {hasChanges && (
                                     <Text span c="yellow" size="xs">
                                         {" "}

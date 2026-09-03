@@ -17,6 +17,7 @@ import {
   defaultTranslations as buildpadDefaults,
   interpolate,
   mergeTranslations as mergeDeep,
+  type DeepPartial,
   type ListM2MTranslations,
 } from '@buildpad/utils';
 
@@ -34,7 +35,7 @@ export const defaultTranslations: M2MTranslations = buildpadDefaults.interfaces.
  * namespace as `base` so prop overrides land on top of the app dictionary.
  */
 export function mergeTranslations(
-    overrides?: Partial<M2MTranslations>,
+    overrides?: Partial<M2MTranslations> | DeepPartial<M2MTranslations>,
     base: M2MTranslations = defaultTranslations,
 ): M2MTranslations {
     if (!overrides) return base;
@@ -43,6 +44,9 @@ export function mergeTranslations(
 
 /**
  * Format item count with correct plural form.
+ *
+ * Kept for consumers who imported it directly; `ListM2M` itself now uses
+ * `formatCount(count, t.itemCount)` from `useBuildpadI18n()` (locale-aware).
  */
 export function formatItemCount(
     count: number,

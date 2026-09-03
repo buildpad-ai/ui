@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
     Stack,
     Divider,
@@ -13,7 +13,8 @@ import {
     Box,
 } from "@mantine/core";
 import { IconAlertCircle, IconDeviceFloppy, IconX } from "@tabler/icons-react";
-import { apiRequest } from "@buildpad/services";
+import { apiRequest, useBuildpadTranslations } from "@buildpad/services";
+import { interpolate, type DeepPartial, type InterfacesTranslations } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import type { Field } from "@buildpad/types";
 import type { M2ARelationInfo, M2AItem } from "@buildpad/hooks";
@@ -38,6 +39,8 @@ export interface JunctionItemFormProps {
     onCancel: () => void;
     /** Disabled state */
     disabled?: boolean;
+    /** Per-instance overrides of the dictionary strings (`interfaces.listM2A`) */
+    translations?: DeepPartial<InterfacesTranslations['listM2A']>;
 }
 
 /**
@@ -65,7 +68,13 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
     onSave,
     onCancel,
     disabled = false,
+    translations,
 }) => {
+    const t = useBuildpadTranslations((d) => d.interfaces.listM2A, translations);
+    // Read through a ref inside the field-loading effect so a dictionary change never re-fetches the fields.
+    const tRef = useRef(t);
+    tRef.current = t;
+
     // ── field definitions ──────────────────────────────────────────
     const [relatedFields, setRelatedFields] = useState<Field[]>([]);
     const [junctionFields, setJunctionFields] = useState<Field[]>([]);
@@ -178,7 +187,7 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
                     setJunctionInitialValues(junctionValues);
                 }
             } catch (err) {
-                const msg = err instanceof Error ? err.message : 'Failed to load fields';
+                const msg = err instanceof Error ? err.message : tRef.current.junctionForm.errors.loadFields;
                 setFieldsError(msg);
             } finally {
                 setFieldsLoading(false);
@@ -247,7 +256,7 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
 
     if (fieldsError) {
         return (
-            <Alert icon={<IconAlertCircle size={16} />} color="red" title="Error loading fields">
+            <Alert icon={<IconAlertCircle size={16} />} color="red" title={t.junctionForm.errors.title}>
                 {fieldsError}
             </Alert>
         );
@@ -264,7 +273,7 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
                         {targetCollection}
                     </Badge>
                     <Text size="sm" c="dimmed">
-                        {isNew ? 'New item' : `Editing item ${relatedPrimaryKey}`}
+                        {isNew ? t.junctionForm.newItem : interpolate(t.junctionForm.editingItem, { id: relatedPrimaryKey })}
                     </Text>
                 </Group>
 
@@ -283,7 +292,7 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
                 ) : (
                     !fieldsLoading && (
                         <Text size="sm" c="dimmed" ta="center" py="md">
-                            No editable fields found for {targetCollection}
+                            {interpolate(t.junctionForm.noEditableFields, { collection: targetCollection })}
                         </Text>
                     )
                 )}
@@ -295,7 +304,7 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
                     <Divider
                         label={
                             <Text size="xs" c="dimmed" fw={500}>
-                                Junction settings
+                                {t.junctionForm.junctionSettings}
                             </Text>
                         }
                         labelPosition="center"
@@ -318,7 +327,7 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
             {/* Action Buttons */}
             <Group justify="flex-end" mt="md">
                 <Button variant="subtle" onClick={onCancel} leftSection={<IconX size={14} />}>
-                    Cancel
+                    {t.junctionForm.cancel}
                 </Button>
                 <Button
                     onClick={handleSave}
@@ -326,7 +335,7 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
                     disabled={disabled}
                     data-testid="junction-form-save"
                 >
-                    {isNew ? 'Add Item' : 'Update Item'}
+                    {isNew ? t.junctionForm.addItem : t.junctionForm.updateItem}
                 </Button>
             </Group>
         </Stack>

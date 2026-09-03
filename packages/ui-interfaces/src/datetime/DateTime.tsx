@@ -5,6 +5,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import { useDayjsLocale } from './dayjs-locales';
 
 // Extend dayjs with plugins
@@ -67,6 +68,9 @@ export interface DateTimeProps {
   
   /** Additional props to pass to the DateTimePicker component */
   pickerProps?: Omit<DateTimePickerProps, 'value' | 'onChange' | 'disabled' | 'label' | 'description' | 'error'>;
+
+  /** Per-instance overrides of the dictionary strings (`interfaces.datetime`) */
+  translations?: DeepPartial<InterfacesTranslations['datetime']>;
 }
 
 /**
@@ -105,11 +109,12 @@ export const DateTime: React.FC<DateTimeProps> = ({
   maxDate,
   onChange,
   pickerProps = {},
+  translations,
 }) => {
   // Locale from BuildpadI18nProvider (English/browser without one). The
   // calendar and the display format use dayjs locale data loaded on demand.
   const { locale, hasProvider } = useBuildpadI18n();
-  const t = useBuildpadTranslations((d) => d.interfaces.datetime);
+  const t = useBuildpadTranslations((d) => d.interfaces.datetime, translations);
   const dayjsLocale = useDayjsLocale(hasProvider ? locale : undefined);
 
   // Convert string value to Mantine 8 date string format (YYYY-MM-DD or YYYY-MM-DD HH:mm:ss)
@@ -196,23 +201,26 @@ export const DateTime: React.FC<DateTimeProps> = ({
       return valueFormat;
     }
     
+    // Display-only dayjs formats from the dictionary (token order is what a
+    // locale changes; month names / AM-PM come from the dayjs locale data).
+    const f = t.displayFormat;
     switch (type) {
       case 'datetime':
         return includeSeconds 
-          ? (use24 ? 'DD MMM YYYY HH:mm:ss' : 'DD MMM YYYY hh:mm:ss A')
-          : (use24 ? 'DD MMM YYYY HH:mm' : 'DD MMM YYYY hh:mm A');
+          ? (use24 ? f.dateTime24WithSeconds : f.dateTime12WithSeconds)
+          : (use24 ? f.dateTime24 : f.dateTime12);
       case 'date':
-        return 'DD MMM YYYY';
+        return f.date;
       case 'time':
         return includeSeconds
-          ? (use24 ? 'HH:mm:ss' : 'hh:mm:ss A')
-          : (use24 ? 'HH:mm' : 'hh:mm A');
+          ? (use24 ? f.time24WithSeconds : f.time12WithSeconds)
+          : (use24 ? f.time24 : f.time12);
       case 'timestamp':
         return includeSeconds
-          ? (use24 ? 'DD MMM YYYY HH:mm:ss' : 'DD MMM YYYY hh:mm:ss A')
-          : (use24 ? 'DD MMM YYYY HH:mm' : 'DD MMM YYYY hh:mm A');
+          ? (use24 ? f.dateTime24WithSeconds : f.dateTime12WithSeconds)
+          : (use24 ? f.dateTime24 : f.dateTime12);
       default:
-        return 'DD MMM YYYY HH:mm';
+        return f.dateTime24;
     }
   };
 
@@ -242,7 +250,7 @@ export const DateTime: React.FC<DateTimeProps> = ({
     onChange: handleChange,
     disabled,
     readOnly,
-    label: label ? (required ? `${label} *` : label) : undefined,
+    label: label ? (required ? interpolate(t.requiredLabel, { label }) : label) : undefined,
     description,
     error,
     placeholder: getPlaceholder(),
@@ -264,7 +272,7 @@ export const DateTime: React.FC<DateTimeProps> = ({
       onChange: handleChange,
       disabled,
       readOnly,
-      label: label ? (required ? `${label} *` : label) : undefined,
+      label: label ? (required ? interpolate(t.requiredLabel, { label }) : label) : undefined,
       description,
       error,
       placeholder: getPlaceholder(),

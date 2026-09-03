@@ -1,9 +1,9 @@
 import React, { forwardRef, useState, useEffect, useCallback } from 'react';
-import { isConcealedValue } from '@buildpad/utils';
+import { isConcealedValue, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import { TextInput, ActionIcon, Alert, Group, Loader } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCopy, IconPlus, IconRefresh, IconX, IconKey } from '@tabler/icons-react';
-import { apiRequest } from '@buildpad/services';
+import { apiRequest, useBuildpadTranslations } from '@buildpad/services';
 import { useClipboard } from '@buildpad/hooks';
 import './SystemToken.css';
 
@@ -36,6 +36,8 @@ export interface SystemTokenProps {
   'data-testid'?: string;
   /** Accessible name, used when no visible `label` is rendered */
   'aria-label'?: string;
+  /** Per-instance overrides of the dictionary strings (`interfaces.systemToken`) */
+  translations?: DeepPartial<InterfacesTranslations['systemToken']>;
 }
 
 export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
@@ -49,14 +51,16 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
   error,
   'data-testid': testId,
   'aria-label': ariaLabel,
+  translations,
 }, ref) => {
+  const t = useBuildpadTranslations((d) => d.interfaces.systemToken, translations);
   const [localValue, setLocalValue] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isNewTokenGenerated, setIsNewTokenGenerated] = useState(false);
 
   const { isCopySupported, copyToClipboard } = useClipboard({
-    copySuccessMessage: 'Token copied to clipboard',
-    copyFailMessage: 'Failed to copy token',
+    copySuccessMessage: t.copySuccess,
+    copyFailMessage: t.copyFail,
     onNotify: (message, type) =>
       notifications.show({ message, color: type === 'error' ? 'red' : 'green' }),
   });
@@ -85,10 +89,10 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
   // control is actually there, and still say something when it is not.
   const canGenerate = !disabled && !readOnly;
   const placeholder = value
-    ? 'Value Securely Saved'
+    ? t.placeholder.saved
     : canGenerate
-      ? 'Click "Generate Token" to create a new static access token'
-      : 'No token set';
+      ? t.placeholder.generateHint
+      : t.placeholder.none;
 
   const applyGeneratedToken = useCallback((token: string) => {
     setLocalValue(token);
@@ -176,7 +180,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
                 color="gray"
                 size="sm"
                 onClick={() => copyToClipboard(localValue)}
-                aria-label="Copy token"
+                aria-label={t.copyToken}
                 data-testid={testId ? `${testId}-copy` : undefined}
               >
                 <IconCopy size={16} />
@@ -189,7 +193,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
                 size="sm"
                 onClick={generateToken}
                 disabled={disabled || loading}
-                aria-label={hasToken ? 'Regenerate token' : 'Generate token'}
+                aria-label={hasToken ? t.regenerateToken : t.generateToken}
                 data-testid={testId ? `${testId}-generate` : undefined}
               >
                 {loading ? (
@@ -208,7 +212,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
                 size="sm"
                 onClick={() => emitValue(null)}
                 disabled={loading}
-                aria-label="Remove token"
+                aria-label={t.removeToken}
                 data-testid={testId ? `${testId}-clear` : undefined}
                 className="system-token-clear-icon"
               >
@@ -232,8 +236,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
           mt="sm"
           data-testid={testId ? `${testId}-notice` : undefined}
         >
-          Make sure to back up and copy the token above. For security reasons, you will not be
-          able to view it again after saving.
+          {t.backupNotice}
         </Alert>
       )}
     </div>

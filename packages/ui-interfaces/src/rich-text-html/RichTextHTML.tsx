@@ -1,6 +1,8 @@
 import React from 'react';
-import { RichTextEditor, Link } from '@mantine/tiptap';
+import { RichTextEditor, Link, type RichTextEditorLabels } from '@mantine/tiptap';
 import '@mantine/tiptap/styles.css';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
@@ -40,6 +42,24 @@ export interface RichTextHTMLProps {
   minimal?: boolean;
   /** Editor font family */
   editorFont?: 'sans-serif' | 'serif' | 'monospace';
+  /** Per-instance overrides of the dictionary strings (`interfaces.richTextHtml`) */
+  translations?: DeepPartial<InterfacesTranslations['richTextHtml']>;
+}
+
+/**
+ * Mantine's `RichTextEditor` `labels` config from the dictionary. The two
+ * colour labels are `{color}` templates in the dictionary (strings, not
+ * functions) and are turned back into the functions Mantine expects.
+ */
+export function toRichTextEditorLabels(
+  labels: InterfacesTranslations['richTextHtml']['editor'],
+): RichTextEditorLabels {
+  const { colorControlLabel, colorPickerColorLabel, ...rest } = labels;
+  return {
+    ...rest,
+    colorControlLabel: (color) => interpolate(colorControlLabel, { color }),
+    colorPickerColorLabel: (color) => interpolate(colorPickerColorLabel, { color }),
+  };
 }
 
 const defaultToolbar = [
@@ -62,7 +82,7 @@ export function RichTextHTML({
   value = '',
   onChange,
   label,
-  placeholder = 'Start typing...',
+  placeholder,
   disabled = false,
   readOnly = false,
   required = false,
@@ -72,7 +92,13 @@ export function RichTextHTML({
   softLength,
   minimal = false,
   editorFont = 'sans-serif',
+  translations,
 }: RichTextHTMLProps) {
+  // Dictionary strings; the `placeholder` prop wins over both the
+  // `translations` prop and the provider dictionary.
+  const t = useBuildpadTranslations((d) => d.interfaces.richTextHtml, translations, { placeholder });
+  const editorLabels = React.useMemo(() => toRichTextEditorLabels(t.editor), [t.editor]);
+
   // Font configuration
   const fontOptions = {
     'sans-serif': 'ui-sans-serif, system-ui, sans-serif',
@@ -96,7 +122,7 @@ export function RichTextHTML({
       Color,
       TextStyle,
       Placeholder.configure({
-        placeholder,
+        placeholder: t.placeholder,
       }),
     ],
     content: value,
@@ -152,7 +178,7 @@ export function RichTextHTML({
           </div>
         )}
         <div className="rich-text-html-loading">
-          Loading editor...
+          {t.loading}
         </div>
       </div>
     );
@@ -167,9 +193,10 @@ export function RichTextHTML({
         </div>
       )}
       
-      <RichTextEditor 
+      <RichTextEditor
         editor={editor}
         className={error ? 'rich-text-html-editor--error' : undefined}
+        labels={editorLabels}
       >
         {!minimal && (
           <RichTextEditor.Toolbar>

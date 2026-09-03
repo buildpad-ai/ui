@@ -3,6 +3,8 @@ import { Autocomplete, ComboboxItem, Loader, Text } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 import axios from 'axios';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 
 /**
  * Font family type for the autocomplete input
@@ -66,6 +68,8 @@ export interface AutocompleteAPIProps {
     description?: string;
     /** Read-only state */
     readOnly?: boolean;
+    /** Per-instance overrides of the dictionary strings (`interfaces.autocompleteApi`) */
+    translations?: DeepPartial<InterfacesTranslations['autocompleteApi']>;
 }
 
 /**
@@ -162,7 +166,9 @@ export const AutocompleteAPI = forwardRef<HTMLInputElement, AutocompleteAPIProps
     direction,
     description,
     readOnly,
+    translations,
 }, ref) => {
+    const t = useBuildpadTranslations((d) => d.interfaces.autocompleteApi, translations);
     // Convert value to string for internal state
     const normalizedValue = value != null ? String(value) : '';
     
@@ -318,14 +324,14 @@ export const AutocompleteAPI = forwardRef<HTMLInputElement, AutocompleteAPIProps
                 <Autocomplete
                     ref={ref}
                     label={label}
-                    placeholder="URL configuration missing"
+                    placeholder={t.missingUrl.placeholder}
                     disabled
-                    error="URL configuration is required"
+                    error={t.missingUrl.error}
                     data={[]}
                     description={description}
                 />
                 <Text size="xs" c="orange" mt={4}>
-                    One or more options are missing. Please configure the URL.
+                    {t.missingUrl.hint}
                 </Text>
             </div>
         );

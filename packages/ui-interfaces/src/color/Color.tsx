@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Text,
   ActionIcon,
@@ -16,6 +16,10 @@ import {
   Box,
 } from '@mantine/core';
 import { IconColorPicker, IconPalette, IconX } from '@tabler/icons-react';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
+
+type ColorTranslations = InterfacesTranslations['color'];
 
 /**
  * Color utilities for conversion between color formats
@@ -198,17 +202,18 @@ interface ColorPreset {
   color: string;
 }
 
-// Default color presets matching DaaS
-const DEFAULT_PRESETS: ColorPreset[] = [
-  { name: 'Purple', color: '#6644FF' },
-  { name: 'Blue', color: '#3399FF' },
-  { name: 'Green', color: '#2ECDA7' },
-  { name: 'Yellow', color: '#FFC23B' },
-  { name: 'Orange', color: '#FFA439' },
-  { name: 'Red', color: '#E35169' },
-  { name: 'Black', color: '#18222F' },
-  { name: 'Gray', color: '#A2B5CD' },
-  { name: 'White', color: '#FFFFFF' },
+// Default color presets matching DaaS; the tooltip names come from the
+// dictionary (`interfaces.color.presetNames`).
+const DEFAULT_PRESET_COLORS: Array<{ name: keyof ColorTranslations['presetNames']; color: string }> = [
+  { name: 'purple', color: '#6644FF' },
+  { name: 'blue', color: '#3399FF' },
+  { name: 'green', color: '#2ECDA7' },
+  { name: 'yellow', color: '#FFC23B' },
+  { name: 'orange', color: '#FFA439' },
+  { name: 'red', color: '#E35169' },
+  { name: 'black', color: '#18222F' },
+  { name: 'gray', color: '#A2B5CD' },
+  { name: 'white', color: '#FFFFFF' },
 ];
 
 // Color format types
@@ -250,6 +255,9 @@ export interface ColorProps {
   
   /** Callback fired when color changes */
   onChange?: (value: string | null) => void;
+
+  /** Per-instance overrides of the dictionary strings (`interfaces.color`) */
+  translations?: DeepPartial<ColorTranslations>;
 }
 
 /**
@@ -278,13 +286,21 @@ export const Color: React.FC<ColorProps> = ({
   description,
   error,
   opacity = false,
-  presets = DEFAULT_PRESETS,
+  presets: presetsProp,
   onChange: onChangeProp,
+  translations,
 }) => {
   // Neutralise the emitter rather than gating each of the ~8 call sites below
   // (hex, RGB/HSL sliders, eyedropper, presets, clear) — a new call site cannot
   // then bypass the guard by accident.
   const onChange = disabled || readOnly ? undefined : onChangeProp;
+  const t = useBuildpadTranslations((d) => d.interfaces.color, translations);
+  const { formatNumber } = useBuildpadI18n();
+  const defaultPresets = useMemo<ColorPreset[]>(
+    () => DEFAULT_PRESET_COLORS.map((preset) => ({ name: t.presetNames[preset.name], color: preset.color })),
+    [t],
+  );
+  const presets = presetsProp ?? defaultPresets;
   const [opened, setOpened] = useState(false);
   const [colorFormat, setColorFormat] = useState<ColorFormat>(opacity ? 'RGBA' : 'RGB');
   const hiddenColorInput = useRef<HTMLInputElement>(null);
@@ -581,7 +597,7 @@ export const Color: React.FC<ColorProps> = ({
             {/* Alpha slider for opacity mode */}
             {opacity && (
               <Box>
-                <Text size="xs" c="dimmed" mb="xs">Opacity</Text>
+                <Text size="xs" c="dimmed" mb="xs">{t.opacity}</Text>
                 <Slider
                   value={alpha}
                   onChange={handleAlphaChange}
@@ -589,8 +605,8 @@ export const Color: React.FC<ColorProps> = ({
                   max={100}
                   step={1}
                   marks={[
-                    { value: 0, label: '0%' },
-                    { value: 100, label: '100%' },
+                    { value: 0, label: formatNumber(0, { style: 'percent' }) },
+                    { value: 100, label: formatNumber(1, { style: 'percent' }) },
                   ]}
                   size="sm"
                   style={{
@@ -604,7 +620,7 @@ export const Color: React.FC<ColorProps> = ({
             {/* Color presets */}
             {presets && presets.length > 0 && (
               <Box>
-                <Text size="xs" c="dimmed" mb="xs">Presets</Text>
+                <Text size="xs" c="dimmed" mb="xs">{t.presets}</Text>
                 <Group gap="xs">
                   {presets.map((preset, index) => (
                     <Button

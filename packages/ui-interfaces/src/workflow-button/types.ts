@@ -1,9 +1,10 @@
 /**
  * Workflow Button Types
- * 
+ *
  * Type definitions for the workflow button interface component.
  * Based on the DaaS/Visor workflow system.
  */
+import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
 
 /**
  * Command option available from the current workflow state
@@ -139,6 +140,8 @@ export interface WorkflowButtonProps {
   onChange?: (value: string) => void;
   /** Callback after successful transition */
   onTransition?: () => void;
+  /** Per-instance overrides of the dictionary strings (`interfaces.workflowButton`) */
+  translations?: DeepPartial<InterfacesTranslations['workflowButton']>;
 }
 
 /**
@@ -158,6 +161,8 @@ export interface UseWorkflowOptions {
     get: (url: string, config?: { params?: Record<string, unknown> }) => Promise<{ data: { data: unknown } }>;
     post: (url: string, data?: unknown) => Promise<{ data: { data: unknown } }>;
   };
+  /** Per-instance overrides of the dictionary strings (`interfaces.workflowButton`) */
+  translations?: DeepPartial<InterfacesTranslations['workflowButton']>;
 }
 
 /**

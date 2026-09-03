@@ -1,3 +1,4 @@
+/* eslint-disable buildpad/no-untranslated-literal -- Storybook-only demo: excluded from the package build (tsconfig `exclude`), not exported, never shipped to consumers */
 import React, { useState } from 'react';
 import {
   MantineProvider,
