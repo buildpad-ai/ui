@@ -402,6 +402,9 @@ importers:
       '@buildpad/ui-interfaces':
         specifier: workspace:*
         version: link:../ui-interfaces
+      '@buildpad/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@mantine/core':
         specifier: ^8.0.0
         version: 8.3.10(@mantine/hooks@8.3.10(react@19.2.0))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -960,6 +963,9 @@ importers:
       '@buildpad/types':
         specifier: workspace:*
         version: link:../types
+      '@buildpad/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -1038,6 +1044,9 @@ importers:
       '@buildpad/ui-table':
         specifier: workspace:*
         version: link:../ui-table
+      '@buildpad/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@mantine/core':
         specifier: ^8.0.0
         version: 8.3.10(@mantine/hooks@8.3.10(react@19.2.0))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)

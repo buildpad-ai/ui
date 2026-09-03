@@ -11,7 +11,7 @@ import noUntranslatedLiteral from './scripts/eslint/no-untranslated-literal.mjs'
  * a regression cannot merge, and a WARNING everywhere else until that package
  * is migrated — promote a package here as part of its migration PR.
  */
-const I18N_MIGRATED = [];
+const I18N_MIGRATED = ['ui-form', 'ui-table', 'ui-collections', 'ui-interfaces', 'ui-files', 'ui-users', 'ui-forms', 'hooks'];
 
 export default [
   { ignores: ['**/dist/', '**/.next/', '**/storybook-static/', '**/coverage/', 'apps/storybook-host/public/storybook/'] },

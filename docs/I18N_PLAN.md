@@ -1,6 +1,6 @@
 # Internationalization — Phase 2 (Buildpad UI)
 
-**Status:** in progress — B1 (component i18n core) and Workstream A (CLI shell) landed on `feat/i18n-phase-2`; B2 package migration underway · **Owner:** Buildpad UI · **Depends on:** the `add-i18n` skill in `buildpad-ai/skills` (Phase 1)
+**Status:** implemented on `feat/i18n-phase-2` — B1 core, Workstream A (CLI shell) and the B2/B3 package migration (every package + the relation hooks) are done; remaining: the `add-i18n` skill patch and Phase 3 items · **Owner:** Buildpad UI · **Depends on:** the `add-i18n` skill in `buildpad-ai/skills` (Phase 1)
 
 ## Why this phase exists
 
@@ -159,5 +159,5 @@ Also decided: the app-level `I18nProvider` (lib/i18n) mounts `BuildpadI18nProvid
 | A7 (`packages/cli/tests/e2e/bootstrap-i18n.sh`: bootstrap → build → start → redirect assertions) | done, manual/nightly |
 | B4 Storybook decorator (`packages/storybook-i18n.tsx`, Locale toolbar in every preview) | done |
 | B2 ESLint rule `buildpad/no-untranslated-literal` (warn; error per migrated package via `I18N_MIGRATED`) | done |
-| B2 package migration (`ui-form` → `ui-table` → `ui-collections` → `ui-interfaces` → `ui-files` → `ui-users` → `ui-forms`) + B3 dates | in progress |
+| B2 package migration (`ui-form`, `ui-table`, `ui-collections`, `ui-interfaces`, `ui-files`, `ui-users`, `ui-forms`, relation hooks) + B3 dates | done — ~1,700 literals, all packages at lint error level (`I18N_MIGRATED`), `id` catalog complete |
 | `add-i18n` skill update (already-prefixed default, `buildpad.*` = `BuildpadTranslations`) | patch prepared, to be applied in `buildpad-ai/skills` |
