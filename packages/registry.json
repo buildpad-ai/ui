@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-03T01:43:11.377Z",
+  "generatedAt": "2026-09-03T01:44:41.257Z",
   "version": "2.2.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -467,7 +467,7 @@
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "c6737a0a4f7e00c44c4c54990cb86120a09bd1010a2866d11523cbff1a2f2937"
+          "sourceSha256": "d5b26a8e32b54a4cfcf6004b660434f492ccc7fcab6bb0a5b0b6aea2708d8344"
         },
         {
           "source": "cli/templates/lib/utils.ts",
