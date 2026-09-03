@@ -15,6 +15,8 @@ import {
   IconSearch,
   IconX,
 } from "@tabler/icons-react";
+import { useBuildpadTranslations } from "@buildpad/services";
+import type { CollectionsTranslations, DeepPartial } from "@buildpad/utils";
 import React from "react";
 import type { ArchiveFilter, BulkAction } from "./CollectionList";
 import { BulkActionsBar } from "./BulkActionsBar";
@@ -54,6 +56,9 @@ export interface CollectionListToolbarProps {
   /* Create */
   enableCreate: boolean;
   onCreate?: () => void;
+
+  /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+  translations?: DeepPartial<CollectionsTranslations>;
 }
 
 export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
@@ -80,7 +85,12 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
   onClearSelection,
   enableCreate,
   onCreate,
+  translations,
 }) => {
+  // Strings: component prop > provider dictionary > English defaults.
+  const t = useBuildpadTranslations((d) => d.collections, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+
   const showBulkActions = enableSelection && selectedIds.length > 0;
 
   return (
@@ -89,7 +99,7 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
       <Group gap="xs">
         {enableSearch && (
           <TextInput
-            placeholder="Search..."
+            placeholder={t.listToolbar.searchPlaceholder}
             leftSection={<IconSearch size={16} />}
             value={search}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -101,7 +111,7 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
                   variant="subtle"
                   size="xs"
                   onClick={() => onSearchChange("")}
-                  aria-label="Clear search"
+                  aria-label={t.listToolbar.clearSearch}
                 >
                   <IconX size={12} />
                 </ActionIcon>
@@ -114,12 +124,12 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
         )}
 
         {enableFilter && (
-          <Tooltip label={filterPanelOpen ? "Hide filters" : "Show filters"}>
+          <Tooltip label={filterPanelOpen ? t.listToolbar.hideFilters : t.listToolbar.showFilters}>
             <ActionIcon
               variant={activeFilterCount > 0 ? "filled" : "subtle"}
               color={activeFilterCount > 0 ? "primary" : undefined}
               onClick={onToggleFilterPanel}
-              title="Toggle filter panel"
+              title={t.listToolbar.toggleFilterPanel}
               data-testid="collection-list-filter-toggle"
               pos="relative"
             >
@@ -146,9 +156,9 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
               if (val) onArchiveFilterChange(val as ArchiveFilter);
             }}
             data={[
-              { value: "all", label: "All Items" },
-              { value: "unarchived", label: "Active Items" },
-              { value: "archived", label: "Archived Items" },
+              { value: "all", label: t.listToolbar.archive.all },
+              { value: "unarchived", label: t.listToolbar.archive.active },
+              { value: "archived", label: t.listToolbar.archive.archived },
             ]}
             size="sm"
             leftSection={<IconArchive size={14} />}
@@ -160,7 +170,7 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
         <ActionIcon
           variant="subtle"
           onClick={onRefresh}
-          title="Refresh"
+          title={t.listToolbar.refresh}
           data-testid="collection-list-refresh"
         >
           <IconRefresh size={16} />
@@ -180,11 +190,12 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
             bulkActions={bulkActions}
             onDeleteRequest={onDeleteRequest}
             onClearSelection={onClearSelection}
+            translations={translations}
           />
         )}
 
         {enableCreate && onCreate && (
-          <Tooltip label={createAllowed ? "Create item" : "Not allowed"}>
+          <Tooltip label={createAllowed ? t.listToolbar.createItem : common.notAllowed}>
             <Button
               variant="filled"
               size="compact-sm"
@@ -192,9 +203,9 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
               onClick={createAllowed ? onCreate : undefined}
               disabled={!createAllowed}
               data-testid="collection-list-create"
-              aria-label={createAllowed ? "Create item" : "Create item (not allowed)"}
+              aria-label={createAllowed ? t.listToolbar.createItem : t.listToolbar.createItemNotAllowed}
             >
-              Create item
+              {t.listToolbar.createItem}
             </Button>
           </Tooltip>
         )}

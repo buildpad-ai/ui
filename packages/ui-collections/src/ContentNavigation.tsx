@@ -40,6 +40,11 @@ import {
   IconBox,
 } from '@tabler/icons-react';
 import type { Collection, Bookmark } from '@buildpad/types';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { CollectionsTranslations, DeepPartial } from '@buildpad/utils';
+
+/** The `collections.navigation` slice of the dictionary. */
+type NavigationStrings = CollectionsTranslations['navigation'];
 
 /** Node in the collection tree */
 export interface CollectionTreeNode extends Collection {
@@ -85,6 +90,8 @@ export interface ContentNavigationProps {
   loading?: boolean;
   /** Called when search value changes */
   onSearchChange?: (search: string) => void;
+  /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+  translations?: DeepPartial<CollectionsTranslations>;
 }
 
 /**
@@ -123,6 +130,7 @@ function NavigationItem({
   isAdmin,
   search,
   dense,
+  t,
 }: {
   node: CollectionTreeNode;
   currentCollection?: string;
@@ -135,6 +143,8 @@ function NavigationItem({
   isAdmin?: boolean;
   search: string;
   dense?: boolean;
+  /** Resolved `collections.navigation` strings from the parent */
+  t: NavigationStrings;
 }) {
   const isGroup = node.children.length > 0;
   const isExpanded = activeGroups.includes(node.collection);
@@ -219,7 +229,7 @@ function NavigationItem({
           }}
           style={{ opacity: 0, transition: 'opacity 150ms' }}
           className="nav-item-action"
-          aria-label="Collection options"
+          aria-label={t.collectionOptions}
         >
           <IconSettings size={14} />
         </ActionIcon>
@@ -229,7 +239,7 @@ function NavigationItem({
           leftSection={<IconDatabase size={14} />}
           onClick={() => onEditCollection?.(node.collection)}
         >
-          Edit Collection
+          {t.editCollection}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
@@ -285,6 +295,7 @@ function NavigationItem({
               isAdmin={isAdmin}
               search={search}
               dense={dense}
+              t={t}
             />
           ))}
 
@@ -294,7 +305,7 @@ function NavigationItem({
               key={bookmark.id}
               label={
                 <Text size="sm" truncate>
-                  {bookmark.bookmark || 'Untitled Bookmark'}
+                  {bookmark.bookmark || t.untitledBookmark}
                 </Text>
               }
               leftSection={
@@ -389,8 +400,11 @@ export const ContentNavigation: React.FC<ContentNavigationProps> = ({
   isAdmin = false,
   loading = false,
   onSearchChange,
+  translations,
 }) => {
   const [search, setSearch] = useState('');
+  // Strings: component prop > provider dictionary > English defaults.
+  const t = useBuildpadTranslations((d) => d.collections.navigation, translations?.navigation);
 
   const handleSearchChange = useCallback(
     (value: string) => {
@@ -420,11 +434,11 @@ export const ContentNavigation: React.FC<ContentNavigationProps> = ({
       <Stack gap="md" p="md" align="center" justify="center" style={{ minHeight: 200 }}>
         <IconBox size={48} color="var(--mantine-color-gray-5)" />
         <Text c="dimmed" ta="center" size="sm">
-          No collections available
+          {t.emptyState.title}
         </Text>
         {isAdmin && (
           <Text c="dimmed" ta="center" size="xs">
-            Create your first collection in the data model settings
+            {t.emptyState.adminHint}
           </Text>
         )}
       </Stack>
@@ -439,7 +453,7 @@ export const ContentNavigation: React.FC<ContentNavigationProps> = ({
           <TextInput
             value={search}
             onChange={(e) => handleSearchChange(e.currentTarget.value)}
-            placeholder="Search collections..."
+            placeholder={t.searchPlaceholder}
             leftSection={<IconSearch size={16} />}
             size={dense ? 'xs' : 'sm'}
             type="search"
@@ -464,6 +478,7 @@ export const ContentNavigation: React.FC<ContentNavigationProps> = ({
               isAdmin={isAdmin}
               search={search}
               dense={dense}
+              t={t}
             />
           ))}
         </nav>
@@ -485,7 +500,7 @@ export const ContentNavigation: React.FC<ContentNavigationProps> = ({
           >
             {showHidden ? <IconEyeOff size={16} /> : <IconEye size={16} />}
             <Text size="xs" c="dimmed">
-              {showHidden ? 'Hide hidden collections' : 'Show hidden collections'}
+              {showHidden ? t.hideHiddenCollections : t.showHiddenCollections}
             </Text>
           </UnstyledButton>
         </Box>

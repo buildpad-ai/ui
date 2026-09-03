@@ -31,13 +31,22 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { FieldsService, ItemsService, PermissionsService, apiRequest } from "@buildpad/services";
+import {
+  FieldsService,
+  ItemsService,
+  PermissionsService,
+  apiRequest,
+  useBuildpadTranslations,
+} from "@buildpad/services";
 import type { CollectionActionAccess, CollectionAccess } from "@buildpad/services";
 import type { Field, FormDefinition } from "@buildpad/types";
 import {
   buildFieldsFromDefinition,
   getDefaultValuesFromFields,
+  interpolate,
   isConcealedValue,
+  type CollectionsTranslations,
+  type DeepPartial,
 } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import { IconAlertCircle, IconCheck, IconTrash, IconX } from "@tabler/icons-react";
@@ -97,6 +106,12 @@ export interface CollectionFormProps {
    * Default `true`.
    */
   persist?: boolean;
+  /**
+   * Per-instance overrides of the `collections` dictionary namespace
+   * (precedence: this prop > `BuildpadI18nProvider` > English defaults).
+   * Forwarded to the SaveOptions menu.
+   */
+  translations?: DeepPartial<CollectionsTranslations>;
 }
 
 /** Permission state exposed to parent components */
@@ -196,7 +211,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   showDelete,
   definition,
   persist = true,
+  translations,
 }) => {
+  // Strings: component prop > provider dictionary > English defaults.
+  const t = useBuildpadTranslations((d) => d.collections, translations);
+
   // Stable signature so the load effect re-runs when the definition changes
   // (e.g. live preview in the builder) without depending on object identity.
   const definitionSignature = useMemo(
@@ -558,9 +577,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         lastLoadKey.current = loadKey;
       } catch (err) {
         console.error("Error loading form data:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load form data",
-        );
+        setError(err instanceof Error ? err.message : t.form.errors.loadFailed);
       } finally {
         setLoading(false);
       }
@@ -576,6 +593,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     stableIncludeFields,
     definition,
     definitionSignature,
+    t,
   ]);
 
   // =========================================================================
@@ -658,7 +676,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       const fieldErrs: Record<string, string> = {};
       for (const e of errObj.errors) {
         const field = e?.extensions?.field || e?.field;
-        const message = e?.message || "Validation failed";
+        const message = e?.message || t.form.errors.fieldValidationFallback;
         if (field) {
           fieldErrs[String(field)] = String(message);
         }
@@ -723,7 +741,10 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         const junctionId = entry[junctionPrimaryKeyField] as string | number | undefined;
         if (junctionId == null) {
           throw new Error(
-            `Cannot update junction row in "${junctionCollection}": staged entry has no "${junctionPrimaryKeyField}" value.`,
+            interpolate(t.form.errors.junctionUpdateMissingKey, {
+              junctionCollection,
+              junctionPrimaryKeyField,
+            }),
           );
         }
         await junctionService.updateOne(junctionId, entry);
@@ -820,7 +841,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // Merge changed extra values onto the item's existing `extras` jsonb so
         // unchanged extras survive the partial update.
         if (Object.keys(changedExtras).length > 0) {
-          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          if (!hasExtrasColumn) {
+            throw new Error(
+              missingExtrasColumnMessage(collection, t.form.errors.missingExtrasColumn),
+            );
+          }
           changedData[EXTRAS_COLUMN] = mergeExtras(
             initialFormData[EXTRAS_COLUMN],
             changedExtras,
@@ -901,7 +926,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
         // Merge all extra answers into the item's single `extras` jsonb column.
         if (Object.keys(createdExtras).length > 0) {
-          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          if (!hasExtrasColumn) {
+            throw new Error(
+              missingExtrasColumnMessage(collection, t.form.errors.missingExtrasColumn),
+            );
+          }
           scalarData[EXTRAS_COLUMN] = createdExtras;
         }
 
@@ -928,9 +957,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       const perFieldErrors = parseValidationErrors(err);
       if (Object.keys(perFieldErrors).length > 0) {
         setFieldErrors(perFieldErrors);
-        setError("Validation failed. Please fix the highlighted fields.");
+        setError(t.form.errors.validationFailed);
       } else {
-        setError(err instanceof Error ? err.message : "Failed to save item");
+        setError(err instanceof Error ? err.message : t.form.errors.saveFailed);
       }
     } finally {
       setSaving(false);
@@ -977,7 +1006,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       onDelete?.();
     } catch (err) {
       console.error("Error deleting item:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete item");
+      setError(err instanceof Error ? err.message : t.form.errors.deleteFailed);
       setDeleteConfirmOpen(false);
     } finally {
       setDeleting(false);
@@ -1017,10 +1046,10 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           data-testid="form-success"
         >
           {!persist
-            ? "Looks valid — preview only, no record was created."
+            ? t.form.success.previewOnly
             : mode === "create"
-            ? "Item created successfully!"
-            : "Item updated successfully!"}
+            ? t.form.success.created
+            : t.form.success.updated}
         </Alert>
       )}
 
@@ -1029,8 +1058,13 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           {fields.length === 0 ? (
             <Text c="dimmed" ta="center" py="xl">
               {!saveAllowed
-                ? `You don't have permission to ${mode} items in ${collection}`
-                : `No editable fields found for ${collection}`}
+                ? interpolate(
+                    mode === "create"
+                      ? t.form.emptyState.noPermissionCreate
+                      : t.form.emptyState.noPermissionEdit,
+                    { collection },
+                  )
+                : interpolate(t.form.emptyState.noEditableFields, { collection })}
             </Text>
           ) : (
             <>
@@ -1081,7 +1115,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 data-testid="form-delete-btn"
                 style={{ marginRight: "auto" }}
               >
-                Delete
+                {t.form.actions.delete}
               </Button>
             )}
             {onCancel && (
@@ -1092,7 +1126,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 disabled={saving}
                 data-testid="form-cancel-btn"
               >
-                Cancel
+                {t.form.actions.cancel}
               </Button>
             )}
             {/* inline gap: host themes may force Group gap via theme styles,
@@ -1106,7 +1140,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 data-testid="form-submit-btn"
                 style={showSaveOptions ? { borderTopRightRadius: 0, borderBottomRightRadius: 0 } : undefined}
               >
-                {mode === "create" ? "Create" : "Save"}
+                {mode === "create" ? t.form.actions.create : t.form.actions.save}
               </Button>
               {showSaveOptions && (
                 <SaveOptions
@@ -1116,6 +1150,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                   onSaveAndAddNew={() => handleSave("add-new")}
                   onSaveAsCopy={() => handleSave("copy")}
                   onDiscardAndStay={handleDiscard}
+                  translations={translations}
                 />
               )}
             </Group>
@@ -1127,23 +1162,20 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       <Modal
         opened={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
-        title="Confirm Delete"
+        title={t.form.deleteConfirm.title}
         centered
         size="sm"
         data-testid="delete-confirm-modal"
       >
         <Stack gap="md">
-          <Text size="sm">
-            Are you sure you want to delete this item? This action cannot be
-            undone.
-          </Text>
+          <Text size="sm">{t.form.deleteConfirm.message}</Text>
           <Group justify="flex-end">
             <Button
               variant="default"
               onClick={() => setDeleteConfirmOpen(false)}
               disabled={deleting}
             >
-              Cancel
+              {t.form.deleteConfirm.cancel}
             </Button>
             <Button
               color="red"
@@ -1151,7 +1183,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
               loading={deleting}
               data-testid="delete-confirm-btn"
             >
-              Delete
+              {t.form.deleteConfirm.confirm}
             </Button>
           </Group>
         </Stack>

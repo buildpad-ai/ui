@@ -5,6 +5,8 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
+import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
+import type { CollectionsTranslations, DeepPartial } from "@buildpad/utils";
 import React from "react";
 
 export interface DeleteConfirmModalProps {
@@ -13,6 +15,8 @@ export interface DeleteConfirmModalProps {
   loading: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+  translations?: DeepPartial<CollectionsTranslations>;
 }
 
 export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
@@ -21,20 +25,24 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   loading,
   onConfirm,
   onCancel,
+  translations,
 }) => {
+  // Strings: component prop > provider dictionary > English defaults.
+  const t = useBuildpadTranslations((d) => d.collections, translations);
+  const { formatCount } = useBuildpadI18n();
+
   return (
     <Modal
       opened={opened}
       onClose={onCancel}
-      title="Confirm Delete"
+      title={t.deleteConfirm.title}
       centered
       size="sm"
       data-testid="delete-confirm-modal"
     >
       <Stack gap="md">
         <Text size="sm">
-          Are you sure you want to delete {count}{" "}
-          {count === 1 ? "item" : "items"}? This action cannot be undone.
+          {formatCount(count, t.deleteConfirm.message)}
         </Text>
         <Group justify="flex-end">
           <Button
@@ -42,7 +50,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             onClick={onCancel}
             disabled={loading}
           >
-            Cancel
+            {t.deleteConfirm.cancel}
           </Button>
           <Button
             color="red"
@@ -50,7 +58,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             loading={loading}
             data-testid="delete-confirm-btn"
           >
-            Delete
+            {t.deleteConfirm.confirm}
           </Button>
         </Group>
       </Stack>

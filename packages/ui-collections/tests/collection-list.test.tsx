@@ -27,7 +27,10 @@ const {
   mockApiRequest: vi.fn(),
 }));
 
-vi.mock("@buildpad/services", () => ({
+vi.mock("@buildpad/services", async (importOriginal) => ({
+  // Keep the real i18n hooks (they fall back to the English defaults without a
+  // provider); only the data services are replaced.
+  ...(await importOriginal<typeof import("@buildpad/services")>()),
   FieldsService: vi.fn().mockImplementation(() => ({
     readAll: mockFieldsReadAll,
   })),
