@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { SystemToken } from '@buildpad/ui-interfaces/system-token';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 import { generateToken } from './accessUtils';
 
 export interface TokenInputProps {
@@ -9,7 +11,7 @@ export interface TokenInputProps {
   value: string | null;
   /** Called with the newly generated token, or `null` to revoke. */
   onChange: (value: string | null) => void;
-  /** Field label. Default: "Token". */
+  /** Field label. Default: the dictionary's "Token". */
   label?: string;
   /** Field description shown under the label. */
   description?: string;
@@ -18,6 +20,8 @@ export interface TokenInputProps {
   /** Error message. */
   error?: string;
   'data-testid'?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -28,8 +32,9 @@ export interface TokenInputProps {
  * concealment (`/^\*+$/` backend masking), Clear-to-revoke — come from
  * `SystemToken` itself.
  */
-export const TokenInput: React.FC<TokenInputProps> = ({ label = 'Token', ...props }) => (
-  <SystemToken label={label} generate={generateToken} {...props} />
-);
+export const TokenInput: React.FC<TokenInputProps> = ({ label, translations, ...props }) => {
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  return <SystemToken label={label ?? t.tokenInput.label} generate={generateToken} {...props} />;
+};
 
 export default TokenInput;

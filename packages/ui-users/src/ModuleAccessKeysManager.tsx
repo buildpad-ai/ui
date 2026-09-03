@@ -27,11 +27,18 @@ import {
   IconPlus,
 } from '@tabler/icons-react';
 import { useModuleAccessKeys, usePermissions } from '@buildpad/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
 import type { ModuleAccessKey } from '@buildpad/types';
 import {
   MODULE_ACCESS_KEY_PATTERN,
   RESERVED_MODULE_ACCESS_NAMESPACES,
 } from '@buildpad/types';
+import {
+  defaultTranslations,
+  interpolate,
+  type DeepPartial,
+  type UsersTranslations,
+} from '@buildpad/utils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { ListEmptyState } from './ListEmptyState';
 import { RowActionsMenu } from './RowActionsMenu';
@@ -66,15 +73,23 @@ const EMPTY_FORM: FormState = {
   isFolder: false,
 };
 
-/** Validate a leaf key against the platform format and reserved namespaces. */
-function validateKey(key: string): string | null {
-  if (!key.trim()) return 'Key is required for a capability (leave the type as Folder to group instead)';
+/**
+ * Validate a leaf key against the platform format and reserved namespaces.
+ * Returns the localized message from `messages` (English when omitted), or
+ * `null` when the key is valid.
+ */
+function validateKey(
+  key: string,
+  messages: UsersTranslations['moduleAccessKeys']['validation'] = defaultTranslations.users
+    .moduleAccessKeys.validation,
+): string | null {
+  if (!key.trim()) return messages.keyRequired;
   if (!MODULE_ACCESS_KEY_PATTERN.test(key)) {
-    return 'Lowercase letters, digits and : _ . / - only, starting with a letter';
+    return messages.keyFormat;
   }
   const reserved = RESERVED_MODULE_ACCESS_NAMESPACES.find((ns) => key.startsWith(ns));
   if (reserved) {
-    return `The "${reserved}" namespace is reserved by the platform — use your own prefix`;
+    return interpolate(messages.keyReserved, { namespace: reserved });
   }
   return null;
 }
@@ -100,11 +115,14 @@ export interface ModuleAccessKeysManagerProps {
   hideHeader?: boolean;
   /** DaaS collection used for RBAC checks. Default: 'daas_module_access_keys'. */
   keysCollection?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = ({
   hideHeader = false,
   keysCollection = 'daas_module_access_keys',
+  translations,
 }) => {
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [keysCollection],
@@ -114,11 +132,13 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
   const deleteAllowed = permsLoading || isAdmin || canPerform(keysCollection, 'delete');
 
   const { fetchKeys, createKey, updateKey, deleteKey } = useModuleAccessKeys();
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
 
   const [items, setItems] = useState<ModuleAccessKey[]>([]);
   const [tree, setTree] = useState<ModuleAccessKey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const [search, setSearch] = useState('');
@@ -139,9 +159,9 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
       const { keys, tree: built } = await fetchKeys();
       setItems(keys);
       setTree(built);
-      setLoadError(null);
+      setLoadFailed(false);
     } catch {
-      setLoadError('Failed to load module access keys');
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -200,12 +220,16 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
 
   const handleSave = async () => {
     if (!form.display_name.trim()) {
-      notifications.show({ title: 'Error', message: 'Display name is required', color: 'red' });
+      notifications.show({
+        title: common.error,
+        message: t.moduleAccessKeys.validation.displayNameRequired,
+        color: 'red',
+      });
       return;
     }
 
     if (!form.isFolder) {
-      const err = validateKey(form.key.trim());
+      const err = validateKey(form.key.trim(), t.moduleAccessKeys.validation);
       if (err) {
         setKeyError(err);
         return;
@@ -229,8 +253,10 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
       }
 
       notifications.show({
-        title: 'Saved',
-        message: editingId ? 'Key updated' : 'Key created',
+        title: t.moduleAccessKeys.notifications.savedTitle,
+        message: editingId
+          ? t.moduleAccessKeys.notifications.keyUpdated
+          : t.moduleAccessKeys.notifications.keyCreated,
         color: 'green',
       });
       setDrawerOpen(false);
@@ -239,8 +265,8 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
       // Surface the server error verbatim — a UNIQUE violation on `key` is the
       // common case and its message is the useful one.
       notifications.show({
-        title: 'Save failed',
-        message: err instanceof Error ? err.message : 'Could not save the key',
+        title: t.moduleAccessKeys.notifications.saveFailedTitle,
+        message: err instanceof Error ? err.message : t.moduleAccessKeys.notifications.saveFailed,
         color: 'red',
       });
     } finally {
@@ -253,13 +279,17 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
     setDeleting(true);
     try {
       await deleteKey(deleteTarget.id);
-      notifications.show({ title: 'Deleted', message: 'Key removed', color: 'green' });
+      notifications.show({
+        title: t.moduleAccessKeys.notifications.deletedTitle,
+        message: t.moduleAccessKeys.notifications.keyRemoved,
+        color: 'green',
+      });
       setDeleteTarget(null);
       await load();
     } catch (err) {
       notifications.show({
-        title: 'Delete failed',
-        message: err instanceof Error ? err.message : 'Could not delete the key',
+        title: t.moduleAccessKeys.notifications.deleteFailedTitle,
+        message: err instanceof Error ? err.message : t.moduleAccessKeys.notifications.deleteFailed,
         color: 'red',
       });
     } finally {
@@ -278,24 +308,38 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
 
   const deleteDescription = deleteTarget
     ? deleteTarget.key === null
-      ? `Delete the folder "${deleteTarget.display_name}"? Its child keys are NOT deleted — they move to the top level.`
-      : `Delete the key "${deleteTarget.key}"? Policies that currently grant it keep the entry, which will no longer match any registered key.`
+      ? interpolate(t.moduleAccessKeys.deleteModal.folderDescription, {
+          name: deleteTarget.display_name,
+        })
+      : interpolate(t.moduleAccessKeys.deleteModal.keyDescription, { key: deleteTarget.key })
     : undefined;
+
+  const drawerTitle = editingId
+    ? form.isFolder
+      ? t.moduleAccessKeys.drawer.editFolder
+      : t.moduleAccessKeys.drawer.editKey
+    : form.isFolder
+      ? t.moduleAccessKeys.drawer.newFolder
+      : t.moduleAccessKeys.drawer.newKey;
 
   return (
     <Stack gap="md" data-testid="module-access-keys-manager">
       {!hideHeader && (
         <Box>
-          <Title order={2}>Module Access Keys</Title>
+          <Title order={2}>{t.moduleAccessKeys.title}</Title>
           <Text c="dimmed" size="sm">
-            Application capability flags that policies can grant, independent of
-            collection permissions.
+            {t.moduleAccessKeys.subtitle}
           </Text>
         </Box>
       )}
 
       <Group justify="space-between">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search keys…" />
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder={t.moduleAccessKeys.searchPlaceholder}
+          translations={translations}
+        />
         {createAllowed && (
           <Group gap="xs">
             <Button
@@ -304,29 +348,29 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
               onClick={() => openCreate(true)}
               data-testid="module-access-add-folder"
             >
-              Add Folder
+              {t.moduleAccessKeys.addFolder}
             </Button>
             <Button
               leftSection={<IconPlus size={16} />}
               onClick={() => openCreate(false)}
               data-testid="module-access-add-key"
             >
-              Add Key
+              {t.moduleAccessKeys.addKey}
             </Button>
           </Group>
         )}
       </Group>
 
-      {loadError && (
+      {loadFailed && (
         <Alert color="red" variant="light">
-          {loadError}
+          {t.moduleAccessKeys.loadError}
         </Alert>
       )}
 
-      {!loading && items.length === 0 && !loadError && (
+      {!loading && items.length === 0 && !loadFailed && (
         <ListEmptyState
-          title="No module access keys"
-          hint="Register a key to gate a feature that is not tied to a collection."
+          title={t.moduleAccessKeys.emptyState.title}
+          hint={t.moduleAccessKeys.emptyState.hint}
           data-testid="module-access-empty"
         />
       )}
@@ -351,7 +395,9 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
                     variant="subtle"
                     color="gray"
                     onClick={() => toggleCollapse(node.id)}
-                    aria-label={collapsed.has(node.id) ? 'Expand' : 'Collapse'}
+                    aria-label={
+                      collapsed.has(node.id) ? t.moduleAccessKeys.expand : t.moduleAccessKeys.collapse
+                    }
                   >
                     {collapsed.has(node.id) ? (
                       <IconChevronRight size={12} />
@@ -393,6 +439,7 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
                 <RowActionsMenu
                   onEdit={updateAllowed ? () => openEdit(node) : undefined}
                   onDelete={deleteAllowed ? () => setDeleteTarget(node) : undefined}
+                  translations={translations}
                 />
               </Group>
             </Group>
@@ -404,15 +451,11 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
         opened={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         position="right"
-        title={
-          editingId
-            ? `Edit ${form.isFolder ? 'folder' : 'key'}`
-            : `New ${form.isFolder ? 'folder' : 'key'}`
-        }
+        title={drawerTitle}
       >
         <Stack gap="md">
           <TextInput
-            label="Display name"
+            label={t.moduleAccessKeys.form.displayName}
             required
             value={form.display_name}
             onChange={(e) => setForm((f) => ({ ...f, display_name: e.currentTarget.value }))}
@@ -421,10 +464,10 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
 
           {!form.isFolder && (
             <TextInput
-              label="Key"
+              label={t.moduleAccessKeys.form.key}
               required
-              description="Convention: <domain>:<capability>, e.g. reports:export"
-              placeholder="reports:export"
+              description={t.moduleAccessKeys.form.keyDescription}
+              placeholder={t.moduleAccessKeys.form.keyPlaceholder}
               value={form.key}
               error={keyError}
               onChange={(e) => {
@@ -436,7 +479,7 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
           )}
 
           <Textarea
-            label="Description"
+            label={t.fields.description}
             autosize
             minRows={2}
             value={form.description}
@@ -444,8 +487,8 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
           />
 
           <Select
-            label="Parent folder"
-            placeholder="Top level"
+            label={t.moduleAccessKeys.form.parentFolder}
+            placeholder={t.moduleAccessKeys.form.parentFolderPlaceholder}
             clearable
             data={folderOptions}
             value={form.parent_id}
@@ -453,17 +496,17 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
           />
 
           <NumberInput
-            label="Sort"
+            label={t.moduleAccessKeys.form.sort}
             value={form.sort}
             onChange={(v) => setForm((f) => ({ ...f, sort: typeof v === 'number' ? v : 0 }))}
           />
 
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setDrawerOpen(false)}>
-              Cancel
+              {common.cancel}
             </Button>
             <Button onClick={handleSave} loading={saving} data-testid="module-access-form-save">
-              Save
+              {common.save}
             </Button>
           </Group>
         </Stack>
@@ -473,9 +516,10 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
         opened={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
-        title="Delete module access key"
+        title={t.moduleAccessKeys.deleteModal.title}
         description={deleteDescription}
         loading={deleting}
+        translations={translations}
       />
     </Stack>
   );

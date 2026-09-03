@@ -16,10 +16,12 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconUsersGroup } from '@tabler/icons-react';
 import { readUrlIntParam, readUrlParam, useHydrated, usePermissions, useRoles, useUrlListParams } from '@buildpad/hooks';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import type { Role } from '@buildpad/types';
 import { IconDisplay } from '@buildpad/ui-interfaces/select-icon';
 import { VTable } from '@buildpad/ui-table';
 import type { Header, HeaderRaw, Item } from '@buildpad/ui-table';
+import { interpolate, type DeepPartial, type UsersTranslations } from '@buildpad/utils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { ListFooter } from './ListFooter';
 import { RowActionsMenu } from './RowActionsMenu';
@@ -31,13 +33,6 @@ function getUserCount(role: Role): number {
 }
 
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-
-const ROLE_HEADERS: HeaderRaw[] = [
-  { text: '', value: 'icon', sortable: false, width: 48 },
-  { text: 'Name', value: 'name', sortable: false },
-  { text: 'Users', value: 'users', sortable: false },
-  { text: 'Description', value: 'description', sortable: false },
-];
 
 export interface RolesManagerProps {
   /** Called when a role row is clicked (and the current user may update roles). */
@@ -63,6 +58,8 @@ export interface RolesManagerProps {
   urlParams?: boolean;
   /** Prefix for the managed URL parameters when two lists share a page. Default: ''. */
   urlParamPrefix?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -105,15 +102,28 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
   rolesCollection = 'daas_roles',
   urlParams = true,
   urlParamPrefix = '',
+  translations,
 }) => {
   const { fetchRoles, deleteRole } = useRoles();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [rolesCollection],
   });
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const { formatCount } = useBuildpadI18n();
 
   const createAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'create');
   const updateAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'update');
   const deleteAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'delete');
+
+  const headers = useMemo<HeaderRaw[]>(
+    () => [
+      { text: '', value: 'icon', sortable: false, width: 48 },
+      { text: t.columns.name, value: 'name', sortable: false },
+      { text: t.columns.users, value: 'users', sortable: false },
+      { text: t.columns.description, value: 'description', sortable: false },
+    ],
+    [t]
+  );
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,14 +184,14 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
       setTotalPages(result.totalPages);
       setLoadError(null);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load roles';
+      const message = err instanceof Error ? err.message : t.rolesManager.notifications.loadFailed;
       setRoles([]);
       setLoadError(message);
-      notifications.show({ title: 'Failed to load roles', message, color: 'red' });
+      notifications.show({ title: t.rolesManager.notifications.loadFailed, message, color: 'red' });
     } finally {
       setLoading(false);
     }
-  }, [fetchRoles, page, limit, debouncedSearch]);
+  }, [fetchRoles, page, limit, debouncedSearch, t]);
 
   useEffect(() => {
     void load();
@@ -210,57 +220,60 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
     } catch (err) {
       // Keep the modal open so the administrator can retry or cancel.
       notifications.show({
-        title: 'Failed to delete role',
-        message: err instanceof Error ? err.message : 'Failed to delete role',
+        title: t.rolesManager.notifications.deleteFailed,
+        message: err instanceof Error ? err.message : t.rolesManager.notifications.deleteFailed,
         color: 'red',
       });
     } finally {
       setDeleting(false);
     }
-  }, [deleteRole, deleteModal.id, load]);
+  }, [deleteRole, deleteModal.id, load, t]);
 
   const addButton =
     createAllowed && onCreateRole ? (
       <Button leftSection={<IconPlus size={16} />} onClick={onCreateRole} data-testid="roles-manager-add-btn">
-        Add Role
+        {t.rolesManager.addRole}
       </Button>
     ) : null;
 
-  const renderCell = useCallback((item: Item, header: Header): React.ReactNode => {
-    const role = item as unknown as Role;
-    switch (header.value) {
-      case 'icon':
-        // Explicit fallback: IconDisplay's default is the generic
-        // unknown-icon glyph, which reads as broken data for the common case
-        // of a role simply having no icon set. A users-group glyph is the
-        // right empty state here — the sibling policy surfaces pass
-        // `fallback={IconShield}` for the same reason.
-        return <IconDisplay icon={role.icon} fallback={IconUsersGroup} />;
-      case 'name':
-        return (
-          <Text size="sm" fw={500}>
-            {role.name}
-          </Text>
-        );
-      case 'users':
-        return (
-          <Group gap={4}>
-            <IconUsersGroup size={14} stroke={1.5} color="var(--mantine-color-dimmed)" />
-            <Text size="sm" c="dimmed">
-              {getUserCount(role)}
+  const renderCell = useCallback(
+    (item: Item, header: Header): React.ReactNode => {
+      const role = item as unknown as Role;
+      switch (header.value) {
+        case 'icon':
+          // Explicit fallback: IconDisplay's default is the generic
+          // unknown-icon glyph, which reads as broken data for the common case
+          // of a role simply having no icon set. A users-group glyph is the
+          // right empty state here — the sibling policy surfaces pass
+          // `fallback={IconShield}` for the same reason.
+          return <IconDisplay icon={role.icon} fallback={IconUsersGroup} />;
+        case 'name':
+          return (
+            <Text size="sm" fw={500}>
+              {role.name}
             </Text>
-          </Group>
-        );
-      case 'description':
-        return (
-          <Text size="sm" c="dimmed" lineClamp={1}>
-            {role.description || '—'}
-          </Text>
-        );
-      default:
-        return null;
-    }
-  }, []);
+          );
+        case 'users':
+          return (
+            <Group gap={4}>
+              <IconUsersGroup size={14} stroke={1.5} color="var(--mantine-color-dimmed)" />
+              <Text size="sm" c="dimmed">
+                {getUserCount(role)}
+              </Text>
+            </Group>
+          );
+        case 'description':
+          return (
+            <Text size="sm" c="dimmed" lineClamp={1}>
+              {role.description || t.emptyValue}
+            </Text>
+          );
+        default:
+          return null;
+      }
+    },
+    [t]
+  );
 
   const renderRowAppend =
     updateAllowed || deleteAllowed
@@ -272,6 +285,7 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
               onDelete={
                 deleteAllowed ? () => setDeleteModal({ opened: true, id: role.id }) : undefined
               }
+              translations={translations}
             />
           );
         }
@@ -282,10 +296,10 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
       {!hideHeader && (
         <Box>
           <Title order={2} mb={4}>
-            Roles
+            {t.rolesManager.title}
           </Title>
           <Text size="sm" c="dimmed">
-            Define roles to group users and assign permissions
+            {t.rolesManager.subtitle}
           </Text>
         </Box>
       )}
@@ -293,16 +307,17 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
       <div className="bp-manager-card">
         <Group className="bp-manager-toolbar" wrap="wrap">
           <SearchInput
-            placeholder="Search roles..."
+            placeholder={t.rolesManager.searchPlaceholder}
             value={search}
             onChange={setSearch}
             style={{ flex: 1, minWidth: 200, maxWidth: 360 }}
             data-testid="roles-manager-search"
+            translations={translations}
           />
           <Group gap="sm" style={{ marginLeft: 'auto' }}>
             {totalCount > 0 && (
               <Badge variant="light" color="gray" size="lg" radius="sm">
-                {totalCount} {totalCount === 1 ? 'role' : 'roles'}
+                {formatCount(totalCount, t.count.roles)}
               </Badge>
             )}
             {addButton}
@@ -310,7 +325,7 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
         </Group>
 
         <VTable
-          headers={ROLE_HEADERS}
+          headers={headers}
           items={roles as unknown as Item[]}
           itemKey="id"
           showSelect="none"
@@ -318,10 +333,10 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
           loading={loading}
           noItemsText={
             loadError
-              ? `Failed to load roles — ${loadError}`
+              ? interpolate(t.rolesManager.emptyState.loadError, { error: loadError })
               : debouncedSearch
-                ? 'No roles found — try a different search term'
-                : 'No roles found — create your first role to get started'
+                ? t.rolesManager.emptyState.search
+                : t.rolesManager.emptyState.pristine
           }
           clickable={updateAllowed}
           renderCell={renderCell}
@@ -330,7 +345,7 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
             <ListFooter
               shown={roles.length}
               totalCount={totalCount}
-              itemsLabel="roles"
+              itemsLabel={t.rolesManager.itemsLabel}
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
@@ -338,6 +353,7 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
               sizeOptions={sizeOptions}
               onLimitChange={setLimit}
               data-testid="roles-manager-page-size"
+              translations={translations}
             />
           )}
           onRowClick={updateAllowed ? ({ item }) => onRoleClick?.(item as unknown as Role) : undefined}
@@ -350,8 +366,9 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
         onClose={() => setDeleteModal({ opened: false, id: '' })}
         onConfirm={confirmDelete}
         loading={deleting}
-        title="Delete role"
-        description="Are you sure you want to delete this role? Users in this role will need to be reassigned."
+        title={t.rolesManager.deleteModal.title}
+        description={t.rolesManager.deleteModal.description}
+        translations={translations}
       />
     </Stack>
   );

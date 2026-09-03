@@ -25,13 +25,20 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconChevronDown, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import { usePermissions, useRoles } from '@buildpad/hooks';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import type { Policy, Role, RoleScopeConfig, User } from '@buildpad/types';
 import { SelectIcon } from '@buildpad/ui-interfaces/select-icon';
+import { interpolate, type DeepPartial, type UsersTranslations } from '@buildpad/utils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { InfoPanel } from './InfoPanel';
 import { RolePoliciesManager } from './RolePoliciesManager';
 import { RoleUsersManager } from './RoleUsersManager';
-import { childRolesOf, isValidRegex, parentRoleOptions } from './accessUtils';
+import {
+  DATE_TIME_FORMAT_OPTIONS,
+  childRolesOf,
+  isValidRegex,
+  parentRoleOptions,
+} from './accessUtils';
 
 /** The editable subset of `Role` this form manages. */
 interface RoleFormValues {
@@ -81,6 +88,8 @@ export interface RoleDetailProps {
   onRoleClick?: (role: Role) => void;
   /** DaaS collection used for RBAC checks. Default: 'daas_roles'. */
   rolesCollection?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -100,12 +109,16 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   onPolicyClick,
   onRoleClick,
   rolesCollection = 'daas_roles',
+  translations,
 }) => {
   const isNew = id === 'new' || id === '+';
   const { getRole, createRole, updateRole, deleteRole, fetchRoles } = useRoles();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [rolesCollection],
   });
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+  const { formatDateTime, formatCount } = useBuildpadI18n();
 
   const createAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'create');
   const updateAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'update');
@@ -155,14 +168,14 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
       setValues(formValues);
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to fetch role',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.roleDetail.notifications.fetchFailed,
         color: 'red',
       });
     } finally {
       setLoading(false);
     }
-  }, [getRole, id, isNew]);
+  }, [getRole, id, isNew, t, common]);
 
   useEffect(() => {
     void load();
@@ -200,13 +213,17 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   const handleSave = useCallback(
     async (action: RoleSaveAction = 'quit') => {
       if (!values.name.trim()) {
-        notifications.show({ title: 'Validation Error', message: 'Name is required', color: 'red' });
+        notifications.show({
+          title: t.validationErrorTitle,
+          message: t.roleDetail.validation.nameRequired,
+          color: 'red',
+        });
         return;
       }
       if (!scopePatternsValid) {
         notifications.show({
-          title: 'Validation Error',
-          message: 'Fix the invalid scope patterns before saving',
+          title: t.validationErrorTitle,
+          message: t.roleDetail.validation.invalidScopePatterns,
           color: 'red',
         });
         return;
@@ -218,8 +235,8 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
           ? await createRole({ ...values, name: values.name })
           : await updateRole(id, values);
         notifications.show({
-          title: 'Success',
-          message: `Role ${isNew ? 'created' : 'updated'} successfully`,
+          title: common.success,
+          message: isNew ? t.roleDetail.notifications.created : t.roleDetail.notifications.updated,
           color: 'green',
         });
         setInitialValues(values);
@@ -229,15 +246,15 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
         onSaved?.(saved, action);
       } catch (err) {
         notifications.show({
-          title: 'Error',
-          message: err instanceof Error ? err.message : 'Failed to save role',
+          title: common.error,
+          message: err instanceof Error ? err.message : t.roleDetail.notifications.saveFailed,
           color: 'red',
         });
       } finally {
         setSaving(false);
       }
     },
-    [values, scopePatternsValid, isNew, createRole, updateRole, id, load, onSaved]
+    [values, scopePatternsValid, isNew, createRole, updateRole, id, load, onSaved, t, common]
   );
 
   const handleDiscard = useCallback(() => {
@@ -261,20 +278,20 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
     try {
       await deleteRole(id);
       notifications.show({
-        title: 'Success',
-        message: 'Role deleted successfully',
+        title: common.success,
+        message: t.roleDetail.notifications.deleted,
         color: 'green',
       });
       setDeleteModalOpen(false);
       onDeleted?.();
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to delete role',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.roleDetail.notifications.deleteFailed,
         color: 'red',
       });
     }
-  }, [deleteRole, id, onDeleted]);
+  }, [deleteRole, id, onDeleted, t, common]);
 
   const scopePatterns = values.scope_config?.allowed_scopes ?? [];
 
@@ -311,21 +328,25 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
     [onRoleClick, requestNav]
   );
 
+  // `formatDateTime` returns '' for an empty or invalid value.
+  const dateTime = (value?: string | null) =>
+    formatDateTime(value, DATE_TIME_FORMAT_OPTIONS) || t.emptyValue;
+
   return (
     <Stack gap="md" data-testid="role-detail">
       <Group justify="space-between">
         <Group>
-          <Title order={2}>{isNew ? 'New Role' : 'Edit Role'}</Title>
+          <Title order={2}>{isNew ? t.roleDetail.titleNew : t.roleDetail.titleEdit}</Title>
           {isDirty && (
             <Badge color="yellow" variant="dot">
-              Unsaved Changes
+              {t.unsavedChanges}
             </Badge>
           )}
         </Group>
         <Group>
           {onBack && (
             <Button variant="default" onClick={handleCancel}>
-              Cancel
+              {common.cancel}
             </Button>
           )}
           {!isNew && deleteAllowed && (
@@ -337,18 +358,18 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
             <Menu position="bottom-end">
               <Menu.Target>
                 <Button loading={saving} rightSection={<IconChevronDown size={16} />} data-testid="role-detail-save-btn">
-                  Save
+                  {common.save}
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Item onClick={() => void handleSave('stay')}>Save &amp; Stay</Menu.Item>
-                <Menu.Item onClick={() => void handleSave('quit')}>Save &amp; Quit</Menu.Item>
-                <Menu.Item onClick={() => void handleSave('addNew')}>Save &amp; Add New</Menu.Item>
+                <Menu.Item onClick={() => void handleSave('stay')}>{t.roleDetail.saveMenu.stay}</Menu.Item>
+                <Menu.Item onClick={() => void handleSave('quit')}>{t.roleDetail.saveMenu.quit}</Menu.Item>
+                <Menu.Item onClick={() => void handleSave('addNew')}>{t.roleDetail.saveMenu.addNew}</Menu.Item>
                 {isDirty && (
                   <>
                     <Menu.Divider />
                     <Menu.Item color="red" onClick={handleDiscard}>
-                      Discard Changes
+                      {t.roleDetail.saveMenu.discard}
                     </Menu.Item>
                   </>
                 )}
@@ -362,9 +383,17 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
         <Grid.Col span={{ base: 12, md: 8 }}>
           <Tabs value={activeTab} onChange={setActiveTab}>
             <Tabs.List>
-              <Tabs.Tab value="basic">Basic Information</Tabs.Tab>
-              {!isNew && <Tabs.Tab value="users">Users ({userCount})</Tabs.Tab>}
-              {!isNew && <Tabs.Tab value="policies">Policies ({policyCount})</Tabs.Tab>}
+              <Tabs.Tab value="basic">{t.basicInformation}</Tabs.Tab>
+              {!isNew && (
+                <Tabs.Tab value="users">
+                  {interpolate(t.roleDetail.tabs.users, { count: userCount })}
+                </Tabs.Tab>
+              )}
+              {!isNew && (
+                <Tabs.Tab value="policies">
+                  {interpolate(t.roleDetail.tabs.policies, { count: policyCount })}
+                </Tabs.Tab>
+              )}
             </Tabs.List>
 
             <Tabs.Panel value="basic" pt="md">
@@ -373,8 +402,8 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
                 <Stack gap="md">
                   <TextInput
-                    label="Name"
-                    placeholder="Administrator"
+                    label={t.fields.name}
+                    placeholder={t.roleDetail.fields.namePlaceholder}
                     required
                     value={values.name}
                     onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
@@ -382,7 +411,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                   />
 
                   <SelectIcon
-                    label="Icon"
+                    label={t.fields.icon}
                     value={values.icon}
                     onChange={(icon) =>
                       setValues((prev) => ({ ...prev, icon: icon || 'supervised_user_circle' }))
@@ -391,16 +420,16 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                   />
 
                   <Textarea
-                    label="Description"
-                    placeholder="Role description"
+                    label={t.fields.description}
+                    placeholder={t.roleDetail.fields.descriptionPlaceholder}
                     value={values.description}
                     onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
                     rows={4}
                   />
 
                   <Select
-                    label="Parent Role"
-                    placeholder="Select a parent role (optional)"
+                    label={t.roleDetail.fields.parentRole}
+                    placeholder={t.roleDetail.fields.parentRolePlaceholder}
                     data={parentRoleOptions(allRoles, isNew ? null : id)}
                     value={values.parent}
                     onChange={(parent) => setValues((prev) => ({ ...prev, parent }))}
@@ -411,8 +440,8 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
                   <Stack gap="xs">
                     <Switch
-                      label="Scope Assignment Rules"
-                      description="Restrict which scopes users with this role can be assigned to"
+                      label={t.roleDetail.scope.label}
+                      description={t.roleDetail.scope.description}
                       checked={values.scope_config !== null}
                       onChange={(e) => {
                         setScopeConfig(
@@ -428,11 +457,10 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                       <Paper p="sm" withBorder>
                         <Stack gap="sm">
                           <Text size="sm" fw={500}>
-                            Allowed Scope Patterns
+                            {t.roleDetail.scope.patternsTitle}
                           </Text>
                           <Text size="xs" c="dimmed">
-                            Regex patterns that scope URIs must match. Leave empty to block all
-                            scope assignments.
+                            {t.roleDetail.scope.patternsHint}
                           </Text>
 
                           {scopePatterns.map((pattern, idx) => (
@@ -442,14 +470,18 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                               </Code>
                               <TextInput
                                 style={{ flex: 1 }}
-                                placeholder="^/tenant:.*$"
+                                placeholder={t.roleDetail.scope.patternPlaceholder}
                                 value={pattern}
                                 onChange={(e) => {
                                   const updated = [...scopePatterns];
                                   updated[idx] = e.target.value;
                                   setScopeConfig({ ...values.scope_config!, allowed_scopes: updated });
                                 }}
-                                error={pattern && !isValidRegex(pattern) ? 'Invalid regex' : undefined}
+                                error={
+                                  pattern && !isValidRegex(pattern)
+                                    ? t.roleDetail.scope.invalidRegex
+                                    : undefined
+                                }
                                 data-testid={`role-detail-scope-pattern-${idx}`}
                               />
                               <ActionIcon
@@ -459,7 +491,9 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                                   const updated = scopePatterns.filter((_, i) => i !== idx);
                                   setScopeConfig({ ...values.scope_config!, allowed_scopes: updated });
                                 }}
-                                aria-label={`Remove pattern ${idx + 1}`}
+                                aria-label={interpolate(t.roleDetail.scope.removePatternAriaLabel, {
+                                  index: idx + 1,
+                                })}
                               >
                                 <IconX size={16} />
                               </ActionIcon>
@@ -478,13 +512,13 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                             }
                             data-testid="role-detail-scope-add-pattern"
                           >
-                            Add Pattern
+                            {t.roleDetail.scope.addPattern}
                           </Button>
 
                           <TextInput
-                            label="Validation Message"
-                            description="Custom error message shown when scope assignment is rejected"
-                            placeholder="This role can only be assigned to specific scopes"
+                            label={t.roleDetail.scope.validationMessage.label}
+                            description={t.roleDetail.scope.validationMessage.description}
+                            placeholder={t.roleDetail.scope.validationMessage.placeholder}
                             value={values.scope_config?.validation_message || ''}
                             onChange={(e) =>
                               setScopeConfig({
@@ -510,6 +544,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                     onUpdate={() => void refreshCounts()}
                     onUserClick={onUserClick}
                     onAddUser={onAddUser}
+                    translations={translations}
                   />
                 </Tabs.Panel>
 
@@ -518,6 +553,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                     roleId={id}
                     onUpdate={() => void refreshCounts()}
                     onPolicyClick={onPolicyClick}
+                    translations={translations}
                   />
                 </Tabs.Panel>
               </>
@@ -530,38 +566,33 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
             <Stack gap="md">
               <InfoPanel
                 items={[
-                  { label: 'Role ID', value: role.id },
+                  { label: t.roleDetail.info.roleId, value: role.id },
                   ...(role.parent
                     ? [
                         {
-                          label: 'Parent Role',
+                          label: t.roleDetail.info.parentRole,
                           value: parentRole
                             ? roleLink(parentRole, 'role-detail-parent-link')
                             : role.parent,
                         },
                       ]
                     : []),
-                  { label: 'Users', value: `${userCount} ${userCount === 1 ? 'user' : 'users'}` },
+                  { label: t.roleDetail.info.users, value: formatCount(userCount, t.count.users) },
                   {
-                    label: 'Policies',
-                    value: `${policyCount} ${policyCount === 1 ? 'policy' : 'policies'}`,
+                    label: t.roleDetail.info.policies,
+                    value: formatCount(policyCount, t.count.policies),
                   },
-                  {
-                    label: 'Created',
-                    value: role.created_at ? new Date(role.created_at).toLocaleString() : '—',
-                  },
-                  {
-                    label: 'Updated',
-                    value: role.updated_at ? new Date(role.updated_at).toLocaleString() : '—',
-                  },
+                  { label: t.created, value: dateTime(role.created_at) },
+                  { label: t.updated, value: dateTime(role.updated_at) },
                 ]}
-                description="Role information and assignments"
+                description={t.roleDetail.info.description}
+                translations={translations}
               />
 
               {childRoles.length > 0 && (
                 <Paper shadow="xs" p="md" withBorder data-testid="role-detail-children">
                   <Text fw={600} mb="sm">
-                    Child Roles
+                    {t.roleDetail.childRoles}
                   </Text>
                   <Stack gap="xs">
                     {childRoles.map((child) => (
@@ -575,12 +606,16 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
         </Grid.Col>
       </Grid>
 
-      <Modal opened={pendingNav !== null} onClose={() => setPendingNav(null)} title="Unsaved Changes">
+      <Modal
+        opened={pendingNav !== null}
+        onClose={() => setPendingNav(null)}
+        title={t.roleDetail.unsavedModal.title}
+      >
         <Stack gap="md">
-          <Text size="sm">You have unsaved changes. Are you sure you want to leave?</Text>
+          <Text size="sm">{common.unsavedChangesPrompt}</Text>
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setPendingNav(null)}>
-              Keep Editing
+              {t.roleDetail.unsavedModal.keepEditing}
             </Button>
             <Button
               color="red"
@@ -590,7 +625,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                 pendingNav?.();
               }}
             >
-              Discard Changes
+              {t.roleDetail.unsavedModal.discard}
             </Button>
           </Group>
         </Stack>
@@ -600,8 +635,9 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
         opened={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Delete role"
-        description="Are you sure you want to delete this role? Users in this role will need to be reassigned."
+        title={t.roleDetail.deleteModal.title}
+        description={t.roleDetail.deleteModal.description}
+        translations={translations}
       />
     </Stack>
   );

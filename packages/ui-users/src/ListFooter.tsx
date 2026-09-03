@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Group, Pagination, Select, Text } from '@mantine/core';
+import { useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type UsersTranslations } from '@buildpad/utils';
 
 export interface ListFooterProps {
   /** Rows on the current page. */
@@ -18,6 +20,8 @@ export interface ListFooterProps {
   onLimitChange: (limit: number) => void;
   /** Applied to the page-size Select (e.g. `users-manager-page-size`). */
   'data-testid'?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -37,14 +41,17 @@ export const ListFooter: React.FC<ListFooterProps> = ({
   sizeOptions,
   onLimitChange,
   'data-testid': testId,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.users, translations);
+
   if (totalCount <= 0) return null;
 
   return (
     <Group justify="space-between" px="md" py="sm" style={{ borderTop: 'var(--ds-table-border, 1px solid #e8ebf1)' }}>
       <Group gap="sm">
         <Text size="xs" c="dimmed">
-          Showing {shown} of {totalCount} {itemsLabel}
+          {interpolate(t.listFooter.showing, { shown, totalCount, itemsLabel })}
         </Text>
         <Select
           size="xs"
@@ -53,8 +60,8 @@ export const ListFooter: React.FC<ListFooterProps> = ({
           onChange={(value) => {
             if (value) onLimitChange(Number(value));
           }}
-          data={sizeOptions.map((n) => ({ value: String(n), label: `${n} / page` }))}
-          aria-label="Items per page"
+          data={sizeOptions.map((n) => ({ value: String(n), label: interpolate(t.listFooter.perPage, { n }) }))}
+          aria-label={t.listFooter.itemsPerPageAriaLabel}
           data-testid={testId}
         />
       </Group>

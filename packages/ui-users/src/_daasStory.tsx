@@ -1,3 +1,4 @@
+/* eslint-disable buildpad/no-untranslated-literal -- Storybook-only scaffolding: not exported from index.ts, not bundled by tsup; its copy never ships to consumers. */
 /**
  * Shared scaffolding for the `*.daas.stories.tsx` live-backend stories —
  * connection check against the Storybook Host proxy, connected/disconnected

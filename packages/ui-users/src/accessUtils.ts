@@ -4,6 +4,7 @@
  * `userDisplay.ts`.
  */
 import type { Role, User } from '@buildpad/types';
+import { interpolate, type InterpolationValues } from '@buildpad/utils';
 
 /**
  * Normalize the M2M `roles` value on a user to an array of role ID strings.
@@ -97,3 +98,55 @@ export function generateToken(bytes = 32): string {
   }
   return Array.from(buffer, (b) => b.toString(16).padStart(2, '0')).join('');
 }
+
+/** One run of a tagged dictionary string: `tag` is `null` for plain text. */
+export interface TaggedTextSegment {
+  tag: string | null;
+  text: string;
+}
+
+/**
+ * Split a dictionary string carrying inline `<tag>…</tag>` markers
+ * (`'… <link>Create keys</link> to …'`) into plain and tagged runs, so a
+ * component can wrap the tagged runs in inline elements while translators keep
+ * one sentence with the right word order. `{placeholders}` are interpolated per
+ * run AFTER splitting, so a user-entered value can never inject a tag. Unclosed
+ * or nested tags stay plain text; the markers themselves never reach the DOM.
+ */
+export function splitTaggedText(
+  template: string,
+  values?: InterpolationValues,
+): TaggedTextSegment[] {
+  const segments: TaggedTextSegment[] = [];
+  const pattern = /<(\w+)>([\s\S]*?)<\/\1>/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(template)) !== null) {
+    if (match.index > last) {
+      segments.push({ tag: null, text: interpolate(template.slice(last, match.index), values) });
+    }
+    segments.push({ tag: match[1], text: interpolate(match[2], values) });
+    last = match.index + match[0].length;
+  }
+  if (last < template.length) {
+    segments.push({ tag: null, text: interpolate(template.slice(last), values) });
+  }
+  return segments;
+}
+
+/** The components `Date#toLocaleDateString()` renders with no options — pass to `formatDate`. */
+export const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+};
+
+/** The components `Date#toLocaleString()` renders with no options — pass to `formatDateTime`. */
+export const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
+  second: 'numeric',
+};

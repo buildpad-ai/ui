@@ -19,16 +19,18 @@ import {
 import { notifications } from '@mantine/notifications';
 import { IconTrash } from '@tabler/icons-react';
 import { usePermissions, usePolicies } from '@buildpad/hooks';
-import { apiRequest } from '@buildpad/services';
+import { apiRequest, useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import type { ModuleAccessMap, Permission, Policy } from '@buildpad/types';
 import { SelectIcon } from '@buildpad/ui-interfaces/select-icon';
 import {
   SystemPermissions,
   type PermissionAlterations,
 } from '@buildpad/ui-interfaces/system-permissions';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { InfoPanel } from './InfoPanel';
 import { ModuleAccessPanel } from './ModuleAccessPanel';
+import { DATE_TIME_FORMAT_OPTIONS } from './accessUtils';
 
 /** The editable subset of `Policy` this form manages. */
 interface PolicyFormValues {
@@ -115,6 +117,8 @@ export interface PolicyDetailProps {
   onSaved?: (policy: Policy) => void;
   /** DaaS collection used for RBAC checks. Default: 'daas_policies'. */
   policiesCollection?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -134,12 +138,16 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   onDeleted,
   onSaved,
   policiesCollection = 'daas_policies',
+  translations,
 }) => {
   const isNew = id === 'new' || id === '+';
   const { getPolicy, createPolicy, updatePolicy, deletePolicy } = usePolicies();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [policiesCollection],
   });
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+  const { formatDateTime, formatCount } = useBuildpadI18n();
 
   const createAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'create');
   const updateAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'update');
@@ -185,14 +193,14 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
       setValues(formValues);
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to fetch policy',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.policyDetail.notifications.fetchFailed,
         color: 'red',
       });
     } finally {
       setLoading(false);
     }
-  }, [getPolicy, id, isNew]);
+  }, [getPolicy, id, isNew, t, common]);
 
   useEffect(() => {
     void load();
@@ -200,7 +208,11 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
 
   const handleSave = useCallback(async () => {
     if (!values.name.trim()) {
-      notifications.show({ title: 'Validation Error', message: 'Name is required', color: 'red' });
+      notifications.show({
+        title: t.validationErrorTitle,
+        message: t.policyDetail.validation.nameRequired,
+        color: 'red',
+      });
       return;
     }
 
@@ -218,8 +230,8 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
         }
       }
       notifications.show({
-        title: 'Success',
-        message: `Policy ${isNew ? 'created' : 'updated'} successfully`,
+        title: common.success,
+        message: isNew ? t.policyDetail.notifications.created : t.policyDetail.notifications.updated,
         color: 'green',
       });
       setInitialValues(values);
@@ -227,8 +239,8 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
       onSaved?.(saved);
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to save policy',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.policyDetail.notifications.saveFailed,
         color: 'red',
       });
     } finally {
@@ -245,45 +257,51 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
     alterations,
     hasPermissionEdits,
     onSaved,
+    t,
+    common,
   ]);
 
   const confirmDelete = useCallback(async () => {
     try {
       await deletePolicy(id);
       notifications.show({
-        title: 'Success',
-        message: 'Policy deleted successfully',
+        title: common.success,
+        message: t.policyDetail.notifications.deleted,
         color: 'green',
       });
       setDeleteModalOpen(false);
       onDeleted?.();
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to delete policy',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.policyDetail.notifications.deleteFailed,
         color: 'red',
       });
     }
-  }, [deletePolicy, id, onDeleted]);
+  }, [deletePolicy, id, onDeleted, t, common]);
 
   const userCount = policy?.userCount ?? 0;
   const roleCount = policy?.roleCount ?? 0;
+
+  // `formatDateTime` returns '' for an empty or invalid value.
+  const dateTime = (value?: string | null) =>
+    formatDateTime(value, DATE_TIME_FORMAT_OPTIONS) || t.emptyValue;
 
   return (
     <Stack gap="md" data-testid="policy-detail">
       <Group justify="space-between">
         <Group>
-          <Title order={2}>{isNew ? 'New Policy' : 'Edit Policy'}</Title>
+          <Title order={2}>{isNew ? t.policyDetail.titleNew : t.policyDetail.titleEdit}</Title>
           {isDirty && (
             <Badge color="yellow" variant="dot">
-              Unsaved Changes
+              {t.unsavedChanges}
             </Badge>
           )}
         </Group>
         <Group>
           {onBack && (
             <Button variant="default" onClick={onBack}>
-              Cancel
+              {common.cancel}
             </Button>
           )}
           {!isNew && deleteAllowed && (
@@ -298,7 +316,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
               disabled={!isNew && !isDirty}
               data-testid="policy-detail-save-btn"
             >
-              {isNew ? 'Create' : 'Save'}
+              {isNew ? common.create : common.save}
             </Button>
           )}
         </Group>
@@ -310,11 +328,11 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
             <LoadingOverlay visible={loading} />
 
             <Stack gap="md">
-              <Title order={4}>Basic Information</Title>
+              <Title order={4}>{t.basicInformation}</Title>
 
               <TextInput
-                label="Name"
-                placeholder="Admin Policy"
+                label={t.fields.name}
+                placeholder={t.policyDetail.fields.namePlaceholder}
                 required
                 value={values.name}
                 onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
@@ -322,43 +340,43 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
               />
 
               <SelectIcon
-                label="Icon"
+                label={t.fields.icon}
                 value={values.icon}
                 onChange={(icon) => setValues((prev) => ({ ...prev, icon: icon || 'security' }))}
                 placeholder="security"
               />
 
               <Textarea
-                label="Description"
-                placeholder="Policy description"
+                label={t.fields.description}
+                placeholder={t.policyDetail.fields.descriptionPlaceholder}
                 value={values.description}
                 onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
                 rows={4}
               />
 
               <Title order={4} mt="md">
-                Access Control
+                {t.policyDetail.accessControl}
               </Title>
 
               <Switch
-                label="App Access"
-                description="Allow access to the app (requires minimal permissions)"
+                label={t.policyDetail.appAccess.label}
+                description={t.policyDetail.appAccess.description}
                 checked={values.app_access}
                 onChange={(e) => setValues((prev) => ({ ...prev, app_access: e.currentTarget.checked }))}
                 data-testid="policy-detail-app-access"
               />
 
               <Switch
-                label="Admin Access"
-                description="Grant full administrative privileges"
+                label={t.policyDetail.adminAccess.label}
+                description={t.policyDetail.adminAccess.description}
                 checked={values.admin_access}
                 onChange={(e) => setValues((prev) => ({ ...prev, admin_access: e.currentTarget.checked }))}
                 data-testid="policy-detail-admin-access"
               />
 
               <Switch
-                label="Delegate Access"
-                description="Allow using X-On-Behalf-Of header to delegate audit identity in server-to-server requests"
+                label={t.policyDetail.delegateAccess.label}
+                description={t.policyDetail.delegateAccess.description}
                 checked={values.delegate_access}
                 onChange={(e) =>
                   setValues((prev) => ({ ...prev, delegate_access: e.currentTarget.checked }))
@@ -379,10 +397,10 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
               <Tabs defaultValue="record-level">
                 <Tabs.List mb="md">
                   <Tabs.Tab value="record-level" data-testid="policy-detail-tab-record">
-                    Record-Level Access
+                    {t.policyDetail.tabs.recordLevel}
                   </Tabs.Tab>
                   <Tabs.Tab value="module-level" data-testid="policy-detail-tab-module">
-                    Module-Level Access
+                    {t.policyDetail.tabs.moduleLevel}
                   </Tabs.Tab>
                 </Tabs.List>
 
@@ -394,8 +412,8 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
                     onChange={setAlterations}
                     appAccess={values.app_access}
                     adminAccess={values.admin_access}
-                    label="Permissions"
-                    description="Per-collection permissions granted by this policy"
+                    label={t.policyDetail.permissions.label}
+                    description={t.policyDetail.permissions.description}
                     data-testid="policy-detail-permissions"
                   />
                 </Tabs.Panel>
@@ -403,8 +421,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
                 <Tabs.Panel value="module-level">
                   <Stack gap="xs">
                     <Text size="sm" c="dimmed">
-                      Application capabilities granted by this policy, independent of
-                      collection permissions.
+                      {t.policyDetail.moduleLevelIntro}
                     </Text>
                     <ModuleAccessPanel
                       value={values.module_access}
@@ -412,6 +429,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
                         setValues((prev) => ({ ...prev, module_access }))
                       }
                       adminAccess={values.admin_access}
+                      translations={translations}
                     />
                   </Stack>
                 </Tabs.Panel>
@@ -424,19 +442,14 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
           {!isNew && policy && (
             <InfoPanel
               items={[
-                { label: 'Policy ID', value: policy.id },
-                { label: 'Users', value: `${userCount} ${userCount === 1 ? 'user' : 'users'}` },
-                { label: 'Roles', value: `${roleCount} ${roleCount === 1 ? 'role' : 'roles'}` },
-                {
-                  label: 'Created',
-                  value: policy.created_at ? new Date(policy.created_at).toLocaleString() : '—',
-                },
-                {
-                  label: 'Updated',
-                  value: policy.updated_at ? new Date(policy.updated_at).toLocaleString() : '—',
-                },
+                { label: t.policyDetail.info.policyId, value: policy.id },
+                { label: t.policyDetail.info.users, value: formatCount(userCount, t.count.users) },
+                { label: t.policyDetail.info.roles, value: formatCount(roleCount, t.count.roles) },
+                { label: t.created, value: dateTime(policy.created_at) },
+                { label: t.updated, value: dateTime(policy.updated_at) },
               ]}
-              description="Policy information and assignments"
+              description={t.policyDetail.info.description}
+              translations={translations}
             />
           )}
         </Grid.Col>
@@ -446,8 +459,9 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
         opened={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        title="Delete policy"
-        description="Are you sure you want to delete this policy? This action cannot be undone."
+        title={t.policyDetail.deleteModal.title}
+        description={t.policyDetail.deleteModal.description}
+        translations={translations}
       />
     </Stack>
   );

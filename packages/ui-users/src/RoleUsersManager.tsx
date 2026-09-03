@@ -24,15 +24,18 @@ import {
   IconUserPlus,
 } from '@tabler/icons-react';
 import { useRoles, useUsers } from '@buildpad/hooks';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import type { Role, User } from '@buildpad/types';
+import { interpolate, type DeepPartial, type UsersTranslations } from '@buildpad/utils';
 import { UserAvatar } from './UserAvatar';
 import { UserStatusBadge } from './UserStatusBadge';
+import { splitTaggedText } from './accessUtils';
 import { getUserDisplayName } from './userDisplay';
 
 export interface RoleUsersManagerProps {
   /** ID of the role whose membership is managed. */
   roleId: string;
-  /** Role name, used in confirmation copy. */
+  /** Role name, used in confirmation copy. Default: the dictionary's "this role". */
   roleName?: string;
   /** Called after any successful membership change so the parent can refresh counts. */
   onUpdate?: () => void;
@@ -40,6 +43,8 @@ export interface RoleUsersManagerProps {
   onUserClick?: (user: User) => void;
   /** Called when "Add User" is clicked. Button hidden when omitted. */
   onAddUser?: () => void;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -50,13 +55,18 @@ export interface RoleUsersManagerProps {
  */
 export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
   roleId,
-  roleName = 'this role',
+  roleName,
   onUpdate,
   onUserClick,
   onAddUser,
+  translations,
 }) => {
   const { fetchUsers, bulkUpdateUsers } = useUsers();
   const { fetchRoles } = useRoles();
+  const t = useBuildpadTranslations((d) => d.users, translations);
+  const common = useBuildpadTranslations((d) => d.common);
+  const { formatCount } = useBuildpadI18n();
+  const roleLabel = roleName ?? t.roleUsers.defaultRoleName;
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,14 +85,14 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
       setUsers(result.users);
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to fetch users',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.roleUsers.notifications.fetchFailed,
         color: 'red',
       });
     } finally {
       setLoading(false);
     }
-  }, [fetchUsers, roleId]);
+  }, [fetchUsers, roleId, t, common]);
 
   useEffect(() => {
     void load();
@@ -96,23 +106,25 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
       try {
         await bulkUpdateUsers(userIds, { removeRoles: [roleId] });
         notifications.show({
-          title: 'Success',
-          message: `${userIds.length} user(s) removed from "${roleName}"`,
+          title: common.success,
+          message: formatCount(userIds.length, t.roleUsers.notifications.removed, {
+            roleName: roleLabel,
+          }),
           color: 'green',
         });
         await load();
         onUpdate?.();
       } catch (err) {
         notifications.show({
-          title: 'Error',
-          message: err instanceof Error ? err.message : 'Failed to remove users from role',
+          title: common.error,
+          message: err instanceof Error ? err.message : t.roleUsers.notifications.removeFailed,
           color: 'red',
         });
       } finally {
         setProcessing(false);
       }
     },
-    [bulkUpdateUsers, roleId, roleName, load, onUpdate]
+    [bulkUpdateUsers, roleId, roleLabel, load, onUpdate, t, common, formatCount]
   );
 
   const openMoveModal = useCallback(
@@ -145,8 +157,8 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
         addRoles: [targetRoleId],
       });
       notifications.show({
-        title: 'Success',
-        message: `${selectedUsers.length} user(s) moved to the selected role`,
+        title: common.success,
+        message: formatCount(selectedUsers.length, t.roleUsers.notifications.moved),
         color: 'green',
       });
       closeMoveModal();
@@ -154,14 +166,25 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
       onUpdate?.();
     } catch (err) {
       notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to move users',
+        title: common.error,
+        message: err instanceof Error ? err.message : t.roleUsers.notifications.moveFailed,
         color: 'red',
       });
     } finally {
       setProcessing(false);
     }
-  }, [bulkUpdateUsers, targetRoleId, selectedUsers, roleId, closeMoveModal, load, onUpdate]);
+  }, [
+    bulkUpdateUsers,
+    targetRoleId,
+    selectedUsers,
+    roleId,
+    closeMoveModal,
+    load,
+    onUpdate,
+    t,
+    common,
+    formatCount,
+  ]);
 
   return (
     <Paper shadow="xs" p="md" withBorder data-testid="role-users-manager">
@@ -169,7 +192,7 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
         <Group justify="space-between">
           <Group gap="sm" align="center">
             <Text fw={600} size="lg">
-              Users
+              {t.roleUsers.title}
             </Text>
             <Badge size="lg" circle variant="filled">
               {users.length}
@@ -177,7 +200,7 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
           </Group>
           {onAddUser && (
             <Button leftSection={<IconUserPlus size={16} />} size="sm" onClick={onAddUser}>
-              Add User
+              {t.roleUsers.addUser}
             </Button>
           )}
         </Group>
@@ -187,16 +210,16 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
 
           {users.length === 0 && !loading ? (
             <Text c="dimmed" ta="center" py="xl">
-              No users assigned to this role
+              {t.roleUsers.emptyState}
             </Text>
           ) : (
             <Table withTableBorder={false}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th style={{ width: 50 }} />
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Email</Table.Th>
-                  <Table.Th>Status</Table.Th>
+                  <Table.Th>{t.columns.name}</Table.Th>
+                  <Table.Th>{t.columns.email}</Table.Th>
+                  <Table.Th>{t.columns.status}</Table.Th>
                   <Table.Th style={{ width: 120 }} />
                 </Table.Tr>
               </Table.Thead>
@@ -217,37 +240,43 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      <UserStatusBadge status={user.status} />
+                      <UserStatusBadge status={user.status} translations={translations} />
                     </Table.Td>
                     <Table.Td>
                       <Group gap="xs" wrap="nowrap" justify="flex-end">
-                        <Tooltip label="Move to another role">
+                        <Tooltip label={t.roleUsers.moveTooltip}>
                           <ActionIcon
                             variant="subtle"
                             onClick={() => void openMoveModal([user.id])}
-                            aria-label={`Move ${getUserDisplayName(user)} to another role`}
+                            aria-label={interpolate(t.roleUsers.moveAriaLabel, {
+                              name: getUserDisplayName(user),
+                            })}
                           >
                             <IconUserMinus size={16} />
                           </ActionIcon>
                         </Tooltip>
-                        <Tooltip label="Remove from this role">
+                        <Tooltip label={t.roleUsers.removeTooltip}>
                           <ActionIcon
                             variant="subtle"
                             color="red"
                             loading={processing}
                             onClick={() => void removeFromRole([user.id])}
-                            aria-label={`Remove ${getUserDisplayName(user)} from this role`}
+                            aria-label={interpolate(t.roleUsers.removeAriaLabel, {
+                              name: getUserDisplayName(user),
+                            })}
                             data-testid={`role-user-remove-btn-${user.id}`}
                           >
                             <IconTrash size={16} />
                           </ActionIcon>
                         </Tooltip>
                         {onUserClick && (
-                          <Tooltip label="Open user">
+                          <Tooltip label={t.roleUsers.openTooltip}>
                             <ActionIcon
                               variant="subtle"
                               onClick={() => onUserClick(user)}
-                              aria-label={`Open ${getUserDisplayName(user)}`}
+                              aria-label={interpolate(t.roleUsers.openAriaLabel, {
+                                name: getUserDisplayName(user),
+                              })}
                             >
                               <IconExternalLink size={16} />
                             </ActionIcon>
@@ -272,7 +301,7 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
               loading={processing}
               onClick={() => void removeFromRole(users.map((u) => u.id))}
             >
-              Remove All from Role
+              {t.roleUsers.removeAll}
             </Button>
             <Button
               variant="light"
@@ -280,7 +309,7 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
               leftSection={<IconUserMinus size={14} />}
               onClick={() => void openMoveModal(users.map((u) => u.id))}
             >
-              Move All to Another Role
+              {t.roleUsers.moveAll}
             </Button>
           </Group>
         )}
@@ -289,25 +318,29 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
       <Modal
         opened={moveModalOpen}
         onClose={closeMoveModal}
-        title={`Move ${selectedUsers.length} User(s) to Another Role`}
+        title={formatCount(selectedUsers.length, t.roleUsers.moveModal.title)}
       >
         <Stack gap="md">
           <Text size="sm" c="dimmed">
-            The selected user(s) will be{' '}
-            <Text span fw={500}>
-              removed from &ldquo;{roleName}&rdquo;
-            </Text>{' '}
-            and added to the role you choose below. Users can hold multiple roles — if you only
-            want to remove them, close this dialog and use the{' '}
-            <Text span c="red">
-              Remove
-            </Text>{' '}
-            button instead.
+            {splitTaggedText(t.roleUsers.moveModal.description, { roleName: roleLabel }).map(
+              (segment, index) =>
+                segment.tag === 'strong' ? (
+                  <Text key={index} span fw={500}>
+                    {segment.text}
+                  </Text>
+                ) : segment.tag === 'remove' ? (
+                  <Text key={index} span c="red">
+                    {segment.text}
+                  </Text>
+                ) : (
+                  <React.Fragment key={index}>{segment.text}</React.Fragment>
+                ),
+            )}
           </Text>
 
           <Select
-            label="Target Role"
-            placeholder="Select a role"
+            label={t.roleUsers.moveModal.targetRoleLabel}
+            placeholder={t.roleUsers.moveModal.targetRolePlaceholder}
             data={availableRoles.map((role) => ({
               value: role.id,
               label: role.name,
@@ -322,10 +355,10 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
 
           <Group justify="flex-end">
             <Button variant="default" onClick={closeMoveModal}>
-              Cancel
+              {common.cancel}
             </Button>
             <Button onClick={() => void moveUsers()} disabled={!targetRoleId} loading={processing}>
-              Move
+              {t.roleUsers.moveModal.confirm}
             </Button>
           </Group>
         </Stack>

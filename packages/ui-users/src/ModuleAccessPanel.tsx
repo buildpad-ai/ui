@@ -21,7 +21,10 @@ import {
   IconKey,
 } from '@tabler/icons-react';
 import { useModuleAccessKeys } from '@buildpad/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
 import type { ModuleAccessKey, ModuleAccessMap } from '@buildpad/types';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
+import { splitTaggedText } from './accessUtils';
 
 /**
  * ModuleAccessPanel — the "Module-Level Access" half of the Policy editor.
@@ -140,6 +143,8 @@ export interface ModuleAccessPanelProps {
   adminAccess?: boolean;
   /** Route of the registry management page, linked from the empty state. */
   keysHref?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 export const ModuleAccessPanel: React.FC<ModuleAccessPanelProps> = ({
@@ -147,12 +152,14 @@ export const ModuleAccessPanel: React.FC<ModuleAccessPanelProps> = ({
   onChange,
   adminAccess,
   keysHref = '/module-access-keys',
+  translations,
 }) => {
   const { fetchKeys } = useModuleAccessKeys();
+  const t = useBuildpadTranslations((d) => d.users, translations);
   const [tree, setTree] = useState<ModuleAccessKey[]>([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,9 +170,9 @@ export const ModuleAccessPanel: React.FC<ModuleAccessPanelProps> = ({
         if (cancelled) return;
         setTree(built);
         setCount(keys.length);
-        setError(null);
+        setLoadFailed(false);
       } catch {
-        if (!cancelled) setError('Failed to load module access keys');
+        if (!cancelled) setLoadFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -202,10 +209,10 @@ export const ModuleAccessPanel: React.FC<ModuleAccessPanelProps> = ({
     );
   }
 
-  if (error) {
+  if (loadFailed) {
     return (
       <Alert color="red" variant="light" data-testid="module-access-error">
-        {error}
+        {t.moduleAccessPanel.loadError}
       </Alert>
     );
   }
@@ -214,11 +221,15 @@ export const ModuleAccessPanel: React.FC<ModuleAccessPanelProps> = ({
     return (
       <Box py="xl" ta="center" data-testid="module-access-empty">
         <Text size="sm" c="dimmed">
-          No module access keys defined.{' '}
-          <Anchor href={keysHref} size="sm">
-            Create keys
-          </Anchor>{' '}
-          to start assigning module-level capabilities to this policy.
+          {splitTaggedText(t.moduleAccessPanel.empty).map((segment, index) =>
+            segment.tag === 'link' ? (
+              <Anchor key={index} href={keysHref} size="sm">
+                {segment.text}
+              </Anchor>
+            ) : (
+              <React.Fragment key={index}>{segment.text}</React.Fragment>
+            ),
+          )}
         </Text>
       </Box>
     );
@@ -231,9 +242,7 @@ export const ModuleAccessPanel: React.FC<ModuleAccessPanelProps> = ({
     <Stack gap="md" data-testid="module-access-panel">
       {adminAccess && (
         <Text size="sm" c="dimmed" fs="italic">
-          This policy grants Admin Access — the user already has all module-level
-          capabilities. Toggles below are recorded but have no practical effect while
-          Admin Access is on.
+          {t.moduleAccessPanel.adminNotice}
         </Text>
       )}
 

@@ -3,6 +3,8 @@
 import React from 'react';
 import { Group, Paper, Stack, Text } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
+import { useBuildpadTranslations } from '@buildpad/services';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 
 export interface InfoPanelItem {
   label: string;
@@ -10,12 +12,14 @@ export interface InfoPanelItem {
 }
 
 export interface InfoPanelProps {
-  /** Panel heading. Default: "Information". */
+  /** Panel heading. Default: the dictionary's "Information". */
   title?: string;
   /** Label/value rows, rendered in order. */
   items: InfoPanelItem[];
   /** Optional description shown in a muted callout below the rows. */
   description?: string;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -24,15 +28,18 @@ export interface InfoPanelProps {
  * `RoleInfoSidebar` components into one reusable shape.
  */
 export const InfoPanel: React.FC<InfoPanelProps> = ({
-  title = 'Information',
+  title,
   items,
   description,
+  translations,
 }) => {
+  const t = useBuildpadTranslations((d) => d.users, translations);
+
   return (
     <Paper shadow="xs" p="md" withBorder data-testid="info-panel">
       <Group mb="md">
         <IconInfoCircle size={20} />
-        <Text fw={600}>{title}</Text>
+        <Text fw={600}>{title ?? t.infoPanel.title}</Text>
       </Group>
 
       <Stack gap="sm">

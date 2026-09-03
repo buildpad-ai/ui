@@ -2,7 +2,9 @@
 
 import React, { useCallback } from 'react';
 import { useRoles } from '@buildpad/hooks';
+import { useBuildpadTranslations } from '@buildpad/services';
 import type { Policy } from '@buildpad/types';
+import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 import { PolicyAttachmentManager } from './PolicyAttachmentManager';
 
 export interface RolePoliciesManagerProps {
@@ -12,6 +14,8 @@ export interface RolePoliciesManagerProps {
   onUpdate?: () => void;
   /** Called when a policy row's "open" action is clicked. Hidden when omitted. */
   onPolicyClick?: (policy: Policy) => void;
+  /** Per-instance overrides of the `users` dictionary namespace (prop > provider > defaults). */
+  translations?: DeepPartial<UsersTranslations>;
 }
 
 /**
@@ -25,8 +29,10 @@ export const RolePoliciesManager: React.FC<RolePoliciesManagerProps> = ({
   roleId,
   onUpdate,
   onPolicyClick,
+  translations,
 }) => {
   const { fetchRolePolicies, attachRolePolicy, detachRolePolicy } = useRoles();
+  const t = useBuildpadTranslations((d) => d.users, translations);
 
   const fetchAttached = useCallback(
     () => fetchRolePolicies(roleId),
@@ -48,7 +54,8 @@ export const RolePoliciesManager: React.FC<RolePoliciesManagerProps> = ({
       detach={detach}
       onUpdate={onUpdate}
       onPolicyClick={onPolicyClick}
-      emptyMessage="No policies attached to this role"
+      emptyMessage={t.rolePolicies.emptyState}
+      translations={translations}
     />
   );
 };
