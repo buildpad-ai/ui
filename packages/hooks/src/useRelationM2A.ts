@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { notifications } from '@mantine/notifications';
+import { useBuildpadTranslations } from './useBuildpadI18n';
 import { apiRequest } from '@buildpad/services';
 import { isNewItem } from '@buildpad/utils';
 
@@ -176,6 +177,7 @@ export interface M2ARelationInfo {
  * that stores both the collection name and item ID.
  */
 export function useRelationM2A(collection: string, field: string) {
+    const t = useBuildpadTranslations((d) => d.hooks.relations);
     const [relationInfo, setRelationInfo] = useState<M2ARelationInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -458,8 +460,8 @@ export function useRelationM2A(collection: string, field: string) {
                 setError(errorMessage);
                 setRelationInfo(null);
                 notifications.show({
-                    title: 'Error',
-                    message: 'Failed to load M2A relationship configuration',
+                    title: t.errorTitle,
+                    message: t.loadM2AConfigFailed,
                     color: 'red',
                 });
             } finally {
@@ -468,7 +470,7 @@ export function useRelationM2A(collection: string, field: string) {
         };
 
         loadRelationInfo();
-    }, [collection, field]);
+    }, [collection, field, t]);
 
     return {
         relationInfo,

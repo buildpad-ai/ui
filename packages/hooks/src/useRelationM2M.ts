@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
+import { useBuildpadTranslations } from './useBuildpadI18n';
 import type { Relation as BaseRelation, RelationMeta as BaseRelationMeta } from '@buildpad/types';
 import { apiRequest } from './utils';
 
@@ -123,6 +124,7 @@ export interface M2MRelationInfo {
  *                     └─────────────────────────┘
  */
 export function useRelationM2M(collection: string, field: string) {
+  const t = useBuildpadTranslations((d) => d.hooks.relations);
   const [relationInfo, setRelationInfo] = useState<M2MRelationInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -303,8 +305,8 @@ export function useRelationM2M(collection: string, field: string) {
         setError(errorMessage);
         setRelationInfo(null);
         notifications.show({
-          title: 'Error',
-          message: 'Failed to load relationship configuration',
+          title: t.errorTitle,
+          message: t.loadConfigFailed,
           color: 'red',
         });
       } finally {
@@ -313,7 +315,7 @@ export function useRelationM2M(collection: string, field: string) {
     };
 
     loadRelationInfo();
-  }, [collection, field]);
+  }, [collection, field, t]);
 
   return {
     relationInfo,

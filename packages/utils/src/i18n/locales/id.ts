@@ -15,6 +15,7 @@ import { collectionsId } from '../namespaces/collections';
 import { filesId } from '../namespaces/files';
 import { usersId } from '../namespaces/users';
 import { formsId } from '../namespaces/forms';
+import { hooksId } from '../namespaces/hooks';
 
 export const id: BuildpadTranslations = {
   common: commonId,
@@ -25,6 +26,7 @@ export const id: BuildpadTranslations = {
   files: filesId,
   users: usersId,
   forms: formsId,
+  hooks: hooksId,
 };
 
 export default id;

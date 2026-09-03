@@ -129,6 +129,7 @@ export {
   type FilesTranslations,
   type UsersTranslations,
   type FormsTranslations,
+  type HooksTranslations,
   type DateTimeTranslations,
   type DeepPartial,
   type FormTranslations,

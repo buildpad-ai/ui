@@ -26,6 +26,7 @@ import type { CollectionsTranslations } from './namespaces/collections';
 import type { FilesTranslations } from './namespaces/files';
 import type { UsersTranslations } from './namespaces/users';
 import type { FormsTranslations } from './namespaces/forms';
+import type { HooksTranslations } from './namespaces/hooks';
 
 export type { PluralForms, DeepPartial, TextDirection, InterpolationValues } from './primitives';
 export type { CommonTranslations } from './namespaces/common';
@@ -36,6 +37,7 @@ export type { CollectionsTranslations } from './namespaces/collections';
 export type { FilesTranslations } from './namespaces/files';
 export type { UsersTranslations } from './namespaces/users';
 export type { FormsTranslations } from './namespaces/forms';
+export type { HooksTranslations, HooksRelationsTranslations } from './namespaces/hooks';
 
 export interface BuildpadTranslations {
   common: CommonTranslations;
@@ -46,6 +48,7 @@ export interface BuildpadTranslations {
   files: FilesTranslations;
   users: UsersTranslations;
   forms: FormsTranslations;
+  hooks: HooksTranslations;
 }
 
 /** What apps pass to the provider and what `locales/*.ts` export. */

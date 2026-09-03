@@ -164,6 +164,10 @@
           "target": "lib/buildpad/i18n/namespaces/forms.ts"
         },
         {
+          "source": "utils/src/i18n/namespaces/hooks.ts",
+          "target": "lib/buildpad/i18n/namespaces/hooks.ts"
+        },
+        {
           "source": "utils/src/i18n/namespaces/interfaces/autocomplete-api.ts",
           "target": "lib/buildpad/i18n/namespaces/interfaces/autocomplete-api.ts"
         },
@@ -808,7 +812,7 @@
     },
     "files-routes": {
       "name": "files-routes",
-      "description": "Files management module pages — /files (drag-and-drop upload, folders, grid/list, search, bulk delete, import-from-URL) and /files/[id] (metadata edit + preview). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the file-manager component.",
+      "description": "Files management module pages \u2014 /files (drag-and-drop upload, folders, grid/list, search, bulk delete, import-from-URL) and /files/[id] (metadata edit + preview). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the file-manager component.",
       "files": [
         {
           "source": "cli/templates/app/files/page.tsx",
@@ -837,7 +841,7 @@
     },
     "users-routes": {
       "name": "users-routes",
-      "description": "Users/roles/policies admin module pages — /users, /users/[id], /roles, /roles/[id], /policies, /policies/[id], /module-access-keys (list + create/edit for each access-control domain, plus the module-level access key registry). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the users-management component.",
+      "description": "Users/roles/policies admin module pages \u2014 /users, /users/[id], /roles, /roles/[id], /policies, /policies/[id], /module-access-keys (list + create/edit for each access-control domain, plus the module-level access key registry). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the users-management component.",
       "files": [
         {
           "source": "cli/templates/app/users/page.tsx",
@@ -904,7 +908,7 @@
     },
     "forms-routes": {
       "name": "forms-routes",
-      "description": "Dynamic form builder module pages — /forms (list of form definitions), /forms/new (create a definition), /forms/[id] (visual FormBuilder editor), and /forms/[id]/fill (render the definition with DynamicForm to create a real item). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the form-builder component.",
+      "description": "Dynamic form builder module pages \u2014 /forms (list of form definitions), /forms/new (create a definition), /forms/[id] (visual FormBuilder editor), and /forms/[id]/fill (render the definition with DynamicForm to create a real item). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the form-builder component.",
       "files": [
         {
           "source": "cli/templates/app/forms/page.tsx",
@@ -1019,7 +1023,7 @@
     },
     "scope-routes": {
       "name": "scope-routes",
-      "description": "DaaS multi-tenant scope system — ScopeProvider context, ScopeSwitcher, error handling, and onboarding page. Calls DaaS directly; no proxy routes needed.",
+      "description": "DaaS multi-tenant scope system \u2014 ScopeProvider context, ScopeSwitcher, error handling, and onboarding page. Calls DaaS directly; no proxy routes needed.",
       "internalDependencies": [
         "supabase-auth"
       ],
@@ -2956,7 +2960,7 @@
       "name": "file-manager",
       "title": "FileManager",
       "excludeFromAll": true,
-      "description": "Full files-management UI — list surface (drag-and-drop upload, import-from-URL, folders, grid/list views, search, bulk delete) and a file detail view (metadata edit + preview for image/video/audio/pdf). Composes the upload interface and the useFiles/useFolders hooks.",
+      "description": "Full files-management UI \u2014 list surface (drag-and-drop upload, import-from-URL, folders, grid/list views, search, bulk delete) and a file detail view (metadata edit + preview for image/video/audio/pdf). Composes the upload interface and the useFiles/useFolders hooks.",
       "category": "media",
       "files": [
         {
@@ -3043,7 +3047,7 @@
       "name": "users-management",
       "title": "UsersManagement",
       "excludeFromAll": true,
-      "description": "Users, roles, and policies administration (RBAC management) — user list/detail with role assignment (M2M) and direct policy attachment, role list/detail with member management, hierarchy, and scope-assignment rules, policy list/detail with access flags and BOTH permission dimensions: a per-collection matrix (Record-Level Access, via system-permissions) and a capability-key tree (Module-Level Access), plus the /module-access-keys registry manager. Composes the useUsers/useRoles/usePolicies/useModuleAccessKeys hooks.",
+      "description": "Users, roles, and policies administration (RBAC management) \u2014 user list/detail with role assignment (M2M) and direct policy attachment, role list/detail with member management, hierarchy, and scope-assignment rules, policy list/detail with access flags and BOTH permission dimensions: a per-collection matrix (Record-Level Access, via system-permissions) and a capability-key tree (Module-Level Access), plus the /module-access-keys registry manager. Composes the useUsers/useRoles/usePolicies/useModuleAccessKeys hooks.",
       "category": "admin",
       "files": [
         {
@@ -3180,7 +3184,7 @@
       "name": "form-builder",
       "title": "FormBuilder",
       "excludeFromAll": true,
-      "description": "Dynamic form builder — a design-time authoring layer (visual FormBuilder with drag-and-drop field palette, sections, per-field width/required/readonly/hidden controls, and a conditions editor reusing FilterPanel) plus a runtime renderer (DynamicForm, FormPreview) that merges a saved form definition onto the live collection schema and drives the existing CollectionForm/VForm runtime. Definitions are stored as items in an ordinary, consumer-owned collection (default fb_definitions); the schema is never mutated.",
+      "description": "Dynamic form builder \u2014 a design-time authoring layer (visual FormBuilder with drag-and-drop field palette, sections, per-field width/required/readonly/hidden controls, and a conditions editor reusing FilterPanel) plus a runtime renderer (DynamicForm, FormPreview) that merges a saved form definition onto the live collection schema and drives the existing CollectionForm/VForm runtime. Definitions are stored as items in an ordinary, consumer-owned collection (default fb_definitions); the schema is never mutated.",
       "category": "collection",
       "files": [
         {

@@ -14,6 +14,7 @@ export type {
   FilesTranslations,
   UsersTranslations,
   FormsTranslations,
+  HooksTranslations,
   DateTimeTranslations,
   DeepPartial,
   FormTranslations,
