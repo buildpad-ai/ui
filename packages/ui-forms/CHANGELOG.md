@@ -1,5 +1,19 @@
 # @buildpad/ui-forms
 
+## 2.4.0
+
+### Patch Changes
+
+- Updated dependencies [f9bc63d]
+- Updated dependencies [0baae00]
+  - @buildpad/ui-collections@2.4.0
+  - @buildpad/ui-interfaces@2.4.0
+  - @buildpad/hooks@2.4.0
+  - @buildpad/services@2.4.0
+  - @buildpad/types@2.4.0
+  - @buildpad/ui-form@2.4.0
+  - @buildpad/utils@2.4.0
+
 ## 2.3.0
 
 ### Minor Changes
