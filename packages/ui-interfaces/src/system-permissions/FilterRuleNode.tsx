@@ -18,7 +18,7 @@ import { IconAlertTriangle, IconChevronDown, IconChevronRight, IconX } from '@ta
 import type { Field } from '@buildpad/types';
 import { useBuildpadTranslations } from '@buildpad/services';
 import { interpolate, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
-import type { DynamicValue, FilterNode, FilterOperator, FilterValue, RelationInfo } from './PermissionFilterTypes';
+import type { FilterNode, FilterOperator, FilterValue, RelationInfo } from './PermissionFilterTypes';
 import { getDynamicValueLabels, getOperatorsForRelation, getOperatorsForType } from './PermissionFilterTypes';
 import { fetchCollectionFields } from './permissionMetadata';
 
@@ -45,7 +45,7 @@ function formatFieldName(fieldName: string): string {
 function formatDateForInput(isoString: string): string {
   try {
     const date = new Date(isoString);
-    if (isNaN(date.getTime())) return '';
+    if (Number.isNaN(date.getTime())) return '';
     // Format as YYYY-MM-DDTHH:mm
     return date.toISOString().slice(0, 16);
   } catch {
@@ -121,7 +121,7 @@ export function FilterRuleNode({
   }, [matchedRelation?.relatedCollection, relatedColumnName]);
 
   // Resolve field type: bare relation → relation operators, dot-notation → related field type, else → local field type
-  let resolvedFieldType = 'string';
+  let resolvedFieldType: string;
   let selectedField: Field | undefined;
 
   if (isRelationAlias) {
@@ -418,7 +418,7 @@ export function FilterRuleNode({
           <FilterValueInput
             field={selectedField}
             operator={selectedOperator}
-            value={(node.value ?? null) as FilterValue | DynamicValue}
+            value={(node.value ?? null) as FilterValue}
             isDynamic={isDynamicValue}
             dynamicOptions={dynamicVariableOptions}
             onChange={(value) => onUpdate(node.id, { value })}
@@ -583,10 +583,10 @@ export function FilterRuleNode({
 interface FilterValueInputProps {
   field?: Field;
   operator: { value: string; label: string; requiresValue: boolean; valueType: string };
-  value: FilterValue | DynamicValue;
+  value: FilterValue;
   isDynamic: boolean;
   dynamicOptions: { value: string; label: string }[];
-  onChange: (value: FilterValue | DynamicValue) => void;
+  onChange: (value: FilterValue) => void;
   /** Resolved dictionary strings (aria-labels, range separator, booleans) */
   t: FilterRuleNodeStrings;
 }
@@ -704,8 +704,8 @@ function FilterValueInput({
           { value: 'true', label: t.booleanTrue },
           { value: 'false', label: t.booleanFalse },
         ]}
-        value={value === true ? 'true' : value === false ? 'false' : null}
-        onChange={(v) => onChange(v === 'true' ? true : v === 'false' ? false : null)}
+        value={value === true ? 'true' : value === false ? 'false' : null} // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+        onChange={(v) => onChange(v === 'true' ? true : v === 'false' ? false : null)} // NOSONAR: idiomatic tri-state ternary, not confusing nesting
         placeholder="--"
         size="xs"
         variant="unstyled"

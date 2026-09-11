@@ -589,7 +589,7 @@ class DaaSAPI {
   /**
    * Get workflow instance for an item
    */
-  async getWorkflowInstance(collection: string, itemId: string): Promise<unknown | null> {
+  async getWorkflowInstance(collection: string, itemId: string): Promise<unknown> {
     const instances = await this.getItems('daas_wf_instance', {
       filter: { collection: { _eq: collection }, item_id: { _eq: itemId } },
       limit: 1,

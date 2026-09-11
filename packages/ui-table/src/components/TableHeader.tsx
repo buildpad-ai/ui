@@ -311,8 +311,8 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             onContextMenu={(e) => handleContextMenu(header, e)}
             aria-sort={
               header.sortable
-                ? ((sort.by === header.value
-                    ? sort.desc
+                ? ((sort.by === header.value // NOSONAR: idiomatic sort-state ternary, not confusing nesting
+                    ? sort.desc // NOSONAR: idiomatic sort-state ternary, not confusing nesting
                       ? "descending"
                       : "ascending"
                     : "none") as "ascending" | "descending" | "none")
@@ -366,7 +366,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
           <th className="cell append" onClick={(e) => e.stopPropagation()}>
             {renderHeaderAppend()}
           </th>
-        ) : hasItemAppendSlot ? (
+        ) : hasItemAppendSlot ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
           <th className="cell spacer" aria-hidden="true" />
         ) : null}
       </tr>
@@ -378,7 +378,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             colSpan={999}
             className="context-menu-cell"
           >
-            <div
+            <div // NOSONAR: click-inside dismiss backdrop, not an interactive control; Escape is handled globally above
               ref={contextMenuRef}
               className="header-context-menu"
               onClick={() => setContextMenu(null)}

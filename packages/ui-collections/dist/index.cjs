@@ -36,8 +36,8 @@ module.exports = __toCommonJS(index_exports);
 
 // src/CollectionForm.tsx
 var import_core2 = require("@mantine/core");
-var import_services = require("@buildpad/services");
-var import_utils = require("@buildpad/utils");
+var import_services2 = require("@buildpad/services");
+var import_utils2 = require("@buildpad/utils");
 var import_ui_form = require("@buildpad/ui-form");
 var import_icons_react2 = require("@tabler/icons-react");
 var import_react = require("react");
@@ -45,6 +45,7 @@ var import_react = require("react");
 // src/SaveOptions.tsx
 var import_core = require("@mantine/core");
 var import_icons_react = require("@tabler/icons-react");
+var import_services = require("@buildpad/services");
 var import_jsx_runtime = require("react/jsx-runtime");
 var SaveOptions = ({
   disabledOptions = [],
@@ -53,10 +54,12 @@ var SaveOptions = ({
   onSaveAsCopy,
   onDiscardAndStay,
   disabled = false,
-  platform
+  platform,
+  translations
 }) => {
+  const t = (0, import_services.useBuildpadTranslations)((d) => d.collections.saveOptions, translations?.saveOptions);
   const isMac = platform ? platform === "mac" : typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent);
-  const metaKey = isMac ? "\u2318" : "Ctrl";
+  const metaKey = isMac ? "\u2318" : t.kbd.ctrl;
   const isDisabled = (action) => disabledOptions.includes(action);
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_core.Menu, { shadow: "md", width: 280, position: "bottom-end", withArrow: true, children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_core.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -65,7 +68,7 @@ var SaveOptions = ({
         variant: "filled",
         size: "input-sm",
         disabled,
-        "aria-label": "More save options",
+        "aria-label": t.moreOptions,
         style: {
           borderTopLeftRadius: 0,
           borderBottomLeftRadius: 0,
@@ -85,7 +88,7 @@ var SaveOptions = ({
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_core.Kbd, { size: "xs", children: metaKey }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_core.Kbd, { size: "xs", children: "S" })
           ] }),
-          children: "Save and Stay"
+          children: t.saveAndStay
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -99,7 +102,7 @@ var SaveOptions = ({
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_core.Kbd, { size: "xs", children: "\u21E7" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_core.Kbd, { size: "xs", children: "S" })
           ] }),
-          children: "Save and Create New"
+          children: t.saveAndCreateNew
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -108,7 +111,7 @@ var SaveOptions = ({
           leftSection: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_icons_react.IconCopy, { size: 16 }),
           disabled: isDisabled("save-as-copy"),
           onClick: onSaveAsCopy,
-          children: "Save as Copy"
+          children: t.saveAsCopy
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_core.Menu.Divider, {}),
@@ -119,7 +122,7 @@ var SaveOptions = ({
           disabled: isDisabled("discard-and-stay"),
           onClick: onDiscardAndStay,
           color: "red",
-          children: "Discard Changes"
+          children: t.discardChanges
         }
       )
     ] })
@@ -127,6 +130,7 @@ var SaveOptions = ({
 };
 
 // src/extras-storage.ts
+var import_utils = require("@buildpad/utils");
 var EXTRAS_COLUMN = "extras";
 function isPlainObject(value) {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -155,27 +159,33 @@ function mergeExtras(prev, changed) {
   const base = isPlainObject(prev) ? prev : {};
   return { ...base, ...changed };
 }
-function missingExtrasColumnMessage(collection) {
-  return `This screen has "extras" fields, but the "${collection}" collection has no "${EXTRAS_COLUMN}" (json) column to store them. Add a "${EXTRAS_COLUMN}" json column to "${collection}" (or switch those fields to real columns).`;
+function missingExtrasColumnMessage(collection, template = import_utils.defaultTranslations.collections.form.errors.missingExtrasColumn) {
+  return (0, import_utils.interpolate)(template, { collection, extrasColumn: EXTRAS_COLUMN });
 }
 
 // src/CollectionForm.tsx
 var import_jsx_runtime2 = require("react/jsx-runtime");
-var SYSTEM_FIELDS = [
+var SYSTEM_FIELDS = /* @__PURE__ */ new Set([
   "id",
   "user_created",
   "user_updated",
   "date_created",
   "date_updated",
   "sort"
-];
-var READ_ONLY_FIELDS = [
+]);
+var NON_FLAT_RELATIONAL_SPECIALS = /* @__PURE__ */ new Set(["m2a", "m2m", "o2m"]);
+var NON_FLAT_RELATIONAL_INTERFACES = /* @__PURE__ */ new Set([
+  "list-m2a",
+  "list-m2m",
+  "list-o2m"
+]);
+var READ_ONLY_FIELDS = /* @__PURE__ */ new Set([
   "id",
   "user_created",
   "user_updated",
   "date_created",
   "date_updated"
-];
+]);
 var EMPTY_OBJECT = {};
 var EMPTY_ARRAY = [];
 function isM2MChangesItem(value) {
@@ -195,8 +205,10 @@ var CollectionForm = ({
   showSaveOptions = false,
   showDelete,
   definition,
-  persist = true
+  persist = true,
+  translations
 }) => {
+  const t = (0, import_services2.useBuildpadTranslations)((d) => d.collections, translations);
   const definitionSignature = (0, import_react.useMemo)(
     () => definition ? JSON.stringify(definition) : "",
     [definition]
@@ -212,6 +224,7 @@ var CollectionForm = ({
   const stableIncludeFields = (0, import_react.useMemo)(() => includeFields, [includeFields]);
   const [fields, setFields] = (0, import_react.useState)([]);
   const [resolvedPk, setResolvedPk] = (0, import_react.useState)("id");
+  const [manualPrimaryKeyField, setManualPrimaryKeyField] = (0, import_react.useState)(null);
   const [formData, setFormData] = (0, import_react.useState)(stableDefaultValues);
   const [initialFormData, setInitialFormData] = (0, import_react.useState)(stableDefaultValues);
   const [loading, setLoading] = (0, import_react.useState)(true);
@@ -222,8 +235,6 @@ var CollectionForm = ({
   const [createAllowed, setCreateAllowed] = (0, import_react.useState)(true);
   const [updateAllowed, setUpdateAllowed] = (0, import_react.useState)(true);
   const [deleteAllowed, setDeleteAllowed] = (0, import_react.useState)(false);
-  const [readableFieldNames, setReadableFieldNames] = (0, import_react.useState)(null);
-  const [writableFieldNames, setWritableFieldNames] = (0, import_react.useState)(null);
   const [hasExtrasColumn, setHasExtrasColumn] = (0, import_react.useState)(true);
   const [m2mJunctionMap, setM2mJunctionMap] = (0, import_react.useState)({});
   const [deleting, setDeleting] = (0, import_react.useState)(false);
@@ -240,20 +251,31 @@ var CollectionForm = ({
         setLoading(true);
         setError(null);
         setFieldErrors({});
-        const fieldsService = new import_services.FieldsService();
+        const fieldsService = new import_services2.FieldsService();
         const [allFields, collectionAccess] = await Promise.all([
           fieldsService.readAll(collection),
-          import_services.PermissionsService.getMyCollectionAccess().catch(() => ({}))
+          import_services2.PermissionsService.getMyCollectionAccess().catch(() => ({}))
         ]);
         setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
-        const schemaPk = allFields.find((f) => f.schema?.is_primary_key)?.field;
+        const pkField = allFields.find((f) => f.schema?.is_primary_key);
+        const schemaPk = pkField?.field;
         setResolvedPk(schemaPk ?? "id");
+        const isPkAutoGenerated = !!pkField && // integer/bigint identity or serial column
+        (pkField.schema?.has_auto_increment === true || // uuid PK — DaaS marks generated ones special:["uuid"], but the
+        // baseline collection template sets only type:"uuid"
+        pkField.type === "uuid" || pkField.meta?.special?.includes("uuid") === true || // DB-side default (gen_random_uuid(), nextval(...)): the column
+        // fills itself, and these report has_auto_increment:false
+        pkField.schema?.default_value != null || // explicitly not user-writable, so it cannot be user-supplied
+        pkField.meta?.readonly === true);
+        setManualPrimaryKeyField(
+          schemaPk && !isPkAutoGenerated ? schemaPk : null
+        );
         const access = collectionAccess?.[collection] || {};
         const readAccess = access.read;
         const createAccess = access.create;
         const updateAccess = access.update;
         const deleteAccess = access.delete;
-        const isAdmin = import_services.PermissionsService.isAdmin;
+        const isAdmin = import_services2.PermissionsService.isAdmin;
         const isEmptyAccess = Object.keys(collectionAccess || {}).length === 0;
         setCreateAllowed(isAdmin || isEmptyAccess || !!createAccess);
         setUpdateAllowed(isAdmin || isEmptyAccess || !!updateAccess);
@@ -263,16 +285,14 @@ var CollectionForm = ({
           readFields = readAccess.fields || null;
           if (readFields && readFields.includes("*")) readFields = null;
         }
-        setReadableFieldNames(readFields);
         const actionAccess = mode === "create" ? createAccess : updateAccess;
         let writeFields = null;
         if (!isAdmin && !isEmptyAccess && actionAccess) {
           writeFields = actionAccess.fields || null;
           if (writeFields && writeFields.includes("*")) writeFields = null;
         }
-        setWritableFieldNames(writeFields);
         let editableFields = allFields.filter((f) => {
-          if (SYSTEM_FIELDS.includes(f.field) && !stableDefaultValues[f.field]) {
+          if (SYSTEM_FIELDS.has(f.field) && (f.field !== schemaPk || isPkAutoGenerated) && !stableDefaultValues[f.field]) {
             return false;
           }
           if (f.type === "alias") {
@@ -311,7 +331,7 @@ var CollectionForm = ({
           });
         }
         if (definition) {
-          editableFields = (0, import_utils.buildFieldsFromDefinition)(editableFields, definition);
+          editableFields = (0, import_utils2.buildFieldsFromDefinition)(editableFields, definition);
         }
         setFields(editableFields);
         const m2mAliasFields = editableFields.filter(
@@ -319,7 +339,7 @@ var CollectionForm = ({
         );
         if (m2mAliasFields.length > 0) {
           try {
-            const relationsResp = await (0, import_services.apiRequest)("/api/relations");
+            const relationsResp = await (0, import_services2.apiRequest)("/api/relations");
             const relations = relationsResp.data ?? [];
             const junctionMap = {};
             for (const m2mField of m2mAliasFields) {
@@ -330,24 +350,50 @@ var CollectionForm = ({
                 junctionMap[m2mField.field] = {
                   junctionCollection: rel.collection,
                   reverseJunctionField: rel.field,
-                  junctionField: rel.meta.junction_field
+                  junctionField: rel.meta.junction_field,
+                  // Resolved below from the junction collection's own fields.
+                  junctionPrimaryKeyField: "id"
                 };
               }
             }
+            await Promise.all(
+              Object.values(junctionMap).map(async (info) => {
+                try {
+                  const fieldsResp = await (0, import_services2.apiRequest)(`/api/fields/${info.junctionCollection}`);
+                  const pk = (fieldsResp.data ?? []).find((f) => f.schema?.is_primary_key);
+                  if (pk?.field) info.junctionPrimaryKeyField = pk.field;
+                } catch {
+                }
+              })
+            );
             setM2mJunctionMap(junctionMap);
           } catch {
           }
         }
         let initialData = { ...stableDefaultValues };
         if (mode === "create") {
+          const seedableFields = editableFields.filter(
+            (f) => f.meta?.readonly !== true && f.meta?.hidden !== true && (!writeFields || writeFields.includes(f.field))
+          );
+          const schemaDefaults = (0, import_utils2.getDefaultValuesFromFields)(seedableFields);
           const presets = actionAccess?.presets;
           if (presets && typeof presets === "object") {
             initialData = { ...presets, ...initialData };
           }
+          initialData = { ...schemaDefaults, ...initialData };
         }
         if (mode === "edit" && id) {
-          const itemsService = new import_services.ItemsService(collection);
-          const item = await itemsService.readOne(id);
+          const itemsService = new import_services2.ItemsService(collection);
+          const fetchableFields = editableFields.filter((f) => {
+            const special = f.meta?.special ?? [];
+            const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) || !!f.meta?.interface && NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface);
+            return !isNonFlatRelational;
+          }).map((f) => f.field);
+          const resolvedPkField = schemaPk ?? "id";
+          if (!fetchableFields.includes(resolvedPkField)) {
+            fetchableFields.unshift(resolvedPkField);
+          }
+          const item = await itemsService.readOne(id, fetchableFields);
           initialData = { ...initialData, ...item };
         }
         initialData = flattenExtras(initialData, EXTRAS_COLUMN);
@@ -357,9 +403,7 @@ var CollectionForm = ({
         lastLoadKey.current = loadKey;
       } catch (err) {
         console.error("Error loading form data:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load form data"
-        );
+        setError(err instanceof Error ? err.message : t.form.errors.loadFailed);
       } finally {
         setLoading(false);
       }
@@ -373,7 +417,8 @@ var CollectionForm = ({
     stableExcludeFields,
     stableIncludeFields,
     definition,
-    definitionSignature
+    definitionSignature,
+    t
   ]);
   const hasEdits = (0, import_react.useMemo)(() => {
     const keys = /* @__PURE__ */ new Set([
@@ -381,11 +426,11 @@ var CollectionForm = ({
       ...Object.keys(initialFormData)
     ]);
     for (const key of keys) {
-      if (READ_ONLY_FIELDS.includes(key)) continue;
+      if (READ_ONLY_FIELDS.has(key) && key !== manualPrimaryKeyField) continue;
       if (formData[key] !== initialFormData[key]) return true;
     }
     return false;
-  }, [formData, initialFormData]);
+  }, [formData, initialFormData, manualPrimaryKeyField]);
   const saveAllowed = (0, import_react.useMemo)(() => {
     if (mode === "create") return createAllowed;
     return updateAllowed;
@@ -413,10 +458,7 @@ var CollectionForm = ({
     return disabled;
   }, [isSavable, mode, hasEdits]);
   const handleFormUpdate = (0, import_react.useCallback)((values) => {
-    setFormData((prev) => ({
-      ...prev,
-      ...values
-    }));
+    setFormData(values);
     setSuccess(false);
     setFieldErrors({});
   }, []);
@@ -428,7 +470,7 @@ var CollectionForm = ({
       const fieldErrs = {};
       for (const e of errObj.errors) {
         const field = e?.extensions?.field || e?.field;
-        const message = e?.message || "Validation failed";
+        const message = e?.message || t.form.errors.fieldValidationFallback;
         if (field) {
           fieldErrs[String(field)] = String(message);
         }
@@ -439,8 +481,8 @@ var CollectionForm = ({
   };
   const flushM2MChanges = async (parentId, m2mEntries) => {
     for (const { junctionInfo, changes } of m2mEntries) {
-      const { junctionCollection, reverseJunctionField, junctionField } = junctionInfo;
-      const junctionService = new import_services.ItemsService(junctionCollection);
+      const { junctionCollection, reverseJunctionField, junctionField, junctionPrimaryKeyField } = junctionInfo;
+      const junctionService = new import_services2.ItemsService(junctionCollection);
       for (const entry of changes.create) {
         const relatedValue = entry[junctionField];
         const isSelectEntry = relatedValue && typeof relatedValue === "object" && !Array.isArray(relatedValue) && Object.keys(relatedValue).length === 1 && "id" in relatedValue;
@@ -451,10 +493,16 @@ var CollectionForm = ({
         });
       }
       for (const entry of changes.update) {
-        const junctionId = entry.id;
-        if (junctionId != null) {
-          await junctionService.updateOne(junctionId, entry);
+        const junctionId = entry[junctionPrimaryKeyField];
+        if (junctionId == null) {
+          throw new Error(
+            (0, import_utils2.interpolate)(t.form.errors.junctionUpdateMissingKey, {
+              junctionCollection,
+              junctionPrimaryKeyField
+            })
+          );
         }
+        await junctionService.updateOne(junctionId, entry);
       }
       for (const junctionId of changes.delete) {
         await junctionService.deleteOne(junctionId);
@@ -474,11 +522,12 @@ var CollectionForm = ({
     try {
       const dataToSave = { ...formData };
       READ_ONLY_FIELDS.forEach((f) => {
+        if (f === manualPrimaryKeyField) return;
         if (!stableDefaultValues[f]) {
           delete dataToSave[f];
         }
       });
-      const itemsService = new import_services.ItemsService(collection);
+      const itemsService = new import_services2.ItemsService(collection);
       const splitData = (source) => {
         const { rest, extras } = extractExtras(
           source,
@@ -514,7 +563,11 @@ var CollectionForm = ({
           extras: changedExtras
         } = splitData(allChanged);
         if (Object.keys(changedExtras).length > 0) {
-          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          if (!hasExtrasColumn) {
+            throw new Error(
+              missingExtrasColumnMessage(collection, t.form.errors.missingExtrasColumn)
+            );
+          }
           changedData[EXTRAS_COLUMN] = mergeExtras(
             initialFormData[EXTRAS_COLUMN],
             changedExtras
@@ -539,6 +592,9 @@ var CollectionForm = ({
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
           delete copyData[resolvedPk];
+          for (const [key, val] of Object.entries(copyData)) {
+            if ((0, import_utils2.isConcealedValue)(val)) delete copyData[key];
+          }
           const copyResult = await itemsService.createOne(copyData);
           onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
           return;
@@ -564,7 +620,11 @@ var CollectionForm = ({
           extras: createdExtras
         } = splitData(cleanedDataToSave);
         if (Object.keys(createdExtras).length > 0) {
-          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          if (!hasExtrasColumn) {
+            throw new Error(
+              missingExtrasColumnMessage(collection, t.form.errors.missingExtrasColumn)
+            );
+          }
           scalarData[EXTRAS_COLUMN] = createdExtras;
         }
         const result = await itemsService.createOne(scalarData);
@@ -585,9 +645,9 @@ var CollectionForm = ({
       const perFieldErrors = parseValidationErrors(err);
       if (Object.keys(perFieldErrors).length > 0) {
         setFieldErrors(perFieldErrors);
-        setError("Validation failed. Please fix the highlighted fields.");
+        setError(t.form.errors.validationFailed);
       } else {
-        setError(err instanceof Error ? err.message : "Failed to save item");
+        setError(err instanceof Error ? err.message : t.form.errors.saveFailed);
       }
     } finally {
       setSaving(false);
@@ -595,6 +655,7 @@ var CollectionForm = ({
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     await handleSave();
   };
   const handleDiscard = (0, import_react.useCallback)(() => {
@@ -608,13 +669,13 @@ var CollectionForm = ({
     setDeleting(true);
     setError(null);
     try {
-      const itemsService = new import_services.ItemsService(collection);
+      const itemsService = new import_services2.ItemsService(collection);
       await itemsService.deleteOne(id);
       setDeleteConfirmOpen(false);
       onDelete?.();
     } catch (err) {
       console.error("Error deleting item:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete item");
+      setError(err instanceof Error ? err.message : t.form.errors.deleteFailed);
       setDeleteConfirmOpen(false);
     } finally {
       setDeleting(false);
@@ -642,22 +703,24 @@ var CollectionForm = ({
         color: "green",
         mb: "md",
         "data-testid": "form-success",
-        children: !persist ? "Looks valid \u2014 preview only, no record was created." : mode === "create" ? "Item created successfully!" : "Item updated successfully!"
+        children: !persist ? t.form.success.previewOnly : mode === "create" ? t.form.success.created : t.form.success.updated
       }
     ),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("form", { onSubmit: handleSubmit, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Stack, { gap: "md", children: [
-      fields.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_core2.Text, { c: "dimmed", ta: "center", py: "xl", children: !saveAllowed ? `You don't have permission to ${mode} items in ${collection}` : `No editable fields found for ${collection}` }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+      fields.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_core2.Text, { c: "dimmed", ta: "center", py: "xl", children: !saveAllowed ? (0, import_utils2.interpolate)(
+        mode === "create" ? t.form.emptyState.noPermissionCreate : t.form.emptyState.noPermissionEdit,
+        { collection }
+      ) : (0, import_utils2.interpolate)(t.form.emptyState.noEditableFields, { collection }) }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
           import_ui_form.VForm,
           {
             collection,
             fields,
             modelValue: formData,
-            initialValues: defaultValues,
+            initialValues: initialFormData,
             onUpdate: handleFormUpdate,
             primaryKey,
             disabled: saving || !saveAllowed,
-            loading: saving,
             showNoVisibleFields: false
           }
         ),
@@ -688,7 +751,7 @@ var CollectionForm = ({
             disabled: saving || deleting,
             "data-testid": "form-delete-btn",
             style: { marginRight: "auto" },
-            children: "Delete"
+            children: t.form.actions.delete
           }
         ),
         onCancel && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
@@ -699,7 +762,7 @@ var CollectionForm = ({
             leftSection: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_icons_react2.IconX, { size: 16 }),
             disabled: saving,
             "data-testid": "form-cancel-btn",
-            children: "Cancel"
+            children: t.form.actions.cancel
           }
         ),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Group, { gap: 0, style: { gap: 0 }, children: [
@@ -712,7 +775,7 @@ var CollectionForm = ({
               leftSection: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_icons_react2.IconCheck, { size: 16 }),
               "data-testid": "form-submit-btn",
               style: showSaveOptions ? { borderTopRightRadius: 0, borderBottomRightRadius: 0 } : void 0,
-              children: mode === "create" ? "Create" : "Save"
+              children: mode === "create" ? t.form.actions.create : t.form.actions.save
             }
           ),
           showSaveOptions && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
@@ -723,7 +786,8 @@ var CollectionForm = ({
               onSaveAndStay: () => handleSave("stay"),
               onSaveAndAddNew: () => handleSave("add-new"),
               onSaveAsCopy: () => handleSave("copy"),
-              onDiscardAndStay: handleDiscard
+              onDiscardAndStay: handleDiscard,
+              translations
             }
           )
         ] })
@@ -734,12 +798,12 @@ var CollectionForm = ({
       {
         opened: deleteConfirmOpen,
         onClose: () => setDeleteConfirmOpen(false),
-        title: "Confirm Delete",
+        title: t.form.deleteConfirm.title,
         centered: true,
         size: "sm",
         "data-testid": "delete-confirm-modal",
         children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Stack, { gap: "md", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_core2.Text, { size: "sm", children: "Are you sure you want to delete this item? This action cannot be undone." }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_core2.Text, { size: "sm", children: t.form.deleteConfirm.message }),
           /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_core2.Group, { justify: "flex-end", children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
               import_core2.Button,
@@ -747,7 +811,7 @@ var CollectionForm = ({
                 variant: "default",
                 onClick: () => setDeleteConfirmOpen(false),
                 disabled: deleting,
-                children: "Cancel"
+                children: t.form.deleteConfirm.cancel
               }
             ),
             /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
@@ -757,7 +821,7 @@ var CollectionForm = ({
                 onClick: handleDelete,
                 loading: deleting,
                 "data-testid": "delete-confirm-btn",
-                children: "Delete"
+                children: t.form.deleteConfirm.confirm
               }
             )
           ] })
@@ -769,13 +833,15 @@ var CollectionForm = ({
 
 // src/CollectionList.tsx
 var import_core8 = require("@mantine/core");
-var import_services2 = require("@buildpad/services");
+var import_services8 = require("@buildpad/services");
+var import_utils3 = require("@buildpad/utils");
 var import_ui_table = require("@buildpad/ui-table");
 var import_icons_react6 = require("@tabler/icons-react");
 var import_react3 = require("react");
 
 // src/CollectionListFooter.tsx
 var import_core3 = require("@mantine/core");
+var import_services3 = require("@buildpad/services");
 var import_jsx_runtime3 = require("react/jsx-runtime");
 var CollectionListFooter = ({
   itemCountDisplay,
@@ -783,13 +849,15 @@ var CollectionListFooter = ({
   onLimitChange,
   page,
   onPageChange,
-  totalPages
+  totalPages,
+  translations
 }) => {
+  const t = (0, import_services3.useBuildpadTranslations)((d) => d.collections, translations);
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "collection-list-footer", "data-testid": "collection-list-footer", children: [
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Text, { size: "sm", c: "dimmed", "data-testid": "collection-list-footer-count", children: itemCountDisplay }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: "sm", children: [
       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_core3.Group, { gap: 4, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Text, { size: "xs", c: "dimmed", children: "Per page:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_core3.Text, { size: "xs", c: "dimmed", children: t.listFooter.perPage }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
           import_core3.Select,
           {
@@ -823,27 +891,31 @@ var CollectionListFooter = ({
 // src/CollectionListToolbar.tsx
 var import_core5 = require("@mantine/core");
 var import_icons_react4 = require("@tabler/icons-react");
+var import_services5 = require("@buildpad/services");
 
 // src/BulkActionsBar.tsx
 var import_core4 = require("@mantine/core");
 var import_icons_react3 = require("@tabler/icons-react");
+var import_services4 = require("@buildpad/services");
 var import_jsx_runtime4 = require("react/jsx-runtime");
 var BulkActionsBar = ({
   selectedIds,
+  selectedRows,
   enableDelete,
   deleteAllowed,
   createAllowed,
   updateAllowed,
   bulkActions,
   onDeleteRequest,
-  onClearSelection
+  onClearSelection,
+  translations
 }) => {
+  const t = (0, import_services4.useBuildpadTranslations)((d) => d.collections, translations);
+  const common = (0, import_services4.useBuildpadTranslations)((d) => d.common);
+  const { formatCount } = (0, import_services4.useBuildpadI18n)();
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Group, { gap: "xs", "data-testid": "collection-list-bulk-actions", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_core4.Badge, { variant: "light", size: "lg", children: [
-      selectedIds.length,
-      " selected"
-    ] }),
-    enableDelete && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Tooltip, { label: deleteAllowed ? "Delete selected" : "Not allowed", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Badge, { variant: "light", size: "lg", children: formatCount(selectedIds.length, t.bulkActions.selectedCount) }),
+    enableDelete && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_core4.Tooltip, { label: deleteAllowed ? t.bulkActions.deleteSelectedTooltip : common.notAllowed, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
       import_core4.Button,
       {
         variant: "light",
@@ -853,7 +925,7 @@ var BulkActionsBar = ({
         onClick: () => deleteAllowed && onDeleteRequest(selectedIds),
         disabled: !deleteAllowed,
         "data-testid": "bulk-action-delete",
-        children: "Delete"
+        children: t.bulkActions.delete
       }
     ) }),
     bulkActions.map((action, index) => {
@@ -862,22 +934,28 @@ var BulkActionsBar = ({
       return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
         import_core4.Tooltip,
         {
-          label: permAllowed ? action.label : "Not allowed",
+          label: permAllowed ? action.label : common.notAllowed,
           children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
             import_core4.Button,
             {
               variant: "light",
               color: action.color,
               size: "compact-sm",
-              leftSection: action.icon || (action.requiredPermission === "delete" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconTrash, { size: 16 }) : action.requiredPermission === "update" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconEdit, { size: 16 }) : action.requiredPermission === "create" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconPlus, { size: 16 }) : null),
-              onClick: () => permAllowed && action.action(selectedIds),
+              leftSection: action.icon || (action.requiredPermission === "delete" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconTrash, { size: 16 }) : action.requiredPermission === "update" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconEdit, { size: 16 }) : (
+                // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+                action.requiredPermission === "create" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconPlus, { size: 16 }) : (
+                  // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+                  null
+                )
+              )),
+              onClick: () => permAllowed && action.action(selectedIds, selectedRows),
               disabled: !permAllowed,
               "data-testid": `bulk-action-${index}`,
               children: action.label
             }
           )
         },
-        index
+        action.label
       );
     }),
     /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
@@ -885,7 +963,7 @@ var BulkActionsBar = ({
       {
         variant: "subtle",
         onClick: onClearSelection,
-        title: "Clear selection",
+        title: t.bulkActions.clearSelection,
         "data-testid": "collection-list-clear-selection",
         children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_icons_react3.IconX, { size: 16 })
       }
@@ -909,6 +987,7 @@ var CollectionListToolbar = ({
   onRefresh,
   enableSelection,
   selectedIds,
+  selectedRows,
   enableDelete,
   deleteAllowed,
   createAllowed,
@@ -917,15 +996,18 @@ var CollectionListToolbar = ({
   onDeleteRequest,
   onClearSelection,
   enableCreate,
-  onCreate
+  onCreate,
+  translations
 }) => {
+  const t = (0, import_services5.useBuildpadTranslations)((d) => d.collections, translations);
+  const common = (0, import_services5.useBuildpadTranslations)((d) => d.common);
   const showBulkActions = enableSelection && selectedIds.length > 0;
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "collection-list-toolbar", "data-testid": "collection-list-toolbar", children: [
     /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(import_core5.Group, { gap: "xs", children: [
       enableSearch && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
         import_core5.TextInput,
         {
-          placeholder: "Search...",
+          placeholder: t.listToolbar.searchPlaceholder,
           leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconSearch, { size: 16 }),
           value: search,
           onChange: (e) => onSearchChange(e.currentTarget.value),
@@ -935,7 +1017,7 @@ var CollectionListToolbar = ({
               variant: "subtle",
               size: "xs",
               onClick: () => onSearchChange(""),
-              "aria-label": "Clear search",
+              "aria-label": t.listToolbar.clearSearch,
               children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconX, { size: 12 })
             }
           ) : void 0,
@@ -944,13 +1026,13 @@ var CollectionListToolbar = ({
           "data-testid": "collection-list-search"
         }
       ),
-      enableFilter && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Tooltip, { label: filterPanelOpen ? "Hide filters" : "Show filters", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+      enableFilter && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Tooltip, { label: filterPanelOpen ? t.listToolbar.hideFilters : t.listToolbar.showFilters, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
         import_core5.ActionIcon,
         {
           variant: activeFilterCount > 0 ? "filled" : "subtle",
           color: activeFilterCount > 0 ? "primary" : void 0,
           onClick: onToggleFilterPanel,
-          title: "Toggle filter panel",
+          title: t.listToolbar.toggleFilterPanel,
           "data-testid": "collection-list-filter-toggle",
           pos: "relative",
           children: [
@@ -977,9 +1059,9 @@ var CollectionListToolbar = ({
             if (val) onArchiveFilterChange(val);
           },
           data: [
-            { value: "all", label: "All Items" },
-            { value: "unarchived", label: "Active Items" },
-            { value: "archived", label: "Archived Items" }
+            { value: "all", label: t.listToolbar.archive.all },
+            { value: "unarchived", label: t.listToolbar.archive.active },
+            { value: "archived", label: t.listToolbar.archive.archived }
           ],
           size: "sm",
           leftSection: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconArchive, { size: 14 }),
@@ -992,7 +1074,7 @@ var CollectionListToolbar = ({
         {
           variant: "subtle",
           onClick: onRefresh,
-          title: "Refresh",
+          title: t.listToolbar.refresh,
           "data-testid": "collection-list-refresh",
           children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_icons_react4.IconRefresh, { size: 16 })
         }
@@ -1003,16 +1085,18 @@ var CollectionListToolbar = ({
         BulkActionsBar,
         {
           selectedIds,
+          selectedRows,
           enableDelete,
           deleteAllowed,
           createAllowed,
           updateAllowed,
           bulkActions,
           onDeleteRequest,
-          onClearSelection
+          onClearSelection,
+          translations
         }
       ),
-      enableCreate && onCreate && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Tooltip, { label: createAllowed ? "Create item" : "Not allowed", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+      enableCreate && onCreate && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(import_core5.Tooltip, { label: createAllowed ? t.listToolbar.createItem : common.notAllowed, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
         import_core5.Button,
         {
           variant: "filled",
@@ -1021,8 +1105,8 @@ var CollectionListToolbar = ({
           onClick: createAllowed ? onCreate : void 0,
           disabled: !createAllowed,
           "data-testid": "collection-list-create",
-          "aria-label": createAllowed ? "Create item" : "Create item (not allowed)",
-          children: "Create item"
+          "aria-label": createAllowed ? t.listToolbar.createItem : t.listToolbar.createItemNotAllowed,
+          children: t.listToolbar.createItem
         }
       ) })
     ] })
@@ -1031,31 +1115,29 @@ var CollectionListToolbar = ({
 
 // src/DeleteConfirmModal.tsx
 var import_core6 = require("@mantine/core");
+var import_services6 = require("@buildpad/services");
 var import_jsx_runtime6 = require("react/jsx-runtime");
 var DeleteConfirmModal = ({
   opened,
   count,
   loading,
   onConfirm,
-  onCancel
+  onCancel,
+  translations
 }) => {
+  const t = (0, import_services6.useBuildpadTranslations)((d) => d.collections, translations);
+  const { formatCount } = (0, import_services6.useBuildpadI18n)();
   return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
     import_core6.Modal,
     {
       opened,
       onClose: onCancel,
-      title: "Confirm Delete",
+      title: t.deleteConfirm.title,
       centered: true,
       size: "sm",
       "data-testid": "delete-confirm-modal",
       children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Stack, { gap: "md", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Text, { size: "sm", children: [
-          "Are you sure you want to delete ",
-          count,
-          " ",
-          count === 1 ? "item" : "items",
-          "? This action cannot be undone."
-        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(import_core6.Text, { size: "sm", children: formatCount(count, t.deleteConfirm.message) }),
         /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_core6.Group, { justify: "flex-end", children: [
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
             import_core6.Button,
@@ -1063,7 +1145,7 @@ var DeleteConfirmModal = ({
               variant: "default",
               onClick: onCancel,
               disabled: loading,
-              children: "Cancel"
+              children: t.deleteConfirm.cancel
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
@@ -1073,7 +1155,7 @@ var DeleteConfirmModal = ({
               onClick: onConfirm,
               loading,
               "data-testid": "delete-confirm-btn",
-              children: "Delete"
+              children: t.deleteConfirm.confirm
             }
           )
         ] })
@@ -1086,55 +1168,56 @@ var DeleteConfirmModal = ({
 var import_react2 = require("react");
 var import_core7 = require("@mantine/core");
 var import_icons_react5 = require("@tabler/icons-react");
+var import_services7 = require("@buildpad/services");
 var import_jsx_runtime7 = require("react/jsx-runtime");
 var STRING_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Not equals", value: "_neq", needsValue: true },
-  { label: "Contains", value: "_contains", needsValue: true },
-  { label: "Does not contain", value: "_ncontains", needsValue: true },
-  { label: "Starts with", value: "_starts_with", needsValue: true },
-  { label: "Ends with", value: "_ends_with", needsValue: true },
-  { label: "Is empty", value: "_empty", needsValue: false },
-  { label: "Is not empty", value: "_nempty", needsValue: false },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "notEquals", value: "_neq", needsValue: true },
+  { labelKey: "contains", value: "_contains", needsValue: true },
+  { labelKey: "doesNotContain", value: "_ncontains", needsValue: true },
+  { labelKey: "startsWith", value: "_starts_with", needsValue: true },
+  { labelKey: "endsWith", value: "_ends_with", needsValue: true },
+  { labelKey: "isEmpty", value: "_empty", needsValue: false },
+  { labelKey: "isNotEmpty", value: "_nempty", needsValue: false },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var NUMBER_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Not equals", value: "_neq", needsValue: true },
-  { label: "Greater than", value: "_gt", needsValue: true },
-  { label: "Greater or equal", value: "_gte", needsValue: true },
-  { label: "Less than", value: "_lt", needsValue: true },
-  { label: "Less or equal", value: "_lte", needsValue: true },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "notEquals", value: "_neq", needsValue: true },
+  { labelKey: "greaterThan", value: "_gt", needsValue: true },
+  { labelKey: "greaterOrEqual", value: "_gte", needsValue: true },
+  { labelKey: "lessThan", value: "_lt", needsValue: true },
+  { labelKey: "lessOrEqual", value: "_lte", needsValue: true },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var BOOLEAN_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var DATE_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Not equals", value: "_neq", needsValue: true },
-  { label: "After", value: "_gt", needsValue: true },
-  { label: "On or after", value: "_gte", needsValue: true },
-  { label: "Before", value: "_lt", needsValue: true },
-  { label: "On or before", value: "_lte", needsValue: true },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "notEquals", value: "_neq", needsValue: true },
+  { labelKey: "after", value: "_gt", needsValue: true },
+  { labelKey: "onOrAfter", value: "_gte", needsValue: true },
+  { labelKey: "before", value: "_lt", needsValue: true },
+  { labelKey: "onOrBefore", value: "_lte", needsValue: true },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var UUID_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Not equals", value: "_neq", needsValue: true },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "notEquals", value: "_neq", needsValue: true },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var JSON_OPERATORS = [
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false },
-  { label: "Is empty", value: "_empty", needsValue: false },
-  { label: "Is not empty", value: "_nempty", needsValue: false }
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false },
+  { labelKey: "isEmpty", value: "_empty", needsValue: false },
+  { labelKey: "isNotEmpty", value: "_nempty", needsValue: false }
 ];
 function getOperatorsForType(type) {
   switch (type) {
@@ -1204,7 +1287,7 @@ function parseFieldRule(node) {
   const value = opObj[operator];
   return { id: uid(), field, operator, value };
 }
-var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
+var RuleRow = ({ rule, fields, disabled, onChange, onRemove, t }) => {
   const fieldData = (0, import_react2.useMemo)(
     () => fields.map((f) => ({
       value: f.field,
@@ -1214,7 +1297,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
   );
   const selectedField = fields.find((f) => f.field === rule.field);
   const operators = getOperatorsForType(selectedField?.type || "string");
-  const operatorData = operators.map((o) => ({ value: o.value, label: o.label }));
+  const operatorData = operators.map((o) => ({ value: o.value, label: t.operators[o.labelKey] }));
   const currentOp = operators.find((o) => o.value === rule.operator);
   return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", wrap: "nowrap", "data-testid": "filter-rule", children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
@@ -1228,7 +1311,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
           onChange({ ...rule, field: val, operator: newOps[0].value, value: null });
         },
         data: fieldData,
-        placeholder: "Field...",
+        placeholder: t.rule.fieldPlaceholder,
         size: "xs",
         style: { minWidth: 130 },
         disabled,
@@ -1258,7 +1341,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
           {
             value: typeof rule.value === "number" ? rule.value : void 0,
             onChange: (val) => onChange({ ...rule, value: val }),
-            placeholder: "Value...",
+            placeholder: t.rule.valuePlaceholder,
             size: "xs",
             style: { minWidth: 100, flex: 1 },
             disabled
@@ -1271,7 +1354,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
           {
             value: rule.value === true ? "true" : rule.value === false ? "false" : "",
             onChange: (val) => onChange({ ...rule, value: val === "true" }),
-            data: [{ value: "true", label: "True" }, { value: "false", label: "False" }],
+            data: [{ value: "true", label: t.rule.booleanTrue }, { value: "false", label: t.rule.booleanFalse }],
             size: "xs",
             style: { minWidth: 80 },
             disabled
@@ -1283,7 +1366,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         {
           value: typeof rule.value === "string" ? rule.value : "",
           onChange: (e) => onChange({ ...rule, value: e.currentTarget.value }),
-          placeholder: ["timestamp", "dateTime", "date"].includes(type) ? "YYYY-MM-DD" : "Value...",
+          placeholder: ["timestamp", "dateTime", "date"].includes(type) ? t.rule.datePlaceholder : t.rule.valuePlaceholder,
           size: "xs",
           style: { minWidth: 120, flex: 1 },
           disabled
@@ -1298,7 +1381,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         size: "sm",
         onClick: onRemove,
         disabled,
-        title: "Remove filter",
+        title: t.rule.remove,
         children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconTrash, { size: 14 })
       }
     )
@@ -1312,8 +1395,11 @@ var FilterPanel = ({
   collapsible = false,
   defaultCollapsed = true,
   disabled = false,
-  maxDepth = 3
+  maxDepth = 3,
+  translations
 }) => {
+  const t = (0, import_services7.useBuildpadTranslations)((d) => d.collections.filterPanel, translations?.filterPanel);
+  const { formatCount } = (0, import_services7.useBuildpadI18n)();
   const [collapsed, setCollapsed] = (0, import_react2.useState)(defaultCollapsed);
   const [rootGroup, setRootGroup] = (0, import_react2.useState)(() => {
     if (value && Object.keys(value).length > 0) {
@@ -1336,18 +1422,6 @@ var FilterPanel = ({
       onChange?.({ [group.logical]: nodes });
     }
   }, [onChange]);
-  const addRule = (0, import_react2.useCallback)(() => {
-    if (fields.length === 0) return;
-    const firstField = fields[0];
-    const ops = getOperatorsForType(firstField.type);
-    const newRule = {
-      id: uid(),
-      field: firstField.field,
-      operator: ops[0].value,
-      value: ops[0].needsValue ? null : true
-    };
-    emitChange({ ...rootGroup, rules: [...rootGroup.rules, newRule] });
-  }, [rootGroup, fields, emitChange]);
   const addGroup = (0, import_react2.useCallback)(() => {
     const newGroup = {
       id: uid(),
@@ -1381,36 +1455,33 @@ var FilterPanel = ({
           leftSection: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconFilter, { size: 14 }),
           rightSection: filterCount > 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Badge, { size: "xs", circle: true, children: filterCount }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconChevronDown, { size: 14 }),
           onClick: () => setCollapsed(false),
-          children: "Filters"
+          children: t.title
         }
       ),
-      filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.ActionIcon, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, title: "Clear all filters", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconX, { size: 12 }) })
+      filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.ActionIcon, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, title: t.clearAllFilters, children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconX, { size: 12 }) })
     ] });
   }
   const content = /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Stack, { gap: "xs", "data-testid": "filter-panel", children: [
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { justify: "space-between", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconFilter, { size: 16, style: { color: "var(--mantine-color-dimmed)" } }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "sm", fw: 600, children: "Filters" }),
-        filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Badge, { size: "xs", variant: "light", children: [
-          filterCount,
-          " active"
-        ] })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "sm", fw: 600, children: t.title }),
+        filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Badge, { size: "xs", variant: "light", children: formatCount(filterCount, t.activeCount) })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
-        filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, children: "Clear all" }),
+        filterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, children: t.clearAll }),
         collapsible && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.ActionIcon, { variant: "subtle", size: "xs", onClick: () => setCollapsed(true), children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconChevronUp, { size: 14 }) })
       ] })
     ] }),
     rootGroup.rules.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "xs", c: "dimmed", children: "Match" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "xs", c: "dimmed", children: t.match }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         import_core7.Button,
         {
           variant: rootGroup.logical === "_and" ? "filled" : "outline",
           size: "compact-xs",
           onClick: () => rootGroup.logical !== "_and" && toggleLogical(),
-          children: "ALL"
+          children: t.matchAll
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
@@ -1419,19 +1490,16 @@ var FilterPanel = ({
           variant: rootGroup.logical === "_or" ? "filled" : "outline",
           size: "compact-xs",
           onClick: () => rootGroup.logical !== "_or" && toggleLogical(),
-          children: "ANY"
+          children: t.matchAny
         }
       )
     ] }),
-    rootGroup.rules.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "sm", c: "dimmed", children: 'No filter rules. Click "Add filter" to get started.' }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Stack, { gap: 6, children: rootGroup.rules.map((rule, index) => {
+    rootGroup.rules.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Text, { size: "sm", c: "dimmed", children: t.emptyState }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Stack, { gap: 6, children: rootGroup.rules.map((rule, index) => {
       if ("logical" in rule) {
         return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Badge, { variant: "outline", size: "sm", children: [
-            rule.logical === "_and" ? "AND" : "OR",
-            " group (",
-            rule.rules.length,
-            " rules)"
-          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Badge, { variant: "outline", size: "sm", children: formatCount(rule.rules.length, t.group.summary, {
+            logical: rule.logical === "_and" ? t.group.and : t.group.or
+          }) }),
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
             import_core7.ActionIcon,
             {
@@ -1452,14 +1520,15 @@ var FilterPanel = ({
           fields,
           disabled,
           onChange: (updated) => updateRule(index, updated),
-          onRemove: () => removeRule(index)
+          onRemove: () => removeRule(index),
+          t
         },
         rule.id
       );
     }) }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Group, { gap: "xs", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_core7.Menu, { position: "bottom-start", withArrow: true, shadow: "sm", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", leftSection: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconPlus, { size: 14 }), children: "Add filter" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", leftSection: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_icons_react5.IconPlus, { size: 14 }), children: t.addFilter }) }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Menu.Dropdown, { children: fields.map((f) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
           import_core7.Menu.Item,
           {
@@ -1478,7 +1547,7 @@ var FilterPanel = ({
           f.field
         )) })
       ] }),
-      maxDepth > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", color: "dimmed", onClick: addGroup, children: "Add group" })
+      maxDepth > 1 && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(import_core7.Button, { variant: "subtle", size: "xs", color: "dimmed", onClick: addGroup, children: t.addGroup })
     ] })
   ] });
   if (mode === "inline") return content;
@@ -1487,12 +1556,18 @@ var FilterPanel = ({
 
 // src/CollectionList.tsx
 var import_jsx_runtime8 = require("react/jsx-runtime");
-var SYSTEM_FIELDS2 = [
+var SYSTEM_FIELDS2 = /* @__PURE__ */ new Set([
   "user_created",
   "user_updated",
   "date_created",
   "date_updated"
-];
+]);
+var NON_FLAT_RELATIONAL_SPECIALS2 = /* @__PURE__ */ new Set(["m2a", "m2m", "o2m"]);
+var NON_FLAT_RELATIONAL_INTERFACES2 = /* @__PURE__ */ new Set([
+  "list-m2a",
+  "list-m2m",
+  "list-o2m"
+]);
 var SPACING_HEIGHT = {
   compact: 32,
   cozy: 48,
@@ -1528,8 +1603,12 @@ var CollectionList = ({
   onSortChange: onSortChangeProp,
   onFilterChange,
   onPermissionsLoaded,
-  renderCell: consumerRenderCell
+  renderCell: consumerRenderCell,
+  translations,
+  exactCount = false
 }) => {
+  const t = (0, import_services8.useBuildpadTranslations)((d) => d.collections, translations);
+  const { formatDate, formatDateTime, formatNumber, formatCount } = (0, import_services8.useBuildpadI18n)();
   const [allFields, setAllFields] = (0, import_react3.useState)([]);
   const [resolvedPk, setResolvedPk] = (0, import_react3.useState)(null);
   const primaryKeyField = primaryKeyFieldProp ?? resolvedPk ?? "id";
@@ -1551,8 +1630,9 @@ var CollectionList = ({
   const [deletingIds, setDeletingIds] = (0, import_react3.useState)([]);
   const [deleteLoading, setDeleteLoading] = (0, import_react3.useState)(false);
   const [headerOverrides, setHeaderOverrides] = (0, import_react3.useState)({});
+  const loadRequestRef = (0, import_react3.useRef)(0);
+  const exactTotalRef = (0, import_react3.useRef)(null);
   const rowHeight = rowHeightProp ?? SPACING_HEIGHT[tableSpacing] ?? 48;
-  const [readableFields, setReadableFields] = (0, import_react3.useState)(null);
   const [createAllowed, setCreateAllowed] = (0, import_react3.useState)(true);
   const [updateAllowed, setUpdateAllowed] = (0, import_react3.useState)(true);
   const [deleteAllowed, setDeleteAllowed] = (0, import_react3.useState)(true);
@@ -1561,13 +1641,13 @@ var CollectionList = ({
     const loadFieldsAndPermissions = async () => {
       try {
         const [fieldsResult, collectionAccess] = await Promise.all([
-          new import_services2.FieldsService().readAll(collection),
-          import_services2.PermissionsService.getMyCollectionAccess().catch(() => ({}))
+          new import_services8.FieldsService().readAll(collection),
+          import_services8.PermissionsService.getMyCollectionAccess().catch(() => ({}))
         ]);
         if (cancelled) return;
         const accessMap = collectionAccess ?? {};
         const access = accessMap[collection] || {};
-        const isAdmin = import_services2.PermissionsService.isAdmin;
+        const isAdmin = import_services8.PermissionsService.isAdmin;
         const isEmptyAccess = Object.keys(accessMap).length === 0;
         const readAccess = access.read;
         const createAccess = access.create;
@@ -1601,10 +1681,12 @@ var CollectionList = ({
           permFields = readAccess.fields ?? null;
           if (permFields && permFields.includes("*")) permFields = null;
         }
-        setReadableFields(permFields);
         let visible = fieldsResult.filter((f) => {
-          if (SYSTEM_FIELDS2.includes(f.field)) return false;
+          if (SYSTEM_FIELDS2.has(f.field)) return false;
           if (f.type === "alias") return false;
+          const special = f.meta?.special ?? [];
+          const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS2.has(s)) || !!f.meta?.interface && NON_FLAT_RELATIONAL_INTERFACES2.has(f.meta.interface);
+          if (isNonFlatRelational) return false;
           const isHidden = f.meta?.hidden ?? f.hidden;
           if (isHidden) return false;
           return true;
@@ -1633,15 +1715,13 @@ var CollectionList = ({
           setVisibleFieldKeys(initial);
         }
         if (visible.length === 0 && !cancelled) {
-          setError(`No visible fields found for collection "${collection}". Verify the collection exists and has non-hidden fields.`);
+          setError((0, import_utils3.interpolate)(t.list.errors.noVisibleFields, { collection }));
           setLoading(false);
         }
       } catch (err) {
         console.error("Error loading fields:", err);
         if (!cancelled) {
-          setError(
-            "Failed to load collection fields. Make sure the Storybook Host app is running (pnpm dev:host) and connected at http://localhost:3000."
-          );
+          setError(t.list.errors.loadFieldsFailed);
           setLoading(false);
         }
       }
@@ -1650,7 +1730,7 @@ var CollectionList = ({
     return () => {
       cancelled = true;
     };
-  }, [collection, displayFields, primaryKeyFieldProp]);
+  }, [collection, displayFields, primaryKeyFieldProp, t]);
   const mergedFilter = (0, import_react3.useMemo)(() => {
     const filters = [];
     if (filter && Object.keys(filter).length > 0) filters.push(filter);
@@ -1675,8 +1755,14 @@ var CollectionList = ({
     setSearch("");
     setPage(1);
   }, [collection]);
+  (0, import_react3.useEffect)(() => {
+    exactTotalRef.current = null;
+  }, [collection, search, mergedFilter, archiveField, archiveFilterMode, archiveValue]);
   const loadItems = (0, import_react3.useCallback)(async () => {
     if (visibleFieldKeys.length === 0) return;
+    const requestId = ++loadRequestRef.current;
+    const isStale = () => requestId !== loadRequestRef.current;
+    let steppedBack = false;
     try {
       setLoading(true);
       setError(null);
@@ -1684,6 +1770,9 @@ var CollectionList = ({
         limit,
         page
       };
+      if (exactCount) {
+        query.count = "exact";
+      }
       const fieldsToFetch = [...visibleFieldKeys];
       if (!fieldsToFetch.includes(primaryKeyField)) {
         fieldsToFetch.unshift(primaryKeyField);
@@ -1715,26 +1804,38 @@ var CollectionList = ({
         Object.entries(query).filter(([, v]) => v !== void 0 && v !== null).map(([k, v]) => [
           k,
           typeof v === "object" ? JSON.stringify(v) : String(v)
+          // NOSONAR: object case is already handled by this ternary
         ])
       ).toString();
-      const rawResponse = await (0, import_services2.apiRequest)(`/api/items/${collection}${queryString ? `?${queryString}` : ""}`);
+      const rawResponse = await (0, import_services8.apiRequest)(`/api/items/${collection}${queryString ? `?${queryString}` : ""}`);
+      if (isStale()) return;
       if (Array.isArray(rawResponse)) {
         setItems(rawResponse);
         setFilterCount(rawResponse.length);
       } else {
-        setItems(rawResponse.data || []);
-        if (rawResponse.meta?.total != null) {
-          setFilterCount(rawResponse.meta.total);
-        } else {
-          setFilterCount(rawResponse.data?.length ?? 0);
+        const reported = rawResponse.meta?.total;
+        const fetched = typeof reported === "number" && Number.isFinite(reported) ? reported : null;
+        if (fetched !== null && rawResponse.meta?.total_estimated === false) {
+          exactTotalRef.current = fetched;
         }
+        const total = exactTotalRef.current ?? fetched;
+        const lastPage = total === null ? page : Math.max(1, Math.ceil(total / limit));
+        if (page > lastPage) {
+          steppedBack = true;
+          setFilterCount(total ?? 0);
+          setPage(lastPage);
+          return;
+        }
+        setItems(rawResponse.data || []);
+        setFilterCount(total ?? rawResponse.data?.length ?? 0);
       }
     } catch (err) {
+      if (isStale()) return;
       console.error("Error loading items:", err);
-      setError(err instanceof Error ? err.message : "Failed to load items");
+      setError(err instanceof Error ? err.message : t.list.errors.loadItemsFailed);
       setItems([]);
     } finally {
-      setLoading(false);
+      if (!steppedBack && !isStale()) setLoading(false);
     }
   }, [
     collection,
@@ -1747,14 +1848,16 @@ var CollectionList = ({
     primaryKeyField,
     archiveField,
     archiveFilterMode,
-    archiveValue
+    archiveValue,
+    exactCount,
+    t
   ]);
   const getTotalCount = (0, import_react3.useCallback)(async () => {
     try {
       const params = new URLSearchParams({
         "aggregate[count]": primaryKeyField
       });
-      const response = await (0, import_services2.apiRequest)(`/api/items/${collection}?${params.toString()}`);
+      const response = await (0, import_services8.apiRequest)(`/api/items/${collection}?${params.toString()}`);
       const count = Number(response.data?.[0]?.count?.[primaryKeyField] ?? 0);
       setTotalCount(count);
     } catch {
@@ -1774,6 +1877,16 @@ var CollectionList = ({
     setPage(1);
   }, [search, filter, internalFilter]);
   const permittedFields = (0, import_react3.useMemo)(() => allFields, [allFields]);
+  const choicesByField = (0, import_react3.useMemo)(() => {
+    const map = /* @__PURE__ */ new Map();
+    for (const f of permittedFields) {
+      if (!(0, import_utils3.interfaceRequiresChoices)(f.meta?.interface ?? "")) continue;
+      const raw = f.meta?.options?.choices;
+      if (!Array.isArray(raw) || raw.length === 0) continue;
+      map.set(f.field, raw);
+    }
+    return map;
+  }, [permittedFields]);
   const headers = (0, import_react3.useMemo)(() => {
     return visibleFieldKeys.map((key) => {
       const fieldMeta = permittedFields.find((f) => f.field === key);
@@ -1850,16 +1963,23 @@ var CollectionList = ({
     (header) => {
       if (!enableHeaderMenu) return null;
       return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "collection-list-context-menu", role: "menu", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: "Sort" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: t.list.headerMenu.sort }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
           "div",
           {
             role: "menuitem",
+            tabIndex: 0,
             className: "mantine-Menu-item collection-list-context-menu-item",
             onClick: () => handleSortChange({ by: header.value, desc: false }),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleSortChange({ by: header.value, desc: false });
+              }
+            },
             children: [
               /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconSortAscending, { size: 14 }),
-              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: "Sort ascending" })
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: t.list.headerMenu.sortAscending })
             ]
           }
         ),
@@ -1867,38 +1987,52 @@ var CollectionList = ({
           "div",
           {
             role: "menuitem",
+            tabIndex: 0,
             className: "mantine-Menu-item collection-list-context-menu-item",
             onClick: () => handleSortChange({ by: header.value, desc: true }),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleSortChange({ by: header.value, desc: true });
+              }
+            },
             children: [
               /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconSortDescending, { size: 14 }),
-              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: "Sort descending" })
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: t.list.headerMenu.sortDescending })
             ]
           }
         ),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "collection-list-context-menu-divider" }),
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: "Alignment" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: t.list.headerMenu.alignment }),
         [
           {
             align: "left",
             icon: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconAlignLeft, { size: 14 }),
-            label: "Align left"
+            label: t.list.headerMenu.alignLeft
           },
           {
             align: "center",
             icon: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconAlignCenter, { size: 14 }),
-            label: "Align center"
+            label: t.list.headerMenu.alignCenter
           },
           {
             align: "right",
             icon: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconAlignRight, { size: 14 }),
-            label: "Align right"
+            label: t.list.headerMenu.alignRight
           }
         ].map(({ align, icon, label }) => /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
           "div",
           {
             role: "menuitem",
+            tabIndex: 0,
             className: `mantine-Menu-item collection-list-context-menu-item${header.align === align ? " active" : ""}`,
             onClick: () => handleAlignChange(header.value, align),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleAlignChange(header.value, align);
+              }
+            },
             children: [
               icon,
               /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: label })
@@ -1911,17 +2045,24 @@ var CollectionList = ({
           "div",
           {
             role: "menuitem",
+            tabIndex: 0,
             className: "mantine-Menu-item collection-list-context-menu-item danger",
             onClick: () => removeField(header.value),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                removeField(header.value);
+              }
+            },
             children: [
               /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconEyeOff, { size: 14 }),
-              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: "Hide field" })
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", children: t.list.headerMenu.hideField })
             ]
           }
         )
       ] });
     },
-    [enableHeaderMenu, handleSortChange, handleAlignChange, removeField]
+    [enableHeaderMenu, handleSortChange, handleAlignChange, removeField, t]
   );
   const hiddenFields = (0, import_react3.useMemo)(() => {
     return permittedFields.filter((f) => !visibleFieldKeys.includes(f.field));
@@ -1937,52 +2078,109 @@ var CollectionList = ({
       const value = item[header.value];
       if (value === null || value === void 0) return null;
       const fieldType = fieldMeta.type;
+      const fieldChoices = choicesByField.get(header.value);
+      if (fieldChoices) {
+        const arrayValue = (0, import_utils3.parseChoiceValues)(value, fieldChoices);
+        if (arrayValue) {
+          const entries = arrayValue.filter((v) => v !== null && v !== void 0);
+          if (entries.length === 0) return null;
+          return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Group, { gap: 4, wrap: "nowrap", children: [
+            entries.slice(0, 3).map((v, i) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+              import_core8.Badge,
+              {
+                variant: "light",
+                size: "sm",
+                color: "gray",
+                style: { textTransform: "none", minWidth: 0 },
+                children: (0, import_utils3.resolveChoiceLabel)(fieldChoices, v) ?? String(v ?? "")
+              },
+              `${String(v)}-${i}`
+            )),
+            entries.length > 3 && // Never the element that gets clipped: it is last in a
+            // nowrap row, so in a narrow column the count of what is
+            // hidden would itself be the first thing hidden.
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "xs", c: "dimmed", style: { flexShrink: 0 }, children: (0, import_utils3.interpolate)(t.list.cell.moreChoices, { count: formatNumber(entries.length - 3) }) })
+          ] });
+        }
+        const label = (0, import_utils3.resolveChoiceLabel)(fieldChoices, value);
+        if (label !== void 0) {
+          if (label === "") return null;
+          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: label });
+        }
+        if (fieldType !== "json") {
+          const raw = typeof value === "object" ? JSON.stringify(value) : String(value);
+          if (raw === "") return null;
+          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: raw });
+        }
+      }
       if (fieldType === "boolean") {
-        return value ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconCheck, { size: 16, color: "var(--mantine-color-green-6)", "aria-label": "Yes" }) : /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconX, { size: 16, color: "var(--mantine-color-gray-4)", "aria-label": "No" });
+        return value ? /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconCheck, { size: 16, color: "var(--mantine-color-green-6)", "aria-label": t.list.cell.booleanTrue }) : /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconX, { size: 16, color: "var(--mantine-color-gray-4)", "aria-label": t.list.cell.booleanFalse });
       }
       if (fieldType === "timestamp" || fieldType === "dateTime" || fieldType === "date") {
         try {
           const dateObj = new Date(value);
-          if (isNaN(dateObj.getTime())) return null;
+          if (Number.isNaN(dateObj.getTime())) return null;
           if (fieldType === "date") {
-            return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: dateObj.toLocaleDateString() });
+            return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: formatDate(dateObj, { year: "numeric", month: "numeric", day: "numeric" }) });
           }
-          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: dateObj.toLocaleString() });
+          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: formatDateTime(dateObj, {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric"
+          }) });
         } catch {
           return null;
         }
       }
       if (fieldType === "integer" || fieldType === "float" || fieldType === "decimal" || fieldType === "bigInteger") {
         const num = Number(value);
-        if (!isNaN(num)) {
-          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: num.toLocaleString() });
+        if (!Number.isNaN(num)) {
+          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: formatNumber(num) });
         }
         return null;
       }
       if (fieldType === "json") {
-        return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Badge, { variant: "light", size: "sm", color: "gray", children: "JSON" });
+        return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Badge, { variant: "light", size: "sm", color: "gray", children: t.list.cell.jsonBadge });
       }
       if (fieldType === "uuid") {
-        const str = String(value);
-        return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Tooltip, { label: str, openDelay: 300, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Text, { size: "sm", truncate: "end", style: { maxWidth: 120 }, children: [
-          str.substring(0, 8),
-          "\u2026"
-        ] }) });
+        const str = typeof value === "object" ? JSON.stringify(value) : String(value);
+        return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Tooltip, { label: str, openDelay: 300, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", style: { maxWidth: 120 }, children: (0, import_utils3.interpolate)(t.list.cell.truncated, { value: str.substring(0, 8) }) }) });
+      }
+      if (fieldMeta.meta?.interface === "collection-item-dropdown") {
+        let parsed = value;
+        if (typeof value === "string" && value.trim().startsWith("{")) {
+          try {
+            parsed = JSON.parse(value);
+          } catch {
+          }
+        }
+        if (typeof parsed === "object" && parsed !== null && "key" in parsed) {
+          const keyVal = String(parsed.key);
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(keyVal);
+          if (isUuid) {
+            return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Tooltip, { label: keyVal, openDelay: 300, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Badge, { variant: "light", size: "sm", color: "blue", style: { textTransform: "none", maxWidth: 120 }, children: (0, import_utils3.interpolate)(t.list.cell.truncated, { value: keyVal.substring(0, 8) }) }) });
+          }
+          return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Badge, { variant: "light", size: "sm", color: "blue", style: { textTransform: "none" }, children: keyVal });
+        }
+        return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", truncate: "end", children: typeof value === "object" ? JSON.stringify(value) : String(value) });
       }
       return null;
     },
-    [permittedFields]
+    [permittedFields, choicesByField, t, formatDate, formatDateTime, formatNumber]
   );
   const renderHeaderAppend = (0, import_react3.useCallback)(() => {
     if (!enableAddField || hiddenFields.length === 0) return null;
     return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Menu, { position: "bottom-end", withArrow: true, shadow: "md", closeOnItemClick: true, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.ActionIcon, { variant: "subtle", size: "sm", title: "Add field", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconPlus, { size: 16 }) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Target, { children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.ActionIcon, { variant: "subtle", size: "sm", title: t.list.addField.label, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconPlus, { size: 16 }) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Menu.Dropdown, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: "Add field" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Label, { children: t.list.addField.label }),
         hiddenFields.map((f) => /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Menu.Item, { onClick: () => addField(f.field), children: f.meta?.note || f.field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) }, f.field))
       ] })
     ] });
-  }, [enableAddField, hiddenFields, addField]);
+  }, [enableAddField, hiddenFields, addField, t]);
   const handleFilterChange = (0, import_react3.useCallback)(
     (newFilter) => {
       setInternalFilter(newFilter);
@@ -2007,22 +2205,27 @@ var CollectionList = ({
     if (deletingIds.length === 0) return;
     setDeleteLoading(true);
     try {
-      const itemsService = new import_services2.ItemsService(collection);
+      const itemsService = new import_services8.ItemsService(collection);
       await itemsService.deleteMany(deletingIds, primaryKeyField);
       setDeleteConfirmOpen(false);
       setDeletingIds([]);
       setSelectedItems([]);
       onDeleteSuccess?.(deletingIds);
+      exactTotalRef.current = null;
       loadItems();
       getTotalCount();
     } catch (err) {
       console.error("Error deleting items:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete items");
+      setError(err instanceof Error ? err.message : t.list.errors.deleteFailed);
       setDeleteConfirmOpen(false);
     } finally {
       setDeleteLoading(false);
     }
-  }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess]);
+  }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess, t]);
+  const handleRefresh = (0, import_react3.useCallback)(() => {
+    exactTotalRef.current = null;
+    loadItems();
+  }, [loadItems]);
   const handleDeleteCancel = (0, import_react3.useCallback)(() => {
     setDeleteConfirmOpen(false);
     setDeletingIds([]);
@@ -2031,21 +2234,27 @@ var CollectionList = ({
     return search.trim().length > 0 || filter && Object.keys(filter).length > 0 || internalFilter && Object.keys(internalFilter).length > 0 || archiveField && archiveFilterMode !== "all";
   }, [search, filter, internalFilter, archiveField, archiveFilterMode]);
   const itemCountDisplay = (0, import_react3.useMemo)(() => {
-    if (loading) return "Loading...";
-    if (filterCount === 0) return "No items";
+    const strings = t.list.itemCount;
+    if (loading) return strings.loading;
+    if (filterCount === 0) return strings.none;
     const from = Math.min((page - 1) * limit + 1, filterCount);
     const to = Math.min(page * limit, filterCount);
+    const values = {
+      from: formatNumber(from),
+      to: formatNumber(to),
+      total: formatNumber(totalCount)
+    };
     if (isFiltered && filterCount < totalCount) {
       if (filterCount <= limit) {
-        return `${filterCount} item${filterCount !== 1 ? "s" : ""} (filtered from ${totalCount})`;
+        return formatCount(filterCount, strings.filteredSinglePage, values);
       }
-      return `${from}\u2013${to} of ${filterCount} items (filtered from ${totalCount})`;
+      return formatCount(filterCount, strings.filteredRange, values);
     }
     if (filterCount <= limit) {
-      return `${filterCount} item${filterCount !== 1 ? "s" : ""}`;
+      return formatCount(filterCount, strings.singlePage);
     }
-    return `${from}\u2013${to} of ${filterCount} items`;
-  }, [loading, totalCount, filterCount, page, limit, isFiltered]);
+    return formatCount(filterCount, strings.range, values);
+  }, [loading, totalCount, filterCount, page, limit, isFiltered, t, formatCount, formatNumber]);
   return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Stack, { gap: 0, className: "collection-list", "data-testid": "collection-list", children: [
     /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
       CollectionListToolbar,
@@ -2060,9 +2269,10 @@ var CollectionList = ({
         archiveField,
         archiveFilterMode,
         onArchiveFilterChange: setArchiveFilterMode,
-        onRefresh: loadItems,
+        onRefresh: handleRefresh,
         enableSelection,
         selectedIds,
+        selectedRows: selectedItems,
         enableDelete,
         deleteAllowed,
         createAllowed,
@@ -2071,12 +2281,13 @@ var CollectionList = ({
         onDeleteRequest: handleDeleteRequest,
         onClearSelection: () => setSelectedItems([]),
         enableCreate,
-        onCreate
+        onCreate,
+        translations
       }
     ),
     enableFilter && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Collapse, { in: filterPanelOpen, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "collection-list-filter-panel", "data-testid": "collection-list-filter-panel", children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_core8.Group, { justify: "space-between", mb: "xs", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", fw: 600, children: "Filters" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_core8.Text, { size: "sm", fw: 600, children: t.list.filterPanel.title }),
         activeFilterCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
           import_core8.Button,
           {
@@ -2085,7 +2296,7 @@ var CollectionList = ({
             leftSection: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(import_icons_react6.IconFilterOff, { size: 14 }),
             onClick: handleClearFilter,
             "data-testid": "collection-list-clear-filters",
-            children: "Clear all"
+            children: t.list.filterPanel.clearAll
           }
         )
       ] }),
@@ -2095,7 +2306,8 @@ var CollectionList = ({
           fields: permittedFields,
           value: internalFilter,
           onChange: handleFilterChange,
-          mode: "inline"
+          mode: "inline",
+          translations
         }
       )
     ] }) }),
@@ -2123,8 +2335,8 @@ var CollectionList = ({
         value: selectedItems,
         fixedHeader: true,
         loading,
-        loadingText: "Loading items...",
-        noItemsText: isFiltered ? "No results \u2014 try adjusting your search or filters" : "No items in this collection",
+        loadingText: t.list.table.loading,
+        noItemsText: isFiltered ? t.list.table.noResultsFiltered : t.list.table.noItems,
         rowHeight,
         selectionUseKeys: true,
         clickable: !!onItemClick,
@@ -2142,7 +2354,8 @@ var CollectionList = ({
             },
             page,
             onPageChange: setPage,
-            totalPages
+            totalPages,
+            translations
           }
         ),
         onUpdate: setSelectedItems,
@@ -2162,7 +2375,8 @@ var CollectionList = ({
         count: deletingIds.length,
         loading: deleteLoading,
         onConfirm: handleDeleteConfirm,
-        onCancel: handleDeleteCancel
+        onCancel: handleDeleteCancel,
+        translations
       }
     )
   ] });
@@ -2172,6 +2386,7 @@ var CollectionList = ({
 var import_react4 = require("react");
 var import_core9 = require("@mantine/core");
 var import_icons_react7 = require("@tabler/icons-react");
+var import_services9 = require("@buildpad/services");
 var import_jsx_runtime9 = require("react/jsx-runtime");
 function CollectionIcon({ icon, color }) {
   const iconColor = color || void 0;
@@ -2199,7 +2414,8 @@ function NavigationItem({
   onEditCollection,
   isAdmin,
   search,
-  dense
+  dense,
+  t
 }) {
   const isGroup = node.children.length > 0;
   const isExpanded = activeGroups.includes(node.collection);
@@ -2260,7 +2476,7 @@ function NavigationItem({
         },
         style: { opacity: 0, transition: "opacity 150ms" },
         className: "nav-item-action",
-        "aria-label": "Collection options",
+        "aria-label": t.collectionOptions,
         children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconSettings, { size: 14 })
       }
     ) }),
@@ -2269,7 +2485,7 @@ function NavigationItem({
       {
         leftSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconDatabase, { size: 14 }),
         onClick: () => onEditCollection?.(node.collection),
-        children: "Edit Collection"
+        children: t.editCollection
       }
     ) })
   ] }) : null;
@@ -2320,14 +2536,15 @@ function NavigationItem({
               onEditCollection,
               isAdmin,
               search,
-              dense
+              dense,
+              t
             },
             child.collection
           )),
           collectionBookmarks.map((bookmark) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
             import_core9.NavLink,
             {
-              label: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { size: "sm", truncate: true, children: bookmark.bookmark || "Untitled Bookmark" }),
+              label: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { size: "sm", truncate: true, children: bookmark.bookmark || t.untitledBookmark }),
               leftSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
                 import_icons_react7.IconBookmark,
                 {
@@ -2380,9 +2597,11 @@ var ContentNavigation = ({
   onEditCollection,
   isAdmin = false,
   loading = false,
-  onSearchChange
+  onSearchChange,
+  translations
 }) => {
   const [search, setSearch] = (0, import_react4.useState)("");
+  const t = (0, import_services9.useBuildpadTranslations)((d) => d.collections.navigation, translations?.navigation);
   const handleSearchChange = (0, import_react4.useCallback)(
     (value) => {
       setSearch(value);
@@ -2404,8 +2623,8 @@ var ContentNavigation = ({
   if (rootCollections.length === 0) {
     return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(import_core9.Stack, { gap: "md", p: "md", align: "center", justify: "center", style: { minHeight: 200 }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconBox, { size: 48, color: "var(--mantine-color-gray-5)" }),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { c: "dimmed", ta: "center", size: "sm", children: "No collections available" }),
-      isAdmin && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { c: "dimmed", ta: "center", size: "xs", children: "Create your first collection in the data model settings" })
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { c: "dimmed", ta: "center", size: "sm", children: t.emptyState.title }),
+      isAdmin && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { c: "dimmed", ta: "center", size: "xs", children: t.emptyState.adminHint })
     ] });
   }
   return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(import_core9.Stack, { gap: 0, style: { minHeight: "100%" }, children: [
@@ -2414,7 +2633,7 @@ var ContentNavigation = ({
       {
         value: search,
         onChange: (e) => handleSearchChange(e.currentTarget.value),
-        placeholder: "Search collections...",
+        placeholder: t.searchPlaceholder,
         leftSection: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconSearch, { size: 16 }),
         size: dense ? "xs" : "sm",
         type: "search"
@@ -2433,7 +2652,8 @@ var ContentNavigation = ({
         onEditCollection,
         isAdmin,
         search,
-        dense
+        dense,
+        t
       },
       node.collection
     )) }) }),
@@ -2453,7 +2673,7 @@ var ContentNavigation = ({
             style: { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "4px 8px" },
             children: [
               showHidden ? /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconEyeOff, { size: 16 }) : /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_icons_react7.IconEye, { size: 16 }),
-              /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { size: "xs", c: "dimmed", children: showHidden ? "Hide hidden collections" : "Show hidden collections" })
+              /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(import_core9.Text, { size: "xs", c: "dimmed", children: showHidden ? t.hideHiddenCollections : t.showHiddenCollections })
             ]
           }
         )
@@ -2486,7 +2706,7 @@ var ContentLayout = ({
   detailWidth = 284,
   children
 }) => {
-  const [sidebarOpened, { toggle: toggleSidebar, close: closeSidebar }] = (0, import_hooks.useDisclosure)(true);
+  const [sidebarOpened, { toggle: toggleSidebar }] = (0, import_hooks.useDisclosure)(true);
   const isMobile = (0, import_hooks.useMediaQuery)("(max-width: 768px)");
   const handleBreadcrumbClick = (0, import_react5.useCallback)(
     (e, href) => {
@@ -2551,7 +2771,7 @@ var ContentLayout = ({
                           onClick: (e) => handleBreadcrumbClick(e, item.href),
                           children: item.label
                         },
-                        idx
+                        `${item.href ?? item.label}-${idx}`
                       ))
                     }
                   ),

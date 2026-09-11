@@ -152,7 +152,7 @@ const DEFAULT_BASEMAPS: BasemapSource[] = [
  * @param props - Map interface props
  * @returns React component
  */
-export const Map: React.FC<MapProps> = ({
+export const Map: React.FC<MapProps> = ({ // NOSONAR: intentional component name matching the DaaS field-type catalog, part of the public API
   value,
   disabled = false,
   readOnly = false,
@@ -193,7 +193,7 @@ export const Map: React.FC<MapProps> = ({
       if (inputValue.includes(',') && !inputValue.includes('{')) {
         // CSV format: "lat,lng" or "lng,lat"
         const coords = inputValue.split(',').map(Number);
-        if (coords.length >= 2 && !coords.some(isNaN)) {
+        if (coords.length >= 2 && !coords.some(Number.isNaN)) {
           geometry = {
             type: 'Point',
             coordinates: [coords[1], coords[0]], // Assume input is lat,lng, convert to lng,lat

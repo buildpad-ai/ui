@@ -413,7 +413,7 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
     // onChange is suppressed for readonly as well as nonEditable: with
     // `disabled` gone for a merely-readonly field this is the container-level
     // write block, and it must not depend on each leaf honouring `readOnly`.
-    onChange: isEffectivelyReadonly ? undefined : (isMultiSelectInterface ? handleMultiSelectChange : onChange),
+    onChange: isEffectivelyReadonly ? undefined : (isMultiSelectInterface ? handleMultiSelectChange : onChange), // NOSONAR: idiomatic tri-state ternary, not confusing nesting
     // S2.6: a merely-readonly field (readonly=true, nonEditable=false) must NOT
     // also set disabled=true — the two are visually and semantically distinct
     // (readonly: value visible, not editable; disabled: greyed out, inert).

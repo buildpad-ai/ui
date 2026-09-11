@@ -310,7 +310,7 @@ export const SelectDropdown: React.FC<SelectDropdownProps> = ({
     setOtherSearchValue(
       selectedChoice
         ? selectedChoice.text
-        : value !== null && value !== undefined
+        : value !== null && value !== undefined // NOSONAR: idiomatic tri-state ternary, not confusing nesting
           ? String(value)
           : '',
     );

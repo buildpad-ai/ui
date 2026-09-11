@@ -10,7 +10,7 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
 import prompts from 'prompts';
@@ -182,7 +182,7 @@ export async function ensureExternalDeps(
 
   const installSpinner = ora('Installing dependencies...').start();
   try {
-    const { execSync } = await import('child_process');
+    const { execSync } = await import('node:child_process');
     execSync(installCmd, { cwd, stdio: 'pipe' });
     installSpinner.succeed('Dependencies installed!');
     return { missing, installed: true };

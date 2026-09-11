@@ -146,10 +146,10 @@ export function GroupDetail({
       return [];
     }
 
-    const fieldNames = fields.map((field) => field.field);
-    
+    const fieldNames = new Set(fields.map((field) => field.field));
+
     const errors = validationErrors.reduce((acc, error) => {
-      if (!fieldNames.includes(error.field)) {
+      if (!fieldNames.has(error.field)) {
         return acc;
       }
 
@@ -296,7 +296,7 @@ export function GroupDetail({
             >
               <Stack gap="xs">
                 {validationMessages.map((message, index) => (
-                  <Text key={index} size="sm">
+                  <Text key={`${message}-${index}`} size="sm">
                     {message}
                   </Text>
                 ))}
@@ -310,7 +310,7 @@ export function GroupDetail({
               <Text c="dimmed" ta="center" py="xl">
                 {t.loading}
               </Text>
-            ) : children ? (
+            ) : children ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
               children
             ) : (
               <Text c="dimmed" ta="center" py="md">

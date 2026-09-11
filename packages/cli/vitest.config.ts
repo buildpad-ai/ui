@@ -7,14 +7,13 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      include: [
-        'src/commands/transformer.ts',
-        'src/utils/checksum.ts',
-        'src/utils/changelog-parser.ts',
-        'src/utils/three-way-merge.ts',
-        'src/resolver.ts',
-      ],
+      reporter: ['text', 'json', 'html', 'lcov'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/index.ts'],
+      // 2 pre-existing i18n-locales failures (Windows path separators) are
+      // unrelated noise that shouldn't block the lcov report from being
+      // written for SonarQube.
+      reportOnFailure: true,
     },
   },
 });

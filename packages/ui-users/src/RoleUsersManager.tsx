@@ -325,15 +325,15 @@ export const RoleUsersManager: React.FC<RoleUsersManagerProps> = ({
             {splitTaggedText(t.roleUsers.moveModal.description, { roleName: roleLabel }).map(
               (segment, index) =>
                 segment.tag === 'strong' ? (
-                  <Text key={index} span fw={500}>
+                  <Text key={index} span fw={500}> {/* NOSONAR: index into a deterministic split of a fixed i18n string */}
                     {segment.text}
                   </Text>
-                ) : segment.tag === 'remove' ? (
-                  <Text key={index} span c="red">
+                ) : segment.tag === 'remove' ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+                  <Text key={index} span c="red"> {/* NOSONAR: index into a deterministic split of a fixed i18n string */}
                     {segment.text}
                   </Text>
                 ) : (
-                  <React.Fragment key={index}>{segment.text}</React.Fragment>
+                  <React.Fragment key={index}>{segment.text}</React.Fragment> // NOSONAR: index into a deterministic split of a fixed i18n string
                 ),
             )}
           </Text>

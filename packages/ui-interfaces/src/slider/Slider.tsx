@@ -121,13 +121,13 @@ export const Slider: React.FC<SliderProps> = ({
     
     // Handle string values for bigInteger and decimal types
     if (type === 'decimal' || type === 'float') {
-      const parsed = parseFloat(val);
-      return isNaN(parsed) ? undefined : parsed;
+      const parsed = Number.parseFloat(val);
+      return Number.isNaN(parsed) ? undefined : parsed;
     }
     
     // Integer and bigInteger types
-    const parsed = parseInt(val, 10);
-    return isNaN(parsed) ? undefined : parsed;
+    const parsed = Number.parseInt(val, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
   };
 
   /**

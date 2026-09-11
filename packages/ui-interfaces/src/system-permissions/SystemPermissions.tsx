@@ -322,6 +322,12 @@ function PermissionsRow({
             <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
               <span
                 onClick={onSetFullAccessAll}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSetFullAccessAll();
+                  }
+                }}
                 style={{ cursor: 'pointer', textDecoration: 'underline' }}
                 role="button"
                 tabIndex={0}
@@ -332,6 +338,12 @@ function PermissionsRow({
               {' / '}
               <span
                 onClick={onSetNoAccessAll}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSetNoAccessAll();
+                  }
+                }}
                 style={{ cursor: 'pointer', textDecoration: 'underline' }}
                 role="button"
                 tabIndex={0}
@@ -935,6 +947,13 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
             {t.resetPrompt}{' '}
             <span
               onClick={() => { setResetMode('minimum'); setResetDialogOpen(true); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setResetMode('minimum');
+                  setResetDialogOpen(true);
+                }
+              }}
               style={{ cursor: 'pointer', color: 'var(--mantine-primary-color-6)', textDecoration: 'underline' }}
               role="button"
               tabIndex={0}
@@ -945,6 +964,13 @@ export const SystemPermissions = forwardRef<HTMLDivElement, SystemPermissionsPro
             {' / '}
             <span
               onClick={() => { setResetMode('recommended'); setResetDialogOpen(true); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setResetMode('recommended');
+                  setResetDialogOpen(true);
+                }
+              }}
               style={{ cursor: 'pointer', color: 'var(--mantine-primary-color-6)', textDecoration: 'underline' }}
               role="button"
               tabIndex={0}

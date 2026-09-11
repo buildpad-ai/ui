@@ -177,14 +177,14 @@ export function GroupAccordion({
   useEffect(() => {
     if (validationErrors.length === 0 || sectionFields.length === 0) return;
 
-    const fieldsWithErrors = validationErrors.map((e) => e.field);
+    const fieldsWithErrors = new Set(validationErrors.map((e) => e.field));
     const sectionsWithErrors = sectionFields.filter((section) => {
       // Check if the section itself has an error
-      if (fieldsWithErrors.includes(section.field)) return true;
+      if (fieldsWithErrors.has(section.field)) return true;
       // Check if any child of this section has an error (for group-type sections)
       if (section.meta?.special?.includes?.('group')) {
         const sectionChildren = fields.filter((f) => f.meta?.group === section.field);
-        return sectionChildren.some((child) => fieldsWithErrors.includes(child.field));
+        return sectionChildren.some((child) => fieldsWithErrors.has(child.field));
       }
       return false;
     });

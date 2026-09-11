@@ -53,13 +53,13 @@ class ColorUtils {
     const cleanHex = hex.slice(1);
     
     // Parse RGB values
-    const r = parseInt(cleanHex.slice(0, 2), 16);
-    const g = parseInt(cleanHex.slice(2, 4), 16);
-    const b = parseInt(cleanHex.slice(4, 6), 16);
+    const r = Number.parseInt(cleanHex.slice(0, 2), 16);
+    const g = Number.parseInt(cleanHex.slice(2, 4), 16);
+    const b = Number.parseInt(cleanHex.slice(4, 6), 16);
     
     // Parse alpha if present (8-digit hex)
     const a = cleanHex.length === 8 
-      ? parseInt(cleanHex.slice(6, 8), 16) / 255 
+      ? Number.parseInt(cleanHex.slice(6, 8), 16) / 255 
       : 1;
 
     return [r, g, b, a];
@@ -341,8 +341,8 @@ export const Color: React.FC<ColorProps> = ({
 
   // Handle RGB value change
   const handleRgbChange = useCallback((index: number, newValue: number | string) => {
-    const numValue = typeof newValue === 'string' ? parseInt(newValue, 10) : newValue;
-    if (isNaN(numValue)) {
+    const numValue = typeof newValue === 'string' ? Number.parseInt(newValue, 10) : newValue;
+    if (Number.isNaN(numValue)) {
       return;
     }
 
@@ -356,8 +356,8 @@ export const Color: React.FC<ColorProps> = ({
 
   // Handle HSL value change
   const handleHslChange = useCallback((index: number, newValue: number | string) => {
-    const numValue = typeof newValue === 'string' ? parseInt(newValue, 10) : newValue;
-    if (isNaN(numValue)) {
+    const numValue = typeof newValue === 'string' ? Number.parseInt(newValue, 10) : newValue;
+    if (Number.isNaN(numValue)) {
       return;
     }
 
@@ -624,7 +624,7 @@ export const Color: React.FC<ColorProps> = ({
                 <Group gap="xs">
                   {presets.map((preset, index) => (
                     <Button
-                      key={index}
+                      key={`${preset.color}-${index}`}
                       size="xs"
                       variant="outline"
                       radius="sm"

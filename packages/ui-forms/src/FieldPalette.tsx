@@ -435,7 +435,7 @@ export function FieldPalette({
             {filtered.length === 0 ? (
               <Text size="xs" c="dimmed" ta="center" py="sm">
                 {fields.length === 0
-                  ? showCatalog
+                  ? showCatalog // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                     ? t.fieldPalette.existing.emptyWithCatalog
                     : t.fieldPalette.existing.allPlaced
                   : t.fieldPalette.existing.noMatch}

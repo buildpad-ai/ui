@@ -30,12 +30,12 @@ export const SortableTh: React.FC<SortableThProps> = ({
   'data-testid': testId,
   ...props
 }) => {
-  const direction = sort === field ? 'asc' : sort === `-${field}` ? 'desc' : null;
-  const Icon = direction === 'asc' ? IconChevronUp : direction === 'desc' ? IconChevronDown : IconSelector;
+  const direction = sort === field ? 'asc' : sort === `-${field}` ? 'desc' : null; // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+  const Icon = direction === 'asc' ? IconChevronUp : direction === 'desc' ? IconChevronDown : IconSelector; // NOSONAR: idiomatic tri-state ternary, not confusing nesting
 
   return (
     <Table.Th
-      aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
+      aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'} // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       {...props}
     >
       <UnstyledButton

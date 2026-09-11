@@ -23,6 +23,7 @@
     "clean": "rimraf dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --passWithNoTests --coverage",
     "test:e2e": "tsx scripts/e2e-daas.mts",
     "storybook": "storybook dev -p 6010",
     "build-storybook": "storybook build"
@@ -220,7 +221,11 @@
     "tsup": "^8.4.0",
     "typescript": "^5.8.3",
     "vite": "^6.0.0",
-    "vitest": "^2.0.0"
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "2.1.9",
+    "jsdom": "^25.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.0.0"
   },
   "private": true,
   "keywords": [

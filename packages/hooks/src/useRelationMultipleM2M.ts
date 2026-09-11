@@ -344,8 +344,8 @@ export function useRelationMultipleM2M(
             // bug this alias fixes.
             if (pk !== undefined && pk !== null) {
                 result.id = pk as string | number;
-            } else if (result.id === undefined) {
-                result.id = item.id as string | number;
+            } else {
+                result.id ??= item.id as string | number;
             }
 
             return result;

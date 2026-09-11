@@ -90,7 +90,7 @@ const createField = (
     ...options.schema,
   },
   meta: {
-    id: Math.random(),
+    id: Math.random(), // NOSONAR: Storybook fixture id, never shipped
     collection: 'test_collection',
     field,
     interface: interfaceType,
@@ -572,7 +572,7 @@ const createGroupField = (
   collection: 'test_collection',
   schema: undefined,
   meta: {
-    id: Math.random(),
+    id: Math.random(), // NOSONAR: Storybook fixture id, never shipped
     collection: 'test_collection',
     field,
     interface: interfaceType,
@@ -590,8 +590,6 @@ const createGroupField = (
     validation: null,
     validation_message: null,
     ...options.meta,
-    // Ensure special is always set for groups
-    ...(options.meta?.special ? {} : {}),
   },
 });
 

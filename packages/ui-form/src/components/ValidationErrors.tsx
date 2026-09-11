@@ -42,7 +42,7 @@ interface ErrorDetail {
  */
 function resolveFieldName(fieldKey: string, fields: Field[]): string {
   // Handle function-wrapped field names like "count(id)"
-  const match = fieldKey.match(/\(([^)]+)\)/);
+  const match = fieldKey.match(/\(([^)]+)\)/); // NOSONAR: single negated-class quantifier, linear
   const actualKey = match ? match[1] : fieldKey;
 
   const field = fields.find((f) => f.field === actualKey);

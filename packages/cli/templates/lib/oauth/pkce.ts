@@ -9,7 +9,7 @@
  * @see https://datatracker.ietf.org/doc/html/rfc7636
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 /**
  * Generate PKCE code verifier.

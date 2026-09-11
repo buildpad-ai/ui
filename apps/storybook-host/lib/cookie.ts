@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 const COOKIE_NAME = 'daas_config';
 const ALGORITHM = 'aes-256-gcm';

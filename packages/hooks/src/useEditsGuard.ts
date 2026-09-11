@@ -87,7 +87,7 @@ export function useEditsGuard(
       if (hasEdits) {
         event.preventDefault();
         // Modern browsers ignore custom messages, but this is required
-        event.returnValue = '';
+        event.returnValue = ''; // NOSONAR: some browsers still require the deprecated returnValue alongside preventDefault()
         return '';
       }
     };

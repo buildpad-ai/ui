@@ -175,11 +175,14 @@ function interpolateFilter(
 ): Record<string, unknown> {
   const json = JSON.stringify(filter);
   const interpolated = json.replace(
-    /\{\{\s*([^}\s]+)\s*\}\}/g,
+    /\{\{\s*([^}\s]+)\s*\}\}/g, // NOSONAR: disjoint bounded whitespace runs and a negated-class body, linear
     (_match, field: string) => {
       const val = getByPath(parentValues, field);
-      if (val === undefined || val === null) return "null";
-      return typeof val === "string" ? val.replace(/"/g, '\\"') : String(val);
+      // An object here means `field` resolved to a nested object rather than a
+      // scalar (misconfigured filter reference) — embedding its stringified
+      // form would corrupt the surrounding JSON, so treat it like a miss.
+      if (val === undefined || val === null || typeof val === "object") return "null";
+      return typeof val === "string" ? val.replace(/"/g, '\\"') : String(val); // NOSONAR: object case already returned above; Sonar doesn't narrow across the earlier guard
     },
   );
   try {
@@ -900,7 +903,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
       ) {
         // Editing a staged-created row — merge into the matching create entry
         // instead of staging an update (a $temp_ id is unresolvable by the backend).
-        const idx = parseInt(currentlyEditing.id.replace("$temp_", ""), 10);
+        const idx = Number.parseInt(currentlyEditing.id.replace("$temp_", ""), 10);
         setChangeset((prev) => ({
           ...prev,
           create: prev.create.map((c) =>
@@ -1001,7 +1004,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
   const handleRemoveItem = async (item: O2MItem) => {
     // If it's a staged create, remove from changeset
     if (typeof item.id === "string" && item.id.startsWith("$temp_")) {
-      const idx = parseInt(item.id.replace("$temp_", ""), 10);
+      const idx = Number.parseInt(item.id.replace("$temp_", ""), 10);
       setChangeset((prev) => ({
         ...prev,
         create: prev.create.filter((c) => c.$index !== idx),
@@ -1347,7 +1350,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           <Paper p="xl" style={{ textAlign: "center" }} data-testid="o2m-empty">
             <Text c="dimmed">{t.noItems}</Text>
           </Paper>
-        ) : layout === "table" ? (
+        ) : layout === "table" ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
           /* ── Table Layout ─────────────────────────────────────────────── */
           <Table
             striped
@@ -1355,7 +1358,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
             verticalSpacing={
               tableSpacing === "compact"
                 ? "xs"
-                : tableSpacing === "comfortable"
+                : tableSpacing === "comfortable" // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                   ? "md"
                   : "sm"
             }

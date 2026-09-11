@@ -1,6 +1,6 @@
 import { defineConfig } from 'tsup';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Read registry.json at build time to embed it
 const registryPath = join(__dirname, '../registry.json');

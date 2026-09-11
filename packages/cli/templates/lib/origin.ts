@@ -54,7 +54,7 @@ function firstHop(value: string | null): string | null {
 /** Strip the port so `localhost:3000` and `[::1]:3000` compare correctly. */
 function hostname(host: string): string {
   const withoutPort = host.startsWith('[')
-    ? (host.match(/^\[[^\]]*\]/)?.[0] ?? host) // IPv6 literal: [::1]:3000
+    ? (/^\[[^\]]*\]/.exec(host)?.[0] ?? host) // IPv6 literal: [::1]:3000
     : (host.split(':')[0] ?? host);
   return withoutPort.toLowerCase();
 }

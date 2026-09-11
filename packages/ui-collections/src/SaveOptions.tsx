@@ -15,7 +15,6 @@ import React from 'react';
 import {
   Menu,
   ActionIcon,
-  Text,
   Kbd,
   Group,
 } from '@mantine/core';

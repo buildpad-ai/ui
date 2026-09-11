@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Clean the URL (strip trailing slashes)
-    const cleanUrl = url.replace(/\/+$/, '');
+    const cleanUrl = url.replace(/\/+$/, ''); // NOSONAR: single anchored quantifier, linear
 
     // Test connection by fetching the current user
     const testResponse = await fetch(`${cleanUrl}/api/users/me`, {

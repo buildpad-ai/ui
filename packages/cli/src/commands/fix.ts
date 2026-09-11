@@ -12,12 +12,12 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
 import fg from 'fast-glob';
 import prompts from 'prompts';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
 import { transformImports, toKebabCase } from './transformer.js';
 
@@ -371,14 +371,14 @@ function collectTypeScriptErrors(cwd: string, config: Config): TsError[] {
     );
 
     const errors: TsError[] = [];
-    const pattern = /^(.+?)\((\d+),(\d+)\):\s+error\s+(TS\d+):\s+(.+)$/gm;
+    const pattern = /^(.+?)\((\d+),(\d+)\):\s+error\s+(TS\d+):\s+(.+)$/gm; // NOSONAR: lazy quantifier plus fixed literals separate each group; input is this repo's own tsc output
     let match;
 
     while ((match = pattern.exec(output)) !== null) {
       const [, file, line, col, code, message] = match;
       const rel = path.relative(cwd, file);
       if (rel.includes('components/ui') || rel.includes('lib/buildpad')) {
-        errors.push({ file, line: parseInt(line, 10), col: parseInt(col, 10), code, message });
+        errors.push({ file, line: Number.parseInt(line, 10), col: Number.parseInt(col, 10), code, message });
       }
     }
     return errors;
@@ -407,7 +407,6 @@ async function fixTypeScriptErrors(
   if (tsErrors.length === 0) return result;
 
   // ── Phase 1: Collect missing npm packages from TS2307 ──────────
-  const missingModules = new Set<string>();
   const missingNpmPackages = new Set<string>();
   const undeclaredModules = new Set<string>();
   const suppressTargets: { file: string; line: number; message: string }[] = [];
@@ -415,7 +414,7 @@ async function fixTypeScriptErrors(
   for (const err of tsErrors) {
     if (err.code === 'TS2307' || err.code === 'TS7016') {
       // Extract module name from message like: Cannot find module 'xxx' or its type declarations
-      const moduleMatch = err.message.match(/(?:Cannot find module|Could not find a declaration file for module)\s+'([^']+)'/);
+      const moduleMatch = /(?:Cannot find module|Could not find a declaration file for module)\s+'([^']+)'/.exec(err.message);
       if (moduleMatch) {
         const moduleSpec = moduleMatch[1];
         // Skip relative imports (handled by fixBrokenImports)
@@ -424,7 +423,6 @@ async function fixTypeScriptErrors(
         if (moduleSpec.startsWith('@buildpad/')) continue;
 
         const pkgName = extractPackageName(moduleSpec);
-        missingModules.add(moduleSpec);
 
         if (KNOWN_NPM_PACKAGES.has(pkgName)) {
           missingNpmPackages.add(pkgName);

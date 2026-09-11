@@ -28,7 +28,7 @@ const EMPTY_MODULE_ACCESS: ModuleAccessMap = {};
  */
 function readActiveScope(): string | null {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(/(?:^|;\s*)daas_resource_uri=([^;]*)/);
+  const match = /(?:^|;\s*)daas_resource_uri=([^;]*)/.exec(document.cookie);
   if (!match) return null;
   const value = decodeURIComponent(match[1]).trim();
   return value === '' ? null : value;
@@ -320,7 +320,7 @@ export function usePermissions(options: UsePermissionsOptions = {}): UsePermissi
       // Fetch permissions for specified collections
       const cols = collectionsKey ? collectionsKey.split(',') : [];
       if (cols.length > 0) {
-        await Promise.all(cols.map(fetchCollectionPermissions));
+        await Promise.all(cols.map(fetchCollectionPermissions)); // NOSONAR: fetchCollectionPermissions takes a single arg, no index/array arity bug
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch permissions';

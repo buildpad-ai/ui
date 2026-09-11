@@ -1,4 +1,5 @@
 import { FormDefinition, AnyItem, Field, Collection, Bookmark } from '@buildpad/types';
+import { DeepPartial, CollectionsTranslations } from '@buildpad/utils';
 import React from 'react';
 import { Sort, Header } from '@buildpad/ui-table';
 
@@ -63,6 +64,12 @@ interface CollectionFormProps {
      * Default `true`.
      */
     persist?: boolean;
+    /**
+     * Per-instance overrides of the `collections` dictionary namespace
+     * (precedence: this prop > `BuildpadI18nProvider` > English defaults).
+     * Forwarded to the SaveOptions menu.
+     */
+    translations?: DeepPartial<CollectionsTranslations>;
 }
 /** Permission state exposed to parent components */
 interface FormPermissionState {
@@ -116,8 +123,12 @@ declare function mergeExtras(prev: unknown, changed: Record<string, unknown>): R
 /**
  * A clear, actionable error for when a screen uses `store: 'extras'` fields but
  * the target collection has no `extras` jsonb column to store them in.
+ *
+ * `template` is the `collections.form.errors.missingExtrasColumn` dictionary
+ * string (`{collection}` / `{extrasColumn}` placeholders); it defaults to the
+ * English text so callers outside React keep the previous behaviour.
  */
-declare function missingExtrasColumnMessage(collection: string): string;
+declare function missingExtrasColumnMessage(collection: string, template?: string): string;
 
 /**
  * CollectionList Component
@@ -144,7 +155,12 @@ interface BulkAction {
     confirm?: boolean;
     /** Required permission action; bulk action is disabled when the user lacks this permission */
     requiredPermission?: "create" | "update" | "delete";
-    action: (selectedIds: (string | number)[]) => void | Promise<void>;
+    /**
+     * Receives the selected ids and, when the list has them loaded, the
+     * selected rows themselves — so a consumer that needs the rows' fields
+     * doesn't have to re-fetch data this list already rendered.
+     */
+    action: (selectedIds: (string | number)[], selectedRows?: Record<string, unknown>[]) => void | Promise<void>;
 }
 /** Permission state exposed to consumers via onPermissionsLoaded */
 interface ListPermissionState {
@@ -221,6 +237,28 @@ interface CollectionListProps {
      * to the default field-type-aware renderer.
      */
     renderCell?: (item: AnyItem, header: Header) => React.ReactNode | null | undefined;
+    /**
+     * Per-instance overrides of the `collections` dictionary namespace
+     * (precedence: this prop > `BuildpadI18nProvider` > English defaults).
+     * Forwarded to the toolbar, footer, filter panel and delete dialog.
+     */
+    translations?: DeepPartial<CollectionsTranslations>;
+    /**
+     * Request an exact row count instead of the server's default `estimated`
+     * mode. Off by default — `estimated` is what keeps this component cheap on
+     * a large primary collection view, and the meta.total_estimated pinning
+     * above already corrects an *under*-count once a page contradicts it.
+     *
+     * It cannot correct an *over*-count on a full first page, though: a table
+     * with stale or absent ANALYZE statistics (small, rarely-mutated
+     * collections — think a roles table — are exactly what autovacuum's
+     * threshold skips) can report a wildly inflated planner estimate that
+     * nothing contradicts until pagination reaches a short page. Set this to
+     * true for embeds that are always a small, human-browsed picker — e.g. the
+     * "Add Existing" modal in ListM2M / ListO2M — where correctness is worth
+     * far more than the marginal cost of a real count.
+     */
+    exactCount?: boolean;
 }
 /**
  * CollectionList - Dynamic list for displaying collection items.
@@ -271,6 +309,8 @@ interface FilterPanelProps {
     disabled?: boolean;
     /** Maximum nesting depth for groups (default: 3) */
     maxDepth?: number;
+    /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+    translations?: DeepPartial<CollectionsTranslations>;
 }
 declare const FilterPanel: React.FC<FilterPanelProps>;
 
@@ -329,6 +369,8 @@ interface ContentNavigationProps {
     loading?: boolean;
     /** Called when search value changes */
     onSearchChange?: (search: string) => void;
+    /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+    translations?: DeepPartial<CollectionsTranslations>;
 }
 /**
  * ContentNavigation — Sidebar navigation for the content module.
@@ -488,6 +530,8 @@ interface SaveOptionsProps {
     disabled?: boolean;
     /** Platform for keyboard shortcut display (default: auto-detect) */
     platform?: 'mac' | 'win';
+    /** Per-instance overrides of the `collections` dictionary namespace (prop > provider > defaults) */
+    translations?: DeepPartial<CollectionsTranslations>;
 }
 /**
  * SaveOptions — Dropdown for additional save actions

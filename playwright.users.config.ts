@@ -25,7 +25,7 @@ export default defineConfig({
   projects: [
     {
       name: 'users-api',
-      testMatch: /.*\.api\.spec\.ts/,
+      testMatch: /.*\.api\.spec\.ts/, // NOSONAR: single greedy quantifier over trusted local filenames at config-load time
       use: {
         ...devices['Desktop Chrome'],
         // No baseURL — specs hit USERS_DAAS_URL directly via fetch
@@ -33,7 +33,7 @@ export default defineConfig({
     },
     {
       name: 'users-storybook',
-      testMatch: /.*\.storybook\.spec\.ts/,
+      testMatch: /.*\.storybook\.spec\.ts/, // NOSONAR: single greedy quantifier over trusted local filenames at config-load time
       use: {
         ...devices['Desktop Chrome'],
         baseURL: STORYBOOK_USERS_URL,

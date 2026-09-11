@@ -220,7 +220,7 @@ export const Files: React.FC<FilesProps> = ({
       }
 
       // Check if we need to hydrate
-      const currentIds = arr.map(extractFileId).filter(Boolean) as string[];
+      const currentIds = arr.map(extractFileId).filter(Boolean) as string[]; // NOSONAR: extractFileId takes a single arg, no index/array arity bug
       
       // If all IDs are already hydrated, skip
       const allHydrated = currentIds.every(id => hydratedIdsRef.current.has(id));

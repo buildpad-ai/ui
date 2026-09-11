@@ -152,7 +152,7 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
     enabled: urlParams,
     params: {
       [param('search')]: debouncedSearch || null,
-      [param('sort')]: sort ? `${sort.desc ? '-' : ''}${sort.by}` : null,
+      [param('sort')]: sort ? `${sort.desc ? '-' : ''}${sort.by}` : null, // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       [param('page')]: page > 1 ? String(page) : null,
     },
     onExternalChange: useCallback(
@@ -193,7 +193,7 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
         page,
         limit,
         search: debouncedSearch || undefined,
-        sort: sort?.by ? (sort.desc ? `-${sort.by}` : sort.by) : undefined,
+        sort: sort?.by ? (sort.desc ? `-${sort.by}` : sort.by) : undefined, // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       });
       setPolicies(result.policies);
       setTotalCount(result.total);
@@ -353,7 +353,7 @@ const PoliciesManagerBody: React.FC<PoliciesManagerProps> = ({
           noItemsText={
             loadError
               ? interpolate(t.policiesManager.emptyState.loadError, { error: loadError })
-              : debouncedSearch
+              : debouncedSearch // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                 ? t.policiesManager.emptyState.search
                 : t.policiesManager.emptyState.pristine
           }

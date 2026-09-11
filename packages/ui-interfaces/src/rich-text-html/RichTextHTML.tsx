@@ -266,7 +266,7 @@ export function RichTextHTML({
           <div
             className={`rich-text-html-char-count ${
               isOverLimit ? 'rich-text-html-char-count--over-limit' : 
-              isNearLimit ? 'rich-text-html-char-count--near-limit' : 
+              isNearLimit ? 'rich-text-html-char-count--near-limit' : // NOSONAR: idiomatic tri-state ternary, not confusing nesting
               'rich-text-html-char-count--normal'
             }`}
           >

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
   Anchor,
@@ -295,6 +295,20 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
   const scopePatterns = values.scope_config?.allowed_scopes ?? [];
 
+  // Stable per-row identity for scopePatterns (plain strings, no natural id):
+  // keeps focus/DOM identity correct when a row above is removed, since
+  // `idx` alone would shift and misattribute the wrong pattern to a
+  // focused input. Kept in lockstep by the add/remove handlers below.
+  const nextPatternKeyRef = useRef(0);
+  const patternKeysRef = useRef<number[]>([]);
+  if (patternKeysRef.current.length < scopePatterns.length) {
+    while (patternKeysRef.current.length < scopePatterns.length) {
+      patternKeysRef.current.push(nextPatternKeyRef.current++);
+    }
+  } else if (patternKeysRef.current.length > scopePatterns.length) {
+    patternKeysRef.current.length = scopePatterns.length;
+  }
+
   // Hierarchy is derived client-side: the API exposes no children relation,
   // and allRoles is already fetched for the parent-role select (Req 14).
   const parentRole = useMemo(
@@ -464,7 +478,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                           </Text>
 
                           {scopePatterns.map((pattern, idx) => (
-                            <Group key={idx} gap="xs">
+                            <Group key={patternKeysRef.current[idx]} gap="xs">
                               <Code style={{ flex: 0, minWidth: 28, textAlign: 'center' }}>
                                 {idx + 1}
                               </Code>
@@ -489,6 +503,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                                 color="red"
                                 onClick={() => {
                                   const updated = scopePatterns.filter((_, i) => i !== idx);
+                                  patternKeysRef.current = patternKeysRef.current.filter((_, i) => i !== idx);
                                   setScopeConfig({ ...values.scope_config!, allowed_scopes: updated });
                                 }}
                                 aria-label={interpolate(t.roleDetail.scope.removePatternAriaLabel, {

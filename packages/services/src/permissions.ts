@@ -33,7 +33,7 @@ import { apiRequest } from "./api-request";
  */
 function readActiveScope(): string | null {
   if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)daas_resource_uri=([^;]*)/);
+  const match = /(?:^|;\s*)daas_resource_uri=([^;]*)/.exec(document.cookie);
   if (!match) return null;
   const value = decodeURIComponent(match[1]).trim();
   return value === "" ? null : value;

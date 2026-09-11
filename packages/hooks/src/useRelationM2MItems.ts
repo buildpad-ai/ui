@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { notifications } from '@mantine/notifications';
-import { interpolate } from '@buildpad/utils';
+import { interpolate, isExistingItem } from '@buildpad/utils';
 import { useBuildpadI18n, useBuildpadTranslations } from './useBuildpadI18n';
 import type { M2MRelationInfo } from './useRelationM2M';
-import { apiRequest, isValidPrimaryKey } from './utils';
+import { apiRequest } from './utils';
 
 export interface M2MItem {
   id: string | number;
@@ -63,7 +63,7 @@ export function useRelationM2MItems(
   const [selectedPrimaryKeys, setSelectedPrimaryKeys] = useState<(string | number)[]>([]);
 
   // Check if operations can be performed (item must be saved first)
-  const canPerformOperations = isValidPrimaryKey(primaryKey);
+  const canPerformOperations = isExistingItem(primaryKey);
 
   // Notification strings from the shared dictionary (English without a provider).
   const t = useBuildpadTranslations((d) => d.hooks.relations);
@@ -85,7 +85,7 @@ export function useRelationM2MItems(
 
   // Load junction items
   const loadItems = useCallback(async (params: M2MQueryParams) => {
-    if (!relationInfo || !isValidPrimaryKey(primaryKey)) {
+    if (!relationInfo || !isExistingItem(primaryKey)) {
       setItems([]);
       setTotalCount(0);
       return;
@@ -126,7 +126,7 @@ export function useRelationM2MItems(
       // does in `fields` above — sorting the junction table by it asks the
       // backend for a column that doesn't exist there.
       const sortField = params.sortField
-        ? (params.sortField.includes('.') ? params.sortField : `${junctionFieldName}.${params.sortField}`)
+        ? (params.sortField.includes('.') ? params.sortField : `${junctionFieldName}.${params.sortField}`) // NOSONAR: idiomatic tri-state ternary, not confusing nesting
         : relationInfo.sortField;
       if (sortField) {
         // Direction applies to the configured sort field too; it used to be
@@ -163,14 +163,14 @@ export function useRelationM2MItems(
         loadedItems.length < pageSize ? offset + loadedItems.length : offset + loadedItems.length + 1,
       );
 
-      // Extract selected primary keys for filtering. `isValidPrimaryKey`
+      // Extract selected primary keys for filtering. `isExistingItem`
       // rather than `Boolean`, so a legitimate key of `0` survives.
       const pks = loadedItems
         .map((item) => {
           const relatedData = item[junctionFieldName] as Record<string, unknown> | undefined;
           return relatedData?.[relatedPKField] as string | number | undefined;
         })
-        .filter((pk): pk is string | number => isValidPrimaryKey(pk));
+        .filter((pk): pk is string | number => isExistingItem(pk));
       setSelectedPrimaryKeys(pks);
 
     } catch {
@@ -210,7 +210,7 @@ export function useRelationM2MItems(
       return null;
     }
 
-    if (!isValidPrimaryKey(primaryKey)) {
+    if (!isExistingItem(primaryKey)) {
       notifications.show({
         title: t.saveRequiredTitle,
         message: t.saveFirst,
@@ -262,7 +262,7 @@ export function useRelationM2MItems(
       return;
     }
 
-    if (!isValidPrimaryKey(primaryKey)) {
+    if (!isExistingItem(primaryKey)) {
       notifications.show({
         title: t.saveRequiredTitle,
         message: t.saveFirst,
@@ -338,7 +338,7 @@ export function useRelationM2MItems(
     // produced `/api/items/{collection}/undefined`, which a string-PK backend
     // answers 2xx — so the UI reported a success that never happened.
     const pk = (item[junctionPKField] ?? item.id) as string | number | undefined;
-    if (!isValidPrimaryKey(pk)) {
+    if (!isExistingItem(pk)) {
       notifications.show({
         title: t.errorTitle,
         message: t.removeNoPrimaryKey,
@@ -394,7 +394,7 @@ export function useRelationM2MItems(
       pk: (item[junctionPKField] ?? item.id) as string | number | undefined,
       sort: offset + idx + 1,
     }));
-    const unresolved = targets.filter(t => !isValidPrimaryKey(t.pk));
+    const unresolved = targets.filter(t => !isExistingItem(t.pk));
     if (unresolved.length > 0) {
       notifications.show({
         title: t.errorTitle,

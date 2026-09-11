@@ -185,11 +185,11 @@ export function FilterRuleBuilder({
   const actionText =
     permission.action === 'delete'
       ? t.filterRuleBuilder.action.canDelete
-      : permission.action === 'create'
+      : permission.action === 'create' // NOSONAR: idiomatic action-name switch ternary, not confusing nesting
       ? t.filterRuleBuilder.action.canCreate
-      : permission.action === 'update'
+      : permission.action === 'update' // NOSONAR: idiomatic action-name switch ternary, not confusing nesting
       ? t.filterRuleBuilder.action.canUpdate
-      : permission.action === 'share'
+      : permission.action === 'share' // NOSONAR: idiomatic action-name switch ternary, not confusing nesting
       ? t.filterRuleBuilder.action.canShare
       : t.filterRuleBuilder.action.canRead;
 

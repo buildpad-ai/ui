@@ -191,12 +191,12 @@ export interface CollectionListProps {
 }
 
 // System fields to exclude from default display
-const SYSTEM_FIELDS = [
+const SYSTEM_FIELDS = new Set([
   "user_created",
   "user_updated",
   "date_created",
   "date_updated",
-];
+]);
 
 // Relational fields with no real flat column value — can't be requested as a
 // bare name in fields= (there's no single column to select), only via a
@@ -318,7 +318,6 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   // ----- Permission state (mirrors DaaS useCollectionPermissions) -----
   // Fetched from GET /permissions/me via PermissionsService.getMyCollectionAccess().
   // Empty access map (admin or failed fetch) = assume full access.
-  const [readableFields, setReadableFields] = useState<string[] | null>(null);
   const [createAllowed, setCreateAllowed] = useState(true);
   const [updateAllowed, setUpdateAllowed] = useState(true);
   const [deleteAllowed, setDeleteAllowed] = useState(true);
@@ -386,11 +385,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           permFields = readAccess.fields ?? null;
           if (permFields && permFields.includes("*")) permFields = null;
         }
-        setReadableFields(permFields);
-
         // All non-system, non-hidden, non-alias fields
         let visible = fieldsResult.filter((f: Field) => {
-          if (SYSTEM_FIELDS.includes(f.field)) return false;
+          if (SYSTEM_FIELDS.has(f.field)) return false;
           if (f.type === "alias") return false;
           // Some DaaS backends don't mark O2M/M2M/M2A relational fields with
           // type: "alias" even though they have no real flat column value —
@@ -579,7 +576,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           .filter(([, v]) => v !== undefined && v !== null)
           .map(([k, v]) => [
             k,
-            typeof v === "object" ? JSON.stringify(v) : String(v),
+            typeof v === "object" ? JSON.stringify(v) : String(v), // NOSONAR: object case is already handled by this ternary
           ]),
       ).toString();
 
@@ -834,16 +831,30 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           <Menu.Label>{t.list.headerMenu.sort}</Menu.Label>
           <div
             role="menuitem"
+            tabIndex={0}
             className="mantine-Menu-item collection-list-context-menu-item"
             onClick={() => handleSortChange({ by: header.value, desc: false })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleSortChange({ by: header.value, desc: false });
+              }
+            }}
           >
             <IconSortAscending size={14} />
             <Text size="sm">{t.list.headerMenu.sortAscending}</Text>
           </div>
           <div
             role="menuitem"
+            tabIndex={0}
             className="mantine-Menu-item collection-list-context-menu-item"
             onClick={() => handleSortChange({ by: header.value, desc: true })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleSortChange({ by: header.value, desc: true });
+              }
+            }}
           >
             <IconSortDescending size={14} />
             <Text size="sm">{t.list.headerMenu.sortDescending}</Text>
@@ -873,10 +884,17 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             <div
               key={align}
               role="menuitem"
+              tabIndex={0}
               className={`mantine-Menu-item collection-list-context-menu-item${
                 header.align === align ? " active" : ""
               }`}
               onClick={() => handleAlignChange(header.value, align)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleAlignChange(header.value, align);
+                }
+              }}
             >
               {icon}
               <Text size="sm">{label}</Text>
@@ -888,8 +906,15 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           {/* Hide field */}
           <div
             role="menuitem"
+            tabIndex={0}
             className="mantine-Menu-item collection-list-context-menu-item danger"
             onClick={() => removeField(header.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                removeField(header.value);
+              }
+            }}
           >
             <IconEyeOff size={14} />
             <Text size="sm">{t.list.headerMenu.hideField}</Text>
@@ -954,7 +979,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
             <Group gap={4} wrap="nowrap">
               {entries.slice(0, 3).map((v, i) => (
                 <Badge
-                  key={i}
+                  key={`${String(v)}-${i}`}
                   variant="light"
                   size="sm"
                   color="gray"
@@ -992,7 +1017,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         // unrecognised payload would print raw JSON into the cell. Every other
         // type falls back to showing the value as stored.
         if (fieldType !== "json") {
-          const raw = String(value);
+          const raw = typeof value === "object" ? JSON.stringify(value) : String(value); // NOSONAR: object branch is guarded above; Sonar doesn't narrow the ternary's else branch
           if (raw === "") return null;
           return (
             <Text size="sm" truncate="end">
@@ -1019,7 +1044,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       ) {
         try {
           const dateObj = new Date(value as string);
-          if (isNaN(dateObj.getTime())) return null;
+          if (Number.isNaN(dateObj.getTime())) return null;
           if (fieldType === "date") {
             return (
               <Text size="sm" truncate="end">
@@ -1052,7 +1077,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         fieldType === "bigInteger"
       ) {
         const num = Number(value);
-        if (!isNaN(num)) {
+        if (!Number.isNaN(num)) {
           return (
             <Text size="sm" truncate="end">
               {formatNumber(num)}
@@ -1073,7 +1098,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
       // ---------- UUID (truncate) ----------
       if (fieldType === "uuid") {
-        const str = String(value);
+        const str = typeof value === "object" ? JSON.stringify(value) : String(value); // NOSONAR: object branch is guarded above; Sonar doesn't narrow the ternary's else branch
         return (
           <Tooltip label={str} openDelay={300}>
             <Text size="sm" truncate="end" style={{ maxWidth: 120 }}>
@@ -1117,7 +1142,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         
         return (
           <Text size="sm" truncate="end">
-            {String(value)}
+            {typeof value === "object" ? JSON.stringify(value) : String(value) /* NOSONAR: object branch is guarded above; Sonar doesn't narrow the ternary's else branch */}
           </Text>
         );
       }

@@ -26,7 +26,7 @@ export function formatFileSize(bytes: number): string {
   const k = 1024;
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${units[i]}`;
+  return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${units[i]}`;
 }
 
 /**
@@ -98,7 +98,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
  * Check if a value is a valid primary key
  */
 export function isValidPrimaryKey(value: unknown): value is string | number {
-  if (typeof value === 'number') return !isNaN(value);
+  if (typeof value === 'number') return !Number.isNaN(value);
   if (typeof value === 'string') return value.length > 0 && value !== '+';
   return false;
 }
@@ -145,12 +145,12 @@ export function slugify(text: string): string {
     .trim()
     .replace(/[^\w\s-]/g, '')
     .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/^-+|-+$/g, ''); // NOSONAR: two independent single-quantifier alternatives, linear
 }
 
 /**
  * Generate a unique ID
  */
 export function generateId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 9)}`;
+  return `${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 9)}`; // NOSONAR: generic non-cryptographic id, not a secret
 }

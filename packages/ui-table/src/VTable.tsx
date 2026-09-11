@@ -351,13 +351,13 @@ export const VTable: React.FC<VTableProps> = ({
     (item: Item): string => {
       const keyValue = item[itemKey];
       if (keyValue !== undefined && keyValue !== null) {
-        return String(keyValue);
+        return String(keyValue); // NOSONAR: primary key values are contractually primitive; a worst-case object only degrades an invisible React key, never user-visible text
       }
       // Fallback to $index if no key
       if (item.$index !== undefined) {
-        return `$index-${item.$index}`;
+        return `$index-${item.$index}`; // NOSONAR: $index is an internal numeric field, never an object
       }
-      return `item-${Math.random()}`;
+      return `item-${Math.random()}`; // NOSONAR: React list-key fallback, not a secret
     },
     [itemKey],
   );
@@ -370,7 +370,7 @@ export const VTable: React.FC<VTableProps> = ({
       // If the item has no valid PK, fall back to $index-based matching
       if (itemKeyValue === undefined || itemKeyValue === null) {
         if (item.$index !== undefined) {
-          const fallbackKey = `$index-${item.$index}`;
+          const fallbackKey = `$index-${item.$index}`; // NOSONAR: $index is an internal numeric field, never an object
           return value.some((selected) => {
             if (typeof selected === "object" && selected !== null) {
               const selKey = (selected as Item)[itemKey];

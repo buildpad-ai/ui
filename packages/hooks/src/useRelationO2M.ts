@@ -414,7 +414,7 @@ export function useRelationO2MItems(
             .filter(([, v]) => v !== undefined && v !== null)
             .map(([k, v]) => [
               k,
-              typeof v === "object" ? JSON.stringify(v) : String(v),
+              typeof v === "object" ? JSON.stringify(v) : String(v), // NOSONAR: object case is already handled by this ternary
             ]),
         ).toString();
 

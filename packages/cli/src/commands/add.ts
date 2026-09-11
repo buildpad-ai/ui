@@ -9,7 +9,7 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import prompts from 'prompts';
@@ -98,8 +98,8 @@ const COMPONENT_ALIASES: Record<string, string> = {
 /**
  * Find component with smart matching and suggestions
  */
-function findComponentWithSuggestions(name: string, registry: Registry): ComponentEntry | null {
-  const normalized = name.toLowerCase().replace(/-/g, '');
+export function findComponentWithSuggestions(name: string, registry: Registry): ComponentEntry | null {
+  const normalized = name.toLowerCase().replaceAll(/-/g, '');
   
   // Direct match by name
   const directMatch = registry.components.find(
@@ -115,8 +115,8 @@ function findComponentWithSuggestions(name: string, registry: Registry): Compone
   
   // Fuzzy match (remove dashes)
   const fuzzyMatch = registry.components.find(
-    c => c.name.toLowerCase().replace(/-/g, '') === normalized ||
-         c.title.toLowerCase().replace(/-/g, '') === normalized
+    c => c.name.toLowerCase().replaceAll(/-/g, '') === normalized ||
+         c.title.toLowerCase().replaceAll(/-/g, '') === normalized
   );
   if (fuzzyMatch) return fuzzyMatch;
   
@@ -137,8 +137,8 @@ function findComponentWithSuggestions(name: string, registry: Registry): Compone
   const suggestions = registry.components
     .map(c => ({
       component: c,
-      score: calculateSimilarity(normalized, c.name.replace(/-/g, '')) +
-             calculateSimilarity(normalized, c.title.toLowerCase().replace(/-/g, '')) +
+      score: calculateSimilarity(normalized, c.name.replaceAll(/-/g, '')) +
+             calculateSimilarity(normalized, c.title.toLowerCase().replaceAll(/-/g, '')) +
              (c.description.toLowerCase().includes(name.toLowerCase()) ? 0.3 : 0)
     }))
     .filter(s => s.score > 0.2)
@@ -376,7 +376,7 @@ export async function copyLibModule(
 
   // v3: record per-file checksums in `config.lib[moduleName]`
   if ((config.schemaVersion ?? 1) >= 2 && writtenFiles.length > 0 && primarySource) {
-    if (!config.lib) config.lib = {};
+    config.lib ??= {};
     config.lib[moduleName] = {
       release,
       ref,
@@ -514,7 +514,7 @@ export function getInstalledStaleness(
   if (!staleness.stale) return { stale: false };
   return {
     stale: true,
-    installedRelease: record.release ?? record.version,
+    installedRelease: record.release ?? record.version, // NOSONAR: intentional v1/v2 manifest backward-compat fallback
     latestRelease: registry.version,
   };
 }
@@ -745,7 +745,7 @@ async function copyComponent(
     // `sourceSha256` is what a later `outdated` compares against; `ref` is the
     // exact diff3 base for a later `upgrade`.
     if ((config.schemaVersion ?? 1) >= 2) {
-      if (!config.components) config.components = {};
+      config.components ??= {};
       if (!config.components[component.name]) {
         config.components[component.name] = {
           release,
@@ -783,10 +783,10 @@ async function copyComponent(
   }
   
   // Track component version (v1 compat)
-  if (!config.componentVersions) {
-    config.componentVersions = {};
+  if (!config.componentVersions) { // NOSONAR: intentionally writing the deprecated v1 field for backward compat
+    config.componentVersions = {}; // NOSONAR: intentionally writing the deprecated v1 field for backward compat
   }
-  config.componentVersions[component.name] = {
+  config.componentVersions[component.name] = { // NOSONAR: intentionally writing the deprecated v1 field for backward compat
     version: installRelease,
     installedAt: new Date().toISOString(),
     source: sourcePackageFinal,
@@ -794,13 +794,13 @@ async function copyComponent(
 
   // v3: update the components map installedAt + the project-level release
   if ((config.schemaVersion ?? 1) >= 2) {
-    if (!config.components) config.components = {};
+    config.components ??= {};
     const record = config.components[component.name];
     if (record) {
       record.installedAt = new Date().toISOString();
       record.release = installRelease;
       record.ref = getRecordedRef();
-      delete record.version;
+      delete record.version; // NOSONAR: migration cleanup of the deprecated v1 field
     }
     config.release = installRelease;
   }
@@ -845,7 +845,7 @@ async function generateComponentsIndex(
   const namedExportMap = new Map<string, string[]>(); // exportName -> [files]
   
   // Sort components alphabetically for consistent output
-  const sortedComponents = [...config.installedComponents].sort();
+  const sortedComponents = [...config.installedComponents].sort((a, b) => a.localeCompare(b));
   
   // Components with known SSR issues that should use wrappers
   const ssrUnsafeComponents: Record<string, string> = {
@@ -972,8 +972,8 @@ export async function add(
   }
 
   // Initialize componentVersions if not present
-  if (!config.componentVersions) {
-    config.componentVersions = {};
+  if (!config.componentVersions) { // NOSONAR: intentionally writing the deprecated v1 field for backward compat
+    config.componentVersions = {}; // NOSONAR: intentionally writing the deprecated v1 field for backward compat
   }
 
   const registry = await getRegistry();
@@ -1178,7 +1178,7 @@ export async function add(
     }
 
     // Update registry version (v1 compat)
-    config.registryVersion = registry.version;
+    config.registryVersion = registry.version; // NOSONAR: intentionally writing the deprecated v1 field for backward compat
 
     // Save updated config
     await saveConfig(cwd, config);

@@ -140,7 +140,7 @@ export function BuilderSection({
             borderRadius: 6,
             outline: isOver
               ? '2px dashed var(--mantine-color-blue-5)'
-              : section.fields.length === 0
+              : section.fields.length === 0 // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                 ? '1px dashed var(--mantine-color-gray-4)'
                 : undefined,
           }}

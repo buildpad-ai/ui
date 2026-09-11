@@ -42,7 +42,7 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import prompts from 'prompts';
@@ -374,6 +374,356 @@ async function installMissingLibDeps(
   return installed;
 }
 
+type ComponentUpgradeOutcome =
+  | { status: 'skipped'; dirty: boolean }
+  | { status: 'upgraded'; dirty: boolean; conflicts: number };
+
+/**
+ * Upgrade one installed component. Extracted from `upgrade()` — the
+ * per-component loop body was the largest contributor to that function's
+ * Cognitive Complexity. Behaviour is unchanged: every `continue`/counter
+ * increment in the original loop became a `return`/field on the outcome the
+ * caller aggregates instead.
+ */
+async function upgradeOneComponent(
+  componentName: string,
+  registry: Registry,
+  config: Config,
+  cwd: string,
+  dryRun: boolean,
+  force: boolean,
+  release: string,
+  ref: string,
+  strategy: UpgradeStrategy,
+  externalDeps: Set<string>,
+): Promise<ComponentUpgradeOutcome> {
+  const regComponent = registry.components.find(c => c.name === componentName);
+  if (!regComponent) {
+    console.log(chalk.dim(`  Skipping '${componentName}' — not found in registry`));
+    return { status: 'skipped', dirty: false };
+  }
+
+  const sourcePackage = regComponent.sourcePackage ?? '@buildpad/ui-interfaces';
+  const installedRecord = config.components?.[componentName];
+  const staleness = computeEntryStaleness(registryFilesOf(regComponent), installedRecord);
+
+  let dirty = false;
+  if (await installMissingLibDeps(regComponent.internalDependencies, registry, config, cwd, dryRun, externalDeps)) {
+    dirty = true;
+  }
+
+  if (!staleness.stale && !staleness.needsMigrate && !staleness.untracked && !force) {
+    console.log(chalk.dim(`  ${componentName} — already up to date`));
+    return { status: 'skipped', dirty };
+  }
+
+  // Files whose upstream hash is unchanged need no action at all — not even
+  // a prompt. Prompting on them offered to overwrite a user's edits with
+  // byte-identical old content.
+  //
+  // A record with no upstream hashes (v2, or none at all) cannot be compared
+  // file by file, so every file is in scope: this run re-baselines it to v3.
+  const staleTargets = staleness.needsMigrate || staleness.untracked
+    ? new Set(regComponent.files.map(f => f.target))
+    : new Set(staleness.files.filter(f => f.reason !== 'removed').map(f => f.target));
+
+  const from = installedRecord?.release ?? installedRecord?.version ?? 'unknown'; // NOSONAR: intentional v1/v2 manifest backward-compat fallback
+  console.log(
+    chalk.cyan(`  ${componentName}`) +
+    chalk.dim(force ? ` re-sync @ ${release} (--force)` : ` ${from} → ${release}`)
+  );
+
+  // Removals are reported here and then simply absent from `newFiles`.
+  reportRemovedFiles(
+    componentName,
+    registryFilesOf(regComponent),
+    installedRecord?.files ?? []
+  );
+
+  const fileSpinner = ora('').start();
+  const newFiles: FileChecksum[] = [];
+  let componentHadConflict = false;
+  let conflictsThisComponent = 0;
+
+  for (const file of regComponent.files) {
+    fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
+
+    const targetPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
+    const ext = config.tsx ? '.tsx' : '.jsx';
+    const finalPath = targetPath.replace(/\.tsx?$/, ext);
+    const installed = installedRecord?.files.find(f => f.target === file.target);
+
+    // Upstream unchanged and the file is present → leave it alone entirely,
+    // modified or not. Missing on disk still self-heals.
+    const onDisk = await fs.pathExists(finalPath);
+    if (!force && !staleTargets.has(file.target) && onDisk && installed) {
+      newFiles.push(installed);
+      continue;
+    }
+
+    if (!(await sourceFileExists(file.source))) {
+      fileSpinner.warn(`    Source not found: ${file.source}`);
+      if (installed) newFiles.push(installed);
+      continue;
+    }
+
+    const rawContent = await resolveSourceFile(file.source);
+    const newContent = await transformContent(rawContent, file, regComponent, config, sourcePackage, release);
+
+    const { record, conflict } = await processModifiableFile({
+      finalPath,
+      relativeTarget: file.target,
+      newContent,
+      newSourceSha256: file.sourceSha256,
+      ref,
+      installed,
+      strategy,
+      dryRun,
+      fileSpinner,
+      getBaseContent: async () => {
+        const baseRaw = await fetchBaseSource(file.source, installed, sourcePackage, installedRecord?.version); // NOSONAR: intentional v1/v2 manifest backward-compat read
+        if (baseRaw === null) return null;
+        return transformContent(
+          baseRaw, file, regComponent, config, sourcePackage,
+          installed?.ref ?? installedRecord?.release ?? release
+        );
+      },
+    });
+    newFiles.push(record);
+    if (conflict) { componentHadConflict = true; conflictsThisComponent++; }
+  }
+
+  fileSpinner.stop();
+
+  // The new source is on disk now (even with conflicts, .new files reference
+  // the new imports) — make sure its declared npm deps get installed.
+  regComponent.dependencies?.forEach(dep => externalDeps.add(dep));
+
+  const pendingCount = newFiles.filter(f => f.state === 'pending').length;
+
+  if (!dryRun) {
+    config.components ??= {};
+    const record: ComponentInstall = {
+      release,
+      ref,
+      sourcePackage,
+      installedAt: installedRecord?.installedAt ?? new Date().toISOString(),
+      files: newFiles,
+    };
+    config.components[componentName] = record;
+    dirty = true;
+  }
+
+  if (componentHadConflict) {
+    console.log(chalk.yellow(`  ⚠ ${componentName} → ${release} (conflicts — resolve .new files, then re-run)`));
+  } else if (pendingCount > 0) {
+    console.log(chalk.yellow(`  ⚠ ${componentName} → ${release} (${pendingCount} file(s) still pending)`));
+  } else {
+    console.log(chalk.green(`  ✓ ${componentName} upgraded to ${release}`));
+  }
+
+  return { status: 'upgraded', dirty, conflicts: conflictsThisComponent };
+}
+
+type LibModuleUpgradeOutcome =
+  | { status: 'skipped'; dirty: boolean }
+  | { status: 'upgraded'; dirty: boolean; conflicts: number };
+
+/**
+ * Upgrade one installed lib module. Extracted from `upgrade()` for the same
+ * Cognitive Complexity reason as `upgradeOneComponent`, and mirrors its
+ * continue/counter → return/field translation.
+ */
+async function upgradeOneLibModule(
+  moduleName: string,
+  registry: Registry,
+  config: Config,
+  cwd: string,
+  dryRun: boolean,
+  force: boolean,
+  release: string,
+  ref: string,
+  strategy: UpgradeStrategy,
+  externalDeps: Set<string>,
+): Promise<LibModuleUpgradeOutcome> {
+  const mod: LibModule | undefined = registry.lib[moduleName];
+  if (!mod) {
+    console.log(chalk.dim(`  Skipping '${moduleName}' — not found in registry`));
+    return { status: 'skipped', dirty: false };
+  }
+
+  const sourcePackage = mod.sourcePackage ?? '@buildpad/cli';
+  const installedRecord = config.lib?.[moduleName];
+  const isAdoption = !installedRecord;
+
+  // A release can give a module a new dependency (design-system → i18n).
+  // Install what is missing BEFORE writing files that import from it, or
+  // the upgraded copy fails to compile until the user runs `add` by hand.
+  let dirty = false;
+  if (await installMissingLibDeps(mod.internalDependencies, registry, config, cwd, dryRun, externalDeps)) {
+    dirty = true;
+  }
+  // Iterate the same list staleness is computed from. Older lib modules
+  // declare a single file as `path`/`target` rather than in `files`; counting
+  // it as stale but never writing it would leave the module permanently
+  // outdated with no way to resolve it.
+  const modFiles = registryFilesOf(mod);
+  const staleness = computeEntryStaleness(modFiles, installedRecord);
+
+  // A module gains files over time, and a file registered upstream but absent
+  // on disk is work to do regardless of hashes.
+  const libSrcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
+  const missingFiles = modFiles.filter(
+    (f: { target: string }) => !fs.existsSync(path.join(libSrcDir, f.target))
+  );
+
+  const needsWork =
+    isAdoption || missingFiles.length > 0 || staleness.stale || staleness.needsMigrate;
+  if (!needsWork && !force) {
+    console.log(chalk.dim(`  ${moduleName} — already up to date`));
+    return { status: 'skipped', dirty };
+  }
+
+  const staleTargets = staleness.needsMigrate || staleness.untracked
+    ? new Set(modFiles.map(f => f.target))
+    : new Set(staleness.files.filter(f => f.reason !== 'removed').map(f => f.target));
+
+  const from = installedRecord?.release ?? installedRecord?.version ?? 'unknown'; // NOSONAR: intentional v1/v2 manifest backward-compat fallback
+  console.log(
+    chalk.cyan(`  ${moduleName}`) +
+    chalk.dim(isAdoption ? ` install @ ${release}` : ` ${from} → ${release}`)
+  );
+
+  if (!isAdoption) {
+    reportRemovedFiles(moduleName, modFiles, installedRecord!.files ?? []);
+  }
+
+  // Detect first-time adoption of the CLI-managed nav file — when this
+  // upgrade CREATES components/layout/navigation.ts, seed it afterwards
+  // with the nav entries of route modules that are already installed.
+  // (Existing nav files are never re-seeded: removals are user intent.)
+  const navFile = modFiles.find(f =>
+    f.target.endsWith('components/layout/navigation.ts')
+  );
+  const navExistedBefore = navFile
+    ? fs.existsSync(path.join(libSrcDir, navFile.target))
+    : true;
+
+  const fileSpinner = ora('').start();
+  const newFiles: FileChecksum[] = [];
+  let moduleHadConflict = false;
+  let conflictsThisModule = 0;
+
+  for (const file of modFiles) {
+    fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
+
+    // Lib targets are literal paths (no .tsx/.jsx ext swap) — must match copyLibModule.
+    const finalPath = path.join(libSrcDir, file.target);
+    const installed = installedRecord?.files.find(f => f.target === file.target);
+
+    // The nav config is adopt-once: it accumulates user edits and
+    // CLI-inserted route-module entries — upgrades create it when missing
+    // but never overwrite or merge it.
+    if (
+      file.target.endsWith('components/layout/navigation.ts') &&
+      fs.existsSync(finalPath)
+    ) {
+      const existing = await fs.readFile(finalPath, 'utf-8');
+      newFiles.push({
+        target: file.target,
+        sourceSha256: file.sourceSha256,
+        sha256: hashTransformed(existing),
+        ref,
+        state: 'clean',
+      });
+      continue;
+    }
+
+    const onDisk = await fs.pathExists(finalPath);
+    if (!force && !staleTargets.has(file.target) && onDisk && installed) {
+      newFiles.push(installed);
+      continue;
+    }
+
+    if (!(await sourceFileExists(file.source))) {
+      fileSpinner.warn(`    Source not found: ${file.source}`);
+      if (installed) newFiles.push(installed);
+      continue;
+    }
+
+    const rawContent = await resolveSourceFile(file.source);
+    const newContent = transformLibContent(rawContent, file, moduleName, config, sourcePackage, release);
+
+    const { record, conflict } = await processModifiableFile({
+      finalPath,
+      relativeTarget: file.target,
+      newContent,
+      newSourceSha256: file.sourceSha256,
+      ref,
+      installed,
+      strategy,
+      dryRun,
+      fileSpinner,
+      getBaseContent: async () => {
+        if (isAdoption) return null; // no baseline to merge against
+        const baseRaw = await fetchBaseSource(file.source, installed, sourcePackage, installedRecord?.version); // NOSONAR: intentional v1/v2 manifest backward-compat read
+        if (baseRaw === null) return null;
+        return transformLibContent(
+          baseRaw, file, moduleName, config, sourcePackage,
+          installedRecord?.release ?? release
+        );
+      },
+    });
+    newFiles.push(record);
+    if (conflict) { moduleHadConflict = true; conflictsThisModule++; }
+  }
+
+  fileSpinner.stop();
+
+  // Lib deps may carry version specifiers (e.g. "@supabase/ssr@^0.5") — strip
+  // to the bare name, matching add.ts.
+  mod.dependencies?.forEach(dep => externalDeps.add(dep.replace(/@[^@/]*$/, '')));
+
+  const pendingCount = newFiles.filter(f => f.state === 'pending').length;
+
+  if (!dryRun) {
+    config.lib ??= {};
+    config.lib[moduleName] = {
+      release,
+      ref,
+      sourcePackage,
+      installedAt: installedRecord?.installedAt ?? new Date().toISOString(),
+      files: newFiles,
+    };
+    if (!config.installedLib.includes(moduleName)) config.installedLib.push(moduleName);
+    dirty = true;
+
+    // Seed the freshly-adopted nav file from already-installed route
+    // modules (users-routes, files-routes, forms-routes, …).
+    if (navFile && !navExistedBefore) {
+      const navSpinner = ora('').start();
+      for (const libName of config.installedLib) {
+        const installedModule = registry.lib[libName];
+        if (installedModule?.navItems?.length) {
+          await applyNavItems(installedModule, config, cwd, navSpinner);
+        }
+      }
+      navSpinner.stop();
+    }
+  }
+
+  const verb = isAdoption ? 'installed at' : 'upgraded to';
+  if (moduleHadConflict) {
+    console.log(chalk.yellow(`  ⚠ ${moduleName} ${verb} ${release} (conflicts — resolve .new files, then re-run)`));
+  } else if (pendingCount > 0) {
+    console.log(chalk.yellow(`  ⚠ ${moduleName} ${verb} ${release} (${pendingCount} file(s) still pending)`));
+  } else {
+    console.log(chalk.green(`  ✓ ${moduleName} ${verb} ${release}`));
+  }
+
+  return { status: 'upgraded', dirty, conflicts: conflictsThisModule };
+}
+
 export async function upgrade(options: UpgradeOptions) {
   const {
     components: requestedComponents,
@@ -430,12 +780,17 @@ export async function upgrade(options: UpgradeOptions) {
   // `--design` scopes strictly to the design-system lib module (no components).
   let targetComponents: string[] = [];
   let targetLibModules: string[] = [];
+  // Shared by --all and the --force fallback below: both mean "every
+  // installed component/module", just reached via different flags.
+  const selectAllInstalled = () => {
+    targetComponents = config.installedComponents;
+    targetLibModules = config.installedLib;
+  };
 
   if (design) {
     targetLibModules = ['design-system'];
   } else if (all) {
-    targetComponents = config.installedComponents;
-    targetLibModules = config.installedLib;
+    selectAllInstalled();
   } else if (packageFilter) {
     targetComponents = config.installedComponents.filter(name => {
       const reg = registry.components.find(c => c.name === name);
@@ -449,8 +804,7 @@ export async function upgrade(options: UpgradeOptions) {
       else targetComponents.push(name);
     }
   } else if (force) {
-    targetComponents = config.installedComponents;
-    targetLibModules = config.installedLib;
+    selectAllInstalled();
   } else {
     // Default: everything whose upstream content changed, plus anything a
     // previous run left pending. A v2 record has no upstream hash to compare,
@@ -485,131 +839,16 @@ export async function upgrade(options: UpgradeOptions) {
   }
 
   for (const componentName of targetComponents) {
-    const regComponent = registry.components.find(c => c.name === componentName);
-    if (!regComponent) {
-      console.log(chalk.dim(`  Skipping '${componentName}' — not found in registry`));
-      skipped++;
-      continue;
-    }
-
-    const sourcePackage = regComponent.sourcePackage ?? '@buildpad/ui-interfaces';
-    const installedRecord = config.components?.[componentName];
-    const staleness = computeEntryStaleness(registryFilesOf(regComponent), installedRecord);
-
-    if (await installMissingLibDeps(regComponent.internalDependencies, registry, config, cwd, dryRun, externalDeps)) {
-      dirty = true;
-    }
-
-    if (!staleness.stale && !staleness.needsMigrate && !staleness.untracked && !force) {
-      console.log(chalk.dim(`  ${componentName} — already up to date`));
-      skipped++;
-      continue;
-    }
-
-    // Files whose upstream hash is unchanged need no action at all — not even
-    // a prompt. Prompting on them offered to overwrite a user's edits with
-    // byte-identical old content.
-    //
-    // A record with no upstream hashes (v2, or none at all) cannot be compared
-    // file by file, so every file is in scope: this run re-baselines it to v3.
-    const staleTargets = staleness.needsMigrate || staleness.untracked
-      ? new Set(regComponent.files.map(f => f.target))
-      : new Set(staleness.files.filter(f => f.reason !== 'removed').map(f => f.target));
-
-    const from = installedRecord?.release ?? installedRecord?.version ?? 'unknown';
-    console.log(
-      chalk.cyan(`  ${componentName}`) +
-      chalk.dim(force ? ` re-sync @ ${release} (--force)` : ` ${from} → ${release}`)
+    const outcome = await upgradeOneComponent(
+      componentName, registry, config, cwd, dryRun, force, release, ref, strategy, externalDeps
     );
-
-    // Removals are reported here and then simply absent from `newFiles`.
-    reportRemovedFiles(
-      componentName,
-      registryFilesOf(regComponent),
-      installedRecord?.files ?? []
-    );
-
-    const fileSpinner = ora('').start();
-    const newFiles: FileChecksum[] = [];
-    let componentHadConflict = false;
-
-    for (const file of regComponent.files) {
-      fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
-
-      const targetPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
-      const ext = config.tsx ? '.tsx' : '.jsx';
-      const finalPath = targetPath.replace(/\.tsx?$/, ext);
-      const installed = installedRecord?.files.find(f => f.target === file.target);
-
-      // Upstream unchanged and the file is present → leave it alone entirely,
-      // modified or not. Missing on disk still self-heals.
-      const onDisk = await fs.pathExists(finalPath);
-      if (!force && !staleTargets.has(file.target) && onDisk && installed) {
-        newFiles.push(installed);
-        continue;
-      }
-
-      if (!(await sourceFileExists(file.source))) {
-        fileSpinner.warn(`    Source not found: ${file.source}`);
-        if (installed) newFiles.push(installed);
-        continue;
-      }
-
-      const rawContent = await resolveSourceFile(file.source);
-      const newContent = await transformContent(rawContent, file, regComponent, config, sourcePackage, release);
-
-      const { record, conflict } = await processModifiableFile({
-        finalPath,
-        relativeTarget: file.target,
-        newContent,
-        newSourceSha256: file.sourceSha256,
-        ref,
-        installed,
-        strategy,
-        dryRun,
-        fileSpinner,
-        getBaseContent: async () => {
-          const baseRaw = await fetchBaseSource(file.source, installed, sourcePackage, installedRecord?.version);
-          if (baseRaw === null) return null;
-          return transformContent(
-            baseRaw, file, regComponent, config, sourcePackage,
-            installed?.ref ?? installedRecord?.release ?? release
-          );
-        },
-      });
-      newFiles.push(record);
-      if (conflict) { componentHadConflict = true; conflicts++; }
-    }
-
-    fileSpinner.stop();
-
-    // The new source is on disk now (even with conflicts, .new files reference
-    // the new imports) — make sure its declared npm deps get installed.
-    regComponent.dependencies?.forEach(dep => externalDeps.add(dep));
-
-    const pendingCount = newFiles.filter(f => f.state === 'pending').length;
-
-    if (!dryRun) {
-      if (!config.components) config.components = {};
-      const record: ComponentInstall = {
-        release,
-        ref,
-        sourcePackage,
-        installedAt: installedRecord?.installedAt ?? new Date().toISOString(),
-        files: newFiles,
-      };
-      config.components[componentName] = record;
-      dirty = true;
-    }
-
-    if (componentHadConflict) {
-      console.log(chalk.yellow(`  ⚠ ${componentName} → ${release} (conflicts — resolve .new files, then re-run)`));
-    } else if (pendingCount > 0) {
-      console.log(chalk.yellow(`  ⚠ ${componentName} → ${release} (${pendingCount} file(s) still pending)`));
+    if (outcome.dirty) dirty = true;
+    if (outcome.status === 'upgraded') {
+      upgraded++;
+      conflicts += outcome.conflicts;
     } else {
-      console.log(chalk.green(`  ✓ ${componentName} upgraded to ${release}`));
+      skipped++;
     }
-    upgraded++;
   }
 
   // ── Lib modules (e.g. design-system) ──────────────────────────────
@@ -618,181 +857,16 @@ export async function upgrade(options: UpgradeOptions) {
   }
 
   for (const moduleName of targetLibModules) {
-    const mod: LibModule | undefined = registry.lib[moduleName];
-    if (!mod) {
-      console.log(chalk.dim(`  Skipping '${moduleName}' — not found in registry`));
-      skipped++;
-      continue;
-    }
-
-    const sourcePackage = mod.sourcePackage ?? '@buildpad/cli';
-    const installedRecord = config.lib?.[moduleName];
-    const isAdoption = !installedRecord;
-
-    // A release can give a module a new dependency (design-system → i18n).
-    // Install what is missing BEFORE writing files that import from it, or
-    // the upgraded copy fails to compile until the user runs `add` by hand.
-    if (await installMissingLibDeps(mod.internalDependencies, registry, config, cwd, dryRun, externalDeps)) {
-      dirty = true;
-    }
-    // Iterate the same list staleness is computed from. Older lib modules
-    // declare a single file as `path`/`target` rather than in `files`; counting
-    // it as stale but never writing it would leave the module permanently
-    // outdated with no way to resolve it.
-    const modFiles = registryFilesOf(mod);
-    const staleness = computeEntryStaleness(modFiles, installedRecord);
-
-    // A module gains files over time, and a file registered upstream but absent
-    // on disk is work to do regardless of hashes.
-    const libSrcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
-    const missingFiles = modFiles.filter(
-      (f: { target: string }) => !fs.existsSync(path.join(libSrcDir, f.target))
+    const outcome = await upgradeOneLibModule(
+      moduleName, registry, config, cwd, dryRun, force, release, ref, strategy, externalDeps
     );
-
-    const needsWork =
-      isAdoption || missingFiles.length > 0 || staleness.stale || staleness.needsMigrate;
-    if (!needsWork && !force) {
-      console.log(chalk.dim(`  ${moduleName} — already up to date`));
-      skipped++;
-      continue;
-    }
-
-    const staleTargets = staleness.needsMigrate || staleness.untracked
-      ? new Set(modFiles.map(f => f.target))
-      : new Set(staleness.files.filter(f => f.reason !== 'removed').map(f => f.target));
-
-    const from = installedRecord?.release ?? installedRecord?.version ?? 'unknown';
-    console.log(
-      chalk.cyan(`  ${moduleName}`) +
-      chalk.dim(isAdoption ? ` install @ ${release}` : ` ${from} → ${release}`)
-    );
-
-    if (!isAdoption) {
-      reportRemovedFiles(moduleName, modFiles, installedRecord!.files ?? []);
-    }
-
-    // Detect first-time adoption of the CLI-managed nav file — when this
-    // upgrade CREATES components/layout/navigation.ts, seed it afterwards
-    // with the nav entries of route modules that are already installed.
-    // (Existing nav files are never re-seeded: removals are user intent.)
-    const navFile = modFiles.find(f =>
-      f.target.endsWith('components/layout/navigation.ts')
-    );
-    const navExistedBefore = navFile
-      ? fs.existsSync(path.join(libSrcDir, navFile.target))
-      : true;
-
-    const fileSpinner = ora('').start();
-    const newFiles: FileChecksum[] = [];
-    let moduleHadConflict = false;
-
-    for (const file of modFiles) {
-      fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
-
-      // Lib targets are literal paths (no .tsx/.jsx ext swap) — must match copyLibModule.
-      const finalPath = path.join(libSrcDir, file.target);
-      const installed = installedRecord?.files.find(f => f.target === file.target);
-
-      // The nav config is adopt-once: it accumulates user edits and
-      // CLI-inserted route-module entries — upgrades create it when missing
-      // but never overwrite or merge it.
-      if (
-        file.target.endsWith('components/layout/navigation.ts') &&
-        fs.existsSync(finalPath)
-      ) {
-        const existing = await fs.readFile(finalPath, 'utf-8');
-        newFiles.push({
-          target: file.target,
-          sourceSha256: file.sourceSha256,
-          sha256: hashTransformed(existing),
-          ref,
-          state: 'clean',
-        });
-        continue;
-      }
-
-      const onDisk = await fs.pathExists(finalPath);
-      if (!force && !staleTargets.has(file.target) && onDisk && installed) {
-        newFiles.push(installed);
-        continue;
-      }
-
-      if (!(await sourceFileExists(file.source))) {
-        fileSpinner.warn(`    Source not found: ${file.source}`);
-        if (installed) newFiles.push(installed);
-        continue;
-      }
-
-      const rawContent = await resolveSourceFile(file.source);
-      const newContent = transformLibContent(rawContent, file, moduleName, config, sourcePackage, release);
-
-      const { record, conflict } = await processModifiableFile({
-        finalPath,
-        relativeTarget: file.target,
-        newContent,
-        newSourceSha256: file.sourceSha256,
-        ref,
-        installed,
-        strategy,
-        dryRun,
-        fileSpinner,
-        getBaseContent: async () => {
-          if (isAdoption) return null; // no baseline to merge against
-          const baseRaw = await fetchBaseSource(file.source, installed, sourcePackage, installedRecord?.version);
-          if (baseRaw === null) return null;
-          return transformLibContent(
-            baseRaw, file, moduleName, config, sourcePackage,
-            installedRecord?.release ?? release
-          );
-        },
-      });
-      newFiles.push(record);
-      if (conflict) { moduleHadConflict = true; conflicts++; }
-    }
-
-    fileSpinner.stop();
-
-    // Lib deps may carry version specifiers (e.g. "@supabase/ssr@^0.5") — strip
-    // to the bare name, matching add.ts.
-    mod.dependencies?.forEach(dep => externalDeps.add(dep.replace(/@[^@/]*$/, '')));
-
-    const pendingCount = newFiles.filter(f => f.state === 'pending').length;
-
-    if (!dryRun) {
-      if (!config.lib) config.lib = {};
-      config.lib[moduleName] = {
-        release,
-        ref,
-        sourcePackage,
-        installedAt: installedRecord?.installedAt ?? new Date().toISOString(),
-        files: newFiles,
-      };
-      if (!config.installedLib.includes(moduleName)) config.installedLib.push(moduleName);
-      dirty = true;
-
-      // Seed the freshly-adopted nav file from already-installed route
-      // modules (users-routes, files-routes, forms-routes, …).
-      if (navFile && !navExistedBefore) {
-        const navSpinner = ora('').start();
-        for (const libName of config.installedLib) {
-          const installedModule = registry.lib[libName];
-          if (installedModule?.navItems?.length) {
-            await applyNavItems(installedModule, config, cwd, navSpinner);
-          }
-        }
-        navSpinner.stop();
-      }
-    }
-
-    const verb = isAdoption ? 'installed at' : 'upgraded to';
-    if (moduleHadConflict) {
-      console.log(chalk.yellow(`  ⚠ ${moduleName} ${verb} ${release} (conflicts — resolve .new files, then re-run)`));
-    } else if (pendingCount > 0) {
-      console.log(chalk.yellow(`  ⚠ ${moduleName} ${verb} ${release} (${pendingCount} file(s) still pending)`));
+    if (outcome.dirty) dirty = true;
+    if (outcome.status === 'upgraded') {
+      upgraded++;
+      conflicts += outcome.conflicts;
     } else {
-      console.log(chalk.green(`  ✓ ${moduleName} ${verb} ${release}`));
+      skipped++;
     }
-    upgraded++;
   }
 
   if (!dryRun && dirty) {

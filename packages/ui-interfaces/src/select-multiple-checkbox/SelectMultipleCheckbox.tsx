@@ -262,7 +262,7 @@ export function SelectMultipleCheckbox({
       return [];
     }
 
-    const choiceValues = choices.map(c => c.value);
+    const choiceValues = new Set(choices.map(c => c.value));
     // A row backs an entry only if it is CHECKED — i.e. its own typed string is
     // itself in the selection. Matching every row regardless (the previous
     // behaviour) hid a genuinely separate stored value whenever an unrelated,
@@ -277,7 +277,7 @@ export function SelectMultipleCheckbox({
     // the row. The checked-row filter above is what keeps this from
     // over-matching the way a bare String() comparison did.
     return normalizedValue.filter(
-      v => !choiceValues.includes(v) && !checkedRowValues.has(String(v)),
+      v => !choiceValues.has(v) && !checkedRowValues.has(String(v)),
     );
   }, [normalizedValue, choices, allowOther, otherValues]);
 

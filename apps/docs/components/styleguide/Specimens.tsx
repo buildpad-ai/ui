@@ -75,7 +75,6 @@ function ArrowDownRightIcon(props: SVGProps<SVGSVGElement>) {
  */
 export function Specimens() {
   const [activeTab, setActiveTab] = useState<'overview' | 'deployments'>('overview');
-  const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   return (

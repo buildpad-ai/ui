@@ -69,9 +69,7 @@ function loadRegistry(): Registry {
 let _registry: Registry | null = null;
 
 export function getRegistry(): Registry {
-  if (!_registry) {
-    _registry = loadRegistry();
-  }
+  _registry ??= loadRegistry();
   return _registry;
 }
 

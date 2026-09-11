@@ -7,10 +7,21 @@ import {
   Modal,
   Paper,
   Stack,
-  Text as Text2
+  Text
 } from "@mantine/core";
-import { FieldsService, ItemsService, PermissionsService, apiRequest } from "@buildpad/services";
-import { buildFieldsFromDefinition } from "@buildpad/utils";
+import {
+  FieldsService,
+  ItemsService,
+  PermissionsService,
+  apiRequest,
+  useBuildpadTranslations as useBuildpadTranslations2
+} from "@buildpad/services";
+import {
+  buildFieldsFromDefinition,
+  getDefaultValuesFromFields,
+  interpolate as interpolate2,
+  isConcealedValue
+} from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import { IconAlertCircle, IconCheck as IconCheck2, IconTrash, IconX } from "@tabler/icons-react";
 import {
@@ -35,6 +46,7 @@ import {
   IconChevronDown,
   IconDeviceFloppy
 } from "@tabler/icons-react";
+import { useBuildpadTranslations } from "@buildpad/services";
 import { jsx, jsxs } from "react/jsx-runtime";
 var SaveOptions = ({
   disabledOptions = [],
@@ -43,10 +55,12 @@ var SaveOptions = ({
   onSaveAsCopy,
   onDiscardAndStay,
   disabled = false,
-  platform
+  platform,
+  translations
 }) => {
+  const t = useBuildpadTranslations((d) => d.collections.saveOptions, translations?.saveOptions);
   const isMac = platform ? platform === "mac" : typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent);
-  const metaKey = isMac ? "\u2318" : "Ctrl";
+  const metaKey = isMac ? "\u2318" : t.kbd.ctrl;
   const isDisabled = (action) => disabledOptions.includes(action);
   return /* @__PURE__ */ jsxs(Menu, { shadow: "md", width: 280, position: "bottom-end", withArrow: true, children: [
     /* @__PURE__ */ jsx(Menu.Target, { children: /* @__PURE__ */ jsx(
@@ -55,7 +69,7 @@ var SaveOptions = ({
         variant: "filled",
         size: "input-sm",
         disabled,
-        "aria-label": "More save options",
+        "aria-label": t.moreOptions,
         style: {
           borderTopLeftRadius: 0,
           borderBottomLeftRadius: 0,
@@ -75,7 +89,7 @@ var SaveOptions = ({
             /* @__PURE__ */ jsx(Kbd, { size: "xs", children: metaKey }),
             /* @__PURE__ */ jsx(Kbd, { size: "xs", children: "S" })
           ] }),
-          children: "Save and Stay"
+          children: t.saveAndStay
         }
       ),
       /* @__PURE__ */ jsx(
@@ -89,7 +103,7 @@ var SaveOptions = ({
             /* @__PURE__ */ jsx(Kbd, { size: "xs", children: "\u21E7" }),
             /* @__PURE__ */ jsx(Kbd, { size: "xs", children: "S" })
           ] }),
-          children: "Save and Create New"
+          children: t.saveAndCreateNew
         }
       ),
       /* @__PURE__ */ jsx(
@@ -98,7 +112,7 @@ var SaveOptions = ({
           leftSection: /* @__PURE__ */ jsx(IconCopy, { size: 16 }),
           disabled: isDisabled("save-as-copy"),
           onClick: onSaveAsCopy,
-          children: "Save as Copy"
+          children: t.saveAsCopy
         }
       ),
       /* @__PURE__ */ jsx(Menu.Divider, {}),
@@ -109,7 +123,7 @@ var SaveOptions = ({
           disabled: isDisabled("discard-and-stay"),
           onClick: onDiscardAndStay,
           color: "red",
-          children: "Discard Changes"
+          children: t.discardChanges
         }
       )
     ] })
@@ -117,6 +131,7 @@ var SaveOptions = ({
 };
 
 // src/extras-storage.ts
+import { defaultTranslations, interpolate } from "@buildpad/utils";
 var EXTRAS_COLUMN = "extras";
 function isPlainObject(value) {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -145,27 +160,33 @@ function mergeExtras(prev, changed) {
   const base = isPlainObject(prev) ? prev : {};
   return { ...base, ...changed };
 }
-function missingExtrasColumnMessage(collection) {
-  return `This screen has "extras" fields, but the "${collection}" collection has no "${EXTRAS_COLUMN}" (json) column to store them. Add a "${EXTRAS_COLUMN}" json column to "${collection}" (or switch those fields to real columns).`;
+function missingExtrasColumnMessage(collection, template = defaultTranslations.collections.form.errors.missingExtrasColumn) {
+  return interpolate(template, { collection, extrasColumn: EXTRAS_COLUMN });
 }
 
 // src/CollectionForm.tsx
 import { Fragment, jsx as jsx2, jsxs as jsxs2 } from "react/jsx-runtime";
-var SYSTEM_FIELDS = [
+var SYSTEM_FIELDS = /* @__PURE__ */ new Set([
   "id",
   "user_created",
   "user_updated",
   "date_created",
   "date_updated",
   "sort"
-];
-var READ_ONLY_FIELDS = [
+]);
+var NON_FLAT_RELATIONAL_SPECIALS = /* @__PURE__ */ new Set(["m2a", "m2m", "o2m"]);
+var NON_FLAT_RELATIONAL_INTERFACES = /* @__PURE__ */ new Set([
+  "list-m2a",
+  "list-m2m",
+  "list-o2m"
+]);
+var READ_ONLY_FIELDS = /* @__PURE__ */ new Set([
   "id",
   "user_created",
   "user_updated",
   "date_created",
   "date_updated"
-];
+]);
 var EMPTY_OBJECT = {};
 var EMPTY_ARRAY = [];
 function isM2MChangesItem(value) {
@@ -185,8 +206,10 @@ var CollectionForm = ({
   showSaveOptions = false,
   showDelete,
   definition,
-  persist = true
+  persist = true,
+  translations
 }) => {
+  const t = useBuildpadTranslations2((d) => d.collections, translations);
   const definitionSignature = useMemo(
     () => definition ? JSON.stringify(definition) : "",
     [definition]
@@ -202,6 +225,7 @@ var CollectionForm = ({
   const stableIncludeFields = useMemo(() => includeFields, [includeFields]);
   const [fields, setFields] = useState([]);
   const [resolvedPk, setResolvedPk] = useState("id");
+  const [manualPrimaryKeyField, setManualPrimaryKeyField] = useState(null);
   const [formData, setFormData] = useState(stableDefaultValues);
   const [initialFormData, setInitialFormData] = useState(stableDefaultValues);
   const [loading, setLoading] = useState(true);
@@ -212,8 +236,6 @@ var CollectionForm = ({
   const [createAllowed, setCreateAllowed] = useState(true);
   const [updateAllowed, setUpdateAllowed] = useState(true);
   const [deleteAllowed, setDeleteAllowed] = useState(false);
-  const [readableFieldNames, setReadableFieldNames] = useState(null);
-  const [writableFieldNames, setWritableFieldNames] = useState(null);
   const [hasExtrasColumn, setHasExtrasColumn] = useState(true);
   const [m2mJunctionMap, setM2mJunctionMap] = useState({});
   const [deleting, setDeleting] = useState(false);
@@ -236,8 +258,19 @@ var CollectionForm = ({
           PermissionsService.getMyCollectionAccess().catch(() => ({}))
         ]);
         setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
-        const schemaPk = allFields.find((f) => f.schema?.is_primary_key)?.field;
+        const pkField = allFields.find((f) => f.schema?.is_primary_key);
+        const schemaPk = pkField?.field;
         setResolvedPk(schemaPk ?? "id");
+        const isPkAutoGenerated = !!pkField && // integer/bigint identity or serial column
+        (pkField.schema?.has_auto_increment === true || // uuid PK — DaaS marks generated ones special:["uuid"], but the
+        // baseline collection template sets only type:"uuid"
+        pkField.type === "uuid" || pkField.meta?.special?.includes("uuid") === true || // DB-side default (gen_random_uuid(), nextval(...)): the column
+        // fills itself, and these report has_auto_increment:false
+        pkField.schema?.default_value != null || // explicitly not user-writable, so it cannot be user-supplied
+        pkField.meta?.readonly === true);
+        setManualPrimaryKeyField(
+          schemaPk && !isPkAutoGenerated ? schemaPk : null
+        );
         const access = collectionAccess?.[collection] || {};
         const readAccess = access.read;
         const createAccess = access.create;
@@ -253,16 +286,14 @@ var CollectionForm = ({
           readFields = readAccess.fields || null;
           if (readFields && readFields.includes("*")) readFields = null;
         }
-        setReadableFieldNames(readFields);
         const actionAccess = mode === "create" ? createAccess : updateAccess;
         let writeFields = null;
         if (!isAdmin && !isEmptyAccess && actionAccess) {
           writeFields = actionAccess.fields || null;
           if (writeFields && writeFields.includes("*")) writeFields = null;
         }
-        setWritableFieldNames(writeFields);
         let editableFields = allFields.filter((f) => {
-          if (SYSTEM_FIELDS.includes(f.field) && !stableDefaultValues[f.field]) {
+          if (SYSTEM_FIELDS.has(f.field) && (f.field !== schemaPk || isPkAutoGenerated) && !stableDefaultValues[f.field]) {
             return false;
           }
           if (f.type === "alias") {
@@ -320,24 +351,50 @@ var CollectionForm = ({
                 junctionMap[m2mField.field] = {
                   junctionCollection: rel.collection,
                   reverseJunctionField: rel.field,
-                  junctionField: rel.meta.junction_field
+                  junctionField: rel.meta.junction_field,
+                  // Resolved below from the junction collection's own fields.
+                  junctionPrimaryKeyField: "id"
                 };
               }
             }
+            await Promise.all(
+              Object.values(junctionMap).map(async (info) => {
+                try {
+                  const fieldsResp = await apiRequest(`/api/fields/${info.junctionCollection}`);
+                  const pk = (fieldsResp.data ?? []).find((f) => f.schema?.is_primary_key);
+                  if (pk?.field) info.junctionPrimaryKeyField = pk.field;
+                } catch {
+                }
+              })
+            );
             setM2mJunctionMap(junctionMap);
           } catch {
           }
         }
         let initialData = { ...stableDefaultValues };
         if (mode === "create") {
+          const seedableFields = editableFields.filter(
+            (f) => f.meta?.readonly !== true && f.meta?.hidden !== true && (!writeFields || writeFields.includes(f.field))
+          );
+          const schemaDefaults = getDefaultValuesFromFields(seedableFields);
           const presets = actionAccess?.presets;
           if (presets && typeof presets === "object") {
             initialData = { ...presets, ...initialData };
           }
+          initialData = { ...schemaDefaults, ...initialData };
         }
         if (mode === "edit" && id) {
           const itemsService = new ItemsService(collection);
-          const item = await itemsService.readOne(id);
+          const fetchableFields = editableFields.filter((f) => {
+            const special = f.meta?.special ?? [];
+            const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) || !!f.meta?.interface && NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface);
+            return !isNonFlatRelational;
+          }).map((f) => f.field);
+          const resolvedPkField = schemaPk ?? "id";
+          if (!fetchableFields.includes(resolvedPkField)) {
+            fetchableFields.unshift(resolvedPkField);
+          }
+          const item = await itemsService.readOne(id, fetchableFields);
           initialData = { ...initialData, ...item };
         }
         initialData = flattenExtras(initialData, EXTRAS_COLUMN);
@@ -347,9 +404,7 @@ var CollectionForm = ({
         lastLoadKey.current = loadKey;
       } catch (err) {
         console.error("Error loading form data:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load form data"
-        );
+        setError(err instanceof Error ? err.message : t.form.errors.loadFailed);
       } finally {
         setLoading(false);
       }
@@ -363,7 +418,8 @@ var CollectionForm = ({
     stableExcludeFields,
     stableIncludeFields,
     definition,
-    definitionSignature
+    definitionSignature,
+    t
   ]);
   const hasEdits = useMemo(() => {
     const keys = /* @__PURE__ */ new Set([
@@ -371,11 +427,11 @@ var CollectionForm = ({
       ...Object.keys(initialFormData)
     ]);
     for (const key of keys) {
-      if (READ_ONLY_FIELDS.includes(key)) continue;
+      if (READ_ONLY_FIELDS.has(key) && key !== manualPrimaryKeyField) continue;
       if (formData[key] !== initialFormData[key]) return true;
     }
     return false;
-  }, [formData, initialFormData]);
+  }, [formData, initialFormData, manualPrimaryKeyField]);
   const saveAllowed = useMemo(() => {
     if (mode === "create") return createAllowed;
     return updateAllowed;
@@ -403,10 +459,7 @@ var CollectionForm = ({
     return disabled;
   }, [isSavable, mode, hasEdits]);
   const handleFormUpdate = useCallback((values) => {
-    setFormData((prev) => ({
-      ...prev,
-      ...values
-    }));
+    setFormData(values);
     setSuccess(false);
     setFieldErrors({});
   }, []);
@@ -418,7 +471,7 @@ var CollectionForm = ({
       const fieldErrs = {};
       for (const e of errObj.errors) {
         const field = e?.extensions?.field || e?.field;
-        const message = e?.message || "Validation failed";
+        const message = e?.message || t.form.errors.fieldValidationFallback;
         if (field) {
           fieldErrs[String(field)] = String(message);
         }
@@ -429,7 +482,7 @@ var CollectionForm = ({
   };
   const flushM2MChanges = async (parentId, m2mEntries) => {
     for (const { junctionInfo, changes } of m2mEntries) {
-      const { junctionCollection, reverseJunctionField, junctionField } = junctionInfo;
+      const { junctionCollection, reverseJunctionField, junctionField, junctionPrimaryKeyField } = junctionInfo;
       const junctionService = new ItemsService(junctionCollection);
       for (const entry of changes.create) {
         const relatedValue = entry[junctionField];
@@ -441,10 +494,16 @@ var CollectionForm = ({
         });
       }
       for (const entry of changes.update) {
-        const junctionId = entry.id;
-        if (junctionId != null) {
-          await junctionService.updateOne(junctionId, entry);
+        const junctionId = entry[junctionPrimaryKeyField];
+        if (junctionId == null) {
+          throw new Error(
+            interpolate2(t.form.errors.junctionUpdateMissingKey, {
+              junctionCollection,
+              junctionPrimaryKeyField
+            })
+          );
         }
+        await junctionService.updateOne(junctionId, entry);
       }
       for (const junctionId of changes.delete) {
         await junctionService.deleteOne(junctionId);
@@ -464,6 +523,7 @@ var CollectionForm = ({
     try {
       const dataToSave = { ...formData };
       READ_ONLY_FIELDS.forEach((f) => {
+        if (f === manualPrimaryKeyField) return;
         if (!stableDefaultValues[f]) {
           delete dataToSave[f];
         }
@@ -504,7 +564,11 @@ var CollectionForm = ({
           extras: changedExtras
         } = splitData(allChanged);
         if (Object.keys(changedExtras).length > 0) {
-          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          if (!hasExtrasColumn) {
+            throw new Error(
+              missingExtrasColumnMessage(collection, t.form.errors.missingExtrasColumn)
+            );
+          }
           changedData[EXTRAS_COLUMN] = mergeExtras(
             initialFormData[EXTRAS_COLUMN],
             changedExtras
@@ -529,6 +593,9 @@ var CollectionForm = ({
         if (afterSave === "copy") {
           const copyData = { ...dataToSave };
           delete copyData[resolvedPk];
+          for (const [key, val] of Object.entries(copyData)) {
+            if (isConcealedValue(val)) delete copyData[key];
+          }
           const copyResult = await itemsService.createOne(copyData);
           onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
           return;
@@ -554,7 +621,11 @@ var CollectionForm = ({
           extras: createdExtras
         } = splitData(cleanedDataToSave);
         if (Object.keys(createdExtras).length > 0) {
-          if (!hasExtrasColumn) throw new Error(missingExtrasColumnMessage(collection));
+          if (!hasExtrasColumn) {
+            throw new Error(
+              missingExtrasColumnMessage(collection, t.form.errors.missingExtrasColumn)
+            );
+          }
           scalarData[EXTRAS_COLUMN] = createdExtras;
         }
         const result = await itemsService.createOne(scalarData);
@@ -575,9 +646,9 @@ var CollectionForm = ({
       const perFieldErrors = parseValidationErrors(err);
       if (Object.keys(perFieldErrors).length > 0) {
         setFieldErrors(perFieldErrors);
-        setError("Validation failed. Please fix the highlighted fields.");
+        setError(t.form.errors.validationFailed);
       } else {
-        setError(err instanceof Error ? err.message : "Failed to save item");
+        setError(err instanceof Error ? err.message : t.form.errors.saveFailed);
       }
     } finally {
       setSaving(false);
@@ -585,6 +656,7 @@ var CollectionForm = ({
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     await handleSave();
   };
   const handleDiscard = useCallback(() => {
@@ -604,7 +676,7 @@ var CollectionForm = ({
       onDelete?.();
     } catch (err) {
       console.error("Error deleting item:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete item");
+      setError(err instanceof Error ? err.message : t.form.errors.deleteFailed);
       setDeleteConfirmOpen(false);
     } finally {
       setDeleting(false);
@@ -632,22 +704,24 @@ var CollectionForm = ({
         color: "green",
         mb: "md",
         "data-testid": "form-success",
-        children: !persist ? "Looks valid \u2014 preview only, no record was created." : mode === "create" ? "Item created successfully!" : "Item updated successfully!"
+        children: !persist ? t.form.success.previewOnly : mode === "create" ? t.form.success.created : t.form.success.updated
       }
     ),
     /* @__PURE__ */ jsx2("form", { onSubmit: handleSubmit, children: /* @__PURE__ */ jsxs2(Stack, { gap: "md", children: [
-      fields.length === 0 ? /* @__PURE__ */ jsx2(Text2, { c: "dimmed", ta: "center", py: "xl", children: !saveAllowed ? `You don't have permission to ${mode} items in ${collection}` : `No editable fields found for ${collection}` }) : /* @__PURE__ */ jsxs2(Fragment, { children: [
+      fields.length === 0 ? /* @__PURE__ */ jsx2(Text, { c: "dimmed", ta: "center", py: "xl", children: !saveAllowed ? interpolate2(
+        mode === "create" ? t.form.emptyState.noPermissionCreate : t.form.emptyState.noPermissionEdit,
+        { collection }
+      ) : interpolate2(t.form.emptyState.noEditableFields, { collection }) }) : /* @__PURE__ */ jsxs2(Fragment, { children: [
         /* @__PURE__ */ jsx2(
           VForm,
           {
             collection,
             fields,
             modelValue: formData,
-            initialValues: defaultValues,
+            initialValues: initialFormData,
             onUpdate: handleFormUpdate,
             primaryKey,
             disabled: saving || !saveAllowed,
-            loading: saving,
             showNoVisibleFields: false
           }
         ),
@@ -658,7 +732,7 @@ var CollectionForm = ({
             color: "red",
             variant: "light",
             p: "xs",
-            children: /* @__PURE__ */ jsxs2(Text2, { size: "sm", children: [
+            children: /* @__PURE__ */ jsxs2(Text, { size: "sm", children: [
               /* @__PURE__ */ jsx2("strong", { children: field }),
               ": ",
               msg
@@ -678,7 +752,7 @@ var CollectionForm = ({
             disabled: saving || deleting,
             "data-testid": "form-delete-btn",
             style: { marginRight: "auto" },
-            children: "Delete"
+            children: t.form.actions.delete
           }
         ),
         onCancel && /* @__PURE__ */ jsx2(
@@ -689,7 +763,7 @@ var CollectionForm = ({
             leftSection: /* @__PURE__ */ jsx2(IconX, { size: 16 }),
             disabled: saving,
             "data-testid": "form-cancel-btn",
-            children: "Cancel"
+            children: t.form.actions.cancel
           }
         ),
         /* @__PURE__ */ jsxs2(Group2, { gap: 0, style: { gap: 0 }, children: [
@@ -702,7 +776,7 @@ var CollectionForm = ({
               leftSection: /* @__PURE__ */ jsx2(IconCheck2, { size: 16 }),
               "data-testid": "form-submit-btn",
               style: showSaveOptions ? { borderTopRightRadius: 0, borderBottomRightRadius: 0 } : void 0,
-              children: mode === "create" ? "Create" : "Save"
+              children: mode === "create" ? t.form.actions.create : t.form.actions.save
             }
           ),
           showSaveOptions && /* @__PURE__ */ jsx2(
@@ -713,7 +787,8 @@ var CollectionForm = ({
               onSaveAndStay: () => handleSave("stay"),
               onSaveAndAddNew: () => handleSave("add-new"),
               onSaveAsCopy: () => handleSave("copy"),
-              onDiscardAndStay: handleDiscard
+              onDiscardAndStay: handleDiscard,
+              translations
             }
           )
         ] })
@@ -724,12 +799,12 @@ var CollectionForm = ({
       {
         opened: deleteConfirmOpen,
         onClose: () => setDeleteConfirmOpen(false),
-        title: "Confirm Delete",
+        title: t.form.deleteConfirm.title,
         centered: true,
         size: "sm",
         "data-testid": "delete-confirm-modal",
         children: /* @__PURE__ */ jsxs2(Stack, { gap: "md", children: [
-          /* @__PURE__ */ jsx2(Text2, { size: "sm", children: "Are you sure you want to delete this item? This action cannot be undone." }),
+          /* @__PURE__ */ jsx2(Text, { size: "sm", children: t.form.deleteConfirm.message }),
           /* @__PURE__ */ jsxs2(Group2, { justify: "flex-end", children: [
             /* @__PURE__ */ jsx2(
               Button,
@@ -737,7 +812,7 @@ var CollectionForm = ({
                 variant: "default",
                 onClick: () => setDeleteConfirmOpen(false),
                 disabled: deleting,
-                children: "Cancel"
+                children: t.form.deleteConfirm.cancel
               }
             ),
             /* @__PURE__ */ jsx2(
@@ -747,7 +822,7 @@ var CollectionForm = ({
                 onClick: handleDelete,
                 loading: deleting,
                 "data-testid": "delete-confirm-btn",
-                children: "Delete"
+                children: t.form.deleteConfirm.confirm
               }
             )
           ] })
@@ -763,19 +838,27 @@ import {
   Alert as Alert2,
   Badge as Badge4,
   Button as Button6,
-  Collapse as Collapse2,
+  Collapse,
   Group as Group8,
   Menu as Menu3,
   Stack as Stack4,
-  Text as Text6,
+  Text as Text5,
   Tooltip as Tooltip3
 } from "@mantine/core";
 import {
   FieldsService as FieldsService2,
   ItemsService as ItemsService2,
   PermissionsService as PermissionsService2,
-  apiRequest as apiRequest2
+  apiRequest as apiRequest2,
+  useBuildpadI18n as useBuildpadI18n4,
+  useBuildpadTranslations as useBuildpadTranslations8
 } from "@buildpad/services";
+import {
+  interfaceRequiresChoices,
+  interpolate as interpolate3,
+  parseChoiceValues,
+  resolveChoiceLabel
+} from "@buildpad/utils";
 import { VTable } from "@buildpad/ui-table";
 import {
   IconAlertCircle as IconAlertCircle2,
@@ -790,15 +873,16 @@ import {
   IconSortDescending,
   IconX as IconX5
 } from "@tabler/icons-react";
-import { useCallback as useCallback3, useEffect as useEffect2, useMemo as useMemo3, useState as useState3 } from "react";
+import { useCallback as useCallback3, useEffect as useEffect2, useMemo as useMemo3, useRef as useRef2, useState as useState3 } from "react";
 
 // src/CollectionListFooter.tsx
 import {
   Group as Group3,
   Pagination,
   Select,
-  Text as Text3
+  Text as Text2
 } from "@mantine/core";
+import { useBuildpadTranslations as useBuildpadTranslations3 } from "@buildpad/services";
 import { jsx as jsx3, jsxs as jsxs3 } from "react/jsx-runtime";
 var CollectionListFooter = ({
   itemCountDisplay,
@@ -806,13 +890,15 @@ var CollectionListFooter = ({
   onLimitChange,
   page,
   onPageChange,
-  totalPages
+  totalPages,
+  translations
 }) => {
+  const t = useBuildpadTranslations3((d) => d.collections, translations);
   return /* @__PURE__ */ jsxs3("div", { className: "collection-list-footer", "data-testid": "collection-list-footer", children: [
-    /* @__PURE__ */ jsx3(Text3, { size: "sm", c: "dimmed", "data-testid": "collection-list-footer-count", children: itemCountDisplay }),
+    /* @__PURE__ */ jsx3(Text2, { size: "sm", c: "dimmed", "data-testid": "collection-list-footer-count", children: itemCountDisplay }),
     /* @__PURE__ */ jsxs3(Group3, { gap: "sm", children: [
       /* @__PURE__ */ jsxs3(Group3, { gap: 4, children: [
-        /* @__PURE__ */ jsx3(Text3, { size: "xs", c: "dimmed", children: "Per page:" }),
+        /* @__PURE__ */ jsx3(Text2, { size: "xs", c: "dimmed", children: t.listFooter.perPage }),
         /* @__PURE__ */ jsx3(
           Select,
           {
@@ -861,6 +947,7 @@ import {
   IconSearch,
   IconX as IconX3
 } from "@tabler/icons-react";
+import { useBuildpadTranslations as useBuildpadTranslations5 } from "@buildpad/services";
 
 // src/BulkActionsBar.tsx
 import {
@@ -876,23 +963,26 @@ import {
   IconTrash as IconTrash2,
   IconX as IconX2
 } from "@tabler/icons-react";
+import { useBuildpadI18n, useBuildpadTranslations as useBuildpadTranslations4 } from "@buildpad/services";
 import { jsx as jsx4, jsxs as jsxs4 } from "react/jsx-runtime";
 var BulkActionsBar = ({
   selectedIds,
+  selectedRows,
   enableDelete,
   deleteAllowed,
   createAllowed,
   updateAllowed,
   bulkActions,
   onDeleteRequest,
-  onClearSelection
+  onClearSelection,
+  translations
 }) => {
+  const t = useBuildpadTranslations4((d) => d.collections, translations);
+  const common = useBuildpadTranslations4((d) => d.common);
+  const { formatCount } = useBuildpadI18n();
   return /* @__PURE__ */ jsxs4(Group4, { gap: "xs", "data-testid": "collection-list-bulk-actions", children: [
-    /* @__PURE__ */ jsxs4(Badge, { variant: "light", size: "lg", children: [
-      selectedIds.length,
-      " selected"
-    ] }),
-    enableDelete && /* @__PURE__ */ jsx4(Tooltip, { label: deleteAllowed ? "Delete selected" : "Not allowed", children: /* @__PURE__ */ jsx4(
+    /* @__PURE__ */ jsx4(Badge, { variant: "light", size: "lg", children: formatCount(selectedIds.length, t.bulkActions.selectedCount) }),
+    enableDelete && /* @__PURE__ */ jsx4(Tooltip, { label: deleteAllowed ? t.bulkActions.deleteSelectedTooltip : common.notAllowed, children: /* @__PURE__ */ jsx4(
       Button2,
       {
         variant: "light",
@@ -902,7 +992,7 @@ var BulkActionsBar = ({
         onClick: () => deleteAllowed && onDeleteRequest(selectedIds),
         disabled: !deleteAllowed,
         "data-testid": "bulk-action-delete",
-        children: "Delete"
+        children: t.bulkActions.delete
       }
     ) }),
     bulkActions.map((action, index) => {
@@ -911,22 +1001,28 @@ var BulkActionsBar = ({
       return /* @__PURE__ */ jsx4(
         Tooltip,
         {
-          label: permAllowed ? action.label : "Not allowed",
+          label: permAllowed ? action.label : common.notAllowed,
           children: /* @__PURE__ */ jsx4(
             Button2,
             {
               variant: "light",
               color: action.color,
               size: "compact-sm",
-              leftSection: action.icon || (action.requiredPermission === "delete" ? /* @__PURE__ */ jsx4(IconTrash2, { size: 16 }) : action.requiredPermission === "update" ? /* @__PURE__ */ jsx4(IconEdit, { size: 16 }) : action.requiredPermission === "create" ? /* @__PURE__ */ jsx4(IconPlus2, { size: 16 }) : null),
-              onClick: () => permAllowed && action.action(selectedIds),
+              leftSection: action.icon || (action.requiredPermission === "delete" ? /* @__PURE__ */ jsx4(IconTrash2, { size: 16 }) : action.requiredPermission === "update" ? /* @__PURE__ */ jsx4(IconEdit, { size: 16 }) : (
+                // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+                action.requiredPermission === "create" ? /* @__PURE__ */ jsx4(IconPlus2, { size: 16 }) : (
+                  // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+                  null
+                )
+              )),
+              onClick: () => permAllowed && action.action(selectedIds, selectedRows),
               disabled: !permAllowed,
               "data-testid": `bulk-action-${index}`,
               children: action.label
             }
           )
         },
-        index
+        action.label
       );
     }),
     /* @__PURE__ */ jsx4(
@@ -934,7 +1030,7 @@ var BulkActionsBar = ({
       {
         variant: "subtle",
         onClick: onClearSelection,
-        title: "Clear selection",
+        title: t.bulkActions.clearSelection,
         "data-testid": "collection-list-clear-selection",
         children: /* @__PURE__ */ jsx4(IconX2, { size: 16 })
       }
@@ -958,6 +1054,7 @@ var CollectionListToolbar = ({
   onRefresh,
   enableSelection,
   selectedIds,
+  selectedRows,
   enableDelete,
   deleteAllowed,
   createAllowed,
@@ -966,15 +1063,18 @@ var CollectionListToolbar = ({
   onDeleteRequest,
   onClearSelection,
   enableCreate,
-  onCreate
+  onCreate,
+  translations
 }) => {
+  const t = useBuildpadTranslations5((d) => d.collections, translations);
+  const common = useBuildpadTranslations5((d) => d.common);
   const showBulkActions = enableSelection && selectedIds.length > 0;
   return /* @__PURE__ */ jsxs5("div", { className: "collection-list-toolbar", "data-testid": "collection-list-toolbar", children: [
     /* @__PURE__ */ jsxs5(Group5, { gap: "xs", children: [
       enableSearch && /* @__PURE__ */ jsx5(
         TextInput,
         {
-          placeholder: "Search...",
+          placeholder: t.listToolbar.searchPlaceholder,
           leftSection: /* @__PURE__ */ jsx5(IconSearch, { size: 16 }),
           value: search,
           onChange: (e) => onSearchChange(e.currentTarget.value),
@@ -984,7 +1084,7 @@ var CollectionListToolbar = ({
               variant: "subtle",
               size: "xs",
               onClick: () => onSearchChange(""),
-              "aria-label": "Clear search",
+              "aria-label": t.listToolbar.clearSearch,
               children: /* @__PURE__ */ jsx5(IconX3, { size: 12 })
             }
           ) : void 0,
@@ -993,13 +1093,13 @@ var CollectionListToolbar = ({
           "data-testid": "collection-list-search"
         }
       ),
-      enableFilter && /* @__PURE__ */ jsx5(Tooltip2, { label: filterPanelOpen ? "Hide filters" : "Show filters", children: /* @__PURE__ */ jsxs5(
+      enableFilter && /* @__PURE__ */ jsx5(Tooltip2, { label: filterPanelOpen ? t.listToolbar.hideFilters : t.listToolbar.showFilters, children: /* @__PURE__ */ jsxs5(
         ActionIcon3,
         {
           variant: activeFilterCount > 0 ? "filled" : "subtle",
           color: activeFilterCount > 0 ? "primary" : void 0,
           onClick: onToggleFilterPanel,
-          title: "Toggle filter panel",
+          title: t.listToolbar.toggleFilterPanel,
           "data-testid": "collection-list-filter-toggle",
           pos: "relative",
           children: [
@@ -1026,9 +1126,9 @@ var CollectionListToolbar = ({
             if (val) onArchiveFilterChange(val);
           },
           data: [
-            { value: "all", label: "All Items" },
-            { value: "unarchived", label: "Active Items" },
-            { value: "archived", label: "Archived Items" }
+            { value: "all", label: t.listToolbar.archive.all },
+            { value: "unarchived", label: t.listToolbar.archive.active },
+            { value: "archived", label: t.listToolbar.archive.archived }
           ],
           size: "sm",
           leftSection: /* @__PURE__ */ jsx5(IconArchive, { size: 14 }),
@@ -1041,7 +1141,7 @@ var CollectionListToolbar = ({
         {
           variant: "subtle",
           onClick: onRefresh,
-          title: "Refresh",
+          title: t.listToolbar.refresh,
           "data-testid": "collection-list-refresh",
           children: /* @__PURE__ */ jsx5(IconRefresh, { size: 16 })
         }
@@ -1052,16 +1152,18 @@ var CollectionListToolbar = ({
         BulkActionsBar,
         {
           selectedIds,
+          selectedRows,
           enableDelete,
           deleteAllowed,
           createAllowed,
           updateAllowed,
           bulkActions,
           onDeleteRequest,
-          onClearSelection
+          onClearSelection,
+          translations
         }
       ),
-      enableCreate && onCreate && /* @__PURE__ */ jsx5(Tooltip2, { label: createAllowed ? "Create item" : "Not allowed", children: /* @__PURE__ */ jsx5(
+      enableCreate && onCreate && /* @__PURE__ */ jsx5(Tooltip2, { label: createAllowed ? t.listToolbar.createItem : common.notAllowed, children: /* @__PURE__ */ jsx5(
         Button3,
         {
           variant: "filled",
@@ -1070,8 +1172,8 @@ var CollectionListToolbar = ({
           onClick: createAllowed ? onCreate : void 0,
           disabled: !createAllowed,
           "data-testid": "collection-list-create",
-          "aria-label": createAllowed ? "Create item" : "Create item (not allowed)",
-          children: "Create item"
+          "aria-label": createAllowed ? t.listToolbar.createItem : t.listToolbar.createItemNotAllowed,
+          children: t.listToolbar.createItem
         }
       ) })
     ] })
@@ -1084,33 +1186,31 @@ import {
   Group as Group6,
   Modal as Modal2,
   Stack as Stack2,
-  Text as Text4
+  Text as Text3
 } from "@mantine/core";
+import { useBuildpadI18n as useBuildpadI18n2, useBuildpadTranslations as useBuildpadTranslations6 } from "@buildpad/services";
 import { jsx as jsx6, jsxs as jsxs6 } from "react/jsx-runtime";
 var DeleteConfirmModal = ({
   opened,
   count,
   loading,
   onConfirm,
-  onCancel
+  onCancel,
+  translations
 }) => {
+  const t = useBuildpadTranslations6((d) => d.collections, translations);
+  const { formatCount } = useBuildpadI18n2();
   return /* @__PURE__ */ jsx6(
     Modal2,
     {
       opened,
       onClose: onCancel,
-      title: "Confirm Delete",
+      title: t.deleteConfirm.title,
       centered: true,
       size: "sm",
       "data-testid": "delete-confirm-modal",
       children: /* @__PURE__ */ jsxs6(Stack2, { gap: "md", children: [
-        /* @__PURE__ */ jsxs6(Text4, { size: "sm", children: [
-          "Are you sure you want to delete ",
-          count,
-          " ",
-          count === 1 ? "item" : "items",
-          "? This action cannot be undone."
-        ] }),
+        /* @__PURE__ */ jsx6(Text3, { size: "sm", children: formatCount(count, t.deleteConfirm.message) }),
         /* @__PURE__ */ jsxs6(Group6, { justify: "flex-end", children: [
           /* @__PURE__ */ jsx6(
             Button4,
@@ -1118,7 +1218,7 @@ var DeleteConfirmModal = ({
               variant: "default",
               onClick: onCancel,
               disabled: loading,
-              children: "Cancel"
+              children: t.deleteConfirm.cancel
             }
           ),
           /* @__PURE__ */ jsx6(
@@ -1128,7 +1228,7 @@ var DeleteConfirmModal = ({
               onClick: onConfirm,
               loading,
               "data-testid": "delete-confirm-btn",
-              children: "Delete"
+              children: t.deleteConfirm.confirm
             }
           )
         ] })
@@ -1143,7 +1243,7 @@ import {
   Group as Group7,
   Stack as Stack3,
   Button as Button5,
-  Text as Text5,
+  Text as Text4,
   Select as Select3,
   TextInput as TextInput2,
   NumberInput,
@@ -1160,55 +1260,56 @@ import {
   IconChevronUp,
   IconX as IconX4
 } from "@tabler/icons-react";
+import { useBuildpadI18n as useBuildpadI18n3, useBuildpadTranslations as useBuildpadTranslations7 } from "@buildpad/services";
 import { jsx as jsx7, jsxs as jsxs7 } from "react/jsx-runtime";
 var STRING_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Not equals", value: "_neq", needsValue: true },
-  { label: "Contains", value: "_contains", needsValue: true },
-  { label: "Does not contain", value: "_ncontains", needsValue: true },
-  { label: "Starts with", value: "_starts_with", needsValue: true },
-  { label: "Ends with", value: "_ends_with", needsValue: true },
-  { label: "Is empty", value: "_empty", needsValue: false },
-  { label: "Is not empty", value: "_nempty", needsValue: false },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "notEquals", value: "_neq", needsValue: true },
+  { labelKey: "contains", value: "_contains", needsValue: true },
+  { labelKey: "doesNotContain", value: "_ncontains", needsValue: true },
+  { labelKey: "startsWith", value: "_starts_with", needsValue: true },
+  { labelKey: "endsWith", value: "_ends_with", needsValue: true },
+  { labelKey: "isEmpty", value: "_empty", needsValue: false },
+  { labelKey: "isNotEmpty", value: "_nempty", needsValue: false },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var NUMBER_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Not equals", value: "_neq", needsValue: true },
-  { label: "Greater than", value: "_gt", needsValue: true },
-  { label: "Greater or equal", value: "_gte", needsValue: true },
-  { label: "Less than", value: "_lt", needsValue: true },
-  { label: "Less or equal", value: "_lte", needsValue: true },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "notEquals", value: "_neq", needsValue: true },
+  { labelKey: "greaterThan", value: "_gt", needsValue: true },
+  { labelKey: "greaterOrEqual", value: "_gte", needsValue: true },
+  { labelKey: "lessThan", value: "_lt", needsValue: true },
+  { labelKey: "lessOrEqual", value: "_lte", needsValue: true },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var BOOLEAN_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var DATE_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Not equals", value: "_neq", needsValue: true },
-  { label: "After", value: "_gt", needsValue: true },
-  { label: "On or after", value: "_gte", needsValue: true },
-  { label: "Before", value: "_lt", needsValue: true },
-  { label: "On or before", value: "_lte", needsValue: true },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "notEquals", value: "_neq", needsValue: true },
+  { labelKey: "after", value: "_gt", needsValue: true },
+  { labelKey: "onOrAfter", value: "_gte", needsValue: true },
+  { labelKey: "before", value: "_lt", needsValue: true },
+  { labelKey: "onOrBefore", value: "_lte", needsValue: true },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var UUID_OPERATORS = [
-  { label: "Equals", value: "_eq", needsValue: true },
-  { label: "Not equals", value: "_neq", needsValue: true },
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false }
+  { labelKey: "equals", value: "_eq", needsValue: true },
+  { labelKey: "notEquals", value: "_neq", needsValue: true },
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false }
 ];
 var JSON_OPERATORS = [
-  { label: "Is null", value: "_null", needsValue: false },
-  { label: "Is not null", value: "_nnull", needsValue: false },
-  { label: "Is empty", value: "_empty", needsValue: false },
-  { label: "Is not empty", value: "_nempty", needsValue: false }
+  { labelKey: "isNull", value: "_null", needsValue: false },
+  { labelKey: "isNotNull", value: "_nnull", needsValue: false },
+  { labelKey: "isEmpty", value: "_empty", needsValue: false },
+  { labelKey: "isNotEmpty", value: "_nempty", needsValue: false }
 ];
 function getOperatorsForType(type) {
   switch (type) {
@@ -1278,7 +1379,7 @@ function parseFieldRule(node) {
   const value = opObj[operator];
   return { id: uid(), field, operator, value };
 }
-var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
+var RuleRow = ({ rule, fields, disabled, onChange, onRemove, t }) => {
   const fieldData = useMemo2(
     () => fields.map((f) => ({
       value: f.field,
@@ -1288,7 +1389,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
   );
   const selectedField = fields.find((f) => f.field === rule.field);
   const operators = getOperatorsForType(selectedField?.type || "string");
-  const operatorData = operators.map((o) => ({ value: o.value, label: o.label }));
+  const operatorData = operators.map((o) => ({ value: o.value, label: t.operators[o.labelKey] }));
   const currentOp = operators.find((o) => o.value === rule.operator);
   return /* @__PURE__ */ jsxs7(Group7, { gap: "xs", wrap: "nowrap", "data-testid": "filter-rule", children: [
     /* @__PURE__ */ jsx7(
@@ -1302,7 +1403,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
           onChange({ ...rule, field: val, operator: newOps[0].value, value: null });
         },
         data: fieldData,
-        placeholder: "Field...",
+        placeholder: t.rule.fieldPlaceholder,
         size: "xs",
         style: { minWidth: 130 },
         disabled,
@@ -1332,7 +1433,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
           {
             value: typeof rule.value === "number" ? rule.value : void 0,
             onChange: (val) => onChange({ ...rule, value: val }),
-            placeholder: "Value...",
+            placeholder: t.rule.valuePlaceholder,
             size: "xs",
             style: { minWidth: 100, flex: 1 },
             disabled
@@ -1345,7 +1446,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
           {
             value: rule.value === true ? "true" : rule.value === false ? "false" : "",
             onChange: (val) => onChange({ ...rule, value: val === "true" }),
-            data: [{ value: "true", label: "True" }, { value: "false", label: "False" }],
+            data: [{ value: "true", label: t.rule.booleanTrue }, { value: "false", label: t.rule.booleanFalse }],
             size: "xs",
             style: { minWidth: 80 },
             disabled
@@ -1357,7 +1458,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         {
           value: typeof rule.value === "string" ? rule.value : "",
           onChange: (e) => onChange({ ...rule, value: e.currentTarget.value }),
-          placeholder: ["timestamp", "dateTime", "date"].includes(type) ? "YYYY-MM-DD" : "Value...",
+          placeholder: ["timestamp", "dateTime", "date"].includes(type) ? t.rule.datePlaceholder : t.rule.valuePlaceholder,
           size: "xs",
           style: { minWidth: 120, flex: 1 },
           disabled
@@ -1372,7 +1473,7 @@ var RuleRow = ({ rule, fields, disabled, onChange, onRemove }) => {
         size: "sm",
         onClick: onRemove,
         disabled,
-        title: "Remove filter",
+        title: t.rule.remove,
         children: /* @__PURE__ */ jsx7(IconTrash3, { size: 14 })
       }
     )
@@ -1386,8 +1487,11 @@ var FilterPanel = ({
   collapsible = false,
   defaultCollapsed = true,
   disabled = false,
-  maxDepth = 3
+  maxDepth = 3,
+  translations
 }) => {
+  const t = useBuildpadTranslations7((d) => d.collections.filterPanel, translations?.filterPanel);
+  const { formatCount } = useBuildpadI18n3();
   const [collapsed, setCollapsed] = useState2(defaultCollapsed);
   const [rootGroup, setRootGroup] = useState2(() => {
     if (value && Object.keys(value).length > 0) {
@@ -1410,18 +1514,6 @@ var FilterPanel = ({
       onChange?.({ [group.logical]: nodes });
     }
   }, [onChange]);
-  const addRule = useCallback2(() => {
-    if (fields.length === 0) return;
-    const firstField = fields[0];
-    const ops = getOperatorsForType(firstField.type);
-    const newRule = {
-      id: uid(),
-      field: firstField.field,
-      operator: ops[0].value,
-      value: ops[0].needsValue ? null : true
-    };
-    emitChange({ ...rootGroup, rules: [...rootGroup.rules, newRule] });
-  }, [rootGroup, fields, emitChange]);
   const addGroup = useCallback2(() => {
     const newGroup = {
       id: uid(),
@@ -1455,36 +1547,33 @@ var FilterPanel = ({
           leftSection: /* @__PURE__ */ jsx7(IconFilter2, { size: 14 }),
           rightSection: filterCount > 0 ? /* @__PURE__ */ jsx7(Badge3, { size: "xs", circle: true, children: filterCount }) : /* @__PURE__ */ jsx7(IconChevronDown2, { size: 14 }),
           onClick: () => setCollapsed(false),
-          children: "Filters"
+          children: t.title
         }
       ),
-      filterCount > 0 && /* @__PURE__ */ jsx7(ActionIcon4, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, title: "Clear all filters", children: /* @__PURE__ */ jsx7(IconX4, { size: 12 }) })
+      filterCount > 0 && /* @__PURE__ */ jsx7(ActionIcon4, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, title: t.clearAllFilters, children: /* @__PURE__ */ jsx7(IconX4, { size: 12 }) })
     ] });
   }
   const content = /* @__PURE__ */ jsxs7(Stack3, { gap: "xs", "data-testid": "filter-panel", children: [
     /* @__PURE__ */ jsxs7(Group7, { justify: "space-between", children: [
       /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
         /* @__PURE__ */ jsx7(IconFilter2, { size: 16, style: { color: "var(--mantine-color-dimmed)" } }),
-        /* @__PURE__ */ jsx7(Text5, { size: "sm", fw: 600, children: "Filters" }),
-        filterCount > 0 && /* @__PURE__ */ jsxs7(Badge3, { size: "xs", variant: "light", children: [
-          filterCount,
-          " active"
-        ] })
+        /* @__PURE__ */ jsx7(Text4, { size: "sm", fw: 600, children: t.title }),
+        filterCount > 0 && /* @__PURE__ */ jsx7(Badge3, { size: "xs", variant: "light", children: formatCount(filterCount, t.activeCount) })
       ] }),
       /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
-        filterCount > 0 && /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, children: "Clear all" }),
+        filterCount > 0 && /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", color: "dimmed", onClick: clearAll, children: t.clearAll }),
         collapsible && /* @__PURE__ */ jsx7(ActionIcon4, { variant: "subtle", size: "xs", onClick: () => setCollapsed(true), children: /* @__PURE__ */ jsx7(IconChevronUp, { size: 14 }) })
       ] })
     ] }),
     rootGroup.rules.length > 1 && /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
-      /* @__PURE__ */ jsx7(Text5, { size: "xs", c: "dimmed", children: "Match" }),
+      /* @__PURE__ */ jsx7(Text4, { size: "xs", c: "dimmed", children: t.match }),
       /* @__PURE__ */ jsx7(
         Button5,
         {
           variant: rootGroup.logical === "_and" ? "filled" : "outline",
           size: "compact-xs",
           onClick: () => rootGroup.logical !== "_and" && toggleLogical(),
-          children: "ALL"
+          children: t.matchAll
         }
       ),
       /* @__PURE__ */ jsx7(
@@ -1493,19 +1582,16 @@ var FilterPanel = ({
           variant: rootGroup.logical === "_or" ? "filled" : "outline",
           size: "compact-xs",
           onClick: () => rootGroup.logical !== "_or" && toggleLogical(),
-          children: "ANY"
+          children: t.matchAny
         }
       )
     ] }),
-    rootGroup.rules.length === 0 ? /* @__PURE__ */ jsx7(Text5, { size: "sm", c: "dimmed", children: 'No filter rules. Click "Add filter" to get started.' }) : /* @__PURE__ */ jsx7(Stack3, { gap: 6, children: rootGroup.rules.map((rule, index) => {
+    rootGroup.rules.length === 0 ? /* @__PURE__ */ jsx7(Text4, { size: "sm", c: "dimmed", children: t.emptyState }) : /* @__PURE__ */ jsx7(Stack3, { gap: 6, children: rootGroup.rules.map((rule, index) => {
       if ("logical" in rule) {
         return /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
-          /* @__PURE__ */ jsxs7(Badge3, { variant: "outline", size: "sm", children: [
-            rule.logical === "_and" ? "AND" : "OR",
-            " group (",
-            rule.rules.length,
-            " rules)"
-          ] }),
+          /* @__PURE__ */ jsx7(Badge3, { variant: "outline", size: "sm", children: formatCount(rule.rules.length, t.group.summary, {
+            logical: rule.logical === "_and" ? t.group.and : t.group.or
+          }) }),
           /* @__PURE__ */ jsx7(
             ActionIcon4,
             {
@@ -1526,14 +1612,15 @@ var FilterPanel = ({
           fields,
           disabled,
           onChange: (updated) => updateRule(index, updated),
-          onRemove: () => removeRule(index)
+          onRemove: () => removeRule(index),
+          t
         },
         rule.id
       );
     }) }),
     /* @__PURE__ */ jsxs7(Group7, { gap: "xs", children: [
       /* @__PURE__ */ jsxs7(Menu2, { position: "bottom-start", withArrow: true, shadow: "sm", children: [
-        /* @__PURE__ */ jsx7(Menu2.Target, { children: /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", leftSection: /* @__PURE__ */ jsx7(IconPlus4, { size: 14 }), children: "Add filter" }) }),
+        /* @__PURE__ */ jsx7(Menu2.Target, { children: /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", leftSection: /* @__PURE__ */ jsx7(IconPlus4, { size: 14 }), children: t.addFilter }) }),
         /* @__PURE__ */ jsx7(Menu2.Dropdown, { children: fields.map((f) => /* @__PURE__ */ jsx7(
           Menu2.Item,
           {
@@ -1552,7 +1639,7 @@ var FilterPanel = ({
           f.field
         )) })
       ] }),
-      maxDepth > 1 && /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", color: "dimmed", onClick: addGroup, children: "Add group" })
+      maxDepth > 1 && /* @__PURE__ */ jsx7(Button5, { variant: "subtle", size: "xs", color: "dimmed", onClick: addGroup, children: t.addGroup })
     ] })
   ] });
   if (mode === "inline") return content;
@@ -1561,12 +1648,18 @@ var FilterPanel = ({
 
 // src/CollectionList.tsx
 import { jsx as jsx8, jsxs as jsxs8 } from "react/jsx-runtime";
-var SYSTEM_FIELDS2 = [
+var SYSTEM_FIELDS2 = /* @__PURE__ */ new Set([
   "user_created",
   "user_updated",
   "date_created",
   "date_updated"
-];
+]);
+var NON_FLAT_RELATIONAL_SPECIALS2 = /* @__PURE__ */ new Set(["m2a", "m2m", "o2m"]);
+var NON_FLAT_RELATIONAL_INTERFACES2 = /* @__PURE__ */ new Set([
+  "list-m2a",
+  "list-m2m",
+  "list-o2m"
+]);
 var SPACING_HEIGHT = {
   compact: 32,
   cozy: 48,
@@ -1602,8 +1695,12 @@ var CollectionList = ({
   onSortChange: onSortChangeProp,
   onFilterChange,
   onPermissionsLoaded,
-  renderCell: consumerRenderCell
+  renderCell: consumerRenderCell,
+  translations,
+  exactCount = false
 }) => {
+  const t = useBuildpadTranslations8((d) => d.collections, translations);
+  const { formatDate, formatDateTime, formatNumber, formatCount } = useBuildpadI18n4();
   const [allFields, setAllFields] = useState3([]);
   const [resolvedPk, setResolvedPk] = useState3(null);
   const primaryKeyField = primaryKeyFieldProp ?? resolvedPk ?? "id";
@@ -1625,8 +1722,9 @@ var CollectionList = ({
   const [deletingIds, setDeletingIds] = useState3([]);
   const [deleteLoading, setDeleteLoading] = useState3(false);
   const [headerOverrides, setHeaderOverrides] = useState3({});
+  const loadRequestRef = useRef2(0);
+  const exactTotalRef = useRef2(null);
   const rowHeight = rowHeightProp ?? SPACING_HEIGHT[tableSpacing] ?? 48;
-  const [readableFields, setReadableFields] = useState3(null);
   const [createAllowed, setCreateAllowed] = useState3(true);
   const [updateAllowed, setUpdateAllowed] = useState3(true);
   const [deleteAllowed, setDeleteAllowed] = useState3(true);
@@ -1675,10 +1773,12 @@ var CollectionList = ({
           permFields = readAccess.fields ?? null;
           if (permFields && permFields.includes("*")) permFields = null;
         }
-        setReadableFields(permFields);
         let visible = fieldsResult.filter((f) => {
-          if (SYSTEM_FIELDS2.includes(f.field)) return false;
+          if (SYSTEM_FIELDS2.has(f.field)) return false;
           if (f.type === "alias") return false;
+          const special = f.meta?.special ?? [];
+          const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS2.has(s)) || !!f.meta?.interface && NON_FLAT_RELATIONAL_INTERFACES2.has(f.meta.interface);
+          if (isNonFlatRelational) return false;
           const isHidden = f.meta?.hidden ?? f.hidden;
           if (isHidden) return false;
           return true;
@@ -1707,15 +1807,13 @@ var CollectionList = ({
           setVisibleFieldKeys(initial);
         }
         if (visible.length === 0 && !cancelled) {
-          setError(`No visible fields found for collection "${collection}". Verify the collection exists and has non-hidden fields.`);
+          setError(interpolate3(t.list.errors.noVisibleFields, { collection }));
           setLoading(false);
         }
       } catch (err) {
         console.error("Error loading fields:", err);
         if (!cancelled) {
-          setError(
-            "Failed to load collection fields. Make sure the Storybook Host app is running (pnpm dev:host) and connected at http://localhost:3000."
-          );
+          setError(t.list.errors.loadFieldsFailed);
           setLoading(false);
         }
       }
@@ -1724,7 +1822,7 @@ var CollectionList = ({
     return () => {
       cancelled = true;
     };
-  }, [collection, displayFields, primaryKeyFieldProp]);
+  }, [collection, displayFields, primaryKeyFieldProp, t]);
   const mergedFilter = useMemo3(() => {
     const filters = [];
     if (filter && Object.keys(filter).length > 0) filters.push(filter);
@@ -1749,8 +1847,14 @@ var CollectionList = ({
     setSearch("");
     setPage(1);
   }, [collection]);
+  useEffect2(() => {
+    exactTotalRef.current = null;
+  }, [collection, search, mergedFilter, archiveField, archiveFilterMode, archiveValue]);
   const loadItems = useCallback3(async () => {
     if (visibleFieldKeys.length === 0) return;
+    const requestId = ++loadRequestRef.current;
+    const isStale = () => requestId !== loadRequestRef.current;
+    let steppedBack = false;
     try {
       setLoading(true);
       setError(null);
@@ -1758,6 +1862,9 @@ var CollectionList = ({
         limit,
         page
       };
+      if (exactCount) {
+        query.count = "exact";
+      }
       const fieldsToFetch = [...visibleFieldKeys];
       if (!fieldsToFetch.includes(primaryKeyField)) {
         fieldsToFetch.unshift(primaryKeyField);
@@ -1789,26 +1896,38 @@ var CollectionList = ({
         Object.entries(query).filter(([, v]) => v !== void 0 && v !== null).map(([k, v]) => [
           k,
           typeof v === "object" ? JSON.stringify(v) : String(v)
+          // NOSONAR: object case is already handled by this ternary
         ])
       ).toString();
       const rawResponse = await apiRequest2(`/api/items/${collection}${queryString ? `?${queryString}` : ""}`);
+      if (isStale()) return;
       if (Array.isArray(rawResponse)) {
         setItems(rawResponse);
         setFilterCount(rawResponse.length);
       } else {
-        setItems(rawResponse.data || []);
-        if (rawResponse.meta?.total != null) {
-          setFilterCount(rawResponse.meta.total);
-        } else {
-          setFilterCount(rawResponse.data?.length ?? 0);
+        const reported = rawResponse.meta?.total;
+        const fetched = typeof reported === "number" && Number.isFinite(reported) ? reported : null;
+        if (fetched !== null && rawResponse.meta?.total_estimated === false) {
+          exactTotalRef.current = fetched;
         }
+        const total = exactTotalRef.current ?? fetched;
+        const lastPage = total === null ? page : Math.max(1, Math.ceil(total / limit));
+        if (page > lastPage) {
+          steppedBack = true;
+          setFilterCount(total ?? 0);
+          setPage(lastPage);
+          return;
+        }
+        setItems(rawResponse.data || []);
+        setFilterCount(total ?? rawResponse.data?.length ?? 0);
       }
     } catch (err) {
+      if (isStale()) return;
       console.error("Error loading items:", err);
-      setError(err instanceof Error ? err.message : "Failed to load items");
+      setError(err instanceof Error ? err.message : t.list.errors.loadItemsFailed);
       setItems([]);
     } finally {
-      setLoading(false);
+      if (!steppedBack && !isStale()) setLoading(false);
     }
   }, [
     collection,
@@ -1821,7 +1940,9 @@ var CollectionList = ({
     primaryKeyField,
     archiveField,
     archiveFilterMode,
-    archiveValue
+    archiveValue,
+    exactCount,
+    t
   ]);
   const getTotalCount = useCallback3(async () => {
     try {
@@ -1848,6 +1969,16 @@ var CollectionList = ({
     setPage(1);
   }, [search, filter, internalFilter]);
   const permittedFields = useMemo3(() => allFields, [allFields]);
+  const choicesByField = useMemo3(() => {
+    const map = /* @__PURE__ */ new Map();
+    for (const f of permittedFields) {
+      if (!interfaceRequiresChoices(f.meta?.interface ?? "")) continue;
+      const raw = f.meta?.options?.choices;
+      if (!Array.isArray(raw) || raw.length === 0) continue;
+      map.set(f.field, raw);
+    }
+    return map;
+  }, [permittedFields]);
   const headers = useMemo3(() => {
     return visibleFieldKeys.map((key) => {
       const fieldMeta = permittedFields.find((f) => f.field === key);
@@ -1924,16 +2055,23 @@ var CollectionList = ({
     (header) => {
       if (!enableHeaderMenu) return null;
       return /* @__PURE__ */ jsxs8("div", { className: "collection-list-context-menu", role: "menu", children: [
-        /* @__PURE__ */ jsx8(Menu3.Label, { children: "Sort" }),
+        /* @__PURE__ */ jsx8(Menu3.Label, { children: t.list.headerMenu.sort }),
         /* @__PURE__ */ jsxs8(
           "div",
           {
             role: "menuitem",
+            tabIndex: 0,
             className: "mantine-Menu-item collection-list-context-menu-item",
             onClick: () => handleSortChange({ by: header.value, desc: false }),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleSortChange({ by: header.value, desc: false });
+              }
+            },
             children: [
               /* @__PURE__ */ jsx8(IconSortAscending, { size: 14 }),
-              /* @__PURE__ */ jsx8(Text6, { size: "sm", children: "Sort ascending" })
+              /* @__PURE__ */ jsx8(Text5, { size: "sm", children: t.list.headerMenu.sortAscending })
             ]
           }
         ),
@@ -1941,41 +2079,55 @@ var CollectionList = ({
           "div",
           {
             role: "menuitem",
+            tabIndex: 0,
             className: "mantine-Menu-item collection-list-context-menu-item",
             onClick: () => handleSortChange({ by: header.value, desc: true }),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleSortChange({ by: header.value, desc: true });
+              }
+            },
             children: [
               /* @__PURE__ */ jsx8(IconSortDescending, { size: 14 }),
-              /* @__PURE__ */ jsx8(Text6, { size: "sm", children: "Sort descending" })
+              /* @__PURE__ */ jsx8(Text5, { size: "sm", children: t.list.headerMenu.sortDescending })
             ]
           }
         ),
         /* @__PURE__ */ jsx8("div", { className: "collection-list-context-menu-divider" }),
-        /* @__PURE__ */ jsx8(Menu3.Label, { children: "Alignment" }),
+        /* @__PURE__ */ jsx8(Menu3.Label, { children: t.list.headerMenu.alignment }),
         [
           {
             align: "left",
             icon: /* @__PURE__ */ jsx8(IconAlignLeft, { size: 14 }),
-            label: "Align left"
+            label: t.list.headerMenu.alignLeft
           },
           {
             align: "center",
             icon: /* @__PURE__ */ jsx8(IconAlignCenter, { size: 14 }),
-            label: "Align center"
+            label: t.list.headerMenu.alignCenter
           },
           {
             align: "right",
             icon: /* @__PURE__ */ jsx8(IconAlignRight, { size: 14 }),
-            label: "Align right"
+            label: t.list.headerMenu.alignRight
           }
         ].map(({ align, icon, label }) => /* @__PURE__ */ jsxs8(
           "div",
           {
             role: "menuitem",
+            tabIndex: 0,
             className: `mantine-Menu-item collection-list-context-menu-item${header.align === align ? " active" : ""}`,
             onClick: () => handleAlignChange(header.value, align),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleAlignChange(header.value, align);
+              }
+            },
             children: [
               icon,
-              /* @__PURE__ */ jsx8(Text6, { size: "sm", children: label })
+              /* @__PURE__ */ jsx8(Text5, { size: "sm", children: label })
             ]
           },
           align
@@ -1985,17 +2137,24 @@ var CollectionList = ({
           "div",
           {
             role: "menuitem",
+            tabIndex: 0,
             className: "mantine-Menu-item collection-list-context-menu-item danger",
             onClick: () => removeField(header.value),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                removeField(header.value);
+              }
+            },
             children: [
               /* @__PURE__ */ jsx8(IconEyeOff, { size: 14 }),
-              /* @__PURE__ */ jsx8(Text6, { size: "sm", children: "Hide field" })
+              /* @__PURE__ */ jsx8(Text5, { size: "sm", children: t.list.headerMenu.hideField })
             ]
           }
         )
       ] });
     },
-    [enableHeaderMenu, handleSortChange, handleAlignChange, removeField]
+    [enableHeaderMenu, handleSortChange, handleAlignChange, removeField, t]
   );
   const hiddenFields = useMemo3(() => {
     return permittedFields.filter((f) => !visibleFieldKeys.includes(f.field));
@@ -2011,52 +2170,109 @@ var CollectionList = ({
       const value = item[header.value];
       if (value === null || value === void 0) return null;
       const fieldType = fieldMeta.type;
+      const fieldChoices = choicesByField.get(header.value);
+      if (fieldChoices) {
+        const arrayValue = parseChoiceValues(value, fieldChoices);
+        if (arrayValue) {
+          const entries = arrayValue.filter((v) => v !== null && v !== void 0);
+          if (entries.length === 0) return null;
+          return /* @__PURE__ */ jsxs8(Group8, { gap: 4, wrap: "nowrap", children: [
+            entries.slice(0, 3).map((v, i) => /* @__PURE__ */ jsx8(
+              Badge4,
+              {
+                variant: "light",
+                size: "sm",
+                color: "gray",
+                style: { textTransform: "none", minWidth: 0 },
+                children: resolveChoiceLabel(fieldChoices, v) ?? String(v ?? "")
+              },
+              `${String(v)}-${i}`
+            )),
+            entries.length > 3 && // Never the element that gets clipped: it is last in a
+            // nowrap row, so in a narrow column the count of what is
+            // hidden would itself be the first thing hidden.
+            /* @__PURE__ */ jsx8(Text5, { size: "xs", c: "dimmed", style: { flexShrink: 0 }, children: interpolate3(t.list.cell.moreChoices, { count: formatNumber(entries.length - 3) }) })
+          ] });
+        }
+        const label = resolveChoiceLabel(fieldChoices, value);
+        if (label !== void 0) {
+          if (label === "") return null;
+          return /* @__PURE__ */ jsx8(Text5, { size: "sm", truncate: "end", children: label });
+        }
+        if (fieldType !== "json") {
+          const raw = typeof value === "object" ? JSON.stringify(value) : String(value);
+          if (raw === "") return null;
+          return /* @__PURE__ */ jsx8(Text5, { size: "sm", truncate: "end", children: raw });
+        }
+      }
       if (fieldType === "boolean") {
-        return value ? /* @__PURE__ */ jsx8(IconCheck3, { size: 16, color: "var(--mantine-color-green-6)", "aria-label": "Yes" }) : /* @__PURE__ */ jsx8(IconX5, { size: 16, color: "var(--mantine-color-gray-4)", "aria-label": "No" });
+        return value ? /* @__PURE__ */ jsx8(IconCheck3, { size: 16, color: "var(--mantine-color-green-6)", "aria-label": t.list.cell.booleanTrue }) : /* @__PURE__ */ jsx8(IconX5, { size: 16, color: "var(--mantine-color-gray-4)", "aria-label": t.list.cell.booleanFalse });
       }
       if (fieldType === "timestamp" || fieldType === "dateTime" || fieldType === "date") {
         try {
           const dateObj = new Date(value);
-          if (isNaN(dateObj.getTime())) return null;
+          if (Number.isNaN(dateObj.getTime())) return null;
           if (fieldType === "date") {
-            return /* @__PURE__ */ jsx8(Text6, { size: "sm", truncate: "end", children: dateObj.toLocaleDateString() });
+            return /* @__PURE__ */ jsx8(Text5, { size: "sm", truncate: "end", children: formatDate(dateObj, { year: "numeric", month: "numeric", day: "numeric" }) });
           }
-          return /* @__PURE__ */ jsx8(Text6, { size: "sm", truncate: "end", children: dateObj.toLocaleString() });
+          return /* @__PURE__ */ jsx8(Text5, { size: "sm", truncate: "end", children: formatDateTime(dateObj, {
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric"
+          }) });
         } catch {
           return null;
         }
       }
       if (fieldType === "integer" || fieldType === "float" || fieldType === "decimal" || fieldType === "bigInteger") {
         const num = Number(value);
-        if (!isNaN(num)) {
-          return /* @__PURE__ */ jsx8(Text6, { size: "sm", truncate: "end", children: num.toLocaleString() });
+        if (!Number.isNaN(num)) {
+          return /* @__PURE__ */ jsx8(Text5, { size: "sm", truncate: "end", children: formatNumber(num) });
         }
         return null;
       }
       if (fieldType === "json") {
-        return /* @__PURE__ */ jsx8(Badge4, { variant: "light", size: "sm", color: "gray", children: "JSON" });
+        return /* @__PURE__ */ jsx8(Badge4, { variant: "light", size: "sm", color: "gray", children: t.list.cell.jsonBadge });
       }
       if (fieldType === "uuid") {
-        const str = String(value);
-        return /* @__PURE__ */ jsx8(Tooltip3, { label: str, openDelay: 300, children: /* @__PURE__ */ jsxs8(Text6, { size: "sm", truncate: "end", style: { maxWidth: 120 }, children: [
-          str.substring(0, 8),
-          "\u2026"
-        ] }) });
+        const str = typeof value === "object" ? JSON.stringify(value) : String(value);
+        return /* @__PURE__ */ jsx8(Tooltip3, { label: str, openDelay: 300, children: /* @__PURE__ */ jsx8(Text5, { size: "sm", truncate: "end", style: { maxWidth: 120 }, children: interpolate3(t.list.cell.truncated, { value: str.substring(0, 8) }) }) });
+      }
+      if (fieldMeta.meta?.interface === "collection-item-dropdown") {
+        let parsed = value;
+        if (typeof value === "string" && value.trim().startsWith("{")) {
+          try {
+            parsed = JSON.parse(value);
+          } catch {
+          }
+        }
+        if (typeof parsed === "object" && parsed !== null && "key" in parsed) {
+          const keyVal = String(parsed.key);
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(keyVal);
+          if (isUuid) {
+            return /* @__PURE__ */ jsx8(Tooltip3, { label: keyVal, openDelay: 300, children: /* @__PURE__ */ jsx8(Badge4, { variant: "light", size: "sm", color: "blue", style: { textTransform: "none", maxWidth: 120 }, children: interpolate3(t.list.cell.truncated, { value: keyVal.substring(0, 8) }) }) });
+          }
+          return /* @__PURE__ */ jsx8(Badge4, { variant: "light", size: "sm", color: "blue", style: { textTransform: "none" }, children: keyVal });
+        }
+        return /* @__PURE__ */ jsx8(Text5, { size: "sm", truncate: "end", children: typeof value === "object" ? JSON.stringify(value) : String(value) });
       }
       return null;
     },
-    [permittedFields]
+    [permittedFields, choicesByField, t, formatDate, formatDateTime, formatNumber]
   );
   const renderHeaderAppend = useCallback3(() => {
     if (!enableAddField || hiddenFields.length === 0) return null;
     return /* @__PURE__ */ jsxs8(Menu3, { position: "bottom-end", withArrow: true, shadow: "md", closeOnItemClick: true, children: [
-      /* @__PURE__ */ jsx8(Menu3.Target, { children: /* @__PURE__ */ jsx8(ActionIcon5, { variant: "subtle", size: "sm", title: "Add field", children: /* @__PURE__ */ jsx8(IconPlus5, { size: 16 }) }) }),
+      /* @__PURE__ */ jsx8(Menu3.Target, { children: /* @__PURE__ */ jsx8(ActionIcon5, { variant: "subtle", size: "sm", title: t.list.addField.label, children: /* @__PURE__ */ jsx8(IconPlus5, { size: 16 }) }) }),
       /* @__PURE__ */ jsxs8(Menu3.Dropdown, { children: [
-        /* @__PURE__ */ jsx8(Menu3.Label, { children: "Add field" }),
+        /* @__PURE__ */ jsx8(Menu3.Label, { children: t.list.addField.label }),
         hiddenFields.map((f) => /* @__PURE__ */ jsx8(Menu3.Item, { onClick: () => addField(f.field), children: f.meta?.note || f.field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) }, f.field))
       ] })
     ] });
-  }, [enableAddField, hiddenFields, addField]);
+  }, [enableAddField, hiddenFields, addField, t]);
   const handleFilterChange = useCallback3(
     (newFilter) => {
       setInternalFilter(newFilter);
@@ -2087,16 +2303,21 @@ var CollectionList = ({
       setDeletingIds([]);
       setSelectedItems([]);
       onDeleteSuccess?.(deletingIds);
+      exactTotalRef.current = null;
       loadItems();
       getTotalCount();
     } catch (err) {
       console.error("Error deleting items:", err);
-      setError(err instanceof Error ? err.message : "Failed to delete items");
+      setError(err instanceof Error ? err.message : t.list.errors.deleteFailed);
       setDeleteConfirmOpen(false);
     } finally {
       setDeleteLoading(false);
     }
-  }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess]);
+  }, [deletingIds, collection, primaryKeyField, loadItems, getTotalCount, onDeleteSuccess, t]);
+  const handleRefresh = useCallback3(() => {
+    exactTotalRef.current = null;
+    loadItems();
+  }, [loadItems]);
   const handleDeleteCancel = useCallback3(() => {
     setDeleteConfirmOpen(false);
     setDeletingIds([]);
@@ -2105,21 +2326,27 @@ var CollectionList = ({
     return search.trim().length > 0 || filter && Object.keys(filter).length > 0 || internalFilter && Object.keys(internalFilter).length > 0 || archiveField && archiveFilterMode !== "all";
   }, [search, filter, internalFilter, archiveField, archiveFilterMode]);
   const itemCountDisplay = useMemo3(() => {
-    if (loading) return "Loading...";
-    if (filterCount === 0) return "No items";
+    const strings = t.list.itemCount;
+    if (loading) return strings.loading;
+    if (filterCount === 0) return strings.none;
     const from = Math.min((page - 1) * limit + 1, filterCount);
     const to = Math.min(page * limit, filterCount);
+    const values = {
+      from: formatNumber(from),
+      to: formatNumber(to),
+      total: formatNumber(totalCount)
+    };
     if (isFiltered && filterCount < totalCount) {
       if (filterCount <= limit) {
-        return `${filterCount} item${filterCount !== 1 ? "s" : ""} (filtered from ${totalCount})`;
+        return formatCount(filterCount, strings.filteredSinglePage, values);
       }
-      return `${from}\u2013${to} of ${filterCount} items (filtered from ${totalCount})`;
+      return formatCount(filterCount, strings.filteredRange, values);
     }
     if (filterCount <= limit) {
-      return `${filterCount} item${filterCount !== 1 ? "s" : ""}`;
+      return formatCount(filterCount, strings.singlePage);
     }
-    return `${from}\u2013${to} of ${filterCount} items`;
-  }, [loading, totalCount, filterCount, page, limit, isFiltered]);
+    return formatCount(filterCount, strings.range, values);
+  }, [loading, totalCount, filterCount, page, limit, isFiltered, t, formatCount, formatNumber]);
   return /* @__PURE__ */ jsxs8(Stack4, { gap: 0, className: "collection-list", "data-testid": "collection-list", children: [
     /* @__PURE__ */ jsx8(
       CollectionListToolbar,
@@ -2134,9 +2361,10 @@ var CollectionList = ({
         archiveField,
         archiveFilterMode,
         onArchiveFilterChange: setArchiveFilterMode,
-        onRefresh: loadItems,
+        onRefresh: handleRefresh,
         enableSelection,
         selectedIds,
+        selectedRows: selectedItems,
         enableDelete,
         deleteAllowed,
         createAllowed,
@@ -2145,12 +2373,13 @@ var CollectionList = ({
         onDeleteRequest: handleDeleteRequest,
         onClearSelection: () => setSelectedItems([]),
         enableCreate,
-        onCreate
+        onCreate,
+        translations
       }
     ),
-    enableFilter && /* @__PURE__ */ jsx8(Collapse2, { in: filterPanelOpen, children: /* @__PURE__ */ jsxs8("div", { className: "collection-list-filter-panel", "data-testid": "collection-list-filter-panel", children: [
+    enableFilter && /* @__PURE__ */ jsx8(Collapse, { in: filterPanelOpen, children: /* @__PURE__ */ jsxs8("div", { className: "collection-list-filter-panel", "data-testid": "collection-list-filter-panel", children: [
       /* @__PURE__ */ jsxs8(Group8, { justify: "space-between", mb: "xs", children: [
-        /* @__PURE__ */ jsx8(Text6, { size: "sm", fw: 600, children: "Filters" }),
+        /* @__PURE__ */ jsx8(Text5, { size: "sm", fw: 600, children: t.list.filterPanel.title }),
         activeFilterCount > 0 && /* @__PURE__ */ jsx8(
           Button6,
           {
@@ -2159,7 +2388,7 @@ var CollectionList = ({
             leftSection: /* @__PURE__ */ jsx8(IconFilterOff, { size: 14 }),
             onClick: handleClearFilter,
             "data-testid": "collection-list-clear-filters",
-            children: "Clear all"
+            children: t.list.filterPanel.clearAll
           }
         )
       ] }),
@@ -2169,7 +2398,8 @@ var CollectionList = ({
           fields: permittedFields,
           value: internalFilter,
           onChange: handleFilterChange,
-          mode: "inline"
+          mode: "inline",
+          translations
         }
       )
     ] }) }),
@@ -2197,8 +2427,8 @@ var CollectionList = ({
         value: selectedItems,
         fixedHeader: true,
         loading,
-        loadingText: "Loading items...",
-        noItemsText: isFiltered ? "No results \u2014 try adjusting your search or filters" : "No items in this collection",
+        loadingText: t.list.table.loading,
+        noItemsText: isFiltered ? t.list.table.noResultsFiltered : t.list.table.noItems,
         rowHeight,
         selectionUseKeys: true,
         clickable: !!onItemClick,
@@ -2216,7 +2446,8 @@ var CollectionList = ({
             },
             page,
             onPageChange: setPage,
-            totalPages
+            totalPages,
+            translations
           }
         ),
         onUpdate: setSelectedItems,
@@ -2236,7 +2467,8 @@ var CollectionList = ({
         count: deletingIds.length,
         loading: deleteLoading,
         onConfirm: handleDeleteConfirm,
-        onCancel: handleDeleteCancel
+        onCancel: handleDeleteCancel,
+        translations
       }
     )
   ] });
@@ -2249,7 +2481,7 @@ import {
   TextInput as TextInput3,
   Stack as Stack5,
   ScrollArea,
-  Text as Text7,
+  Text as Text6,
   Menu as Menu4,
   ActionIcon as ActionIcon6,
   Group as Group9,
@@ -2268,6 +2500,7 @@ import {
   IconDatabase,
   IconBox
 } from "@tabler/icons-react";
+import { useBuildpadTranslations as useBuildpadTranslations9 } from "@buildpad/services";
 import { Fragment as Fragment2, jsx as jsx9, jsxs as jsxs9 } from "react/jsx-runtime";
 function CollectionIcon({ icon, color }) {
   const iconColor = color || void 0;
@@ -2295,7 +2528,8 @@ function NavigationItem({
   onEditCollection,
   isAdmin,
   search,
-  dense
+  dense,
+  t
 }) {
   const isGroup = node.children.length > 0;
   const isExpanded = activeGroups.includes(node.collection);
@@ -2336,7 +2570,7 @@ function NavigationItem({
     }
   };
   const label = /* @__PURE__ */ jsx9(Group9, { gap: 4, wrap: "nowrap", children: /* @__PURE__ */ jsx9(
-    Text7,
+    Text6,
     {
       size: dense ? "sm" : void 0,
       fw: isActive ? 600 : 400,
@@ -2356,7 +2590,7 @@ function NavigationItem({
         },
         style: { opacity: 0, transition: "opacity 150ms" },
         className: "nav-item-action",
-        "aria-label": "Collection options",
+        "aria-label": t.collectionOptions,
         children: /* @__PURE__ */ jsx9(IconSettings, { size: 14 })
       }
     ) }),
@@ -2365,7 +2599,7 @@ function NavigationItem({
       {
         leftSection: /* @__PURE__ */ jsx9(IconDatabase, { size: 14 }),
         onClick: () => onEditCollection?.(node.collection),
-        children: "Edit Collection"
+        children: t.editCollection
       }
     ) })
   ] }) : null;
@@ -2416,14 +2650,15 @@ function NavigationItem({
               onEditCollection,
               isAdmin,
               search,
-              dense
+              dense,
+              t
             },
             child.collection
           )),
           collectionBookmarks.map((bookmark) => /* @__PURE__ */ jsx9(
             NavLink,
             {
-              label: /* @__PURE__ */ jsx9(Text7, { size: "sm", truncate: true, children: bookmark.bookmark || "Untitled Bookmark" }),
+              label: /* @__PURE__ */ jsx9(Text6, { size: "sm", truncate: true, children: bookmark.bookmark || t.untitledBookmark }),
               leftSection: /* @__PURE__ */ jsx9(
                 IconBookmark,
                 {
@@ -2476,9 +2711,11 @@ var ContentNavigation = ({
   onEditCollection,
   isAdmin = false,
   loading = false,
-  onSearchChange
+  onSearchChange,
+  translations
 }) => {
   const [search, setSearch] = useState4("");
+  const t = useBuildpadTranslations9((d) => d.collections.navigation, translations?.navigation);
   const handleSearchChange = useCallback4(
     (value) => {
       setSearch(value);
@@ -2500,8 +2737,8 @@ var ContentNavigation = ({
   if (rootCollections.length === 0) {
     return /* @__PURE__ */ jsxs9(Stack5, { gap: "md", p: "md", align: "center", justify: "center", style: { minHeight: 200 }, children: [
       /* @__PURE__ */ jsx9(IconBox, { size: 48, color: "var(--mantine-color-gray-5)" }),
-      /* @__PURE__ */ jsx9(Text7, { c: "dimmed", ta: "center", size: "sm", children: "No collections available" }),
-      isAdmin && /* @__PURE__ */ jsx9(Text7, { c: "dimmed", ta: "center", size: "xs", children: "Create your first collection in the data model settings" })
+      /* @__PURE__ */ jsx9(Text6, { c: "dimmed", ta: "center", size: "sm", children: t.emptyState.title }),
+      isAdmin && /* @__PURE__ */ jsx9(Text6, { c: "dimmed", ta: "center", size: "xs", children: t.emptyState.adminHint })
     ] });
   }
   return /* @__PURE__ */ jsxs9(Stack5, { gap: 0, style: { minHeight: "100%" }, children: [
@@ -2510,7 +2747,7 @@ var ContentNavigation = ({
       {
         value: search,
         onChange: (e) => handleSearchChange(e.currentTarget.value),
-        placeholder: "Search collections...",
+        placeholder: t.searchPlaceholder,
         leftSection: /* @__PURE__ */ jsx9(IconSearch2, { size: 16 }),
         size: dense ? "xs" : "sm",
         type: "search"
@@ -2529,7 +2766,8 @@ var ContentNavigation = ({
         onEditCollection,
         isAdmin,
         search,
-        dense
+        dense,
+        t
       },
       node.collection
     )) }) }),
@@ -2549,7 +2787,7 @@ var ContentNavigation = ({
             style: { display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "4px 8px" },
             children: [
               showHidden ? /* @__PURE__ */ jsx9(IconEyeOff2, { size: 16 }) : /* @__PURE__ */ jsx9(IconEye, { size: 16 }),
-              /* @__PURE__ */ jsx9(Text7, { size: "xs", c: "dimmed", children: showHidden ? "Hide hidden collections" : "Show hidden collections" })
+              /* @__PURE__ */ jsx9(Text6, { size: "xs", c: "dimmed", children: showHidden ? t.hideHiddenCollections : t.showHiddenCollections })
             ]
           }
         )
@@ -2596,7 +2834,7 @@ var ContentLayout = ({
   detailWidth = 284,
   children
 }) => {
-  const [sidebarOpened, { toggle: toggleSidebar, close: closeSidebar }] = useDisclosure(true);
+  const [sidebarOpened, { toggle: toggleSidebar }] = useDisclosure(true);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const handleBreadcrumbClick = useCallback5(
     (e, href) => {
@@ -2661,7 +2899,7 @@ var ContentLayout = ({
                           onClick: (e) => handleBreadcrumbClick(e, item.href),
                           children: item.label
                         },
-                        idx
+                        `${item.href ?? item.label}-${idx}`
                       ))
                     }
                   ),

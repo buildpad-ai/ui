@@ -22,7 +22,7 @@ export function parseChangelog(markdown: string): Map<string, string> {
   const lines: string[] = [];
 
   for (const line of markdown.split('\n')) {
-    const match = line.match(VERSION_HEADING);
+    const match = VERSION_HEADING.exec(line);
     if (match) {
       if (currentVersion !== null) {
         sections.set(currentVersion, lines.join('\n').trim());

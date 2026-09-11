@@ -13,28 +13,23 @@
 
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   AppShell,
   Group,
   ActionIcon,
   Title,
-  Text,
   Breadcrumbs,
   Anchor,
   Burger,
   Box,
   ScrollArea,
   Skeleton,
-  Stack,
-  Divider,
-  Tooltip,
 } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import {
   IconMenu2,
   IconChevronRight,
-  IconBox,
 } from '@tabler/icons-react';
 
 export interface BreadcrumbItem {
@@ -131,7 +126,7 @@ export const ContentLayout: React.FC<ContentLayoutProps> = ({
   detailWidth = 284,
   children,
 }) => {
-  const [sidebarOpened, { toggle: toggleSidebar, close: closeSidebar }] =
+  const [sidebarOpened, { toggle: toggleSidebar }] =
     useDisclosure(true);
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -209,7 +204,7 @@ export const ContentLayout: React.FC<ContentLayoutProps> = ({
                 >
                   {breadcrumbs.map((item, idx) => (
                     <Anchor
-                      key={idx}
+                      key={`${item.href ?? item.label}-${idx}`}
                       href={item.href || '#'}
                       size="xs"
                       c="dimmed"

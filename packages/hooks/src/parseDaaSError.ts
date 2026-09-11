@@ -50,11 +50,11 @@ function extractRawMessage(err: unknown): string {
     try {
       return JSON.stringify(err);
     } catch {
-      return String(err);
+      return String(err); // NOSONAR: last-resort fallback when JSON.stringify itself threw (e.g. circular ref); nothing better to show
     }
   }
   if (err === null || err === undefined) return '';
-  return String(err);
+  return String(err); // NOSONAR: err is unreachable as an object here (handled above), so this is always a primitive
 }
 
 /**
@@ -63,7 +63,7 @@ function extractRawMessage(err: unknown): string {
  * response body, then return it only if it looks like JSON.
  */
 function extractJsonBody(message: string): string | null {
-  const match = message.match(/^API error:\s*\d+\s*-\s*([\s\S]*)$/);
+  const match = message.match(/^API error:\s*\d+\s*-\s*([\s\S]*)$/); // NOSONAR: fixed literals separate each quantifier, no ambiguous overlap
   const body = (match ? match[1] : message).trim();
   if (body.startsWith('{') || body.startsWith('[')) return body;
   return null;

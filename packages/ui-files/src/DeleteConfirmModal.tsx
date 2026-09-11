@@ -40,7 +40,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   const nounForms: PluralForms =
     noun === 'file'
       ? t.deleteConfirmModal.noun.file
-      : noun === 'folder'
+      : noun === 'folder' // NOSONAR: idiomatic tri-state ternary, not confusing nesting
         ? t.deleteConfirmModal.noun.folder
         : { one: noun, other: `${noun}s` };
   const message = formatCount(count, t.deleteConfirmModal.message, {

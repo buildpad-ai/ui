@@ -44,7 +44,7 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({
 
       <Stack gap="sm">
         {items.map((item, index) => (
-          <div key={index}>
+          <div key={`${item.label}-${index}`}>
             <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
               {item.label}
             </Text>

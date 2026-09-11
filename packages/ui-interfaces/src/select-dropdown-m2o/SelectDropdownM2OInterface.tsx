@@ -15,7 +15,7 @@ function withNodes(template: string, nodes: Record<string, React.ReactNode>): Re
   return template.split(/(\{\w+\})/g).map((part, index) => {
     const match = /^\{(\w+)\}$/.exec(part);
     if (match && match[1] in nodes) {
-      return <React.Fragment key={index}>{nodes[match[1]]}</React.Fragment>;
+      return <React.Fragment key={index}>{nodes[match[1]]}</React.Fragment>; // NOSONAR: deterministic split of a fixed template string, not a reorderable/stateful list
     }
     return part;
   });
@@ -176,7 +176,7 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
       <Paper withBorder p="md" radius="sm">
         {loading ? (
           <Text size="sm" c="dimmed" ta="center">{t.loading}</Text>
-        ) : !currentId ? (
+        ) : !currentId ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
           <Group>
             <Text size="sm" c="dimmed">{t.noItemSelected}</Text>
             {!disabled && (enableCreate || enableSelect) && (
@@ -204,12 +204,12 @@ export const SelectDropdownM2OInterface: React.FC<SelectDropdownM2OInterfaceProp
               </Group>
             )}
           </Group>
-        ) : renderSelectedItem ? (
+        ) : renderSelectedItem ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
           // `value` may be a bare primitive key (not yet resolved to the full
           // related item) — wrap it under the resolved PK field so consumers
           // of the render prop always receive an item-shaped object.
           renderSelectedItem(
-            typeof value === 'object' && value !== null
+            typeof value === 'object' && value !== null // NOSONAR: idiomatic tri-state ternary, not confusing nesting
               ? (value as M2OItem)
               : ({ [pkField]: value } as unknown as M2OItem),
             handleClear,

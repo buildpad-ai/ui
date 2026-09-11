@@ -152,7 +152,7 @@ export function Tags({
     ).filter(Boolean);
     
     if (alphabetize) {
-      processed = [...processed].sort();
+      processed = [...processed].sort((a, b) => a.localeCompare(b));
     }
     
     // Remove duplicates
@@ -170,7 +170,7 @@ export function Tags({
   const processedPresets = presets.length > 0 ? processArray(presets) : [];
   
   // Separate selected tags into presets and custom
-  const selectedPresets = selectedTags.filter(tag => processedPresets.includes(tag));
+  const selectedPresets = new Set(selectedTags.filter(tag => processedPresets.includes(tag)));
   const selectedCustom = selectedTags.filter(tag => !processedPresets.includes(tag));
 
   const handleTagsChange = (newTags: string[]) => {
@@ -280,11 +280,11 @@ export function Tags({
                     {processedPresets.map((preset) => (
                       <Chip
                         key={preset}
-                        checked={selectedPresets.includes(preset)}
+                        checked={selectedPresets.has(preset)}
                         onChange={() => handlePresetToggle(preset)}
                         disabled={disabled}
                         size="sm"
-                        variant={selectedPresets.includes(preset) ? 'filled' : 'outline'}
+                        variant={selectedPresets.has(preset) ? 'filled' : 'outline'}
                         styles={(theme) => ({
                           root: {
                             cursor: disabled ? 'default' : 'pointer',

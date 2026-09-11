@@ -281,7 +281,7 @@ export function useUrlListParams({ enabled = true, params, onExternalChange }: U
 
 function serializeManaged(params: Record<string, string | null>): string {
   const search = new URLSearchParams();
-  for (const key of Object.keys(params).sort()) {
+  for (const key of Object.keys(params).sort()) { // NOSONAR: deterministic key ordering for URL serialization, not locale-sensitive display
     const value = params[key];
     if (value !== null && value !== '') search.set(key, value);
   }

@@ -14,8 +14,7 @@ import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { useI18n } from '@/lib/i18n/provider';
 import { Stack, Text, Center } from '@mantine/core';
 import { IconBox } from '@tabler/icons-react';
-import { useCollections } from '@/lib/buildpad/hooks';
-import { useLocalStorage } from '@/lib/buildpad/hooks';
+import { useCollections, useLocalStorage } from '@/lib/buildpad/hooks';
 
 export default function ContentIndexPage() {
   const router = useLocaleRouter();

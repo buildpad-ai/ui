@@ -1,4 +1,4 @@
-import { resolve } from 'path';
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 const rootModules = resolve(__dirname, '../../node_modules');
@@ -26,5 +26,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      // A pre-existing bulk-actions-bar failure is unrelated noise that
+      // shouldn't block the lcov report from being written for SonarQube.
+      reportOnFailure: true,
+    },
   },
 });

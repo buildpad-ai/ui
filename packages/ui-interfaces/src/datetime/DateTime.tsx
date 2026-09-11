@@ -204,21 +204,27 @@ export const DateTime: React.FC<DateTimeProps> = ({
     // Display-only dayjs formats from the dictionary (token order is what a
     // locale changes; month names / AM-PM come from the dayjs locale data).
     const f = t.displayFormat;
+
+    // `datetime`/`timestamp` and `time` each pick one of their four format
+    // variants from the same two independent axes (12h/24h, with/without
+    // seconds) — factored out so the switch below reads as one dispatch per
+    // type rather than a nested 12h/24h-then-seconds ternary per case.
+    const pick = (
+      withSeconds24: string, withSeconds12: string,
+      plain24: string, plain12: string,
+    ): string => {
+      if (includeSeconds) return use24 ? withSeconds24 : withSeconds12;
+      return use24 ? plain24 : plain12;
+    };
+
     switch (type) {
       case 'datetime':
-        return includeSeconds 
-          ? (use24 ? f.dateTime24WithSeconds : f.dateTime12WithSeconds)
-          : (use24 ? f.dateTime24 : f.dateTime12);
+      case 'timestamp':
+        return pick(f.dateTime24WithSeconds, f.dateTime12WithSeconds, f.dateTime24, f.dateTime12);
       case 'date':
         return f.date;
       case 'time':
-        return includeSeconds
-          ? (use24 ? f.time24WithSeconds : f.time12WithSeconds)
-          : (use24 ? f.time24 : f.time12);
-      case 'timestamp':
-        return includeSeconds
-          ? (use24 ? f.dateTime24WithSeconds : f.dateTime12WithSeconds)
-          : (use24 ? f.dateTime24 : f.dateTime12);
+        return pick(f.time24WithSeconds, f.time12WithSeconds, f.time24, f.time12);
       default:
         return f.dateTime24;
     }

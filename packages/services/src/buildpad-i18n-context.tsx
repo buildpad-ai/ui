@@ -185,14 +185,12 @@ function buildContextValue({
 /** Value returned by the hooks when no provider is mounted. Built once. */
 let fallbackValue: BuildpadI18nContextValue | null = null;
 function getFallbackValue(): BuildpadI18nContextValue {
-  if (!fallbackValue) {
-    fallbackValue = buildContextValue({
-      locale: undefined,
-      timeZone: undefined,
-      translations: defaultTranslations,
-      hasProvider: false,
-    });
-  }
+  fallbackValue ??= buildContextValue({
+    locale: undefined,
+    timeZone: undefined,
+    translations: defaultTranslations,
+    hasProvider: false,
+  });
   return fallbackValue;
 }
 

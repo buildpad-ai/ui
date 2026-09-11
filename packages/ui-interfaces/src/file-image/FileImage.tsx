@@ -400,6 +400,7 @@ export const FileImage: React.FC<FileImageProps> = ({
         color: 'green',
       });
     } catch (e) {
+      console.error('File download failed:', e);
       notifications.show({ title: t.notifications.downloadFailed.title, message: t.notifications.downloadFailed.message, color: 'red' });
     }
   }, [image, t]);
@@ -417,6 +418,7 @@ export const FileImage: React.FC<FileImageProps> = ({
       setEditOpen(false);
       notifications.show({ title: t.notifications.saved.title, message: t.notifications.saved.message, color: 'green' });
     } catch (e) {
+      console.error('File details update failed:', e);
       notifications.show({ title: t.notifications.updateFailed.title, message: t.notifications.updateFailed.message, color: 'red' });
     }
   }, [image, editTitle, editDescription, t]);
@@ -576,7 +578,7 @@ export const FileImage: React.FC<FileImageProps> = ({
       >
         {loading ? (
           <Skeleton height={220} radius="sm" data-testid="file-image-loading" />
-        ) : internalDisabled && !image ? (
+        ) : internalDisabled && !image ? ( // NOSONAR: idiomatic loading/disabled/image JSX ladder, not confusing nesting
           <Paper 
             withBorder 
             p="md" 
@@ -594,7 +596,7 @@ export const FileImage: React.FC<FileImageProps> = ({
               <Text size="sm">{disabled ? t.disabled : t.noImage}</Text>
             </Group>
           </Paper>
-        ) : image ? (
+        ) : image ? ( // NOSONAR: idiomatic loading/disabled/image JSX ladder, not confusing nesting
           <Box style={{ position: 'relative' }} data-testid="file-image-preview-container">
             <Box
               data-testid="file-image-preview"
@@ -618,7 +620,7 @@ export const FileImage: React.FC<FileImageProps> = ({
                   <IconInfoCircle size={24} />
                   <Text size="xs">{imageError || t.errors.unsupportedMedia}</Text>
                 </Stack>
-              ) : isImage ? (
+              ) : isImage ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                 <VImageBase64
                   src={srcPath}
                   alt={image.title || image.filename_download}

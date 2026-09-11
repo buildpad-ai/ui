@@ -25,6 +25,7 @@ const config = {
     '!src/**/*.test.{ts,tsx}',
     '!src/**/index.ts',
   ],
+  coverageReporters: ['text', 'lcov'],
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',

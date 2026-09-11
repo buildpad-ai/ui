@@ -6,7 +6,7 @@
  * Mocks @buildpad/services, @buildpad/ui-form, @buildpad/ui-table, and FilterPanel.
  */
 
-import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -57,9 +57,10 @@ vi.mock("@buildpad/ui-table", () => ({
     renderFooter,
     noItemsText,
     renderCell,
+    renderHeaderContextMenu,
   }: {
     items: Array<Record<string, unknown>>;
-    headers: Array<{ text: string; value: string }>;
+    headers: Array<{ text: string; value: string; align?: string }>;
     loading: boolean;
     showSelect?: string;
     value?: unknown[];
@@ -68,6 +69,7 @@ vi.mock("@buildpad/ui-table", () => ({
     renderFooter?: () => React.ReactNode;
     noItemsText?: string;
     renderCell?: (item: Record<string, unknown>, header: any) => React.ReactNode;
+    renderHeaderContextMenu?: (header: any) => React.ReactNode;
   }) => (
     <div data-testid="vtable-mock">
       {loading && <div data-testid="vtable-loading">Loading...</div>}
@@ -79,7 +81,14 @@ vi.mock("@buildpad/ui-table", () => ({
           <tr>
             {showSelect === "multiple" && <th>Select</th>}
             {headers.map((h) => (
-              <th key={h.value}>{h.text}</th>
+              <th key={h.value}>
+                {h.text}
+                {renderHeaderContextMenu && (
+                  <div data-testid={`header-menu-${h.value}`}>
+                    {renderHeaderContextMenu(h)}
+                  </div>
+                )}
+              </th>
             ))}
           </tr>
         </thead>
@@ -624,6 +633,89 @@ describe("CollectionList", () => {
 
       // Default mock data has 3 items with limit 25 = 1 page — no pagination control
       expect(screen.queryByTestId("collection-list-pagination-control")).not.toBeInTheDocument();
+    });
+  });
+
+  // =====================================================================
+  // Header context menu (sort / align / hide field)
+  // =====================================================================
+  describe("header context menu", () => {
+    it("calls onSortChange (ascending) on click and on Enter/Space", async () => {
+      const onSortChange = vi.fn();
+      renderList({ onSortChange });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("header-menu-title")).toBeInTheDocument();
+      });
+      const menu = screen.getByTestId("header-menu-title");
+      const ascItem = within(menu).getByText("Sort ascending").closest('[role="menuitem"]')!;
+
+      act(() => { fireEvent.click(ascItem); });
+      expect(onSortChange).toHaveBeenCalledWith({ by: "title", desc: false });
+
+      onSortChange.mockClear();
+      act(() => { fireEvent.keyDown(ascItem, { key: "Enter" }); });
+      expect(onSortChange).toHaveBeenCalledWith({ by: "title", desc: false });
+
+      onSortChange.mockClear();
+      act(() => { fireEvent.keyDown(ascItem, { key: " " }); });
+      expect(onSortChange).toHaveBeenCalledWith({ by: "title", desc: false });
+
+      onSortChange.mockClear();
+      act(() => { fireEvent.keyDown(ascItem, { key: "Tab" }); });
+      expect(onSortChange).not.toHaveBeenCalled();
+    });
+
+    it("calls onSortChange (descending) on click and on Enter/Space", async () => {
+      const onSortChange = vi.fn();
+      renderList({ onSortChange });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("header-menu-title")).toBeInTheDocument();
+      });
+      const menu = screen.getByTestId("header-menu-title");
+      const descItem = within(menu).getByText("Sort descending").closest('[role="menuitem"]')!;
+
+      act(() => { fireEvent.click(descItem); });
+      expect(onSortChange).toHaveBeenCalledWith({ by: "title", desc: true });
+
+      onSortChange.mockClear();
+      act(() => { fireEvent.keyDown(descItem, { key: "Enter" }); });
+      expect(onSortChange).toHaveBeenCalledWith({ by: "title", desc: true });
+    });
+
+    it("changes column alignment on click and on Space", async () => {
+      renderList();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("header-menu-title")).toBeInTheDocument();
+      });
+      const menu = screen.getByTestId("header-menu-title");
+      const rightItem = within(menu).getByText("Align right").closest('[role="menuitem"]')!;
+
+      expect(rightItem.className).not.toContain("active");
+      act(() => { fireEvent.keyDown(rightItem, { key: " " }); });
+
+      await waitFor(() => {
+        expect(rightItem.className).toContain("active");
+      });
+    });
+
+    it("hides the field via onFieldsChange on click and on Enter", async () => {
+      const onFieldsChange = vi.fn();
+      renderList({ onFieldsChange });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("header-menu-title")).toBeInTheDocument();
+      });
+      const menu = screen.getByTestId("header-menu-title");
+      const hideItem = within(menu).getByText("Hide field").closest('[role="menuitem"]')!;
+
+      act(() => { fireEvent.keyDown(hideItem, { key: "Enter" }); });
+
+      expect(onFieldsChange).toHaveBeenCalledWith(
+        expect.not.arrayContaining(["title"]),
+      );
     });
   });
 

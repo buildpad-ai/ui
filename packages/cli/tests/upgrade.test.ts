@@ -416,6 +416,84 @@ describe('upgrade --all', () => {
   });
 });
 
+describe('upgrade — target resolution', () => {
+  test('--force alone (no --all) selects every installed component and module, same as --all', async () => {
+    await setupConsumer({ installedVersion: '2.0.0', fileBody: 'export const old = 1;\n' });
+
+    // Already at the latest sha — without --force this component would be
+    // considered up to date and skipped entirely.
+    const manifest = await readManifest();
+    manifest.components.demo.files[0].sourceSha256 = UPSTREAM_SHA;
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), manifest);
+
+    await upgrade({ components: [], force: true, cwd: tmpdir, strategy: 'overwrite' });
+
+    const after = await readManifest();
+    expect(after.components.demo.release).toBe('2.0.0');
+  });
+
+  test('--package filters installed components to those declared by that source package', async () => {
+    await setupConsumer({ installedVersion: '1.0.0', fileBody: 'export const old = 1;\n' });
+
+    await upgrade({ components: [], package: '@buildpad/ui-interfaces', cwd: tmpdir, strategy: 'overwrite' });
+    expect((await readManifest()).components.demo.release).toBe('2.0.0');
+  });
+
+  test('--package with no matching components upgrades nothing', async () => {
+    const { targetAbs } = await setupConsumer({ installedVersion: '1.0.0', fileBody: 'export const old = 1;\n' });
+
+    await upgrade({ components: [], package: '@buildpad/does-not-exist', cwd: tmpdir, strategy: 'overwrite' });
+    expect((await readManifest()).components.demo.release).toBe('1.0.0');
+    expect(await fs.readFile(targetAbs, 'utf8')).toBe('export const old = 1;\n');
+  });
+
+  test('naming a lib module in `components` upgrades it as a lib module, not a component', async () => {
+    await setupConsumer({ installedVersion: '1.0.0', fileBody: 'export const old = 1;\n' });
+
+    const manifest = await readManifest();
+    manifest.installedLib = ['design-system'];
+    manifest.lib['design-system'] = {
+      release: '1.1.0',
+      ref: 'v1.1.0',
+      sourcePackage: '@buildpad/cli',
+      installedAt: '2026-01-01T00:00:00Z',
+      files: [{
+        target: 'app/globals.css',
+        sourceSha256: OLD_UPSTREAM_SHA,
+        sha256: 'stale-hash',
+        ref: 'v1.1.0',
+        state: 'clean',
+      }],
+    };
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), manifest);
+
+    const globalsAbs = path.join(tmpdir, 'app/globals.css');
+    await fs.ensureDir(path.dirname(globalsAbs));
+    await fs.writeFile(globalsAbs, 'body { color: red; }\n');
+
+    // Naming "design-system" explicitly must upgrade the lib module and leave
+    // the (unrelated, up-to-date) component untouched.
+    await upgrade({ components: ['design-system'], cwd: tmpdir, strategy: 'overwrite' });
+
+    expect(await fs.readFile(globalsAbs, 'utf8')).toContain('globals v2');
+    const after = await readManifest();
+    expect(after.lib['design-system'].release).toBe('2.0.0');
+    expect(after.components.demo.release).toBe('1.0.0');
+  });
+
+  test('everything up to date and no flags set is a no-op', async () => {
+    const { targetAbs } = await setupConsumer({ installedVersion: '2.0.0', fileBody: 'export const old = 1;\n' });
+    const manifest = await readManifest();
+    manifest.components.demo.files[0].sourceSha256 = UPSTREAM_SHA;
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), manifest);
+
+    await upgrade({ components: [], cwd: tmpdir, strategy: 'overwrite' });
+
+    expect(await fs.readFile(targetAbs, 'utf8')).toBe('export const old = 1;\n');
+    expect((await readManifest()).components.demo.release).toBe('2.0.0');
+  });
+});
+
 describe('upgrade --design', () => {
   test('overwrites a pristine design file and bumps the module version', async () => {
     const OLD = 'body { color: red; }\n';

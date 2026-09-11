@@ -263,6 +263,44 @@ describe('ListM2M "Create New" junction linking', () => {
     });
 });
 
+describe('ListM2M enableLink', () => {
+    it('renders an external-link action pointing at the related record', async () => {
+        const { container } = render(
+            <TestWrapper>
+                <ListM2M {...defaultProps} enableLink />
+            </TestWrapper>,
+        );
+
+        // Stage a related item (junction row: tag_id: { id: 42 }) via the
+        // existing "Add Selected" flow used elsewhere in this file.
+        fireEvent.click(await screen.findByText('Add Existing'));
+        fireEvent.click(await screen.findByText('Add Selected'));
+
+        await waitFor(() => {
+            expect(container.querySelector('svg.tabler-icon-external-link')).toBeTruthy();
+        });
+        const icon = container.querySelector('svg.tabler-icon-external-link')!;
+        const link = icon.closest('a')!;
+        expect(link.getAttribute('href')).toBe('/content/tags/42');
+    });
+
+    it('does not render the external-link action when enableLink is false', async () => {
+        const { container } = render(
+            <TestWrapper>
+                <ListM2M {...defaultProps} />
+            </TestWrapper>,
+        );
+
+        fireEvent.click(await screen.findByText('Add Existing'));
+        fireEvent.click(await screen.findByText('Add Selected'));
+
+        await waitFor(() => {
+            expect(container.querySelector('svg.tabler-icon-trash')).toBeTruthy();
+        });
+        expect(container.querySelector('svg.tabler-icon-external-link')).toBeFalsy();
+    });
+});
+
 describe('ListM2M fields= query PK resolution', () => {
     it('resolves the bootstrap "id" to the related PK field in the items query', async () => {
         mockUseRelationM2M.mockReturnValue({

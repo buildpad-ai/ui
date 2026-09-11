@@ -140,7 +140,7 @@ export async function outdated(options: {
       result.outdated.push({
         name: componentName,
         kind: 'component',
-        installedRelease: record?.release ?? record?.version,
+        installedRelease: record?.release ?? record?.version, // NOSONAR: intentional v1/v2 manifest backward-compat fallback
         latestRelease,
         sourcePackage: regComponent.sourcePackage ?? record?.sourcePackage,
         installedAt: record!.installedAt,
@@ -175,7 +175,7 @@ export async function outdated(options: {
       result.outdated.push({
         name: libName,
         kind: 'lib',
-        installedRelease: record?.release ?? record?.version,
+        installedRelease: record?.release ?? record?.version, // NOSONAR: intentional v1/v2 manifest backward-compat fallback
         latestRelease,
         sourcePackage: mod.sourcePackage ?? record?.sourcePackage,
         installedAt: record!.installedAt,

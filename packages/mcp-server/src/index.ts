@@ -13,11 +13,10 @@ import {
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { createHash } from 'crypto';
-import { spawnSync } from 'child_process';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import {
   PACKAGES,
   getAllComponents,
@@ -29,128 +28,18 @@ import {
   getLibModule,
   type ComponentMetadata,
 } from './registry.js';
+import {
+  hashTransformed,
+  staleFilesOf,
+  fetchChangelogContent,
+  changelogSince,
+} from './versioning.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Get the packages root (mcp-server/dist -> packages)
 const PACKAGES_ROOT = join(__dirname, '../..');
-
-// ---------------------------------------------------------------------------
-// Phase 5 helpers — versioning / upgrade support
-// ---------------------------------------------------------------------------
-
-/**
- * Strip the `@buildpad-origin` JSDoc header from a transformed file so that
- * the remaining content can be hashed stably (the header contains the version
- * string which changes on every upgrade).
- */
-function stripOriginHeader(content: string): string {
-  return content.replace(
-    /^(["']use client["'];?\s*\n)?\/\*\*[\s\S]*?@buildpad-origin[\s\S]*?\*\/\s*\n?/,
-    '$1'
-  );
-}
-
-/**
- * Compute a stable SHA-256 hash of a transformed file — strips the origin
- * header, normalises line endings to LF, and ensures a trailing newline.
- */
-function hashTransformed(content: string): string {
-  const stripped = stripOriginHeader(content);
-  const normalised = stripped.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const withNewline = normalised.trimEnd() + '\n';
-  return createHash('sha256').update(withNewline, 'utf8').digest('hex');
-}
-
-/**
- * Compare two semver strings.  Returns -1, 0, or 1.
- * Strips leading non-numeric characters (e.g. "^", "~") before comparing.
- */
-function compareSemver(a: string, b: string): number {
-  const parse = (v: string) =>
-    v.replace(/^[^0-9]*/, '').split('.').map(n => parseInt(n, 10) || 0);
-  const [a0, a1, a2] = parse(a);
-  const [b0, b1, b2] = parse(b);
-  if (a0 !== b0) return a0 < b0 ? -1 : 1;
-  if (a1 !== b1) return a1 < b1 ? -1 : 1;
-  if (a2 !== b2) return a2 < b2 ? -1 : 1;
-  return 0;
-}
-
-/**
- * Files of one installed component that are out of sync with the registry.
- *
- * Mirrors `computeEntryStaleness` in the CLI (packages/cli/src/utils/staleness.ts):
- * a file is stale when the registry's `sourceSha256` differs from the hash
- * recorded at install time, when the last upgrade left it `pending`, or when
- * the registry has added or removed it. Version numbers are not consulted.
- *
- * A manifest older than schema v3 has no per-file `sourceSha256`; those files
- * are reported as `needs-migrate` rather than guessed at.
- */
-function staleFilesOf(
-  regComp: { files?: Array<{ target: string; sourceSha256?: string }> },
-  installed: { files?: Array<{ target: string; sourceSha256?: string; state?: string }> }
-): Array<{ target: string; reason: string }> {
-  const stale: Array<{ target: string; reason: string }> = [];
-  const recorded = new Map((installed.files ?? []).map(f => [f.target, f]));
-
-  for (const rf of regComp.files ?? []) {
-    const rec = recorded.get(rf.target);
-    if (!rec) { stale.push({ target: rf.target, reason: 'added' }); continue; }
-    if (rec.state === 'pending') { stale.push({ target: rf.target, reason: 'pending' }); continue; }
-    if (!rec.sourceSha256) { stale.push({ target: rf.target, reason: 'needs-migrate' }); continue; }
-    if (!rf.sourceSha256) continue;
-    if (rec.sourceSha256 !== rf.sourceSha256) {
-      stale.push({ target: rf.target, reason: 'upstream-changed' });
-    }
-  }
-
-  const registryTargets = new Set((regComp.files ?? []).map(f => f.target));
-  for (const target of recorded.keys()) {
-    if (!registryTargets.has(target)) stale.push({ target, reason: 'removed' });
-  }
-
-  return stale;
-}
-
-const CHANGELOG_RAW_BASE =
-  process.env.BUILDPAD_CHANGELOG_URL?.replace(/\/?$/, '/') ??
-  'https://raw.githubusercontent.com/buildpad-ai/ui/main/packages/';
-
-/** Fetch raw CHANGELOG.md content; returns null on network error. */
-async function fetchChangelogContent(changelogUrl: string): Promise<string | null> {
-  const url = changelogUrl.startsWith('http')
-    ? changelogUrl
-    : `${CHANGELOG_RAW_BASE}${changelogUrl}`;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-    return res.text();
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Return only the changelog sections newer than `since`.
- * If `since` is omitted the full content is returned.
- */
-function changelogSince(content: string, since?: string): string {
-  if (!since) return content.trim();
-  const lines = content.split('\n');
-  let inRange = false;
-  const result: string[] = [];
-  for (const line of lines) {
-    const m = line.match(/^## (\d+\.\d+\.\d+)/);
-    if (m) {
-      inRange = compareSemver(m[1], since) > 0;
-    }
-    if (inRange) result.push(line);
-  }
-  return result.join('\n').trim();
-}
 
 /**
  * Read file content safely
@@ -710,13 +599,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 /**
- * Handle tool execution
+ * Handle tool execution. Exported (not just passed inline to
+ * setRequestHandler) so it can be invoked directly in tests without going
+ * through the MCP stdio transport.
  */
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+export async function handleCallToolRequest(request: { params: { name: string; arguments?: unknown } }) {
   const { name, arguments: args } = request.params;
 
   switch (name) {
-    case 'list_components': {
+    case 'list_components': return (function handleListComponents() {
       const category = (args as any)?.category;
       const components = category
         ? getComponentsByCategory(category)
@@ -730,9 +621,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           },
         ],
       };
-    }
+    })();
 
-    case 'list_lib_modules': {
+    case 'list_lib_modules': return (function handleListLibModules() {
       const libModules = getAllLibModules().map(m => ({
         name: m.name,
         description: m.description,
@@ -750,9 +641,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           },
         ],
       };
-    }
+    })();
 
-    case 'get_component': {
+    case 'get_component': return (function handleGetComponent() {
       const componentName = (args as any)?.name;
       if (!componentName) {
         throw new Error('Component name is required');
@@ -824,9 +715,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           },
         ],
       };
-    }
+    })();
 
-    case 'get_usage_example': {
+    case 'get_usage_example': return (function handleGetUsageExample() {
       const componentName = (args as any)?.component;
       if (!componentName) {
         throw new Error('Component name is required');
@@ -857,9 +748,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           },
         ],
       };
-    }
+    })();
 
-    case 'generate_form': {
+    case 'generate_form': return (function handleGenerateForm() {
       const { collection, fields, mode } = args as any;
       
       const code = `// Copy & Own: cd /path/to/buildpad-ui && pnpm cli add collection-form --project /path/to/your-project
@@ -886,9 +777,9 @@ function ${collection.charAt(0).toUpperCase() + collection.slice(1)}Form() {
           },
         ],
       };
-    }
+    })();
 
-    case 'generate_interface': {
+    case 'generate_interface': return (function handleGenerateInterface() {
       const { type, field, props = {} } = args as any;
 
       // Map interface type to component name
@@ -933,9 +824,9 @@ function Example() {
           },
         ],
       };
-    }
+    })();
 
-    case 'list_packages': {
+    case 'list_packages': return (function handleListPackages() {
       return {
         content: [
           {
@@ -944,9 +835,9 @@ function Example() {
           },
         ],
       };
-    }
+    })();
 
-    case 'get_install_command': {
+    case 'get_install_command': return (function handleGetInstallCommand() {
       const { components, category, all } = args as any;
       
       // NOTE: @buildpad/cli is NOT published to npm. Must use local CLI from cloned repo
@@ -1025,9 +916,9 @@ pnpm cli init --project /path/to/your-project
           },
         ],
       };
-    }
+    })();
 
-    case 'get_copy_own_info': {
+    case 'get_copy_own_info': return (function handleGetCopyOwnInfo() {
       const info = `## Buildpad Copy & Own Distribution Model
 
 Buildpad uses the **Copy & Own** model (like shadcn/ui) instead of traditional npm packages.
@@ -1095,9 +986,9 @@ your-project/
           },
         ],
       };
-    }
+    })();
 
-    case 'copy_component': {
+    case 'copy_component': return (function handleCopyComponent() {
       const componentName = (args as any)?.name;
       const includeLib = (args as any)?.includeLib ?? true;
       
@@ -1256,28 +1147,22 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
           },
         ],
       };
-    }
+    })();
 
-    default:
-      if (name === 'get_rbac_pattern') {
-        return handleGetRbacPattern(args as any);
-      }
+    case 'get_rbac_pattern': return handleGetRbacPattern(args as any);
+    case 'get_module_access_pattern': return handleGetModuleAccessPattern(args as any);
 
-      if (name === 'get_module_access_pattern') {
-        return handleGetModuleAccessPattern(args as any);
-      }
+    // --- Phase 5: versioning tools ---
 
-      // --- Phase 5: versioning tools ---
+    case 'get_package_versions': return (function handleGetPackageVersions() {
+      const registry = getRegistry();
+      const packages = (registry as any).packages ?? {};
+      return {
+        content: [{ type: 'text', text: JSON.stringify(packages, null, 2) }],
+      };
+    })();
 
-      if (name === 'get_package_versions') {
-        const registry = getRegistry();
-        const packages = (registry as any).packages ?? {};
-        return {
-          content: [{ type: 'text', text: JSON.stringify(packages, null, 2) }],
-        };
-      }
-
-      if (name === 'list_outdated') {
+    case 'list_outdated': return (function handleListOutdated() {
         const { projectPath } = args as any;
         if (!projectPath) throw new Error('projectPath is required');
         const configPath = join(projectPath, 'buildpad.json');
@@ -1312,9 +1197,9 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         return {
           content: [{ type: 'text', text: JSON.stringify(outdated, null, 2) }],
         };
-      }
+      })();
 
-      if (name === 'get_component_changelog') {
+    case 'get_component_changelog': return (async function handleGetComponentChangelog() {
         const { target, sinceVersion } = args as any;
         if (!target) throw new Error('target is required');
         const registry = getRegistry();
@@ -1352,9 +1237,9 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
             text: slice || `No changelog entries found${sinceVersion ? ` after version ${sinceVersion}` : ''}.`,
           }],
         };
-      }
+      })();
 
-      if (name === 'get_upgrade_plan') {
+    case 'get_upgrade_plan': return (function handleGetUpgradePlan() {
         const { projectPath, components: requestedComponents } = args as any;
         if (!projectPath) throw new Error('projectPath is required');
         const configPath = join(projectPath, 'buildpad.json');
@@ -1397,7 +1282,7 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
           const modifiedLocally = fileStatuses.some(f => f.status === 'modified');
           const recommendedAction = !isOutdated
             ? 'up-to-date'
-            : !modifiedLocally
+            : !modifiedLocally // NOSONAR: idiomatic tri-state ternary, not confusing nesting
               ? 'safe-overwrite'
               : 'prompt-or-three-way';
 
@@ -1416,9 +1301,9 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         return {
           content: [{ type: 'text', text: JSON.stringify(plan, null, 2) }],
         };
-      }
+      })();
 
-      if (name === 'apply_upgrade') {
+    case 'apply_upgrade': return (function handleApplyUpgrade() {
         const { projectPath, components: requestedComponents, strategy = 'new-file' } = args as any;
         if (!projectPath) throw new Error('projectPath is required');
         const configPath = join(projectPath, 'buildpad.json');
@@ -1437,7 +1322,7 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         }
         cliArgs.push('--cwd', projectPath, '--strategy', strategy);
 
-        const result = spawnSync('npx', cliArgs, {
+        const result = spawnSync('npx', cliArgs, { // NOSONAR: trusted local dev-tool invocation, not exposed to untrusted PATH input
           cwd: projectPath,
           encoding: 'utf-8',
           timeout: 60_000,
@@ -1456,11 +1341,14 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
             }, null, 2),
           }],
         };
-      }
+      })();
 
+    default:
       throw new Error(`Unknown tool: ${name}`);
   }
-});
+}
+
+server.setRequestHandler(CallToolRequestSchema, handleCallToolRequest);
 
 /**
  * Generate RBAC pattern with MCP tool call sequences
@@ -1722,7 +1610,12 @@ async function main() {
   console.error('Buildpad MCP Server running on stdio');
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+// Only auto-start when run directly (`node dist/index.js`), not when
+// imported — lets tests import this module's exports without booting the
+// stdio transport.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}

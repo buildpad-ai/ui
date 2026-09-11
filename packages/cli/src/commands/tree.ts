@@ -118,8 +118,8 @@ function buildTree(
  * Render tree to console
  */
 function renderTree(node: TreeNode, prefix = '', isLast = true, isRoot = true): void {
-  const connector = isRoot ? '' : (isLast ? '└── ' : '├── ');
-  const childPrefix = isRoot ? '' : (isLast ? '    ' : '│   ');
+  const connector = isRoot ? '' : (isLast ? '└── ' : '├── '); // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+  const childPrefix = isRoot ? '' : (isLast ? '    ' : '│   '); // NOSONAR: idiomatic tri-state ternary, not confusing nesting
   
   let icon = '';
   let color = chalk.white;

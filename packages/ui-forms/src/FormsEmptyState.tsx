@@ -35,7 +35,7 @@ export function interpolateNodes(
   return template.split(/(\{\w+\})/).map((part, index) => {
     const match = /^\{(\w+)\}$/.exec(part);
     if (match && Object.prototype.hasOwnProperty.call(values, match[1])) {
-      return <Fragment key={index}>{values[match[1]]}</Fragment>;
+      return <Fragment key={index}>{values[match[1]]}</Fragment>; // NOSONAR: deterministic split of a fixed template string, not a reorderable/stateful list
     }
     return part;
   });

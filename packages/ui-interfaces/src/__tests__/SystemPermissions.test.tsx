@@ -286,6 +286,63 @@ describe('SystemPermissions', () => {
       // Both created items should be removed, resulting in null (empty alterations)
       expect(emitted).toBeNull();
     });
+
+    it('calls onChange when setting full access via Enter on the All shortcut', async () => {
+      const onChange = jest.fn();
+      const value: PermissionAlterations = {
+        create: [
+          { collection: 'articles', action: 'read', fields: ['*'], permissions: null, validation: null, presets: null },
+        ],
+        update: [],
+        delete: [],
+      };
+      await renderWithProvider(
+        <SystemPermissions {...defaultProps} value={value} onChange={onChange} />,
+      );
+
+      const allButton = screen.getByTestId('sp-all-articles');
+      await act(async () => { fireEvent.keyDown(allButton, { key: 'Enter' }); });
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls onChange when setting no access via Space on the None shortcut', async () => {
+      const onChange = jest.fn();
+      const value: PermissionAlterations = {
+        create: [
+          { collection: 'articles', action: 'read', fields: ['*'], permissions: null, validation: null, presets: null },
+        ],
+        update: [],
+        delete: [],
+      };
+      await renderWithProvider(
+        <SystemPermissions {...defaultProps} value={value} onChange={onChange} />,
+      );
+
+      const noneButton = screen.getByTestId('sp-none-articles');
+      await act(async () => { fireEvent.keyDown(noneButton, { key: ' ' }); });
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not trigger the All/None shortcuts on unrelated keys', async () => {
+      const onChange = jest.fn();
+      const value: PermissionAlterations = {
+        create: [
+          { collection: 'articles', action: 'read', fields: ['*'], permissions: null, validation: null, presets: null },
+        ],
+        update: [],
+        delete: [],
+      };
+      await renderWithProvider(
+        <SystemPermissions {...defaultProps} value={value} onChange={onChange} />,
+      );
+
+      const allButton = screen.getByTestId('sp-all-articles');
+      await act(async () => { fireEvent.keyDown(allButton, { key: 'Tab' }); });
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 
   // ───────────────────────────────────────────────────────────
@@ -404,6 +461,20 @@ describe('SystemPermissions', () => {
       await act(async () => { fireEvent.click(resetBtn); });
       expect(screen.getByTestId('sp-reset-dialog')).toBeInTheDocument();
       expect(screen.getByTestId('sp-reset-confirm')).toBeInTheDocument();
+    });
+
+    it('opens reset dialog when pressing Enter on reset minimum', async () => {
+      await renderWithProvider(<SystemPermissions {...defaultProps} appAccess />);
+      const resetBtn = screen.getByTestId('sp-reset-minimum');
+      await act(async () => { fireEvent.keyDown(resetBtn, { key: 'Enter' }); });
+      expect(screen.getByTestId('sp-reset-dialog')).toBeInTheDocument();
+    });
+
+    it('opens reset dialog when pressing Space on reset recommended', async () => {
+      await renderWithProvider(<SystemPermissions {...defaultProps} appAccess />);
+      const resetBtn = screen.getByTestId('sp-reset-recommended');
+      await act(async () => { fireEvent.keyDown(resetBtn, { key: ' ' }); });
+      expect(screen.getByTestId('sp-reset-dialog')).toBeInTheDocument();
     });
   });
 

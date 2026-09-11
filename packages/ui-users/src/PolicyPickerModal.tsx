@@ -133,7 +133,7 @@ export const PolicyPickerModal: React.FC<PolicyPickerModalProps> = ({
             <Text c="dimmed" ta="center" py="xl">
               {t.policyPicker.loading}
             </Text>
-          ) : policies.length === 0 ? (
+          ) : policies.length === 0 ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
             <Text c="dimmed" ta="center" py="xl">
               {search ? t.policyPicker.emptySearch : t.policyPicker.emptyAllAttached}
             </Text>

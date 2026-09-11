@@ -26,8 +26,6 @@ import {
     Paper,
     Menu,
     Badge,
-    Collapse,
-    Switch,
 } from '@mantine/core';
 import {
     IconFilter,
@@ -313,7 +311,7 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                     if (type === 'boolean') {
                         return (
                             <Select
-                                value={rule.value === true ? 'true' : rule.value === false ? 'false' : ''}
+                                value={rule.value === true ? 'true' : rule.value === false ? 'false' : ''} // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                                 onChange={(val) => onChange({ ...rule, value: val === 'true' })}
                                 data={[{ value: 'true', label: t.rule.booleanTrue }, { value: 'false', label: t.rule.booleanFalse }]}
                                 size="xs"
@@ -397,19 +395,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     }, [onChange]);
 
     // ----- Actions -----
-    const addRule = useCallback(() => {
-        if (fields.length === 0) return;
-        const firstField = fields[0];
-        const ops = getOperatorsForType(firstField.type);
-        const newRule: FilterRule = {
-            id: uid(),
-            field: firstField.field,
-            operator: ops[0].value,
-            value: ops[0].needsValue ? null : true,
-        };
-        emitChange({ ...rootGroup, rules: [...rootGroup.rules, newRule] });
-    }, [rootGroup, fields, emitChange]);
-
     const addGroup = useCallback(() => {
         const newGroup: FilterGroup = {
             id: uid(),

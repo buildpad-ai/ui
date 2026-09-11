@@ -296,7 +296,7 @@ export function useRelationM2A(collection: string, field: string) {
                         }
                         // Defensive: strip any stray brackets/quotes from each name
                         // (handles case where DaaS backend split JSON array by comma incorrectly)
-                        allowedNames = allowedNames.map(n => n.replace(/^[\["]+|["\]]+$/g, '').trim()).filter(Boolean);
+                        allowedNames = allowedNames.map(n => n.replace(/^[\["]+|["\]]+$/g, '').trim()).filter(Boolean); // NOSONAR: two independent bounded-alphabet alternatives, linear
 
                         if (allowedNames.length > 0) {
                             // Determine field names from the two relations
@@ -692,7 +692,7 @@ export function useRelationM2AItems(
                                 // the junction `item` column returns a string or number.
                                 itemMap.set(id, item);
                                 itemMap.set(String(id), item);
-                                if (typeof id === 'string' && !isNaN(Number(id))) {
+                                if (typeof id === 'string' && !Number.isNaN(Number(id))) {
                                     itemMap.set(Number(id), item);
                                 }
                             }

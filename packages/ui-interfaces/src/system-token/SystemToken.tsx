@@ -90,7 +90,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
   const canGenerate = !disabled && !readOnly;
   const placeholder = value
     ? t.placeholder.saved
-    : canGenerate
+    : canGenerate // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       ? t.placeholder.generateHint
       : t.placeholder.none;
 
@@ -198,7 +198,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
               >
                 {loading ? (
                   <Loader size={16} />
-                ) : hasToken ? (
+                ) : hasToken ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                   <IconRefresh size={16} />
                 ) : (
                   <IconPlus size={16} />
@@ -227,7 +227,7 @@ export const SystemToken = forwardRef<HTMLInputElement, SystemTokenProps>(({
             )}
           </Group>
         }
-        rightSectionWidth={showCopy ? 100 : showClear ? 68 : 52}
+        rightSectionWidth={showCopy ? 100 : showClear ? 68 : 52} // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       />
 
       {isNewTokenGenerated && value && (

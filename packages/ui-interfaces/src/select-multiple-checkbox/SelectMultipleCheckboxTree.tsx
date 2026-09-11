@@ -803,7 +803,7 @@ function TreeNode({
       <span>
         {parts.map((part, index) =>
           part.toLowerCase() === searchQuery.toLowerCase() ? (
-            <mark key={index}>
+            <mark key={index}> {/* NOSONAR: deterministic split of choice.text by the search regex, not a reorderable/stateful list */}
               {part}
             </mark>
           ) : (

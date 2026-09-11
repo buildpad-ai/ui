@@ -44,7 +44,7 @@ async function getRegistry(): Promise<Registry> {
  * Find a component by name (case-insensitive, supports aliases)
  */
 function findComponent(name: string, registry: Registry): ComponentEntry | undefined {
-  const normalized = name.toLowerCase().replace(/-/g, '');
+  const normalized = name.toLowerCase().replaceAll(/-/g, '');
   
   // Direct match
   const direct = registry.components.find(
@@ -55,8 +55,8 @@ function findComponent(name: string, registry: Registry): ComponentEntry | undef
   
   // Fuzzy match (remove dashes)
   const fuzzy = registry.components.find(
-    c => c.name.toLowerCase().replace(/-/g, '') === normalized ||
-         c.title.toLowerCase().replace(/-/g, '') === normalized
+    c => c.name.toLowerCase().replaceAll(/-/g, '') === normalized ||
+         c.title.toLowerCase().replaceAll(/-/g, '') === normalized
   );
   if (fuzzy) return fuzzy;
   

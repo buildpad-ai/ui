@@ -155,6 +155,7 @@ const MenuComp = ({ children }: Record<string, unknown>) => (
 );
 MenuComp.Target = ({ children }: Record<string, unknown>) => <div>{children as React.ReactNode}</div>;
 MenuComp.Dropdown = ({ children }: Record<string, unknown>) => <div>{children as React.ReactNode}</div>;
+MenuComp.Label = ({ children }: Record<string, unknown>) => <div data-component="Menu.Label">{children as React.ReactNode}</div>;
 MenuComp.Item = ({ children, onClick, ...props }: Record<string, unknown>) => {
   const testProps: Record<string, unknown> = {};
   for (const key of Object.keys(props)) {

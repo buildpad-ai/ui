@@ -68,7 +68,7 @@ export function localeHref(locale: Locale, path: string): string {
     return path;
   }
   // Split off query/hash so stripLocale only sees the pathname.
-  const match = path.match(/^([^?#]*)(.*)$/);
+  const match = path.match(/^([^?#]*)(.*)$/); // NOSONAR: disjoint negated-class then catch-all, linear, no ambiguous overlap
   const pathname = match?.[1] ?? path;
   const suffix = match?.[2] ?? "";
   const clean = stripLocale(pathname.startsWith("/") ? pathname : `/${pathname}`);

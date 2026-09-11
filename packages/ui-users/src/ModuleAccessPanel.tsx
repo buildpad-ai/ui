@@ -223,11 +223,11 @@ export const ModuleAccessPanel: React.FC<ModuleAccessPanelProps> = ({
         <Text size="sm" c="dimmed">
           {splitTaggedText(t.moduleAccessPanel.empty).map((segment, index) =>
             segment.tag === 'link' ? (
-              <Anchor key={index} href={keysHref} size="sm">
+              <Anchor key={index} href={keysHref} size="sm"> {/* NOSONAR: index into a deterministic split of a fixed i18n string */}
                 {segment.text}
               </Anchor>
             ) : (
-              <React.Fragment key={index}>{segment.text}</React.Fragment>
+              <React.Fragment key={index}>{segment.text}</React.Fragment> // NOSONAR: index into a deterministic split of a fixed i18n string
             ),
           )}
         </Text>

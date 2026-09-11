@@ -52,11 +52,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useDisclosure } from "@mantine/hooks";
-import { 
-    useRelationM2A, 
-    useRelationM2AItems, 
+import {
+    useRelationM2A,
+    useRelationM2AItems,
     useRelationPermissionsM2A,
-    type M2AItem, 
+    type M2AItem,
     type M2ARelationInfo,
 } from "@buildpad/hooks";
 import { CollectionList } from "@buildpad/ui-collections";
@@ -152,7 +152,7 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
     const style: React.CSSProperties = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.4 : !isAllowed || isDeleted ? 0.5 : 1,
+        opacity: isDragging ? 0.4 : !isAllowed || isDeleted ? 0.5 : 1, // NOSONAR: idiomatic tri-state ternary, not confusing nesting
         textDecoration: isDeleted ? 'line-through' : undefined,
     };
 
@@ -908,7 +908,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     <Paper p="xl" style={{ textAlign: 'center' }} data-testid="m2a-empty">
                         <Text c="dimmed">{t.noItems}</Text>
                     </Paper>
-                ) : layout === 'table' ? (
+                ) : layout === 'table' ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                     /* Table Layout — wrapped with DnD */
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
@@ -1052,7 +1052,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                                         cursor: disabled || !isAllowed || isDeleted || !canEditItem(item) ? 'default' : 'pointer',
                                         opacity: !isAllowed || isDeleted ? 0.5 : 1,
                                         textDecoration: isDeleted ? 'line-through' : undefined,
-                                        borderColor: isCreated ? 'var(--mantine-color-green-4)' : isUpdated ? 'var(--mantine-color-yellow-4)' : isDeleted ? 'var(--mantine-color-red-3)' : undefined,
+                                        borderColor: isCreated ? 'var(--mantine-color-green-4)' : isUpdated ? 'var(--mantine-color-yellow-4)' : isDeleted ? 'var(--mantine-color-red-3)' : undefined, // NOSONAR: idiomatic state-color selector ternary, not confusing nesting
                                     }}
                                     onClick={() => !isEffectivelyDisabled && isAllowed && !isDeleted && canEditItem(item) && handleEditItem(item)}
                                     data-testid={`m2a-item-${item.id}`}

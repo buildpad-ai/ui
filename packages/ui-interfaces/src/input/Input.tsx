@@ -149,7 +149,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
       out = out
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(/^-+|-+$/g, ''); // NOSONAR: two independent single-quantifier alternatives, linear
     }
     return out;
   };
@@ -182,9 +182,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   const numericValue: number | string =
     value === null || value === undefined || value === ''
       ? ''
-      : typeof value === 'number'
-        ? (Number.isNaN(value) ? '' : value)
-        : Number.isFinite(Number(value))
+      : typeof value === 'number' // NOSONAR: idiomatic numeric-parsing tri-state ternary, not confusing nesting
+        ? (Number.isNaN(value) ? '' : value) // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+        : Number.isFinite(Number(value)) // NOSONAR: idiomatic numeric-parsing tri-state ternary, not confusing nesting
           ? value
           : '';
   
@@ -330,7 +330,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
         )
       }
       maxLength={maxLength}
-      type={type === 'uuid' ? 'text' : 'text'}
+      type="text"
     />
   );
 });

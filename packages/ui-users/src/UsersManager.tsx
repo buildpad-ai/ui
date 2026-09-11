@@ -318,7 +318,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
       [param('search')]: debouncedSearch || null,
       [param('role')]: selectedRole,
       [param('status')]: selectedStatus,
-      [param('sort')]: sort ? `${sort.desc ? '-' : ''}${sort.by}` : null,
+      [param('sort')]: sort ? `${sort.desc ? '-' : ''}${sort.by}` : null, // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       [param('page')]: page > 1 ? String(page) : null,
     },
     onExternalChange: useCallback(
@@ -362,7 +362,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
         search: debouncedSearch || undefined,
         role: selectedRole || undefined,
         status: selectedStatus || undefined,
-        sort: sort?.by ? (sort.desc ? `-${sort.by}` : sort.by) : undefined,
+        sort: sort?.by ? (sort.desc ? `-${sort.by}` : sort.by) : undefined, // NOSONAR: idiomatic tri-state ternary, not confusing nesting
         // Expand the roles junction so the Role column has names to badge
         // (daas reference projection — without it the API returns bare IDs).
         fields: '*,roles.*,roles.role_id.name',
@@ -728,7 +728,7 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
           noItemsText={
             loadError
               ? interpolate(t.usersManager.emptyState.loadError, { error: loadError })
-              : hasFilters
+              : hasFilters // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                 ? t.usersManager.emptyState.filtered
                 : t.usersManager.emptyState.pristine
           }

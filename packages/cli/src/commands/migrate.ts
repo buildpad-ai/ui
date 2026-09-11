@@ -23,7 +23,7 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
 import {
@@ -120,7 +120,7 @@ async function backfillRecord(
   name: string,
   currentHashes: Map<string, string>
 ): Promise<BackfillOutcome> {
-  const installedVersion = record.release ?? record.version;
+  const installedVersion = record.release ?? record.version; // NOSONAR: intentional v1/v2 manifest backward-compat fallback
   const ref = installedVersion ? `v${installedVersion}` : undefined;
   const historic = ref ? await historicRegistry(ref) : null;
   const historicHashes = historic ? hashesFromRegistry(historic, kind, name) : null;
@@ -212,8 +212,8 @@ export async function migrate(options: {
       );
       pendingTotal += pending;
       components[componentName] = {
-        release: existing.release ?? existing.version,
-        ref: existing.ref ?? (existing.version ? `v${existing.version}` : ref),
+        release: existing.release ?? existing.version, // NOSONAR: intentional v1/v2 manifest backward-compat fallback
+        ref: existing.ref ?? (existing.version ? `v${existing.version}` : ref), // NOSONAR: intentional v1/v2 manifest backward-compat fallback
         sourcePackage: existing.sourcePackage ?? sourcePackage,
         installedAt: existing.installedAt,
         files,
@@ -264,7 +264,7 @@ export async function migrate(options: {
         ref,
         sourcePackage,
         installedAt:
-          config.componentVersions?.[componentName]?.installedAt ?? new Date().toISOString(),
+          config.componentVersions?.[componentName]?.installedAt ?? new Date().toISOString(), // NOSONAR: intentional v1 manifest backward-compat read
         files,
       };
     }
@@ -301,8 +301,8 @@ export async function migrate(options: {
         );
         pendingTotal += pending;
         lib[libName] = {
-          release: existing.release ?? existing.version,
-          ref: existing.ref ?? (existing.version ? `v${existing.version}` : ref),
+          release: existing.release ?? existing.version, // NOSONAR: intentional v1/v2 manifest backward-compat fallback
+          ref: existing.ref ?? (existing.version ? `v${existing.version}` : ref), // NOSONAR: intentional v1/v2 manifest backward-compat fallback
           sourcePackage: existing.sourcePackage ?? sourcePackage,
           installedAt: existing.installedAt,
           files,
@@ -338,7 +338,7 @@ export async function migrate(options: {
           ref,
           sourcePackage,
           installedAt:
-            config.componentVersions?.[`lib/${libName}`]?.installedAt ?? new Date().toISOString(),
+            config.componentVersions?.[`lib/${libName}`]?.installedAt ?? new Date().toISOString(), // NOSONAR: intentional v1 manifest backward-compat read
           files,
         };
       } else {

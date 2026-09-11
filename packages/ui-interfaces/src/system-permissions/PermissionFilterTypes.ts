@@ -103,7 +103,7 @@ export interface FilterNode {
   // For field type
   field?: string;
   operator?: FilterOperator;
-  value?: FilterValue | DynamicValue;
+  value?: FilterValue;
   // For group type
   logical?: LogicalOperator;
   children?: FilterNode[];

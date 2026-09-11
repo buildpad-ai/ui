@@ -13,11 +13,11 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
 import fg from 'fast-glob';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
 
 interface ValidationResult {
@@ -551,7 +551,7 @@ async function checkTypeScriptErrors(
     
     // Parse TypeScript output
     // Format: filename(line,col): error TS####: message
-    const tsErrorPattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.+)$/gm;
+    const tsErrorPattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.+)$/gm; // NOSONAR: lazy quantifier plus fixed literals separate each group; input is this repo's own tsc output
     let match;
     
     while ((match = tsErrorPattern.exec(result)) !== null) {
@@ -563,7 +563,7 @@ async function checkTypeScriptErrors(
         if (severity === 'error') {
           errors.push({
             file: relativePath,
-            line: parseInt(line, 10),
+            line: Number.parseInt(line, 10),
             message: `${tsCode}: ${message}`,
             code: 'TYPESCRIPT_ERROR',
           });

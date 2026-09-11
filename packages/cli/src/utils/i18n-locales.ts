@@ -10,7 +10,7 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 
 /** BCP 47-ish: `en`, `id`, `pt-BR`, `zh-Hant`. */
 export const LOCALE_CODE = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;

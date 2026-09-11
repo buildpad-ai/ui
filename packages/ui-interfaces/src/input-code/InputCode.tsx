@@ -17,7 +17,7 @@ function toEditorString(v: unknown): string {
   if (v == null) return '';
   if (typeof v === 'string') return v;
   if (typeof v === 'object') return JSON.stringify(v, null, 2);
-  return String(v);
+  return String(v); // NOSONAR: v is unreachable as an object here (handled above), so this is always a primitive
 }
 
 export interface InputCodeProps extends Omit<React.ComponentPropsWithRef<'textarea'>, 'onChange' | 'value'> {

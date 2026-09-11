@@ -13,7 +13,7 @@
  */
 
 import { Command } from 'commander';
-import { createRequire } from 'module';
+import { createRequire } from 'node:module';
 import { init } from './commands/init.js';
 import { add } from './commands/add.js';
 import { list } from './commands/list.js';
@@ -105,7 +105,7 @@ program
   .argument('<component>', 'Component name')
   .option('--json', 'Output as JSON')
   .option('-d, --depth <number>', 'Max depth to display', '2')
-  .action((component, options) => tree(component, { ...options, depth: parseInt(options.depth) }));
+  .action((component, options) => tree(component, { ...options, depth: Number.parseInt(options.depth) }));
 
 program
   .command('validate')

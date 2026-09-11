@@ -54,7 +54,7 @@ export function translate(
   if (entry === undefined) return path;
   if (typeof entry === 'string') return interpolate(entry, values);
   const raw = values?.count;
-  const count = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN;
+  const count = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN; // NOSONAR: idiomatic tri-state ternary, not confusing nesting
   // Without a usable count there is nothing to pluralise: use the universal
   // form and leave the caller's values (including `count`) untouched.
   if (!Number.isFinite(count)) return interpolate(entry.other, values);

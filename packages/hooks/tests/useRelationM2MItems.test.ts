@@ -8,9 +8,9 @@
  * answers 2xx, so the UI reported a success that never happened.
  *
  * `apiRequest` is mocked so no network is required. Only that one export is
- * replaced: the rest of `../src/utils` is the real module, so the tests
- * exercise the same `isValidPrimaryKey` production does — including its
- * rejection of the `'+'` / `'%2B'` unsaved-item sentinels.
+ * replaced: the rest of `../src/utils` is the real module. The hook itself
+ * uses `@buildpad/utils`'s `isExistingItem` (unmocked, real) for the same
+ * unsaved-item check — rejecting the `'+'` / `'%2B'` / `'new'` sentinels.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';

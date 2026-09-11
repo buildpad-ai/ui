@@ -169,8 +169,7 @@ export function PermissionDetailModal({
         value: 'validation',
         label: t.detailModal.tabs.fieldValidation,
         hasValue: hasObjectValue(draft.validation),
-      });
-      tabList.push({
+      }, {
         value: 'presets',
         label: t.detailModal.tabs.fieldPresets,
         hasValue: hasObjectValue(draft.presets),

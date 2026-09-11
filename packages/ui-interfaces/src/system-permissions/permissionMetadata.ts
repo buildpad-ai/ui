@@ -38,14 +38,12 @@ export function fetchCollectionFields(collection: string): Promise<Field[]> {
  * `useRelationM2O`). Cached once per module lifetime.
  */
 function fetchAllRelations(): Promise<Relation[]> {
-  if (!relationsCache) {
-    relationsCache = apiRequest<{ data: Relation[] }>(`/api/relations?limit=-1`)
-      .then((response) => response.data ?? [])
-      .catch((err) => {
-        relationsCache = null;
-        throw err;
-      });
-  }
+  relationsCache ??= apiRequest<{ data: Relation[] }>(`/api/relations?limit=-1`)
+    .then((response) => response.data ?? [])
+    .catch((err) => {
+      relationsCache = null;
+      throw err;
+    });
   return relationsCache;
 }
 

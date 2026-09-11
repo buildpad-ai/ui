@@ -90,12 +90,11 @@ export function toggleSort(current: string | null, field: string): string | null
 
 /** Generate a random static API token (hex, default 32 bytes → 64 chars). */
 export function generateToken(bytes = 32): string {
-  const buffer = new Uint8Array(bytes);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(buffer);
-  } else {
-    for (let i = 0; i < bytes; i++) buffer[i] = Math.floor(Math.random() * 256);
+  if (typeof crypto === 'undefined' || !crypto.getRandomValues) {
+    throw new Error('generateToken requires a Web Crypto API implementation (crypto.getRandomValues).');
   }
+  const buffer = new Uint8Array(bytes);
+  crypto.getRandomValues(buffer);
   return Array.from(buffer, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 

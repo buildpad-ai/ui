@@ -16,7 +16,7 @@
  * select-dropdown-m2o, list-o2m, list-m2m, list-m2a, and collection-item-dropdown.
  */
 
-export const TEMPLATE_REGEX = /{{(.*?)}}/g;
+export const TEMPLATE_REGEX = /{{(.*?)}}/g; // NOSONAR: single lazy quantifier, no nesting, linear
 
 /**
  * Safely resolve a dot-separated path against an object.
@@ -72,7 +72,7 @@ export interface RenderTemplateOptions {
  */
 export function renderTemplate(
     template: string,
-    data: Record<string, unknown> | unknown,
+    data: unknown,
     options: RenderTemplateOptions = {},
 ): string {
     const { fallback = '', keepUnresolved = false } = options;
@@ -97,7 +97,7 @@ export function renderTemplate(
             }
         }
 
-        return String(value);
+        return String(value); // NOSONAR: value is unreachable as an object here (handled above), so this is always a primitive
     });
 }
 

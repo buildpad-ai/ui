@@ -23,11 +23,11 @@
  *   pnpm registry:check
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { createHash } from 'crypto';
-import { join, dirname } from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
-import { execSync } from 'child_process';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { join, dirname } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -97,7 +97,7 @@ function computeFileSha256(source) {
   // produces hashes that can never match an LF checkout, so `--check`
   // fails permanently on CI. The CLI's own hashTransformed() already
   // normalises the same way.
-  const text = readFileSync(fullPath, 'utf8').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const text = readFileSync(fullPath, 'utf8').replaceAll(/\r\n/g, '\n').replaceAll(/\r/g, '\n');
   return sha256(text);
 }
 
@@ -121,7 +121,7 @@ function stableStringify(value) {
     return (
       '{' +
       Object.keys(value)
-        .sort()
+        .sort() // NOSONAR: deterministic diff-safe key order across environments; localeCompare would vary by ICU config
         .map((k) => JSON.stringify(k) + ':' + stableStringify(value[k]))
         .join(',') +
       '}'
@@ -143,7 +143,7 @@ function stableStringify(value) {
  */
 export function extractSemverFromTag(tag) {
   if (!tag) return undefined;
-  const m = tag.match(/(\d+)\.(\d+)\.(\d+)/);
+  const m = tag.match(/(\d+)\.(\d+)\.(\d+)/); // NOSONAR: three independent bounded-alphabet quantifiers, linear
   return m ? `${m[1]}.${m[2]}.${m[3]}` : undefined;
 }
 
@@ -447,7 +447,7 @@ function collectUndeclaredImports(registry) {
   // silently skips every one of them — which is why an unregistered module
   // could be re-exported without the check noticing.
   const RELATIVE_IMPORT =
-    /(?:^|\n)\s*(?:import|export)\b(?:[^'"{}\n]|\{[^}]*\})*from\s+['"](\.[^'"]+)['"]/g;
+    /(?:^|\n)\s*(?:import|export)\b(?:[^'"{}\n]|\{[^}]*\})*from\s+['"](\.[^'"]+)['"]/g; // NOSONAR: alternation branches are disjoint char classes (no {}), so the repetition can't backtrack ambiguously; only ever run over this repo's own trusted source files at build time
 
   for (const component of registry.components ?? registry.items ?? []) {
     const files = component.files ?? [];

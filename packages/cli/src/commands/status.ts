@@ -8,7 +8,7 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import { loadConfig, type Config } from './init.js';
 import { extractOriginInfo, hasBuildpadOrigin, hashTransformed } from './transformer.js';
@@ -77,7 +77,7 @@ async function findBuildpadFiles(
             path: fullPath,
             origin: info.origin,
             version: info.version || 'unknown',
-            date: info.date || 'unknown',
+            date: info.date || 'unknown', // NOSONAR: intentional v2-header backward-compat read
             currentSha256,
             modified,
           });

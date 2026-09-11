@@ -89,8 +89,11 @@ function formatFieldKey(key: string): string {
     // Handle dot-path fields (e.g. "user_id.email" → "Email")
     const lastPart = key.includes('.') ? key.split('.').pop()! : key;
     return lastPart
+        // Global regex .replace() is equivalent to .replaceAll() here — kept
+        // as .replace() since consumer packages (e.g. ui-users) still target
+        // ES2020, which predates String.prototype.replaceAll (ES2021).
         .replace(/_/g, ' ')
-        .replace(/\b\w/g, (l) => l.toUpperCase());
+        .replace(/\b\w/g, (l: string) => l.toUpperCase());
 }
 
 /** Determine column width from field metadata */
@@ -150,10 +153,9 @@ export function useFieldMetadata(options: UseFieldMetadataOptions): UseFieldMeta
         for (const field of allFields) {
             const entry: FieldMetadataEntry = {
                 field: field.field,
-                name: field.meta?.note
-                    // note is a description, not the name — use field key formatting
-                    ? formatFieldKey(field.field)
-                    : formatFieldKey(field.field),
+                // note is a description, not a name — DaaS has no separate display-name
+                // field, so the formatted field key is always the name.
+                name: formatFieldKey(field.field),
                 type: field.type,
                 display: field.meta?.display ?? null,
                 displayOptions: field.meta?.display_options ?? null,

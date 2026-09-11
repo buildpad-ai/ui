@@ -47,7 +47,7 @@ export default defineConfig({
     // Setup project - runs once before DaaS tests (authentication)
     { 
       name: 'setup', 
-      testMatch: /.*\.setup\.ts/ 
+      testMatch: /.*\.setup\.ts/ // NOSONAR: single greedy quantifier over trusted local filenames at config-load time
     },
     
     // DaaS E2E Tests - requires authentication
@@ -57,7 +57,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
       dependencies: ['setup'],
-      testIgnore: /.*storybook.*\.spec\.ts/,  // Exclude Storybook tests
+      testIgnore: /.*storybook.*\.spec\.ts/,  // Exclude Storybook tests — NOSONAR: greedy quantifiers over trusted local filenames at config-load time
     },
 
     // Storybook Component Tests - no auth needed

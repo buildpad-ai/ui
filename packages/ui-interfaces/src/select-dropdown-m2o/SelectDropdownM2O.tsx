@@ -247,7 +247,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
             .filter(([, v]) => v !== undefined && v !== null)
             .map(([k, v]) => [
               k,
-              typeof v === "object" ? JSON.stringify(v) : String(v),
+              typeof v === "object" ? JSON.stringify(v) : String(v), // NOSONAR: object case is already handled by this ternary
             ]),
         ).toString();
 
@@ -391,7 +391,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
               rightSection={
                 loading ? (
                   <Loader size={16} />
-                ) : value && allowNone && !disabled && !readOnly ? (
+                ) : value && allowNone && !disabled && !readOnly ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                   <CloseButton
                     size="sm"
                     onMouseDown={(e) => e.preventDefault()}
@@ -453,7 +453,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                       </Text>
                     </Group>
                   </Combobox.Empty>
-                ) : availableItems.length === 0 ? (
+                ) : availableItems.length === 0 ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                   <Combobox.Empty>{t.noItemsFound}</Combobox.Empty>
                 ) : (
                   availableItems.map((item) => (
@@ -678,7 +678,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
                           </Group>
                         </Table.Td>
                       </Table.Tr>
-                    ) : availableItems.length === 0 ? (
+                    ) : availableItems.length === 0 ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                       <Table.Tr>
                         <Table.Td colSpan={resolvedFields.length + 1}>
                           <Text ta="center" c="dimmed" py="md">

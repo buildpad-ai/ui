@@ -1,5 +1,5 @@
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import chalk from 'chalk';
 import { loadConfig } from './init.js';
 import { transformImports } from './transformer.js';

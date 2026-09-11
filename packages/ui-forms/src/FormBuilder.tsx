@@ -159,7 +159,7 @@ function genId(prefix: string): string {
   const rand =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID().slice(0, 8)
-      : Math.random().toString(36).slice(2, 10);
+      : Math.random().toString(36).slice(2, 10); // NOSONAR: non-cryptographic builder-section id, not a secret
   return `${prefix}_${rand}`;
 }
 
@@ -205,7 +205,7 @@ function toCollectionName(name: string): string {
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
+      .replace(/^_+|_+$/g, '') // NOSONAR: two independent single-quantifier alternatives, linear
       .replace(/_+/g, '_') || 'screen'
   );
 }

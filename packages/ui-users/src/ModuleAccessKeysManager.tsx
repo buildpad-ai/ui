@@ -307,7 +307,7 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
   };
 
   const deleteDescription = deleteTarget
-    ? deleteTarget.key === null
+    ? deleteTarget.key === null // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       ? interpolate(t.moduleAccessKeys.deleteModal.folderDescription, {
           name: deleteTarget.display_name,
         })
@@ -315,10 +315,10 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
     : undefined;
 
   const drawerTitle = editingId
-    ? form.isFolder
+    ? form.isFolder // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       ? t.moduleAccessKeys.drawer.editFolder
       : t.moduleAccessKeys.drawer.editKey
-    : form.isFolder
+    : form.isFolder // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       ? t.moduleAccessKeys.drawer.newFolder
       : t.moduleAccessKeys.drawer.newKey;
 

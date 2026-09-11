@@ -208,7 +208,7 @@ export function SelectRadio({
   // instead of collapsing to the same empty string as "no value".
   const currentValue = (usesOtherValue || showOtherInput)
     ? '__other__'
-    : (value == null ? '' : String(value));
+    : (value == null ? '' : String(value)); // NOSONAR: idiomatic tri-state ternary, not confusing nesting
 
   return (
     <Stack gap="xs" w={width}>

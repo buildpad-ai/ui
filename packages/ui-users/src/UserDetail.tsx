@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Badge,
-  Box,
   Button,
   Grid,
   Group,
@@ -15,7 +14,6 @@ import {
   Stack,
   Tabs,
   TagsInput,
-  Text,
   Textarea,
   TextInput,
   Title,
@@ -25,14 +23,13 @@ import { notifications } from '@mantine/notifications';
 import { IconTrash } from '@tabler/icons-react';
 import { usePermissions, useRoles, useUsers } from '@buildpad/hooks';
 import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
-import type { User, UserStatus } from '@buildpad/types';
+import type { User, UserStatus, Policy } from '@buildpad/types';
 import type { DeepPartial, UsersTranslations } from '@buildpad/utils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { InfoPanel } from './InfoPanel';
 import { TokenInput } from './TokenInput';
 import { UserPoliciesManager } from './UserPoliciesManager';
 import { DATE_TIME_FORMAT_OPTIONS, normalizeRoleIds } from './accessUtils';
-import type { Policy } from '@buildpad/types';
 
 /** Order of the Status select options; labels come from `users.status`. */
 const STATUS_VALUES: UserStatus[] = ['active', 'suspended', 'invited', 'draft', 'terminated'];

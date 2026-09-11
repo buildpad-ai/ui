@@ -44,7 +44,7 @@ export default function LoginPage() {
     },
     validate: {
       email: (value) =>
-        !value ? t('app.login.emailRequired') : /^\S+@\S+$/.test(value) ? null : t('app.login.emailInvalid'),
+        !value ? t('app.login.emailRequired') : /^\S+@\S+$/.test(value) ? null : t('app.login.emailInvalid'), // NOSONAR: simple two-quantifier regex on a short, self-typed form field, no exponential backtracking
       password: (value) => (!value ? t('app.login.passwordRequired') : null),
     },
   });

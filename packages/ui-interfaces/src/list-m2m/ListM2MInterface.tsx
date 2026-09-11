@@ -208,9 +208,9 @@ export const ListM2MInterface: React.FC<ListM2MInterfaceProps> = ({
       <Paper withBorder p="md" radius="sm">
         {loading ? (
           <Text size="sm" c="dimmed" ta="center">{p.loading}</Text>
-        ) : value.length === 0 ? (
+        ) : value.length === 0 ? ( // NOSONAR: idiomatic loading/empty/custom-render JSX ladder, not confusing nesting
           <Text size="sm" c="dimmed" ta="center">{p.noItems}</Text>
-        ) : renderItemList ? (
+        ) : renderItemList ? ( // NOSONAR: idiomatic loading/empty/custom-render JSX ladder, not confusing nesting
           renderItemList(value, handleRemove)
         ) : (
           <Stack gap="xs">

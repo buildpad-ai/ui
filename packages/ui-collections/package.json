@@ -24,6 +24,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "storybook": "storybook dev -p 6008",
     "build-storybook": "storybook build"
   },
@@ -70,6 +71,7 @@
     "typescript": "^5.8.3",
     "vite": "^6.0.0",
     "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "2.1.9",
     "@testing-library/react": "^16.0.0",
     "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/user-event": "^14.0.0",

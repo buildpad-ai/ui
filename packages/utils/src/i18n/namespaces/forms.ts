@@ -374,7 +374,7 @@ export const formsDefaults: FormsTranslations = {
     name: { label: 'Name', placeholder: 'e.g. Show when bug' },
     remove: 'Remove condition',
     when: 'When',
-    then: 'Then',
+    then: 'Then', // NOSONAR: i18n dictionary string, this object is never awaited/thenable-checked
     overrides: { hidden: 'Hidden', required: 'Required', readonly: 'Read-only' },
   },
   dynamicForm: {
@@ -636,7 +636,7 @@ export const formsId: FormsTranslations = {
     name: { label: 'Nama', placeholder: 'mis. Tampilkan saat bug' },
     remove: 'Hapus kondisi',
     when: 'Jika',
-    then: 'Maka',
+    then: 'Maka', // NOSONAR: i18n dictionary string, this object is never awaited/thenable-checked
     overrides: { hidden: 'Tersembunyi', required: 'Wajib diisi', readonly: 'Hanya baca' },
   },
   dynamicForm: {

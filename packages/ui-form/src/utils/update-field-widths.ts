@@ -35,11 +35,11 @@ export function updateFieldWidths(fields: FormField[]): FormField[] {
     const group = field.meta.group ?? '';
     let width: FieldWidth = (field.meta.width as FieldWidth) || 'full';
 
-    // Resolve 'fill': becomes 'half' if the row currently has room, else 'full'
+    // 'fill' always resolves to half (takes half the row); if the previous
+    // field in the group was half, the two will pair up naturally. DaaS
+    // resolves fill to half.
     if (width === 'fill') {
-      width = prevHalfInGroup[group] ? 'half' : 'half';
-      // fill always resolves to half (takes half the row); if previous was half the
-      // two will pair up naturally. DaaS resolves fill to half.
+      width = 'half';
     }
 
     if (width === 'half' || width === 'half-left' || width === 'half-right') {

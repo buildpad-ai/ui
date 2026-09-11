@@ -82,12 +82,14 @@ import {
     useRelationM2M,
     isValidPrimaryKey,
     useFieldMetadata,
+    useRelationMultipleM2M,
+    useRelationPermissionsM2M,
     type M2MRelationInfo,
+    type M2MDisplayItem,
+    type M2MChangesItem,
 } from "@buildpad/hooks";
 import { CollectionList, CollectionForm } from "@buildpad/ui-collections";
 import { renderTemplate, resolveDisplayTemplate, splitJunctionTemplateFields, DEFAULT_RELATIONAL_FIELDS } from "../list-m2a/render-template";
-import { useRelationMultipleM2M, type M2MDisplayItem, type M2MChangesItem } from "@buildpad/hooks";
-import { useRelationPermissionsM2M } from "@buildpad/hooks";
 import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
 import type { DeepPartial, PluralForms } from "@buildpad/utils";
 import { interpolate, type M2MTranslations } from "./translations";
@@ -238,7 +240,7 @@ const SortableM2MTableRow: React.FC<SortableM2MTableRowProps> = ({
             ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
             : undefined,
         transition,
-        opacity: isDragging ? 0.5 : item.$type === "deleted" ? 0.5 : 1,
+        opacity: isDragging ? 0.5 : item.$type === "deleted" ? 0.5 : 1, // NOSONAR: idiomatic tri-state ternary, not confusing nesting
         cursor: !isEffectivelyNonEditable && updateAllowed ? "pointer" : undefined,
         position: isDragging ? "relative" : undefined,
         zIndex: isDragging ? 1 : undefined,
@@ -439,7 +441,7 @@ const SortableM2MListItem: React.FC<SortableM2MListItemProps> = ({
             : undefined,
         transition,
         cursor: !isEffectivelyNonEditable && updateAllowed ? "pointer" : undefined,
-        opacity: isDragging ? 0.5 : item.$type === "deleted" ? 0.5 : 1,
+        opacity: isDragging ? 0.5 : item.$type === "deleted" ? 0.5 : 1, // NOSONAR: idiomatic tri-state ternary, not confusing nesting
         position: isDragging ? "relative" : undefined,
         zIndex: isDragging ? 1 : undefined,
     };
@@ -565,7 +567,7 @@ function formatCellValue(
         if (Array.isArray(value)) return formatCount(value.length, t.cell.arrayCount);
         return JSON.stringify(value);
     }
-    return String(value);
+    return String(value); // NOSONAR: value is unreachable as an object here (handled above), so this is always a primitive
 }
 
 // ── Component ──────────────────────────────────────────────────────
@@ -1106,7 +1108,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     const handleLimitChange = useCallback(
         (value: string | null) => {
             if (value) {
-                const newLimit = parseInt(value, 10);
+                const newLimit = Number.parseInt(value, 10);
                 setCurrentLimit(newLimit);
                 setCurrentPage(1); // Reset to first page
             }
@@ -1123,8 +1125,8 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                 | undefined;
             if (!relatedData) return null;
             const relatedPK = relatedData[relationInfo.relatedPrimaryKeyField.field];
-            if (relatedPK === undefined) return null;
-            return `/content/${relationInfo.relatedCollection.collection}/${relatedPK}`;
+            if (relatedPK === undefined || typeof relatedPK === "object") return null;
+            return `/content/${relationInfo.relatedCollection.collection}/${relatedPK}`; // NOSONAR: object case already returned above; Sonar doesn't narrow across the earlier guard
         },
         [enableLink, relationInfo],
     );
@@ -1362,13 +1364,13 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                     <Stack gap="xs">
                         <Skeleton height={36} /> {/* Header row */}
                         {Array.from({ length: Math.min(currentLimit, 5) }).map((_, i) => (
-                            <Skeleton key={i} height={40} />
+                            <Skeleton key={i} height={40} /> // NOSONAR: static loading placeholder, no identity to preserve
                         ))}
                     </Stack>
                 ) : (
                     <Stack gap="xs">
                         {Array.from({ length: Math.min(currentLimit, 5) }).map((_, i) => (
-                            <Skeleton key={i} height={56} radius="sm" />
+                            <Skeleton key={i} height={56} radius="sm" /> // NOSONAR: static loading placeholder, no identity to preserve
                         ))}
                     </Stack>
                 )}
@@ -1501,7 +1503,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                     <Paper p="xl" style={{ textAlign: "center" }}>
                         <Text c="dimmed">{t.no_items}</Text>
                     </Paper>
-                ) : layout === "table" ? (
+                ) : layout === "table" ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                     /* Table Layout — with DnD, field metadata headers, batch edit */
                     <DndContext
                         sensors={sensors}

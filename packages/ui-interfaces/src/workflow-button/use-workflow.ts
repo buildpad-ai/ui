@@ -242,7 +242,7 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
 
           // Fetch user policies
           const policies = await fetchUserPolicies();
-          const policyIds = policies.map((policy) => policy.policy);
+          const policyIds = new Set(policies.map((policy) => policy.policy));
 
           // Store workflow instance
           setWorkflowInstanceId(instance.id);
@@ -277,7 +277,7 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
           // Filter commands based on user policies
           const filteredCommands = workflowCommands.filter((command) => {
             if (!command.policies || command.policies.length === 0) return true;
-            return command.policies?.some((policyId) => policyIds.includes(policyId));
+            return command.policies?.some((policyId) => policyIds.has(policyId));
           });
 
           // Populate the command options

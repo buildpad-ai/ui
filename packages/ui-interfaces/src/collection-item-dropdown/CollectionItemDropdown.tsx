@@ -752,7 +752,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                         rightSection={
                             loading ? (
                                 <Loader size={16} />
-                            ) : normalizedValue?.key && allowNone && !disabled && !readOnly ? (
+                            ) : normalizedValue?.key && allowNone && !disabled && !readOnly ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                                 <CloseButton
                                     size="sm"
                                     onMouseDown={(e) => e.preventDefault()}
@@ -813,7 +813,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                         <Text size="sm" c="dimmed">{t.loading}</Text>
                                     </Group>
                                 </Combobox.Empty>
-                            ) : availableItems.length === 0 ? (
+                            ) : availableItems.length === 0 ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                                 <Combobox.Empty data-testid="collection-item-dropdown-empty">
                                     {t.noItems}
                                 </Combobox.Empty>
@@ -913,7 +913,7 @@ export const CollectionItemDropdown: React.FC<CollectionItemDropdownProps> = ({
                                                 </Group>
                                             </Table.Td>
                                         </Table.Tr>
-                                    ) : availableItems.length === 0 ? (
+                                    ) : availableItems.length === 0 ? ( // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                                         <Table.Tr>
                                             <Table.Td colSpan={fields.length + 1}>
                                                 <Text ta="center" c="dimmed" py="md">{t.noItems}</Text>

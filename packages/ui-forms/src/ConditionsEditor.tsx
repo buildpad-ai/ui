@@ -16,6 +16,7 @@
 
 'use client';
 
+import { useRef } from 'react';
 import {
   ActionIcon,
   Button,
@@ -74,6 +75,7 @@ export function ConditionsEditor({
   };
 
   const remove = (index: number) => {
+    conditionKeysRef.current = conditionKeysRef.current.filter((_, i) => i !== index);
     onChange(conditions.filter((_, i) => i !== index));
   };
 
@@ -83,6 +85,20 @@ export function ConditionsEditor({
       emptyCondition(conditions.length, t.conditionsEditor.defaultName),
     ]);
   };
+
+  // Stable per-row identity (conditions carry no id of their own): keeps
+  // focus/DOM identity correct when a row above is removed, since `index`
+  // alone would shift and misattribute a focused input to the wrong
+  // condition. Kept in lockstep by `remove`/`add` above.
+  const nextConditionKeyRef = useRef(0);
+  const conditionKeysRef = useRef<number[]>([]);
+  if (conditionKeysRef.current.length < conditions.length) {
+    while (conditionKeysRef.current.length < conditions.length) {
+      conditionKeysRef.current.push(nextConditionKeyRef.current++);
+    }
+  } else if (conditionKeysRef.current.length > conditions.length) {
+    conditionKeysRef.current.length = conditions.length;
+  }
 
   return (
     <Stack gap="sm">
@@ -111,7 +127,7 @@ export function ConditionsEditor({
       )}
 
       {conditions.map((condition, index) => (
-        <Paper key={index} withBorder p="sm" radius="sm">
+        <Paper key={conditionKeysRef.current[index]} withBorder p="sm" radius="sm">
           <Stack gap="xs">
             <Group justify="space-between" align="flex-start">
               <TextInput

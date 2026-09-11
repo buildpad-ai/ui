@@ -74,7 +74,7 @@ export interface BooleanProps {
  * @param props - Boolean interface props
  * @returns React component
  */
-export const Boolean: React.FC<BooleanProps> = ({
+export const Boolean: React.FC<BooleanProps> = ({ // NOSONAR: intentional component name matching the DaaS field-type catalog, part of the public API
   value,
   disabled = false,
   readOnly = false,
@@ -114,7 +114,7 @@ export const Boolean: React.FC<BooleanProps> = ({
     checked,
     onChange: handleChange,
     disabled,
-    label: label ? (required ? interpolate(t.requiredLabel, { label }) : label) : undefined,
+    label: label ? (required ? interpolate(t.requiredLabel, { label }) : label) : undefined, // NOSONAR: idiomatic tri-state ternary, not confusing nesting
     description,
     error,
     size,

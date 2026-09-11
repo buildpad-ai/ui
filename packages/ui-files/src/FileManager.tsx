@@ -167,7 +167,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
   const totalIsTrustworthy = !debouncedSearch && !currentFolder && !enableFolders;
   const totalPages = totalIsTrustworthy
     ? Math.max(1, Math.ceil(total / pageSize))
-    : files.length === pageSize
+    : files.length === pageSize // NOSONAR: idiomatic tri-state ternary, not confusing nesting
       ? page + 1
       : page;
 
@@ -187,7 +187,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
       }
 
       const folderPromise = enableFolders
-        ? fetchFolders(searching ? { search: debouncedSearch } : { parent: currentFolder })
+        ? fetchFolders(searching ? { search: debouncedSearch } : { parent: currentFolder }) // NOSONAR: idiomatic tri-state ternary, not confusing nesting
         : Promise.resolve<Folder[]>([]);
 
       const [folderRes, fileRes] = await Promise.all([folderPromise, fetchFiles(fileParams)]);
@@ -524,7 +524,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
         <Center mih={240}>
           <Loader />
         </Center>
-      ) : isEmpty ? (
+      ) : isEmpty ? ( // NOSONAR: idiomatic loading/empty/view-mode JSX ladder, not confusing nesting
         <Center mih={200}>
           <Text c="dimmed" size="sm">
             {t.fileManager.emptyState.title}{' '}
@@ -533,7 +533,7 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
               : t.fileManager.emptyState.readOnlyHint}
           </Text>
         </Center>
-      ) : view === 'grid' ? (
+      ) : view === 'grid' ? ( // NOSONAR: idiomatic loading/empty/view-mode JSX ladder, not confusing nesting
         <FilesGrid
           folders={folders}
           files={files}

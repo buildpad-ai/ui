@@ -30,9 +30,9 @@
  */
 
 import fs from 'fs-extra';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -107,7 +107,7 @@ export function getRecordedRef(): string {
  * names like `feat/foo` still resolve; `@` and other specials are encoded.
  */
 export function encodeRef(ref: string): string {
-  return encodeURIComponent(ref).replace(/%2F/g, '/');
+  return encodeURIComponent(ref).replaceAll(/%2F/g, '/');
 }
 
 /**

@@ -334,7 +334,7 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
           noItemsText={
             loadError
               ? interpolate(t.rolesManager.emptyState.loadError, { error: loadError })
-              : debouncedSearch
+              : debouncedSearch // NOSONAR: idiomatic tri-state ternary, not confusing nesting
                 ? t.rolesManager.emptyState.search
                 : t.rolesManager.emptyState.pristine
           }

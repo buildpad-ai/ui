@@ -41,7 +41,7 @@ export function ScopeProvider({ children }: { children: ReactNode }) {
 
   // Hydrate from cookie on first client render
   useEffect(() => {
-    const match = document.cookie.match(/(?:^|;\s*)daas_resource_uri=([^;]*)/);
+    const match = /(?:^|;\s*)daas_resource_uri=([^;]*)/.exec(document.cookie);
     setResourceUri(match ? decodeURIComponent(match[1]) : null);
     setIsHydrating(false);
   }, []);
