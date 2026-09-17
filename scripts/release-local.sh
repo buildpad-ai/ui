@@ -28,7 +28,11 @@
 #
 #   Options:
 #     --remote <name>   git remote to push to (default: github)
-#     --otp <code>      npm one-time password, if your account has 2FA
+#     --otp <code>      npm one-time password to try first. Rarely useful: a code
+#                       is valid for ~30s and the build runs before publishing,
+#                       so it has usually expired by then. Interactive runs are
+#                       asked for a fresh code at the publish step whenever npm
+#                       demands one, which is the path to use.
 #
 # Safe to re-run: every step checks whether it has already been done, so a
 # failure partway through is resumed by running the same command again.
@@ -67,6 +71,35 @@ confirm() {
   [[ "$reply" == "y" || "$reply" == "Y" ]]
 }
 
+# Object a tag ref points at on the remote, given `git ls-remote --tags` output
+# in $1. Empty when the remote has no such tag. For an annotated tag this is
+# the tag object, not the commit — see remote_tag_commit.
+remote_tag_object() {
+  printf '%s\n' "$1" | awk -v r="refs/tags/$2" '$2 == r { print $1 }'
+}
+
+# Commit a tag points at on the remote. Annotated tags are listed twice by
+# ls-remote: the tag object, and the peeled commit under `<ref>^{}`.
+remote_tag_commit() {
+  local obj peeled
+  obj="$(remote_tag_object "$1" "$2")"
+  [[ -n "$obj" ]] || return 0
+  peeled="$(printf '%s\n' "$1" | awk -v r="refs/tags/$2^{}" '$2 == r { print $1 }')"
+  printf '%s' "${peeled:-$obj}"
+}
+
+# A one-time password typed at the terminal (hidden), or empty to give up.
+prompt_otp() {
+  local code
+  while :; do
+    read -r -s -p "  One-time password from your authenticator (Enter to stop): " code < /dev/tty
+    echo >&2
+    [[ -z "$code" || "$code" =~ ^[0-9]{6,8}$ ]] && break
+    warn "expected a 6–8 digit code" >&2
+  done
+  printf '%s' "$code"
+}
+
 # ─────────────────────────────────────────────────────────────────────────
 step "Preflight"
 # ─────────────────────────────────────────────────────────────────────────
@@ -75,6 +108,11 @@ command -v node >/dev/null || die "node not found. This machine keeps it off the
     export PATH=\"/opt/homebrew/opt/node@24/bin:\$PATH\""
 command -v pnpm >/dev/null || die "pnpm not found (same PATH note as above)."
 ok "node $(node -v), pnpm $(pnpm -v)"
+
+if [[ -n "$OTP" ]] && $EXECUTE; then
+  warn "--otp was passed up front; a code lasts ~30s and the build runs first, so it"
+  warn "will likely be rejected. You'll be asked for a fresh one at the publish step."
+fi
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 [[ "$BRANCH" == "main" ]] || die "on '$BRANCH', expected 'main'.
@@ -225,8 +263,9 @@ if ! $EXECUTE; then
                                  cannot fetch anything at all; blocks until the raw
                                  CDN serves it
   5. pnpm build                  build everything from the bumped sources
-  6. changeset publish           ${BLD}irreversible${OFF} — @buildpad/cli + @buildpad/mcp to npm
-  7. push package tags           the changesets @buildpad/<pkg>@<v> tags
+  6. changeset publish           ${BLD}irreversible${OFF} — @buildpad/cli + @buildpad/mcp to npm;
+                                 asks for a 2FA code only if npm demands one
+  7. push release tags           only the ones ${REMOTE} does not already have
 
   Re-run with --execute to perform this.
 PLAN
@@ -293,19 +332,50 @@ fi
 step "4. Tag the release (before npm — see the header)"
 # ─────────────────────────────────────────────────────────────────────────
 
+HEAD_COMMIT="$(git rev-parse HEAD)"
+
+# On a resume the tag already exists, and it must be THIS commit. If main moved
+# on after the release was tagged, step 5 would build HEAD and publish a CLI
+# whose code the tag (which that CLI fetches its sources from) does not
+# contain. Refuse rather than ship a mismatched pair.
+tag_moved() {
+  die "${TAG} points at ${1:0:7} ($2), but HEAD is ${HEAD_COMMIT:0:7}.
+    main has moved since ${NEW} was tagged, so building here would publish code
+    that ${TAG} does not contain. Finish the release from the tagged commit:
+      git worktree add ../release-${NEW} ${TAG}
+      cd ../release-${NEW} && pnpm install && pnpm build && pnpm changeset publish
+    then push the tags it creates. Or bump to a new version instead."
+}
+
 if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+  LOCAL_TAG_COMMIT="$(git rev-list -n1 "${TAG}")"
+  [[ "$LOCAL_TAG_COMMIT" == "$HEAD_COMMIT" ]] || tag_moved "$LOCAL_TAG_COMMIT" "local"
   warn "${TAG} already exists locally"
 else
   git tag -a "${TAG}" -m "Release ${NEW}"
   ok "created ${TAG}"
 fi
 
-if git ls-remote --exit-code --tags "$REMOTE" "refs/tags/${TAG}" >/dev/null 2>&1; then
+REMOTE_TAGS="$(git ls-remote --tags "$REMOTE")"
+REMOTE_TAG_COMMIT="$(remote_tag_commit "$REMOTE_TAGS" "${TAG}")"
+if [[ -n "$REMOTE_TAG_COMMIT" ]]; then
+  [[ "$REMOTE_TAG_COMMIT" == "$HEAD_COMMIT" ]] || tag_moved "$REMOTE_TAG_COMMIT" "on ${REMOTE}"
   warn "${TAG} already on ${REMOTE}"
 else
   git push "$REMOTE" "${TAG}"
   ok "pushed ${TAG} to ${REMOTE}"
 fi
+
+# Per-package tags for this version left on the remote by an earlier attempt
+# must also be on this commit. Step 7 refuses to move them, but by then npm has
+# already published — so check here, while stopping is still free.
+for ref in $(printf '%s\n' "$REMOTE_TAGS" | awk '{ print $2 }' | grep -E "^refs/tags/@buildpad/[^@]+@${NEW//./\\.}$"); do
+  t="${ref#refs/tags/}"
+  c="$(remote_tag_commit "$REMOTE_TAGS" "$t")"
+  [[ "$c" == "$HEAD_COMMIT" ]] || die "tag ${t} is on ${REMOTE} at ${c:0:7}, not the release commit ${HEAD_COMMIT:0:7}.
+    An earlier attempt tagged a different commit. Refusing to publish until the
+    tags agree — investigate before re-running. Nothing has been published."
+done
 
 # The CDN is what the CLI actually reads. Confirm the tag resolves there before
 # putting a CLI on npm that depends on it.
@@ -350,33 +420,117 @@ if ! confirm "Publish these to npm?"; then
   exit 0
 fi
 
-# No array here on purpose: macOS ships bash 3.2, where expanding an EMPTY
-# array ("${arr[@]}") under `set -u` aborts with "unbound variable". That is
-# exactly what happened on the first real 2.0.0 attempt — the script died at
-# the publish call after the tag was already live.
-if [[ -n "$OTP" ]]; then
-  pnpm changeset publish --otp "$OTP"
-else
-  pnpm changeset publish
-fi
+# npm may demand a one-time password. It is asked for HERE, when npm actually
+# rejects the publish, not at launch: steps 1–5 include a full build that takes
+# minutes, and a code is valid for ~30 seconds. (2.4.0 was first rejected with
+# "Two-factor authentication or granular access token with bypass 2fa enabled
+# is required to publish packages", and an up-front --otp could not have
+# survived the build.)
+#
+# Retrying is safe: `changeset publish` only publishes versions npm does not
+# already have, so a partially successful attempt is never repeated.
+#
+# No arrays below on purpose: macOS ships bash 3.2, where expanding an EMPTY
+# array under `set -u` aborts with "unbound variable" — which killed the first
+# 2.0.0 attempt at exactly this call.
+PUBLISH_LOG="$(mktemp -t buildpad-publish.XXXXXX)"
+trap 'rm -f "$PUBLISH_LOG"' EXIT
+
+publish() {
+  if [[ -n "$1" ]]; then
+    pnpm changeset publish --otp "$1" 2>&1 | tee "$PUBLISH_LOG"
+  else
+    pnpm changeset publish 2>&1 | tee "$PUBLISH_LOG"
+  fi
+}
+
+TOKEN_HINT="Or use a granular access token with publish rights on @buildpad/* and
+    \"bypass two-factor authentication\" enabled, in ~/.npmrc, and re-run."
+
+OTP_CODE="$OTP"
+OTP_ATTEMPTS=0
+until publish "$OTP_CODE"; do
+  # EOTP: "requires a one-time password". E403: "Two-factor authentication or
+  # granular access token with bypass 2fa enabled is required".
+  if ! grep -qiE 'EOTP|one-time pass|two-factor auth' "$PUBLISH_LOG"; then
+    die "publish failed (see the npm output above).
+    Everything up to and including the tag is already live, which is a safe
+    state. Fix the cause and re-run — the script resumes at this step."
+  fi
+  $ASSUME_YES && die "npm requires two-factor authentication, and --yes disables prompting.
+    Re-run without --yes to be asked for a code at this step.
+    ${TOKEN_HINT}"
+  [[ $OTP_ATTEMPTS -lt 3 ]] || die "npm rejected ${OTP_ATTEMPTS} one-time passwords.
+    ${TOKEN_HINT}"
+  echo
+  warn "npm requires two-factor authentication to publish"
+  OTP_CODE="$(prompt_otp)"
+  [[ -n "$OTP_CODE" ]] || die "no code entered — stopped before publishing.
+    The tag is live, which is a safe state; re-run to resume.
+    ${TOKEN_HINT}"
+  OTP_ATTEMPTS=$((OTP_ATTEMPTS + 1))
+done
 ok "published"
 
 # ─────────────────────────────────────────────────────────────────────────
-step "7. Push the per-package tags changeset publish created"
+step "7. Push the release tags"
 # ─────────────────────────────────────────────────────────────────────────
 
-git push "$REMOTE" --tags
-ok "tags pushed"
+# `changeset publish` tags each package it publishes and, because
+# privatePackages.tag is on, RE-creates a tag for every private package on
+# every run. On a resume those private tags are already on the remote from the
+# first attempt, and the re-created local copies are new tag objects for the
+# same commit — so a blanket `git push --tags` is rejected ("already exists"),
+# and under set -e that aborted 2.4.0's resume before the final check below.
+#
+# So: push only what the remote lacks; accept a remote tag that points at the
+# release commit (adopting its tag object locally, so later pushes agree); and
+# refuse, never force, one that points anywhere else.
+HEAD_COMMIT="$(git rev-parse HEAD)"
+REMOTE_TAGS="$(git ls-remote --tags "$REMOTE")"
+TO_PUSH=""
+ALREADY=0
+for t in $(git tag --points-at HEAD); do
+  remote_commit="$(remote_tag_commit "$REMOTE_TAGS" "$t")"
+  if [[ -z "$remote_commit" ]]; then
+    TO_PUSH="${TO_PUSH} ${t}"
+    continue
+  fi
+  [[ "$remote_commit" == "$HEAD_COMMIT" ]] || die "tag ${t} is on ${REMOTE} at ${remote_commit:0:7}, not the release commit ${HEAD_COMMIT:0:7}.
+    Refusing to move a published tag. Investigate before re-running."
+  if [[ "$(git rev-parse "refs/tags/${t}")" != "$(remote_tag_object "$REMOTE_TAGS" "$t")" ]]; then
+    git fetch --quiet "$REMOTE" "+refs/tags/${t}:refs/tags/${t}"
+  fi
+  ALREADY=$((ALREADY + 1))
+done
+
+if [[ -n "$TO_PUSH" ]]; then
+  # Tag names never contain whitespace, so word-splitting TO_PUSH is intended.
+  git push --quiet "$REMOTE" $TO_PUSH
+  ok "pushed:${TO_PUSH}"
+fi
+ok "${ALREADY} release tag(s) were already on ${REMOTE}"
 
 # ─────────────────────────────────────────────────────────────────────────
 step "Done — verifying what landed"
 # ─────────────────────────────────────────────────────────────────────────
 
+# A new version 404s on the registry for up to about a minute after npm
+# accepts it (2.4.0 took ~40s), and the dist-tags endpoint is cached longer
+# still. Poll the version itself rather than reading a stale `latest` once.
 for p in cli mcp; do
-  LATEST="$(curl -s "https://registry.npmjs.org/-/package/@buildpad%2f${p}/dist-tags" \
-    | node -pe "try{JSON.parse(require('fs').readFileSync(0,'utf8')).latest}catch(e){'?'}")"
-  if [[ "$LATEST" == "$NEW" ]]; then ok "@buildpad/${p} latest = ${LATEST}"
-  else warn "@buildpad/${p} latest = ${LATEST} (npm may take a moment to update)"; fi
+  URL="https://registry.npmjs.org/@buildpad%2f${p}/${NEW}"
+  CODE=000
+  for attempt in $(seq 1 24); do
+    CODE="$(curl -s -o /dev/null -w '%{http_code}' "${URL}?t=$(date +%s)" || echo 000)"
+    [[ "$CODE" == "200" ]] && break
+    sleep 5
+  done
+  if [[ "$CODE" == "200" ]]; then
+    ok "@buildpad/${p}@${NEW} is on npm"
+  else
+    warn "@buildpad/${p}@${NEW} still returns HTTP ${CODE} after 2 minutes — check: npm view @buildpad/${p}@${NEW}"
+  fi
 done
 
 cat <<NEXT
@@ -385,6 +539,6 @@ ${BLD}Smoke test from an empty directory:${OFF}
   cd \$(mktemp -d) && npm init -y >/dev/null && npx @buildpad/cli@${NEW} list | head
 
 ${BLD}Tell consumers:${OFF}
-  This is a breaking release — buildpad.json moves to schema v3.
-  npx @buildpad/cli@latest migrate
+  npx @buildpad/cli@latest outdated
+  npx @buildpad/cli@latest upgrade --three-way
 NEXT
