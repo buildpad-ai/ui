@@ -1,5 +1,52 @@
 # @buildpad/ui-interfaces
 
+## 2.4.0
+
+### Minor Changes
+
+- f9bc63d: CollectionList: add an opt-in `exactCount` prop, and use it for the relation pickers.
+
+  The list fetch relies on the server's default `estimated` count mode, which is cheap but can report a wildly inflated total on a full first page when the table has stale or absent `ANALYZE` statistics — small, rarely-mutated collections are exactly what autovacuum's threshold skips. The server reconciles an _under_-count as soon as a page contradicts it, but an over-count on a full page is only a lower bound, so nothing corrects it until pagination reaches a short page. The visible symptom is a pager offering pages that hold nothing.
+
+  `exactCount` (default `false`) sends `count=exact`, which makes the server return a real count with `meta.total_estimated: false` — the flag `CollectionList` already pins on. It stays off for primary collection views, where `estimated` is what keeps the component cheap.
+
+  The "Add Existing" pickers in `ListM2M`, `ListO2M` and `ListM2A` opt in: they are always small, human-browsed modals, so a real count is worth the marginal cost.
+
+- eec0a9e: Fix the bugs and code smells reported by a SonarQube scan.
+
+  Most of the changes are refactors with no change in behavior: unused imports, variables and callbacks removed; `Number.parseInt`/`Number.isNaN`, `RegExp#exec`, `Set` lookups and `??=` used where they apply; `node:` imports for Node built-ins (including the CLI's `lib/oauth/pkce.ts` template); and the two most complex functions, the MCP server's tool dispatcher and the CLI's `upgrade`, split into smaller functions. The changes you can see:
+
+  - **`generateToken`** (`@buildpad/ui-users`) throws when `crypto.getRandomValues` is unavailable, instead of falling back to the predictable `Math.random()`.
+  - **Keyboard access:** the header context-menu items in `CollectionList`, and the inline "all / none" and "reset" links in `SystemPermissions`, now respond to Enter and Space.
+  - **Editable rows keep their input:** removing a scope-pattern row in `RoleDetail` or a condition row in `ConditionsEditor` no longer moves the cursor into another row's field.
+  - **No more `[object Object]`:** an object value renders as JSON in `CollectionList`'s choice, uuid and collection-item-dropdown cells and in `formatFieldValue`. `ListM2M` builds no item link for an object key, `ListO2M` substitutes `null` for an object in a filter template, and `AutocompleteAPI` no longer gives every result the same value when `textPath` or `valuePath` resolves to an object.
+  - **Sorting:** the `Tags` interface sorts alphabetically with `localeCompare`, so mixed-case and accented tags sort correctly.
+  - **Relation hooks** use `isExistingItem` instead of the deprecated `isValidPrimaryKey`.
+  - **Errors:** three failure paths log the caught error before they show their failure message.
+  - **MCP server:** importing the module no longer starts the stdio server (`node dist/index.js` still does), and the tool handler is exported as `handleCallToolRequest`.
+
+  Also adds tests, and `test:coverage` scripts with lcov output for SonarQube.
+
+### Patch Changes
+
+- 0baae00: Remove unused declarations that failed the workspace typecheck.
+
+  `pnpm -r typecheck` reported 41 errors, all in `ui-interfaces` sources, and CI has been failing on them: unused `React` default imports (the package builds with the automatic JSX runtime), unused Mantine/Tabler named imports, unused destructured props and hook bindings, a write-only class field, and two dead type declarations. `@editorjs/checklist`'s ambient declaration already existed but was invisible to dependents, so it is now pulled in with a reference directive.
+
+  None of this changes behaviour — every removed binding was provably unread. The props removed from `ListM2MInterface`/`ListO2MInterface` destructures remain part of their public prop types; they were simply never used by those components.
+
+  Note on why these were invisible: `@buildpad/ui-interfaces` publishes `"types": "./src/index.ts"`, so dependents typecheck its raw sources under _their_ compiler options. `ui-form` extends `tsconfig.base.json` (`noUnusedLocals`/`noUnusedParameters`) while `ui-interfaces`' own tsconfig does not, so the package's own `typecheck` script stays green while its dependents' fails.
+
+- Updated dependencies [f9bc63d]
+- Updated dependencies [c839db2]
+- Updated dependencies [eec0a9e]
+  - @buildpad/ui-collections@2.4.0
+  - @buildpad/hooks@2.4.0
+  - @buildpad/services@2.4.0
+  - @buildpad/types@2.4.0
+  - @buildpad/ui-form@2.4.0
+  - @buildpad/utils@2.4.0
+
 ## 2.3.0
 
 ### Minor Changes

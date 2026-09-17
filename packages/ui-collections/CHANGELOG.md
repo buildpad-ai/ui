@@ -1,5 +1,45 @@
 # @buildpad/ui-collections
 
+## 2.4.0
+
+### Minor Changes
+
+- f9bc63d: CollectionList: add an opt-in `exactCount` prop, and use it for the relation pickers.
+
+  The list fetch relies on the server's default `estimated` count mode, which is cheap but can report a wildly inflated total on a full first page when the table has stale or absent `ANALYZE` statistics — small, rarely-mutated collections are exactly what autovacuum's threshold skips. The server reconciles an _under_-count as soon as a page contradicts it, but an over-count on a full page is only a lower bound, so nothing corrects it until pagination reaches a short page. The visible symptom is a pager offering pages that hold nothing.
+
+  `exactCount` (default `false`) sends `count=exact`, which makes the server return a real count with `meta.total_estimated: false` — the flag `CollectionList` already pins on. It stays off for primary collection views, where `estimated` is what keeps the component cheap.
+
+  The "Add Existing" pickers in `ListM2M`, `ListO2M` and `ListM2A` opt in: they are always small, human-browsed modals, so a real count is worth the marginal cost.
+
+- c839db2: CollectionList: bulk actions receive the selected rows as `selectedRows`, including rows selected before a page, search or filter change.
+
+  `selectedRows` held the selection's primary keys cast as rows, so the "Add Existing" picker in `ListM2M` linked items without their display data and showed each one as a "NEW" row with no label. The list now keeps the selected rows themselves, in the same order as `selectedIds`.
+
+- eec0a9e: Fix the bugs and code smells reported by a SonarQube scan.
+
+  Most of the changes are refactors with no change in behavior: unused imports, variables and callbacks removed; `Number.parseInt`/`Number.isNaN`, `RegExp#exec`, `Set` lookups and `??=` used where they apply; `node:` imports for Node built-ins (including the CLI's `lib/oauth/pkce.ts` template); and the two most complex functions, the MCP server's tool dispatcher and the CLI's `upgrade`, split into smaller functions. The changes you can see:
+
+  - **`generateToken`** (`@buildpad/ui-users`) throws when `crypto.getRandomValues` is unavailable, instead of falling back to the predictable `Math.random()`.
+  - **Keyboard access:** the header context-menu items in `CollectionList`, and the inline "all / none" and "reset" links in `SystemPermissions`, now respond to Enter and Space.
+  - **Editable rows keep their input:** removing a scope-pattern row in `RoleDetail` or a condition row in `ConditionsEditor` no longer moves the cursor into another row's field.
+  - **No more `[object Object]`:** an object value renders as JSON in `CollectionList`'s choice, uuid and collection-item-dropdown cells and in `formatFieldValue`. `ListM2M` builds no item link for an object key, `ListO2M` substitutes `null` for an object in a filter template, and `AutocompleteAPI` no longer gives every result the same value when `textPath` or `valuePath` resolves to an object.
+  - **Sorting:** the `Tags` interface sorts alphabetically with `localeCompare`, so mixed-case and accented tags sort correctly.
+  - **Relation hooks** use `isExistingItem` instead of the deprecated `isValidPrimaryKey`.
+  - **Errors:** three failure paths log the caught error before they show their failure message.
+  - **MCP server:** importing the module no longer starts the stdio server (`node dist/index.js` still does), and the tool handler is exported as `handleCallToolRequest`.
+
+  Also adds tests, and `test:coverage` scripts with lcov output for SonarQube.
+
+### Patch Changes
+
+- Updated dependencies [eec0a9e]
+  - @buildpad/services@2.4.0
+  - @buildpad/types@2.4.0
+  - @buildpad/ui-form@2.4.0
+  - @buildpad/ui-table@2.4.0
+  - @buildpad/utils@2.4.0
+
 ## 2.3.0
 
 ### Minor Changes
