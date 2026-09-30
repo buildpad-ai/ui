@@ -16,28 +16,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createAuthenticatedClient, type User } from './session';
-import { 
-  applyFilterToQuery as applyFilterInternal, 
+import {
+  applyFilterToQuery as applyFilterInternal,
+  assertPermissionFilterSupported,
   resolveFilterDynamicValues as resolveInternal,
+  PermissionError,
+  UnsupportedPermissionFilterError,
 } from './filter-to-query';
 
-// Re-export filter utilities with proper naming
+// Re-export filter utilities with proper naming.
+// NOTE: applyFilterToQuery throws UnsupportedPermissionFilterError (a 403
+// PermissionError) for filters it cannot express — it never drops conditions.
 export const applyFilterToQuery = applyFilterInternal;
 export const resolveFilterDynamicValues = resolveInternal;
 
+// PermissionError lives in ./filter-to-query (so UnsupportedPermissionFilterError
+// can extend it without an import cycle); re-exported here for compatibility.
+export { PermissionError, UnsupportedPermissionFilterError };
+
 /**
- * Permission denied error
+ * Filter that matches no rows — returned when access must be denied.
+ * A fresh object each call so callers cannot mutate a shared instance.
  */
-export class PermissionError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number = 403,
-    public collection?: string,
-    public action?: string
-  ) {
-    super(message);
-    this.name = 'PermissionError';
-  }
+function denyAllFilter(): FilterObject {
+  return { id: { _eq: '__DENY_ALL__' } };
 }
 
 /**
@@ -447,23 +449,29 @@ export async function getPermissionFilters(
     return null; // No filter = full access
   }
   
-  // Get user's primary role via junction table
-  const { data: primaryRole } = await supabase
+  // Get all of the user's roles via the junction table, primary (lowest sort)
+  // first. Used for $CURRENT_ROLE / $CURRENT_ROLES. On error the role data is
+  // treated as unknown, so filters referencing it deny instead of guessing.
+  const { data: roleRows, error: rolesError } = await supabase
     .from('daas_user_roles')
     .select('role_id')
     .eq('user_id', user.id)
-    .order('sort', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  
-  const roleId = primaryRole?.role_id || undefined;
+    .order('sort', { ascending: true });
+
+  const roleIds: string[] | undefined =
+    !rolesError && Array.isArray(roleRows)
+      ? roleRows
+          .map((r: { role_id?: unknown }) => r?.role_id)
+          .filter((id: unknown): id is string => typeof id === 'string' && id !== '')
+      : undefined;
+  const roleId = roleIds?.[0];
   
   // Get user's policies
   const { data: policyIds } = await supabase.rpc('get_user_policies', { user_id: user.id });
   
   if (!policyIds || policyIds.length === 0) {
     // No policies = deny all (empty filter that matches nothing)
-    return { id: { _eq: '__DENY_ALL__' } };
+    return denyAllFilter();
   }
   
   const policyIdArray = Array.isArray(policyIds)
@@ -479,7 +487,7 @@ export async function getPermissionFilters(
     .in('policy', policyIdArray);
 
   if (error || !permissions || permissions.length === 0) {
-    return { id: { _eq: '__DENY_ALL__' } };
+    return denyAllFilter();
   }
 
   // Define type for permission filter rows
@@ -505,13 +513,26 @@ export async function getPermissionFilters(
   }
 
   // Combine filters with OR logic
-  if (filters.length === 1) {
-    return resolveFilterDynamicValues(filters[0], user.id, roleId);
-  }
+  const combined: FilterObject = filters.length === 1 ? filters[0] : { _or: filters };
 
-  return resolveFilterDynamicValues(
-    { _or: filters },
-    user.id,
-    roleId
-  );
+  // FAIL CLOSED: resolve dynamic variables and verify the whole filter can be
+  // translated into a query. A filter that cannot be enforced faithfully
+  // (unknown operator, relational path, unresolvable variable, …) denies all
+  // rows instead of being partially applied or dropped.
+  try {
+    const resolved = resolveFilterDynamicValues(combined, user.id, roleId, {
+      roles: roleIds,
+      policies: policyIdArray,
+    });
+    assertPermissionFilterSupported(resolved);
+    return resolved;
+  } catch (err) {
+    if (err instanceof UnsupportedPermissionFilterError) {
+      console.error(
+        `[permissions] Denying ${action} on ${collection}: ${err.message}`
+      );
+      return denyAllFilter();
+    }
+    throw err;
+  }
 }

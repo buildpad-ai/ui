@@ -40,6 +40,7 @@ export {
   applyFilterToQuery,
   resolveFilterDynamicValues,
   PermissionError,
+  UnsupportedPermissionFilterError,
   type PermissionCheck,
   type PermissionDetails,
   type FilterObject,
@@ -48,6 +49,10 @@ export {
 export {
   applyFilter,
   applyFieldOperators,
+  assertPermissionFilterSupported,
+  isUnsupportedPermissionFilterError,
+  type DynamicVariableContext,
   type QueryBuilder,
+  type UnsupportedPermissionFilterReason,
   FILTER_OPERATORS,
 } from './filter-to-query';
