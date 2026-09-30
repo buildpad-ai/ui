@@ -8,12 +8,20 @@
 #    are published to npm automatically.
 #
 # B) **Manual dispatch**
-#    Go to Actions → "Publish" → "Run workflow" to publish immediately.
+#    Go to Actions → "Publish" → "Run workflow" to publish immediately. A
+#    manual run repeats CI's typecheck and unit tests before publishing.
+#
+# The automated path runs only after CI succeeds on a push to main, and only
+# for the commit CI tested: if main has moved on since, the newer commit's CI
+# run triggers its own publish. Previously this workflow ran on the same push
+# as CI without waiting for it, so releases went to npm from a red main.
 #
 name: Publish
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch: {}
 
@@ -24,6 +32,14 @@ concurrency:
 jobs:
   publish:
     name: Publish to npm
+    # `github.sha` is main's tip when the event fires, so the sha check skips
+    # a run whose tested commit is no longer the tip. The event check keeps
+    # out pull_request runs from forks whose branch happens to be named main.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_sha == github.sha)
     runs-on: ubuntu-latest
     permissions:
       contents: write      # create git tags & update CHANGELOG
@@ -38,7 +54,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
@@ -46,6 +62,14 @@ jobs:
 
       - name: Build packages
         run: pnpm build
+
+      # The automated trigger only fires after CI passed on this exact commit;
+      # a manual dispatch has no such guarantee, so check here.
+      - name: Typecheck and unit tests (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          pnpm -r typecheck
+          pnpm test
 
       # Changesets will either:
       # - open a "Version Packages" PR (if there are unreleased changesets), or
