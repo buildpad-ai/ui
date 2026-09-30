@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 
 const { createAuthenticatedClientMock } = vi.hoisted(() => ({
   createAuthenticatedClientMock: vi.fn(),
@@ -29,7 +30,7 @@ import {
 } from '../src/auth/enforcer';
 import type { QueryBuilder } from '../src/auth/filter-to-query';
 
-const DENY_ALL = { id: { _eq: '__DENY_ALL__' } };
+const DENY_ALL = { _and: [{ id: { _null: true } }, { id: { _nnull: true } }] };
 
 // ─── Fake Supabase client ────────────────────────────────────────
 
@@ -254,7 +255,27 @@ describe('getPermissionFilters — denies filters it cannot enforce', () => {
     mockSession(withPermissions({ owner: { _bogus: 1 } }));
     const q = fakeQuery();
     applyFilterToQuery(q, await getPermissionFilters('articles', 'read'));
-    expect(q.calls).toEqual([['eq', 'id', '__DENY_ALL__']]);
+    expect(q.calls).toEqual([
+      ['is', 'id', null],
+      ['not', 'id', 'is', null],
+    ]);
+  });
+
+  it('the deny-all filter is a valid PostgREST query for any id type (real postgrest-js builder)', async () => {
+    mockSession({ policies: [] });
+    const filter = await getPermissionFilters('articles', 'read');
+    const client = createClient('http://localhost:54321', 'anon-key', {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const query = client.from('articles').select('*');
+    const applied = applyFilterToQuery(query as unknown as QueryBuilder, filter);
+    const url = (applied as unknown as { url: URL }).url;
+    // `id IS NULL AND id IS NOT NULL` — no literal value is compared against
+    // the column, so uuid / integer / text ids all yield an empty result
+    // instead of PostgREST's 400 "invalid input syntax".
+    expect(url.searchParams.getAll('id')).toEqual(['is.null', 'not.is.null']);
+    expect([...url.searchParams.keys()].sort()).toEqual(['id', 'id', 'select']);
+    expect(url.search).not.toContain('__DENY_ALL__');
   });
 
   it('returns a fresh deny-all object each time', async () => {

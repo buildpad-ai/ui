@@ -36,10 +36,15 @@ export { PermissionError, UnsupportedPermissionFilterError };
 
 /**
  * Filter that matches no rows — returned when access must be denied.
+ *
+ * `id IS NULL AND id IS NOT NULL` is a contradiction for every column type, so
+ * PostgREST returns an empty result (`?id=is.null&id=not.is.null`) instead of
+ * a 400 — unlike comparing `id` to a string sentinel, which is invalid input
+ * for uuid / integer primary keys.
  * A fresh object each call so callers cannot mutate a shared instance.
  */
 function denyAllFilter(): FilterObject {
-  return { id: { _eq: '__DENY_ALL__' } };
+  return { _and: [{ id: { _null: true } }, { id: { _nnull: true } }] };
 }
 
 /**
@@ -105,7 +110,8 @@ export async function enforcePermission(
     throw new PermissionError('Failed to verify permissions', 500);
   }
   
-  const isAdmin = userData?.admin_access ?? false;
+  // Only an explicit boolean true grants admin — never a truthy non-boolean.
+  const isAdmin = userData?.admin_access === true;
   
   // Admins bypass all permission checks
   if (isAdmin) {
@@ -126,7 +132,8 @@ export async function enforcePermission(
     throw new PermissionError('Failed to check permission', 500);
   }
   
-  if (!hasPermission) {
+  // Only an explicit boolean true grants access (not 'false', 1, [], …).
+  if (hasPermission !== true) {
     throw new PermissionError(
       `Permission denied: ${check.action} on ${check.collection}`,
       403,
@@ -153,14 +160,14 @@ export async function getUserPermissions(
 ): Promise<Record<string, PermissionDetails>> {
   const { supabase, user } = await createAuthenticatedClient();
   
-  // Check if admin
-  const { data: userData } = await supabase
+  // Check if admin (a failed lookup means "not admin")
+  const { data: userData, error: userError } = await supabase
     .from('daas_users')
     .select('admin_access')
     .eq('id', user.id)
     .single();
   
-  if (userData?.admin_access) {
+  if (!userError && userData?.admin_access === true) {
     // Admin has all permissions
     const fullAccess: PermissionDetails = {
       fields: ['*'],
@@ -178,21 +185,17 @@ export async function getUserPermissions(
     };
   }
   
-  // Get user's policies
-  const { data: policyIds } = await supabase.rpc('get_user_policies', { user_id: user.id });
-  
-  if (!policyIds || policyIds.length === 0) {
-    return {};
-  }
-  
-  // Ensure policyIds is an array of strings (UUIDs)
-  const policyIdArray = Array.isArray(policyIds)
-    ? policyIds.map((id: unknown) => (typeof id === 'string' ? id : String(id)))
-    : [];
+  // Get user's policies (a failed lookup or unexpected shape means "none")
+  const { data: policyIds, error: policiesError } = await supabase.rpc('get_user_policies', {
+    user_id: user.id,
+  });
 
-  if (policyIdArray.length === 0) {
+  if (policiesError || !Array.isArray(policyIds) || policyIds.length === 0) {
     return {};
   }
+
+  // Ensure policyIds is an array of strings (UUIDs)
+  const policyIdArray = policyIds.map((id: unknown) => (typeof id === 'string' ? id : String(id)));
 
   // Get permissions for those policies
   const { data: permissions, error } = await supabase
@@ -302,8 +305,13 @@ export async function getAccessibleFields(
     console.error('Error fetching accessible fields:', error);
     return [];
   }
-  
-  return data || [];
+
+  // Anything but an array of field names grants no fields (a bare '*' string
+  // must not pass the callers' `.includes('*')` wildcard check).
+  if (!Array.isArray(data)) {
+    return [];
+  }
+  return data.filter((field: unknown): field is string => typeof field === 'string');
 }
 
 /**
@@ -438,14 +446,14 @@ export async function getPermissionFilters(
 ): Promise<FilterObject | null> {
   const { supabase, user } = await createAuthenticatedClient();
   
-  // Check if admin (admins have no filters)
-  const { data: userData } = await supabase
+  // Check if admin (admins have no filters; a failed lookup means "not admin")
+  const { data: userData, error: userError } = await supabase
     .from('daas_users')
     .select('admin_access')
     .eq('id', user.id)
     .single();
   
-  if (userData?.admin_access) {
+  if (!userError && userData?.admin_access === true) {
     return null; // No filter = full access
   }
   
@@ -467,16 +475,16 @@ export async function getPermissionFilters(
   const roleId = roleIds?.[0];
   
   // Get user's policies
-  const { data: policyIds } = await supabase.rpc('get_user_policies', { user_id: user.id });
-  
-  if (!policyIds || policyIds.length === 0) {
-    // No policies = deny all (empty filter that matches nothing)
+  const { data: policyIds, error: policiesError } = await supabase.rpc('get_user_policies', {
+    user_id: user.id,
+  });
+
+  if (policiesError || !Array.isArray(policyIds) || policyIds.length === 0) {
+    // No (readable) policies = deny all (filter that matches nothing)
     return denyAllFilter();
   }
-  
-  const policyIdArray = Array.isArray(policyIds)
-    ? policyIds.map((id: unknown) => (typeof id === 'string' ? id : String(id)))
-    : [];
+
+  const policyIdArray = policyIds.map((id: unknown) => (typeof id === 'string' ? id : String(id)));
 
   // Get permissions with filters
   const { data: permissions, error } = await supabase
@@ -486,7 +494,20 @@ export async function getPermissionFilters(
     .eq('action', action)
     .in('policy', policyIdArray);
 
-  if (error || !permissions || permissions.length === 0) {
+  if (error || !Array.isArray(permissions) || permissions.length === 0) {
+    return denyAllFilter();
+  }
+
+  // Only an explicit `permissions: null` means "no restriction". A row that is
+  // not an object or lacks the column is malformed: deny rather than let an
+  // `undefined` filter reach the caller as "no filter".
+  if (
+    permissions.some(
+      (p: unknown) =>
+        typeof p !== 'object' || p === null || (p as { permissions?: unknown }).permissions === undefined
+    )
+  ) {
+    console.error(`[permissions] Denying ${action} on ${collection}: malformed permission row`);
     return denyAllFilter();
   }
 

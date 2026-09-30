@@ -169,6 +169,12 @@ export async function createAuthenticatedClient(): Promise<AuthenticatedClient> 
   
   if (authorization?.startsWith('Bearer ')) {
     const token = authorization.substring(7); // Remove 'Bearer ' prefix
+
+    // Never look up an empty token: a daas_users row whose token is '' must not
+    // be reachable (with the service role) by sending "Bearer " alone.
+    if (token.trim() === '') {
+      throw new AuthenticationError('Authentication failed: invalid token');
+    }
     
     // Check if this looks like a JWT (has 3 dot-separated segments)
     const isJWT = token.split('.').length === 3;
@@ -337,7 +343,8 @@ export async function isAdmin(): Promise<boolean> {
     return false;
   }
   
-  return data?.admin_access ?? false;
+  // Only an explicit boolean true grants admin — never a truthy non-boolean.
+  return data?.admin_access === true;
 }
 
 /**
