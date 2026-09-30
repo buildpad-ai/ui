@@ -40,6 +40,8 @@
     "@mantine/core": "^8.3.9",
     "@mantine/dates": "^8.3.9",
     "@mantine/hooks": "^8.3.9",
-    "dayjs": "^1.11.19"
+    "dayjs": "^1.11.19",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "2.1.9"
   }
 }

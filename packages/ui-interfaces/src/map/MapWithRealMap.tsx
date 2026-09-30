@@ -17,6 +17,7 @@ import { Container, Group, Text, Alert, Select, Button, Stack, Badge } from '@ma
 import { IconMap, IconMapPin, IconLine, IconSquare, IconTrash } from '@tabler/icons-react';
 import maplibregl from 'maplibre-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import DOMPurify from 'dompurify';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
@@ -164,6 +165,20 @@ class FitBoundsControl {
   }
 }
 
+/**
+ * maplibre-gl <= 6.4.0 renders source attribution into the attribution control
+ * via `innerHTML` after a DOM.sanitize() that skips attributes adjacent to one
+ * it removes (GHSA-jrc7-96c5-q579, zero-click XSS). `basemaps` is a prop, so
+ * pre-sanitize the attribution to plain links until maplibre-gl v6 is adopted.
+ */
+function sanitizeAttribution(html: string | undefined): string {
+  if (!html) return '';
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['a', 'b', 'strong', 'i', 'em', 'span'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'title'],
+  });
+}
+
 // Get map style for basemap
 function getMapStyle(basemap: BasemapSource): maplibregl.StyleSpecification {
   return {
@@ -173,7 +188,7 @@ function getMapStyle(basemap: BasemapSource): maplibregl.StyleSpecification {
         type: 'raster',
         tiles: [basemap.url.replace('{s}', 'a'), basemap.url.replace('{s}', 'b'), basemap.url.replace('{s}', 'c')],
         tileSize: basemap.tileSize || 256,
-        attribution: basemap.attribution || '',
+        attribution: sanitizeAttribution(basemap.attribution),
       },
     },
     layers: [

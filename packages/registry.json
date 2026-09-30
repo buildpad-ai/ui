@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-30T15:14:25.024Z",
+  "generatedAt": "2026-09-30T15:42:14.592Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -589,12 +589,12 @@
         {
           "source": "services/src/auth/session.ts",
           "target": "lib/buildpad/services/auth/session.ts",
-          "sourceSha256": "863e2e61a04abbbd9a7768579063ce4595733ec41762f2374e1f538e31084b8a"
+          "sourceSha256": "49116ae850792e9ba14c8f8d5b3de5f587b5da5bf81e4bb1f50529730e1b0449"
         },
         {
           "source": "services/src/auth/enforcer.ts",
           "target": "lib/buildpad/services/auth/enforcer.ts",
-          "sourceSha256": "9ef7280f4d78fba5d7d45e8abe0340a020258dc76a65c7bbe452f571a04239f1"
+          "sourceSha256": "6ccd0265ad4fcba299b72d6c9ee86cdc57895e0d33ba1bef72677e6c867b2ee3"
         },
         {
           "source": "services/src/auth/filter-to-query.ts",
@@ -3410,14 +3410,15 @@
         {
           "source": "ui-interfaces/src/map/MapWithRealMap.tsx",
           "target": "components/ui/map-with-real-map.tsx",
-          "sourceSha256": "455bf938612ff0eb3676c59f332d53ddd20d1bab38e3e389fcea7dc7d3994f64"
+          "sourceSha256": "fb9c02f90587d7250166de4447bef86b62db917db31032858d4ec95f67eac388"
         }
       ],
       "dependencies": [
         "@mantine/core",
         "@tabler/icons-react",
         "maplibre-gl",
-        "@mapbox/mapbox-gl-draw"
+        "@mapbox/mapbox-gl-draw",
+        "dompurify"
       ],
       "internalDependencies": [],
       "interface": {
