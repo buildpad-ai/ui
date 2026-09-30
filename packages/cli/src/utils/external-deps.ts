@@ -72,6 +72,7 @@ export const DEPENDENCY_VERSIONS: Record<string, string> = {
   '@editorjs/quote': '^2.7.6',
   '@editorjs/table': '^2.4.5',
   '@editorjs/underline': '^1.2.1',
+  'dompurify': '^3.4.2',
   // Map
   'maplibre-gl': '^5.17.0',
   '@mapbox/mapbox-gl-draw': '^1.5.1',
