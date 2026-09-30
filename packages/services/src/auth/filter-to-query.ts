@@ -472,11 +472,11 @@ function compileOperator(field: string, operator: string, value: unknown, path: 
     value: v,
   });
 
-  if (Object.hasOwn(COMPARISON_OPERATORS, operator)) {
+  if (Object.prototype.hasOwnProperty.call(COMPARISON_OPERATORS, operator)) {
     return cmp(COMPARISON_OPERATORS[operator], assertScalar(value, path));
   }
 
-  if (Object.hasOwn(LIKE_OPERATORS, operator)) {
+  if (Object.prototype.hasOwnProperty.call(LIKE_OPERATORS, operator)) {
     const { shape, op, negate } = LIKE_OPERATORS[operator];
     const literal = likeLiteral(value, path);
     const pattern =
