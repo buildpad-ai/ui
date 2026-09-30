@@ -57,6 +57,26 @@ jobs:
       - name: Dependencies declared where they are used
         run: pnpm deps:check
 
+  # Storybooks were only built by Amplify after merge, so a broken story
+  # reached the deploy before anyone saw it. Same script Amplify runs.
+  storybook:
+    name: Storybook build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build every package's Storybook
+        run: pnpm build:storybook
+
   # Separate job: the advisory database changes independently of this repo,
   # so a new advisory shows up as its own failing check instead of hiding
   # the build/test result. Accepted exceptions live in pnpm.auditConfig and
