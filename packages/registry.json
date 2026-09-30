@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-30T15:42:14.592Z",
+  "generatedAt": "2026-09-30T15:54:20.438Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -3443,7 +3443,7 @@
       ],
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "workflow-button",
