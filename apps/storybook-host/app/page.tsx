@@ -162,10 +162,10 @@ export default function HomePage() {
         body: JSON.stringify({ url, token }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data.error || "Connection failed");
+        setError(data.error || `Connection failed (${res.status})`);
         return;
       }
 
@@ -324,9 +324,10 @@ npx @buildpad/cli@latest bootstrap`}</pre>
                   use real DaaS data without CORS issues.
                 </div>
 
-                {status?.connected && status.error && (
+                {status?.error && (
                   <div className="alert alert-warning">
-                    Connected but auth error: {status.error}
+                    {status.connected ? "Connected but auth error: " : ""}
+                    {status.error}
                   </div>
                 )}
 
@@ -340,8 +341,13 @@ npx @buildpad/cli@latest bootstrap`}</pre>
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
                       placeholder="https://xxx.buildpad-daas.xtremax.com"
+                      aria-describedby="daas-url-help"
                       required
                     />
+                    <small id="daas-url-help">
+                      Must be an https:// URL on an allowed DaaS host (e.g.
+                      *.buildpad-daas.xtremax.com).
+                    </small>
                   </div>
 
                   <div className="form-group">
