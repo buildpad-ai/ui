@@ -9,6 +9,16 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <MantineProvider>{children}</MantineProvider>
 );
 
+// Mantine's Select also renders an <input type="hidden"> carrying its value,
+// so ByDisplayValue matches it twice; return the visible (interactive) input.
+const getSelectByDisplayValue = (value: string) => {
+  const matches = screen
+    .getAllByDisplayValue(value)
+    .filter((el) => el.getAttribute('type') !== 'hidden');
+  expect(matches).toHaveLength(1);
+  return matches[0];
+};
+
 // Mock console.warn to avoid color value warnings during tests
 beforeEach(() => {
   jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -118,6 +128,57 @@ describe('Color Component', () => {
     await user.type(input, 'FF0000');
     
     expect(defaultProps.onChange).toHaveBeenCalledWith('#FF0000');
+  });
+
+  it('keeps a partially typed hex in a controlled form and commits it once valid', async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn();
+    const Controlled = () => {
+      const [color, setColor] = React.useState<string | null>(null);
+      return (
+        <Color
+          value={color}
+          onChange={(next) => {
+            onChange(next);
+            setColor(next);
+          }}
+        />
+      );
+    };
+
+    render(
+      <TestWrapper>
+        <Controlled />
+      </TestWrapper>
+    );
+
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    await user.type(input, '#00FF');
+    expect(input.value).toBe('#00FF');
+    expect(onChange).not.toHaveBeenCalled();
+
+    await user.type(input, '00');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('#00FF00');
+    expect(input.value).toBe('#00FF00');
+  });
+
+  it('reverts an unfinished hex draft to the stored value on blur', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <TestWrapper>
+        <Color {...defaultProps} value="#FF0000" />
+      </TestWrapper>
+    );
+
+    const input = screen.getByRole('textbox') as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, '#12');
+    expect(input.value).toBe('#12');
+
+    await user.tab();
+    expect(input.value).toBe('#FF0000');
   });
 
   it('handles clearing color value', async () => {
@@ -232,12 +293,12 @@ describe('Color Component', () => {
     await user.click(input);
     
     await waitFor(() => {
-      const formatSelect = screen.getByDisplayValue('RGB');
+      const formatSelect = getSelectByDisplayValue('RGB');
       expect(formatSelect).toBeInTheDocument();
     });
     
     // Switch to HSL format
-    const formatSelect = screen.getByDisplayValue('RGB');
+    const formatSelect = getSelectByDisplayValue('RGB');
     await user.click(formatSelect);
     
     await waitFor(async () => {
@@ -246,7 +307,7 @@ describe('Color Component', () => {
     });
     
     await waitFor(() => {
-      expect(screen.getByDisplayValue('HSL')).toBeInTheDocument();
+      expect(getSelectByDisplayValue('HSL')).toBeInTheDocument();
     });
   });
 
@@ -263,7 +324,7 @@ describe('Color Component', () => {
     await user.click(input);
     
     await waitFor(() => {
-      expect(screen.getByDisplayValue('RGBA')).toBeInTheDocument();
+      expect(getSelectByDisplayValue('RGBA')).toBeInTheDocument();
       expect(screen.getByText('Opacity')).toBeInTheDocument();
     });
   });
@@ -324,8 +385,9 @@ describe('Color Component', () => {
       const rgbInputs = screen.getAllByDisplayValue('255');
       expect(rgbInputs).toHaveLength(1); // R value should be 255
       
-      const greenInput = screen.getByDisplayValue('0');
-      expect(greenInput).toBeInTheDocument(); // G value should be 0
+      // G and B are both 0 for pure red, so there are exactly two
+      const zeroInputs = screen.getAllByDisplayValue('0');
+      expect(zeroInputs).toHaveLength(2);
     });
   });
 
@@ -336,8 +398,8 @@ describe('Color Component', () => {
       </TestWrapper>
     );
     
-    // Find the color swatch button
-    const colorSwatch = screen.getByRole('button');
+    // Find the color swatch button (left section; the clear button is second)
+    const colorSwatch = screen.getAllByRole('button')[0];
     expect(colorSwatch).toBeInTheDocument();
     
     // Should have background color style
@@ -379,7 +441,7 @@ describe('ColorUtils', () => {
     await waitFor(() => {
       // Red color in RGB should show: R=255, G=0, B=0
       expect(screen.getByDisplayValue('255')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('0')).toBeInTheDocument();
+      expect(screen.getAllByDisplayValue('0')).toHaveLength(2);
     });
   });
 });

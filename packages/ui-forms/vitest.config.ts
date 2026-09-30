@@ -17,6 +17,9 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       reportOnFailure: true,
+      // Floors just under the coverage measured when they were added
+      // (4.5 / 46.51 / 21.87 / 4.5); raise them as tests are added.
+      thresholds: { statements: 4, branches: 45, functions: 20, lines: 4 },
     },
   },
   resolve: {

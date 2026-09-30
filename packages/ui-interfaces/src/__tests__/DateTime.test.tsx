@@ -1,321 +1,171 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
-import { Boolean, BooleanProps } from '../Boolean';
+import { DateTime, DateTimeProps } from '../datetime/DateTime';
 
 // Helper function to render components with Mantine provider
 const renderWithProvider = (component: React.ReactElement) => {
-  return render(
-    <MantineProvider>
-      {component}
-    </MantineProvider>
-  );
+  return render(<MantineProvider>{component}</MantineProvider>);
 };
 
-describe('Boolean', () => {
-  const mockOnChange = jest.fn();
+// Mantine's pickers render the field as a <button> whose text is the
+// formatted value (or the placeholder when empty).
+const getField = (container: HTMLElement) =>
+  container.querySelector('button[data-dates-input]') as HTMLButtonElement;
+const getClearButton = (container: HTMLElement) =>
+  container.querySelector('.mantine-InputClearButton-root');
+
+describe('DateTime', () => {
+  const defaultProps: DateTimeProps = {
+    value: null,
+    onChange: jest.fn(),
+  };
 
   beforeEach(() => {
-    mockOnChange.mockClear();
+    jest.clearAllMocks();
   });
 
-  describe('Basic Functionality', () => {
-    it('renders with label', () => {
-      renderWithProvider(
-        <Boolean
-          label="Enable feature"
-          onChange={mockOnChange}
-        />
-      );
-
-      expect(screen.getByText('Enable feature')).toBeInTheDocument();
-      expect(screen.getByRole('switch')).toBeInTheDocument();
+  describe('Basic Rendering', () => {
+    it('renders with default props', () => {
+      const { container } = renderWithProvider(<DateTime {...defaultProps} />);
+      expect(getField(container)).toBeInTheDocument();
     });
 
-    it('renders without label', () => {
-      renderWithProvider(
-        <Boolean
-          onChange={mockOnChange}
-        />
-      );
-
-      expect(screen.getByRole('switch')).toBeInTheDocument();
+    it('renders label when provided', () => {
+      renderWithProvider(<DateTime {...defaultProps} label="Published at" />);
+      expect(screen.getByText('Published at')).toBeInTheDocument();
     });
 
-    it('displays description when provided', () => {
-      renderWithProvider(
-        <Boolean
-          label="Enable feature"
-          description="This enables the feature"
-          onChange={mockOnChange}
-        />
-      );
-
-      expect(screen.getByText('This enables the feature')).toBeInTheDocument();
+    it('marks the label as required', () => {
+      renderWithProvider(<DateTime {...defaultProps} label="Published at" required />);
+      expect(screen.getByText('Published at *')).toBeInTheDocument();
     });
 
-    it('displays error message when error prop is provided', () => {
+    it('renders description when provided', () => {
       renderWithProvider(
-        <Boolean
-          label="Enable feature"
-          error="This field is required"
-          onChange={mockOnChange}
-        />
+        <DateTime {...defaultProps} label="Published at" description="When the post goes live" />
       );
+      expect(screen.getByText('When the post goes live')).toBeInTheDocument();
+    });
 
-      expect(screen.getByText('This field is required')).toBeInTheDocument();
+    it('renders error message when provided', () => {
+      renderWithProvider(
+        <DateTime {...defaultProps} label="Published at" error="Date is required" />
+      );
+      expect(screen.getByText('Date is required')).toBeInTheDocument();
+    });
+
+    it('forwards data-testid to the picker', () => {
+      renderWithProvider(<DateTime {...defaultProps} data-testid="published-at" />);
+      expect(screen.getByTestId('published-at')).toBeInTheDocument();
     });
   });
 
-  describe('Value Handling', () => {
-    it('displays unchecked state for false value', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('switch') as HTMLInputElement;
-      expect(checkbox.checked).toBe(false);
+  describe('Placeholder', () => {
+    it('uses the datetime placeholder by default', () => {
+      renderWithProvider(<DateTime {...defaultProps} />);
+      expect(screen.getByText('Pick date and time')).toBeInTheDocument();
     });
 
-    it('displays checked state for true value', () => {
-      renderWithProvider(
-        <Boolean
-          value={true}
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('switch') as HTMLInputElement;
-      expect(checkbox.checked).toBe(true);
+    it('uses the date placeholder for type="date"', () => {
+      renderWithProvider(<DateTime {...defaultProps} type="date" />);
+      expect(screen.getByText('Pick date')).toBeInTheDocument();
     });
 
-    it('displays unchecked state for null value', () => {
-      renderWithProvider(
-        <Boolean
-          value={null}
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('switch') as HTMLInputElement;
-      expect(checkbox.checked).toBe(false);
+    it('uses the time placeholder for type="time"', () => {
+      renderWithProvider(<DateTime {...defaultProps} type="time" />);
+      expect(screen.getByText('Pick time')).toBeInTheDocument();
     });
 
-    it('displays unchecked state for undefined value', () => {
-      renderWithProvider(
-        <Boolean
-          value={undefined}
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('switch') as HTMLInputElement;
-      expect(checkbox.checked).toBe(false);
+    it('prefers an explicit placeholder', () => {
+      renderWithProvider(<DateTime {...defaultProps} placeholder="When?" />);
+      expect(screen.getByText('When?')).toBeInTheDocument();
     });
 
-    it('calls onChange when clicked', () => {
+    it('accepts per-instance translation overrides', () => {
       renderWithProvider(
-        <Boolean
-          value={false}
-          onChange={mockOnChange}
-        />
+        <DateTime {...defaultProps} translations={{ pickDateTime: 'Choose a moment' }} />
       );
-
-      const checkbox = screen.getByRole('switch');
-      fireEvent.click(checkbox);
-
-      expect(mockOnChange).toHaveBeenCalledWith(true);
-    });
-
-    it('calls onChange with false when unchecked', () => {
-      renderWithProvider(
-        <Boolean
-          value={true}
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('switch');
-      fireEvent.click(checkbox);
-
-      expect(mockOnChange).toHaveBeenCalledWith(false);
+      expect(screen.getByText('Choose a moment')).toBeInTheDocument();
     });
   });
 
-  describe('Props and Configuration', () => {
-    it('renders as disabled when disabled prop is true', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-          disabled
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('switch') as HTMLInputElement;
-      expect(checkbox.disabled).toBe(true);
+  describe('Value Display', () => {
+    it('formats a datetime value with the 24-hour default format', () => {
+      renderWithProvider(<DateTime {...defaultProps} value="2024-01-15T14:30:00" />);
+      expect(screen.getByText('15 Jan 2024 14:30')).toBeInTheDocument();
     });
 
-    it('renders as disabled when readOnly prop is true', () => {
+    it('includes seconds when includeSeconds is true', () => {
       renderWithProvider(
-        <Boolean
-          value={false}
-          readOnly
-          onChange={mockOnChange}
-        />
+        <DateTime {...defaultProps} value="2024-01-15T14:30:45" includeSeconds />
       );
-
-      const checkbox = screen.getByRole('switch') as HTMLInputElement;
-      expect(checkbox.disabled).toBe(true);
+      expect(screen.getByText('15 Jan 2024 14:30:45')).toBeInTheDocument();
     });
 
-    it('shows required indicator when required prop is true', () => {
+    it('uses the 12-hour format when use24 is false', () => {
       renderWithProvider(
-        <Boolean
-          label="Enable feature"
-          required
-          onChange={mockOnChange}
-        />
+        <DateTime {...defaultProps} value="2024-01-15T14:30:00" use24={false} />
       );
-
-      expect(screen.getByText('Enable feature *')).toBeInTheDocument();
+      expect(screen.getByText('15 Jan 2024 02:30 PM')).toBeInTheDocument();
     });
 
-    it('does not call onChange when disabled and clicked', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-          disabled
-          onChange={mockOnChange}
-        />
-      );
-
-      const checkbox = screen.getByRole('switch');
-      fireEvent.click(checkbox);
-
-      expect(mockOnChange).not.toHaveBeenCalled();
+    it('formats a date-only value', () => {
+      renderWithProvider(<DateTime {...defaultProps} type="date" value="2024-01-15" />);
+      expect(screen.getByText('15 Jan 2024')).toBeInTheDocument();
     });
 
-    it('does not call onChange when readOnly and clicked', () => {
+    it('honours a custom valueFormat', () => {
       renderWithProvider(
-        <Boolean
-          value={false}
-          readOnly
-          onChange={mockOnChange}
-        />
+        <DateTime {...defaultProps} value="2024-01-15T14:30:00" valueFormat="YYYY/MM/DD" />
       );
+      expect(screen.getByText('2024/01/15')).toBeInTheDocument();
+    });
 
-      const checkbox = screen.getByRole('switch');
-      fireEvent.click(checkbox);
-
-      expect(mockOnChange).not.toHaveBeenCalled();
+    it('falls back to the placeholder for an unparseable value', () => {
+      renderWithProvider(<DateTime {...defaultProps} value="not a date" />);
+      expect(screen.getByText('Pick date and time')).toBeInTheDocument();
     });
   });
 
-  describe('Size Variants', () => {
-    it('renders with different sizes', () => {
-      const sizes: Array<BooleanProps['size']> = ['xs', 'sm', 'md', 'lg', 'xl'];
-      
-      sizes.forEach((size) => {
-        const { unmount } = renderWithProvider(
-          <Boolean
-            value={false}
-            size={size}
-            onChange={mockOnChange}
-          />
-        );
-        
-        const checkbox = screen.getByRole('switch');
-        expect(checkbox).toBeInTheDocument();
-        
-        unmount();
-      });
+  describe('Disabled and ReadOnly States', () => {
+    it('disables the field when disabled is true', () => {
+      const { container } = renderWithProvider(<DateTime {...defaultProps} disabled />);
+      expect(getField(container)).toBeDisabled();
+    });
+
+    it('offers a clear button for a value by default', () => {
+      const { container } = renderWithProvider(
+        <DateTime {...defaultProps} value="2024-01-15T14:30:00" />
+      );
+      expect(getClearButton(container)).toBeInTheDocument();
+    });
+
+    it('does not offer a clear button when readOnly', () => {
+      const { container } = renderWithProvider(
+        <DateTime {...defaultProps} value="2024-01-15T14:30:00" readOnly />
+      );
+      expect(getClearButton(container)).not.toBeInTheDocument();
     });
   });
 
-  describe('Icon Support', () => {
-    it('handles icon props without breaking', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-          iconOn={<span>ON</span>}
-          iconOff={<span>OFF</span>}
-          onChange={mockOnChange}
-        />
+  describe('Clearing', () => {
+    it('emits null when the clear button is clicked', () => {
+      const onChange = jest.fn();
+      const { container } = renderWithProvider(
+        <DateTime value="2024-01-15T14:30:00" onChange={onChange} />
       );
-
-      expect(screen.getByRole('switch')).toBeInTheDocument();
-    });
-  });
-
-  describe('Color Customization', () => {
-    it('handles color props without breaking', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-          colorOn="#00ff00"
-          colorOff="#ff0000"
-          onChange={mockOnChange}
-        />
-      );
-
-      expect(screen.getByRole('switch')).toBeInTheDocument();
-    });
-  });
-
-  describe('Additional Props', () => {
-    it('passes additional switchProps to the Switch component', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-          switchProps={{
-            'aria-label': 'custom-switch',
-          }}
-          onChange={mockOnChange}
-        />
-      );
-
-      expect(screen.getByLabelText('custom-switch')).toBeInTheDocument();
+      const clear = getClearButton(container) as HTMLElement;
+      expect(clear).toBeInTheDocument();
+      fireEvent.click(clear);
+      expect(onChange).toHaveBeenCalledWith(null);
     });
 
-    it('handles additional props passed directly', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-          onChange={mockOnChange}
-          data-testid="direct-prop"
-        />
+    it('does not render a clear button when clearable is false', () => {
+      const { container } = renderWithProvider(
+        <DateTime {...defaultProps} value="2024-01-15T14:30:00" clearable={false} />
       );
-
-      expect(screen.getByTestId('direct-prop')).toBeInTheDocument();
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('handles missing onChange gracefully', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-        />
-      );
-
-      const checkbox = screen.getByRole('switch');
-      expect(() => fireEvent.click(checkbox)).not.toThrow();
-    });
-
-    it('handles empty label gracefully', () => {
-      renderWithProvider(
-        <Boolean
-          value={false}
-          label=""
-          onChange={mockOnChange}
-        />
-      );
-
-      expect(screen.getByRole('switch')).toBeInTheDocument();
+      expect(getClearButton(container)).not.toBeInTheDocument();
     });
   });
 });

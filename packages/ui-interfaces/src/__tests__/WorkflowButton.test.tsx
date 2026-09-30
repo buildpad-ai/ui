@@ -123,8 +123,11 @@ describe('WorkflowButton', () => {
         expect(screen.queryByText('Loading workflow...')).not.toBeInTheDocument();
       });
 
-      // Should render nothing (empty container)
-      expect(container.firstChild).toBeNull();
+      // Should render nothing. MantineProvider injects its own <style> tags
+      // into the container, so ignore those rather than expecting firstChild
+      // to be null.
+      const rendered = Array.from(container.children).filter((el) => el.tagName !== 'STYLE');
+      expect(rendered).toHaveLength(0);
     });
   });
 

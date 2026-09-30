@@ -21,6 +21,7 @@ import Delimiter from '@editorjs/delimiter';
 import Table from '@editorjs/table';
 import Underline from '@editorjs/underline';
 import InlineCode from '@editorjs/inline-code';
+import DOMPurify from 'dompurify';
 import './InputBlockEditor.css';
 import { useBuildpadTranslations } from '@buildpad/services';
 import type { DeepPartial, InterfacesTranslations } from '@buildpad/utils';
@@ -118,6 +119,43 @@ function buildEditorMessages(e: InputBlockEditorTranslations['editor']): I18nDic
   };
 }
 
+/**
+ * Inline markup the enabled tools produce: bold/italic from the inline toolbar,
+ * links, `<u class="cdx-underline">`, `<code class="inline-code">`, `<mark>`.
+ */
+const INLINE_HTML = {
+  ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 's', 'a', 'code', 'mark', 'br', 'span'],
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+};
+
+/** Block types whose strings are plain text rendered via `textarea.value`, never as HTML. */
+const PLAIN_TEXT_BLOCKS = new Set(['code']);
+
+function sanitizeBlockData(data: unknown): unknown {
+  if (typeof data === 'string') return DOMPurify.sanitize(data, INLINE_HTML);
+  if (Array.isArray(data)) return data.map(sanitizeBlockData);
+  if (data && typeof data === 'object') {
+    return Object.fromEntries(
+      Object.entries(data).map(([key, val]) => [key, sanitizeBlockData(val)]),
+    );
+  }
+  return data;
+}
+
+/**
+ * EditorJS renders saved block data without sanitizing it (paragraph, header,
+ * quote, list, checklist and table all assign their strings to `innerHTML`);
+ * its sanitizer only runs on save and paste. A stored value is untrusted, so
+ * strip it down to inline markup before handing it to the editor.
+ */
+export function sanitizeBlocks(blocks: OutputData['blocks']): OutputData['blocks'] {
+  return blocks.map((block) =>
+    PLAIN_TEXT_BLOCKS.has(block.type)
+      ? block
+      : { ...block, data: sanitizeBlockData(block.data) as OutputData['blocks'][number]['data'] },
+  );
+}
+
 export function InputBlockEditor({
   value,
   onChange,
@@ -210,7 +248,7 @@ export function InputBlockEditor({
     return {
       time: (data.time as number) || Date.now(),
       version: (data.version as string) || '2.31.0',
-      blocks: data.blocks as OutputData['blocks'],
+      blocks: sanitizeBlocks(data.blocks as OutputData['blocks']),
     };
   }, []);
 

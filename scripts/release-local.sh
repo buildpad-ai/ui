@@ -218,9 +218,19 @@ fi
 step "Verifying the tree builds and is self-consistent"
 # ─────────────────────────────────────────────────────────────────────────
 
-echo "${DIM}  pnpm --filter @buildpad/cli test${OFF}"
-pnpm --filter @buildpad/cli test >/dev/null 2>&1 || die "CLI tests fail. Fix before releasing."
-ok "CLI tests pass"
+# The same gates as CI (.github/workflows/ci.yml), in the same order. Running
+# only the CLI tests here let 2.0.0–2.6.0 ship while ui-interfaces was red.
+echo "${DIM}  pnpm build${OFF}"
+pnpm build >/dev/null 2>&1 || die "build fails. Fix before releasing."
+ok "build passes"
+
+echo "${DIM}  pnpm -r typecheck${OFF}"
+pnpm -r typecheck >/dev/null 2>&1 || die "typecheck fails. Fix before releasing."
+ok "typecheck passes"
+
+echo "${DIM}  pnpm test${OFF}"
+pnpm test >/dev/null 2>&1 || die "unit tests fail (run \`pnpm test\` to see which). Fix before releasing."
+ok "unit tests pass"
 
 # The artifact-sync check is mode-dependent, and getting this wrong blocked a
 # real release (2.2.0):

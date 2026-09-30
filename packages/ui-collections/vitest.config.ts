@@ -32,6 +32,9 @@ export default defineConfig({
       // A pre-existing bulk-actions-bar failure is unrelated noise that
       // shouldn't block the lcov report from being written for SonarQube.
       reportOnFailure: true,
+      // Floors just under the coverage measured when they were added
+      // (25.76 / 76.31 / 52.45 / 25.76); raise them as tests are added.
+      thresholds: { statements: 24, branches: 75, functions: 51, lines: 24 },
     },
   },
 });

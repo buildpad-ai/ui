@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Text,
   ActionIcon,
@@ -308,6 +308,16 @@ export const Color: React.FC<ColorProps> = ({
   const [colorFormat, setColorFormat] = useState<ColorFormat>(opacity ? 'RGBA' : 'RGB');
   const hiddenColorInput = useRef<HTMLInputElement>(null);
 
+  // What the hex text field shows. It has to be able to hold a partial value
+  // while the user types ("#", "#00", ...): only complete, valid hex colors
+  // are emitted, so binding the field straight to `value` threw away every
+  // keystroke and a color could never be typed in. Re-synced whenever the
+  // value changes from outside.
+  const [hexInput, setHexInput] = useState(value || '');
+  useEffect(() => {
+    setHexInput(value || '');
+  }, [value]);
+
   // Parse current color value
   const [r, g, b, a] = ColorUtils.hexToRgb(value || '#000000');
   const [h, s, l] = ColorUtils.rgbToHsl(r, g, b);
@@ -436,8 +446,14 @@ export const Color: React.FC<ColorProps> = ({
       >
         <Popover.Target>
           <TextInput
-            value={value || ''}
-            onChange={(event) => handleHexChange(event.currentTarget.value)}
+            value={hexInput}
+            onChange={(event) => {
+              setHexInput(event.currentTarget.value);
+              handleHexChange(event.currentTarget.value);
+            }}
+            // Drop an unfinished/invalid draft so the field never shows a
+            // color other than the one actually stored.
+            onBlur={() => setHexInput(value || '')}
             placeholder={placeholder || '#000000'}
             disabled={disabled}
             readOnly={readOnly}

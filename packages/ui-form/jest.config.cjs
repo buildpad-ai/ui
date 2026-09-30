@@ -10,7 +10,9 @@ const config = {
     '^@buildpad/utils$': '<rootDir>/../utils/src/index.ts',
   },
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
-  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
+  // Any *.test.ts(x) under src, not only __tests__/: a narrower pattern let
+  // nine colocated test files sit unrun (and rot) for months.
+  testMatch: ['<rootDir>/src/**/*.test.ts', '<rootDir>/src/**/*.test.tsx'],
   transformIgnorePatterns: ['node_modules/(?!(@mantine|@tabler)/)'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [
@@ -20,6 +22,9 @@ const config = {
     '!src/**/index.ts',
   ],
   coverageReporters: ['text', 'lcov'],
+  // Floors just under the coverage measured when they were added
+  // (52.93 / 32.49 / 60.76 / 55.11); raise them as tests are added.
+  coverageThreshold: { global: { statements: 51, branches: 31, functions: 59, lines: 54 } },
 };
 
 module.exports = config;

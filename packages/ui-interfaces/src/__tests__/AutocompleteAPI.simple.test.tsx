@@ -106,7 +106,9 @@ describe('AutocompleteAPI', () => {
 
       await waitFor(() => {
         expect(mockedAxios.get).toHaveBeenCalledWith(
-          'https://usmanlive.com/wp-json/api/countries?q=Unit'
+          'https://usmanlive.com/wp-json/api/countries?q=Unit',
+          // The component aborts in-flight requests, so it passes { signal }.
+          expect.objectContaining({ signal: expect.anything() }),
         );
       }, { timeout: 200 });
     });
@@ -129,7 +131,9 @@ describe('AutocompleteAPI', () => {
 
       await waitFor(() => {
         expect(mockedAxios.get).toHaveBeenCalledWith(
-          'https://usmanlive.com/wp-json/api/countries?q=test&limit=5'
+          'https://usmanlive.com/wp-json/api/countries?q=test&limit=5',
+          // The component aborts in-flight requests, so it passes { signal }.
+          expect.objectContaining({ signal: expect.anything() }),
         );
       });
     });
@@ -279,7 +283,9 @@ describe('AutocompleteAPI', () => {
 
       await waitFor(() => {
         expect(mockedAxios.get).toHaveBeenCalledWith(
-          'https://usmanlive.com/wp-json/api/countries?q=Unit'
+          'https://usmanlive.com/wp-json/api/countries?q=Unit',
+          // The component aborts in-flight requests, so it passes { signal }.
+          expect.objectContaining({ signal: expect.anything() }),
         );
       });
     });

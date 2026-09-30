@@ -62,7 +62,7 @@ buildpad-ui/
 
 ### Prerequisites
 
-- Node.js >= 18.0.0
+- Node.js >= 22 (see `.nvmrc`)
 - pnpm >= 9.0.0
 
 ### Setup

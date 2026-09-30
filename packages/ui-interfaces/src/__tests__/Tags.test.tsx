@@ -117,12 +117,22 @@ describe('Tags', () => {
     expect(screen.getByText('This field is required')).toBeInTheDocument();
   });
 
+  // The transform options are the `uppercase` / `lowercase` / `capitalize` /
+  // `trim` booleans the DaaS tags config uses (see Tags.stories.tsx and the
+  // TC42-TC44 storybook specs). These cases were written against DaaS-style
+  // `capitalization="..."` / `whitespace="-"` props that this component has
+  // never had, so they were silently ignored.
+  //
+  // Each case also asserts a single onChange: Enter used to be listed in
+  // TagsInput's `splitChars`, which Mantine turns into the regex class
+  // `[,Enter]`, so Enter split the typed tag on the letters E/n/t/e/r
+  // ("lowercase tag" -> ["low", "cas", "ag"]) before adding the whole tag.
   it('processes tags with uppercase capitalization', () => {
     const mockOnChange = jest.fn();
     renderWithProvider(
       <Tags 
         onChange={mockOnChange} 
-        capitalization="uppercase"
+        uppercase
         allowCustom 
       />
     );
@@ -131,6 +141,7 @@ describe('Tags', () => {
     fireEvent.change(input, { target: { value: 'lowercase tag' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
     expect(mockOnChange).toHaveBeenCalledWith(['LOWERCASE TAG']);
   });
 
@@ -139,7 +150,7 @@ describe('Tags', () => {
     renderWithProvider(
       <Tags 
         onChange={mockOnChange} 
-        capitalization="lowercase"
+        lowercase
         allowCustom 
       />
     );
@@ -148,24 +159,39 @@ describe('Tags', () => {
     fireEvent.change(input, { target: { value: 'UPPERCASE TAG' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
     expect(mockOnChange).toHaveBeenCalledWith(['uppercase tag']);
   });
 
-  it('handles whitespace replacement', () => {
+  // There is no whitespace-replacement option; whitespace handling is `trim`
+  // (on by default): surrounding whitespace is dropped, inner spaces kept.
+  it('handles whitespace trimming', () => {
     const mockOnChange = jest.fn();
     renderWithProvider(
       <Tags 
         onChange={mockOnChange} 
-        whitespace="-"
         allowCustom 
       />
     );
     
     const input = screen.getByRole('textbox');
-    fireEvent.change(input, { target: { value: 'tag with spaces' } });
+    fireEvent.change(input, { target: { value: '  tag with spaces  ' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     
-    expect(mockOnChange).toHaveBeenCalledWith(['tag-with-spaces']);
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
+    expect(mockOnChange).toHaveBeenCalledWith(['tag with spaces']);
+  });
+
+  it('splits typed input on commas', () => {
+    const mockOnChange = jest.fn();
+    renderWithProvider(<Tags onChange={mockOnChange} allowCustom />);
+
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'react, vue' } });
+    fireEvent.keyDown(input, { key: ',' });
+
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
+    expect(mockOnChange).toHaveBeenCalledWith(['react', 'vue']);
   });
 
   it('handles disabled state', () => {

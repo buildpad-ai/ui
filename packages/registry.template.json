@@ -68,6 +68,7 @@
       "@editorjs/table",
       "@editorjs/underline",
       "@editorjs/inline-code",
+      "dompurify",
       "highlight.js"
     ],
     "maps": [
@@ -1377,7 +1378,8 @@
         "@editorjs/delimiter",
         "@editorjs/table",
         "@editorjs/underline",
-        "@editorjs/inline-code"
+        "@editorjs/inline-code",
+        "dompurify"
       ],
       "internalDependencies": [],
       "interface": {
@@ -2886,7 +2888,8 @@
         "@mantine/core",
         "@tabler/icons-react",
         "maplibre-gl",
-        "@mapbox/mapbox-gl-draw"
+        "@mapbox/mapbox-gl-draw",
+        "dompurify"
       ],
       "internalDependencies": [],
       "interface": {

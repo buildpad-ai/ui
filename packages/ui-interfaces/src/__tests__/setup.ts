@@ -1,4 +1,20 @@
 import '@testing-library/jest-dom';
+import { TextDecoder, TextEncoder } from 'util';
+
+// jsdom implements neither TextEncoder/TextDecoder nor URL.createObjectURL,
+// but maplibre-gl (pulled in by the package barrel via MapWithRealMap) touches
+// both at module load (it builds its worker from a Blob URL). Without these,
+// any test importing '@buildpad/ui-interfaces' fails to load. Tests that care
+// about object URLs still override createObjectURL with their own jest.fn().
+if (typeof globalThis.TextDecoder === 'undefined') {
+  Object.assign(globalThis, { TextDecoder, TextEncoder });
+}
+if (typeof URL.createObjectURL !== 'function') {
+  URL.createObjectURL = jest.fn(() => 'blob:mock');
+}
+if (typeof URL.revokeObjectURL !== 'function') {
+  URL.revokeObjectURL = jest.fn();
+}
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -28,17 +44,21 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
 // whole Select* family.
 Element.prototype.scrollIntoView = jest.fn();
 
-// Mock getComputedStyle for Mantine
-const originalGetComputedStyle = window.getComputedStyle;
-window.getComputedStyle = (element: Element) => {
-  const style = originalGetComputedStyle(element);
-  return {
-    ...style,
-    getPropertyValue: (prop: string) => {
-      if (prop.startsWith('--mantine')) {
-        return '';
-      }
-      return style.getPropertyValue(prop);
-    },
+// Mock getComputedStyle for Mantine: blank out --mantine-* custom properties.
+// Patch getPropertyValue on the real CSSStyleDeclaration rather than spreading
+// it into a plain object — the named properties (display, visibility,
+// opacity, ...) are prototype accessors, so a spread dropped them and every
+// element looked `display: undefined`, which made jest-dom's toBeVisible()
+// report hidden elements (e.g. a closed Mantine Collapse) as visible.
+const originalGetComputedStyle = window.getComputedStyle.bind(window);
+window.getComputedStyle = (element: Element, pseudoElt?: string | null) => {
+  const style = originalGetComputedStyle(element, pseudoElt);
+  const getPropertyValue = style.getPropertyValue.bind(style);
+  style.getPropertyValue = (prop: string) => {
+    if (prop.startsWith('--mantine')) {
+      return '';
+    }
+    return getPropertyValue(prop);
   };
+  return style;
 };

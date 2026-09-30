@@ -248,7 +248,10 @@ export function Tags({
           leftSection={getIcon(iconLeft)}
           rightSection={getIcon(iconRight)}
           style={{ direction }}
-          splitChars={[',', 'Enter']}
+          // Characters only: Mantine builds a regex class from these, so a
+          // key name like 'Enter' split tags on the letters E/n/t/e/r.
+          // Enter already commits the tag natively.
+          splitChars={[',']}
         />
       ) : (
         <>

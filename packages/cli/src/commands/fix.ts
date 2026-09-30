@@ -320,6 +320,7 @@ const KNOWN_NPM_PACKAGES = new Set([
   '@editorjs/paragraph', '@editorjs/code', '@editorjs/quote',
   '@editorjs/checklist', '@editorjs/delimiter', '@editorjs/table',
   '@editorjs/underline', '@editorjs/inline-code',
+  'dompurify',
   // Utilities
   'lowlight', 'highlight.js', 'dayjs', 'axios',
   // Maps

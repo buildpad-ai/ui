@@ -318,7 +318,7 @@ DaaS credentials (URL + static token) are stored in an **AES-256-GCM encrypted h
 
 1. **Connect repo:** AWS Amplify Console → **Host web app** → GitHub → select repo, branch `main`
 2. **Build settings:** Amplify auto-detects [amplify.yml](../amplify.yml) — no manual config needed
-3. **Environment variable (required):** Add `COOKIE_SECRET` in Amplify Console → Environment variables (any random string for encryption key)
+3. **Environment variable (required):** Add `COOKIE_SECRET` in Amplify Console → Environment variables (random string, **at least 32 characters** — e.g. `openssl rand -base64 32`). Optionally add `DAAS_ALLOWED_HOSTS` (see below).
 4. **Deploy:** Click **Save and deploy** → get a CDN URL like `https://main.d1234abcdef.amplifyapp.com`
 
 The build pipeline:
@@ -331,9 +331,15 @@ The build pipeline:
 
 | Variable | Value | Required |
 |----------|-------|----------|
-| `COOKIE_SECRET` | Any random string (encryption key) | Yes (for production) |
+| `COOKIE_SECRET` | Random string, ≥ 32 characters (encryption key). In production the app refuses to read/write the credential cookie without it; a dev-only fallback key is used when `NODE_ENV !== 'production'`. | Yes (for production) |
+| `DAAS_ALLOWED_HOSTS` | Comma-separated allow-list of DaaS hosts the proxy may reach: exact hostnames or `*.suffix` wildcards. Default: `*.buildpad-daas.xtremax.com` | No |
 
 No DaaS URL/token env vars are needed — users enter credentials at runtime through the landing page UI.
+
+> **Amplify SSR runtime env vars:** Amplify Hosting only exposes Console environment variables to the *build*, not to the Next.js server runtime. For `COOKIE_SECRET` / `DAAS_ALLOWED_HOSTS` to reach the API routes, write them into `.env.production` before `next build`, e.g. add to the storybook-host build commands in `amplify.yml`:
+> `env | grep -E '^(COOKIE_SECRET|DAAS_ALLOWED_HOSTS)=' >> .env.production`
+
+**SSRF protection:** the host only proxies to DaaS URLs that are `https://`, contain no credentials, and whose hostname matches `DAAS_ALLOWED_HOSTS`. Private / loopback / link-local IP literals are always rejected, `http://localhost` is accepted only outside production, the stored URL is re-validated on every proxied request, and upstream redirects are never followed (the proxy returns 502). `/api/connect` only accepts `Content-Type: application/json` and rejects cross-origin `Origin` headers.
 
 ### Local Preview
 
@@ -369,4 +375,5 @@ Amplify Console → Domain management → **Add domain** → follow DNS verifica
 - **Out of memory:** Increase compute to **Large** (7 GB) or add `export NODE_OPTIONS="--max-old-space-size=4096"` to preBuild
 - **pnpm not found:** Ensure preBuild has `corepack enable && corepack prepare pnpm@10.17.0 --activate`
 - **Blank page:** Verify `baseDirectory: apps/storybook-host` in `amplify.yml`
-- **DaaS proxy not working:** Ensure `COOKIE_SECRET` env var is set in Amplify Console
+- **DaaS proxy not working:** Ensure `COOKIE_SECRET` (≥ 32 chars) is set in Amplify Console *and* reaches the SSR runtime (see the `.env.production` note above); `/api/status` returns a `COOKIE_SECRET` error otherwise
+- **"DaaS host … is not allowed":** add the host to `DAAS_ALLOWED_HOSTS`

@@ -33,7 +33,7 @@ describe('toInstallSpec', () => {
     expect(toInstallSpec('@mantine/tiptap')).toBe('"@mantine/tiptap@^8.0.0"');
     // The rich-text-markdown 1.8.0 additions must be pinned (the original
     // omission shipped them unpinned via `add`).
-    expect(toInstallSpec('@tiptap/extension-table')).toBe('"@tiptap/extension-table@^3.13.0"');
+    expect(toInstallSpec('@tiptap/extension-table')).toBe('"@tiptap/extension-table@^3.31.4"');
     expect(toInstallSpec('tiptap-markdown')).toBe('"tiptap-markdown@^0.9.0"');
     expect(toInstallSpec('marked')).toBe('"marked@^16.4.2"');
   });
@@ -48,7 +48,7 @@ describe('toInstallSpec', () => {
         .filter(([name]) => name.startsWith('@tiptap/'))
         .map(([, range]) => range)
     );
-    expect(tiptapRanges).toEqual(new Set(['^3.13.0']));
+    expect(tiptapRanges).toEqual(new Set(['^3.31.4']));
   });
 });
 

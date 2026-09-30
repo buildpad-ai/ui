@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
-import { Boolean, BooleanProps } from '../Boolean';
+import { Boolean, BooleanProps } from '../boolean/Boolean';
 
 // Helper function to render components with Mantine provider
 const renderWithProvider = (component: React.ReactElement) => {
