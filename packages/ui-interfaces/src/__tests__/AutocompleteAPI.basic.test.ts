@@ -16,7 +16,13 @@ describe('AutocompleteAPI Component', () => {
   
   test('Component exports correctly', () => {
     expect(AutocompleteAPI).toBeDefined();
-    expect(typeof AutocompleteAPI).toBe('function');
+    // AutocompleteAPI is (and always has been) a React.forwardRef component,
+    // i.e. an exotic component object wrapping a render function — not a
+    // plain function component.
+    expect((AutocompleteAPI as unknown as { $$typeof: symbol }).$$typeof).toBe(
+      Symbol.for('react.forward_ref')
+    );
+    expect(typeof (AutocompleteAPI as unknown as { render: unknown }).render).toBe('function');
   });
 
   test('Component has correct display name', () => {

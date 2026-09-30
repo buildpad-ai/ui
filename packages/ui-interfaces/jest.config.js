@@ -1,3 +1,9 @@
+// Third-party packages that only ship ESM (or whose CJS build is broken under
+// Jest) and therefore must be transpiled by ts-jest. They are pulled in by the
+// package barrel (src/index.ts -> RichTextMarkdown), so without this any test
+// importing '@buildpad/ui-interfaces' fails to load.
+const esmPackages = ['@tiptap/extension-code-block-lowlight', 'lowlight', 'devlop'];
+
 /** @type {import('jest').Config} */
 const config = {
   preset: 'ts-jest',
@@ -12,11 +18,28 @@ const config = {
     '^@buildpad/ui-table$': '<rootDir>/../ui-table/src/index.ts',
     // marked only publishes ESM/UMD; point Jest at the UMD (CJS) build.
     '^marked$': '<rootDir>/../../node_modules/marked/lib/marked.umd.js',
+    // @mapbox/mapbox-gl-draw's "exports" entry is untranspiled ESM source;
+    // point Jest at its UMD (CJS-compatible) bundle, same as `browser`.
+    '^@mapbox/mapbox-gl-draw$':
+      '<rootDir>/../../node_modules/@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw-unminified.js',
+    // @tiptap/extension-code-block-lowlight's CJS build does
+    // `__toESM(require('@tiptap/extension-code-block'), 1)` (node-mode interop),
+    // which sets `.default` to the whole CJS exports object, so
+    // `CodeBlock.extend` is undefined and importing the barrel (src/index.ts)
+    // throws "default.extend is not a function". Load the ESM build instead and
+    // let ts-jest transpile it (see `transform` / `transformIgnorePatterns`).
+    '^@tiptap/extension-code-block-lowlight$':
+      '<rootDir>/../../node_modules/@tiptap/extension-code-block-lowlight/dist/index.js',
+  },
+  transform: {
+    '^.+\\.tsx?$': 'ts-jest',
+    // ESM-only third-party files (see esmPackages / transformIgnorePatterns).
+    [`/node_modules/(${esmPackages.join('|')})/.+\\.js$`]: 'ts-jest',
   },
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
   transformIgnorePatterns: [
-    'node_modules/(?!(@mantine|@tabler)/)',
+    `node_modules/(?!(@mantine|@tabler|${esmPackages.join('|')})/)`,
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [

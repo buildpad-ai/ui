@@ -9,15 +9,20 @@ function renderWithMantine(ui: React.ReactElement) {
 
 // Mocks
 jest.mock('@buildpad/hooks', () => {
+  // FileImage talks to the DaaS Files API through `daasAPI` (get for previews
+  // and downloads, updateFile for metadata — see 0dce257). In the real module
+  // `api` is just an alias of `daasAPI`, so mirror that here.
+  const daasAPI = {
+    get: jest.fn(),
+    getFile: jest.fn(),
+    updateFile: jest.fn(),
+    uploadFiles: jest.fn(),
+    checkPermission: jest.fn(),
+  };
   return {
     ...jest.requireActual('@buildpad/hooks'),
-    api: { get: jest.fn() },
-    daasAPI: {
-      getFile: jest.fn(),
-      updateItem: jest.fn(),
-      uploadFiles: jest.fn(),
-      checkPermission: jest.fn(),
-    },
+    api: daasAPI,
+    daasAPI,
   };
 });
 
@@ -44,7 +49,7 @@ jest.mock('../upload', () => {
 });
 
 // Handy accessors
-const { api, daasAPI } = jest.requireMock('@buildpad/hooks');
+const { daasAPI } = jest.requireMock('@buildpad/hooks');
 
 // Helpers
 const makeImageFile = (overrides: Partial<any> = {}) => ({
@@ -72,14 +77,14 @@ beforeEach(() => {
   // Default file fetch
   (daasAPI.getFile as jest.Mock).mockResolvedValue(makeImageFile());
 
-  // Update item
-  (daasAPI.updateItem as jest.Mock).mockResolvedValue({ title: 'New Title', description: 'New Desc' });
+  // Update file metadata
+  (daasAPI.updateFile as jest.Mock).mockResolvedValue(makeImageFile({ title: 'New Title', description: 'New Desc' }));
 
   // Upload files
   (daasAPI.uploadFiles as jest.Mock).mockResolvedValue([makeImageFile({ id: 'uploaded-1' })]);
 
-  // api.get for previews and downloads
-  (api.get as jest.Mock).mockImplementation((_url: string, opts: any = {}) => {
+  // daasAPI.get for previews and downloads
+  (daasAPI.get as jest.Mock).mockImplementation((_url: string, opts: any = {}) => {
     if (opts.responseType === 'arraybuffer') {
       const buf = new Uint8Array([1, 2, 3]).buffer;
       return Promise.resolve({ data: buf, headers: { 'content-type': 'image/png' } });
@@ -196,7 +201,7 @@ describe('FileImage', () => {
     // Save
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(daasAPI.updateItem).toHaveBeenCalledWith('daas_files', 'img-1', {
+    expect(daasAPI.updateFile).toHaveBeenCalledWith('img-1', {
       title: 'Brand New',
       description: 'Fancy description',
     });
@@ -213,9 +218,9 @@ describe('FileImage', () => {
     const allButtons = container.querySelectorAll('button');
     await userEvent.click(allButtons[1]);
 
-    expect(api.get).toHaveBeenCalledWith('/daas/files/img-1/asset', expect.objectContaining({
+    expect(daasAPI.get).toHaveBeenCalledWith('/assets/img-1', expect.objectContaining({
       responseType: 'blob',
-      params: { download: true },
+      params: { download: 'true' },
     }));
   });
 });
