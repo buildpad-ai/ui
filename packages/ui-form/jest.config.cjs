@@ -10,7 +10,9 @@ const config = {
     '^@buildpad/utils$': '<rootDir>/../utils/src/index.ts',
   },
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
-  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
+  // Any *.test.ts(x) under src, not only __tests__/: a narrower pattern let
+  // nine colocated test files sit unrun (and rot) for months.
+  testMatch: ['<rootDir>/src/**/*.test.ts', '<rootDir>/src/**/*.test.tsx'],
   transformIgnorePatterns: ['node_modules/(?!(@mantine|@tabler)/)'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [
