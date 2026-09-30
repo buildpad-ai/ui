@@ -51,6 +51,9 @@ const config = {
     '!src/**/index.ts',
   ],
   coverageReporters: ['text', 'lcov'],
+  // Floors just under the coverage measured when they were added
+  // (64.58 / 57.17 / 58.62 / 65.9); raise them as tests are added.
+  coverageThreshold: { global: { statements: 63, branches: 56, functions: 57, lines: 64 } },
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',

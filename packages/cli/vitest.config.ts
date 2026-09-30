@@ -14,6 +14,9 @@ export default defineConfig({
       // unrelated noise that shouldn't block the lcov report from being
       // written for SonarQube.
       reportOnFailure: true,
+      // Floors just under the coverage measured when they were added
+      // (41.61 / 69.8 / 64.74 / 41.61); raise them as tests are added.
+      thresholds: { statements: 40, branches: 68, functions: 63, lines: 40 },
     },
   },
 });
