@@ -8,7 +8,16 @@ import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../sto
 // VForm) read CollectionForm / CollectionList / VForm from a provider. Imported
 // by relative path on purpose: a package.json edge to @buildpad/ui-collections
 // would re-create the ui-form ⇄ ui-interfaces ⇄ ui-collections dependency cycle.
-import { CollectionsRelationalProvider } from '../../ui-collections/src/CollectionForm';
+import { CollectionsRelationalProvider } from '../../ui-collections/src/CollectionsRelationalProvider';
+
+/**
+ * Wraps a story in the relational provider unless it opts out with
+ * `parameters: { relationalUI: false }` — the "Without provider" stories, which
+ * show the missing-provider alert and the hidden create / select / edit actions.
+ */
+function RelationalUI({ enabled, children }: { enabled: boolean; children: React.ReactNode }) {
+  return enabled ? <CollectionsRelationalProvider>{children}</CollectionsRelationalProvider> : <>{children}</>;
+}
 
 // Mantine CSS
 import '@mantine/core/styles.css';
@@ -37,14 +46,14 @@ const preview: Preview = {
   globalTypes: i18nGlobalTypes,
   initialGlobals: i18nInitialGlobals,
   decorators: [
-    (Story: React.ComponentType) => (
+    (Story: React.ComponentType, context: { parameters: Record<string, unknown> }) => (
       <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
         <DaaSProvider autoFetchUser={false}>
-          <CollectionsRelationalProvider>
+          <RelationalUI enabled={context.parameters.relationalUI !== false}>
             <div className="sb-enterprise-wrapper sb-form-wrapper">
               <Story />
             </div>
-          </CollectionsRelationalProvider>
+          </RelationalUI>
         </DaaSProvider>
       </MantineProvider>
     ),
