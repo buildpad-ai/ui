@@ -211,21 +211,54 @@ export function diskPathOf(projectPath: string, config: ConsumerConfig, kind: En
   return path.replace(/\.tsx?$/, config.tsx ? '.tsx' : '.jsx');
 }
 
-export type FileStatus = 'pristine' | 'modified' | 'missing';
+/**
+ * - `pristine`: matches the hash recorded at install.
+ * - `modified`: differs from it (local edits).
+ * - `missing`: not on disk.
+ * - `untracked`: on disk, but buildpad.json has no install hash for it. The
+ *   CLI cannot tell edits from the original, and its upgrade overwrites such
+ *   files whatever the strategy.
+ */
+export type FileStatus = 'pristine' | 'modified' | 'missing' | 'untracked';
 
-/** Compare every recorded file with its install-time hash. */
-export function recordedFileStatuses(
+/**
+ * The on-disk status of each file of an entry: the recorded files, or for an
+ * entry with no record, the files the registry lists.
+ */
+export function fileStatuses(
   projectPath: string,
   config: ConsumerConfig,
   entry: InstalledEntry
 ): Array<{ target: string; path: string; status: FileStatus }> {
-  return (entry.record?.files ?? []).map(f => {
+  const files: InstalledFile[] = entry.record ? entry.record.files ?? [] : entry.registryFiles;
+  return files.map(f => {
     const diskPath = diskPathOf(projectPath, config, entry.kind, f.target);
     const path = relative(projectPath, diskPath).split('\\').join('/');
     if (!existsSync(diskPath)) return { target: f.target, path, status: 'missing' as const };
+    if (!f.sha256) return { target: f.target, path, status: 'untracked' as const };
     const diskHash = hashTransformed(readFileSync(diskPath, 'utf-8'));
     return { target: f.target, path, status: diskHash === f.sha256 ? 'pristine' as const : 'modified' as const };
   });
+}
+
+/**
+ * What an agent should do about one entry in an upgrade plan:
+ * - `update-mcp`: installed from a newer release than this server knows.
+ * - `up-to-date`: nothing to do.
+ * - `overwrite-untracked`: files are on disk with no install hash; the CLI
+ *   will overwrite them, so back up any local edits first.
+ * - `prompt-or-three-way`: local edits; pick a strategy.
+ * - `safe-overwrite`: nothing local to lose.
+ */
+export function recommendedAction(
+  status: EntryStatus,
+  files: Array<{ status: FileStatus }>
+): 'update-mcp' | 'up-to-date' | 'overwrite-untracked' | 'prompt-or-three-way' | 'safe-overwrite' {
+  if (status.aheadOfRegistry) return 'update-mcp';
+  if (!status.isOutdated) return 'up-to-date';
+  if (files.some(f => f.status === 'untracked')) return 'overwrite-untracked';
+  if (files.some(f => f.status === 'modified')) return 'prompt-or-three-way';
+  return 'safe-overwrite';
 }
 
 // ─── apply_upgrade ───────────────────────────────────────────────

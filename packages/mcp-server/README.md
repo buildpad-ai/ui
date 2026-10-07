@@ -308,7 +308,14 @@ List the installed components **and lib modules** (utils, services, hooks, ...) 
 
 ### `get_upgrade_plan`
 
-A read-only dry run. For each installed component and lib module, it shows the stale files and whether each recorded file is `pristine`, `modified` or `missing` on disk. Files are looked up where the CLI writes them: under `src/` when `srcDir` is set, and component `.ts` files as `.tsx`. The plan also gives a `recommendedAction`: `up-to-date`, `safe-overwrite`, `prompt-or-three-way` or `update-mcp`. If you name a component, the plan also includes the outdated lib modules it depends on.
+A read-only dry run. For each installed component and lib module, it shows the stale files and the status of each file on disk:
+
+- `pristine`: the file matches the hash recorded at install.
+- `modified`: the file has local edits.
+- `missing`: the file is not on disk.
+- `untracked`: the file is on disk, but `buildpad.json` has no install hash for it. The CLI overwrites such files whatever the strategy.
+
+Files are looked up where the CLI writes them: under `src/` when `srcDir` is set, and component `.ts` files as `.tsx`. The plan also gives a `recommendedAction`: `up-to-date`, `safe-overwrite`, `prompt-or-three-way`, `overwrite-untracked` (back up local edits first) or `update-mcp`. If you name a component, the plan also includes the outdated lib modules it depends on.
 
 ### `apply_upgrade`
 

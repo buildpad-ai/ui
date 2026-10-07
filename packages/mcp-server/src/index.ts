@@ -46,11 +46,11 @@ import {
   entryStatus,
   installedEntries,
   isAhead,
+  fileStatuses,
   readConsumerConfig,
-  recordedFileStatuses,
+  recommendedAction,
   staleLibDependencies,
   validateApplyUpgradeArgs,
-  type EntryStatus,
 } from './upgrade.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1266,12 +1266,11 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         entries.forEach((entry, i) => {
           if (selected && !selected.has(entry.name)) return;
           const status = statuses[i];
-          const files = recordedFileStatuses(projectPath as string, config, entry);
-          const modifiedLocally = files.some(f => f.status === 'modified');
+          const files = fileStatuses(projectPath as string, config, entry);
           plan.push({
             ...status,
-            modifiedLocally,
-            recommendedAction: recommendedActionFor(status, modifiedLocally),
+            modifiedLocally: files.some(f => f.status === 'modified'),
+            recommendedAction: recommendedAction(status, files),
             staleLibDependencies: entry.kind === 'component'
               ? staleLibDependencies([entry.name], statuses, registry)
               : [],
@@ -1366,18 +1365,6 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
 }
 
 server.setRequestHandler(CallToolRequestSchema, handleCallToolRequest);
-
-/**
- * What an agent should do about one entry in an upgrade plan.
- * - `update-mcp`: installed from a newer release than this server knows.
- * - `up-to-date`, `safe-overwrite` (nothing local to lose), or
- *   `prompt-or-three-way` (local edits; pick a strategy).
- */
-function recommendedActionFor(status: EntryStatus, modifiedLocally: boolean): string {
-  if (status.aheadOfRegistry) return 'update-mcp';
-  if (!status.isOutdated) return 'up-to-date';
-  return modifiedLocally ? 'prompt-or-three-way' : 'safe-overwrite';
-}
 
 /**
  * Generate RBAC pattern with MCP tool call sequences

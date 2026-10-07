@@ -174,6 +174,26 @@ describe('get_upgrade_plan', () => {
     expect(plan.map((e: { name: string }) => e.name)).toEqual([component.name, libName]);
   });
 
+  test('files with no install hash are untracked: the CLI overwrites them whatever the strategy', async () => {
+    writeConfig({ srcDir: false, installedLib: [libName] });
+    writeFile(libFiles[0].target, '// maybe edited\n');
+    const [entry] = json(await call('get_upgrade_plan', { projectPath: tmp }));
+    expect(entry).toMatchObject({ kind: 'lib', name: libName, untracked: true, isOutdated: true });
+    expect(entry.files).toHaveLength(libFiles.length);
+    expect(entry.files[0]).toEqual({ target: libFiles[0].target, path: libFiles[0].target, status: 'untracked' });
+    expect(entry.files.slice(1).every((f: { status: string }) => f.status === 'missing')).toBe(true);
+    expect(entry.recommendedAction).toBe('overwrite-untracked');
+  });
+
+  test('a recorded file without a sha256 that is on disk is untracked too', async () => {
+    const [first] = getAllComponents();
+    writeConfig({ srcDir: false, tsx: true, components: { [first.name]: { files: [{ target: first.files[0].target }] } } });
+    writeFile(first.files[0].target, '// on disk\n');
+    const [entry] = json(await call('get_upgrade_plan', { projectPath: tmp }));
+    expect(entry.files[0].status).toBe('untracked');
+    expect(entry.recommendedAction).toBe('overwrite-untracked');
+  });
+
   test('flags entries installed from a newer release', async () => {
     const [first] = getAllComponents();
     writeConfig({ components: { [first.name]: { release: '999.0.0', files: [] } } });
