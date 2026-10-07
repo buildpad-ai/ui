@@ -19,7 +19,9 @@ import prompts from 'prompts';
 import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
 import { globFiles } from '../utils/glob.js';
-import { transformImports, toKebabCase } from './transformer.js';
+import { getImportMappings, transformImports, toKebabCase } from './transformer.js';
+import { findUntransformedImports } from '../utils/import-specifiers.js';
+import { installedScriptPatterns, recordedInstalledFiles, sourceRoot } from '../utils/paths.js';
 
 interface FixResult {
   fixed: number;
@@ -28,7 +30,25 @@ interface FixResult {
 }
 
 /**
- * Fix untransformed @buildpad/* imports
+ * Rewrite only the `@buildpad/*` specifiers (the transformer's package rules),
+ * leaving every other import as written.
+ */
+function rewriteBuildpadSpecifiersOnly(content: string, config: Config): string {
+  let result = content;
+  for (const mapping of getImportMappings(config)) result = result.replace(mapping.from, mapping.to);
+  return result;
+}
+
+/**
+ * Fix untransformed @buildpad/* imports, found in any import form across every
+ * root buildpad.json records installed files under (the same scan as validate).
+ *
+ * A file buildpad.json records is re-transformed the way `add` transformed it:
+ * component files with their registry target, so target-dependent rules apply
+ * (VForm keeps its PascalCase file names — without the target, './FormField'
+ * became './form-field' and stopped resolving). Any other file only gets its
+ * @buildpad/* specifiers rewritten: the transformer's kebab-casing of relative
+ * imports would break a user's own './MyPanel' import.
  */
 async function fixUntransformedImports(
   cwd: string,
@@ -36,35 +56,47 @@ async function fixUntransformedImports(
   dryRun: boolean
 ): Promise<FixResult> {
   const result: FixResult = { fixed: 0, skipped: 0, errors: [] };
-  
-  const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
-  const patterns = [
-    'components/**/*.{ts,tsx,js,jsx}',
-    'lib/buildpad/**/*.{ts,tsx,js,jsx}',
-  ];
-  
-  for (const pattern of patterns) {
-    const files = await globFiles(srcDir, pattern);
-    
-    for (const file of files) {
+
+  const root = sourceRoot(cwd, config);
+  const recorded = recordedInstalledFiles(cwd, config);
+  const seen = new Set<string>();
+
+  for (const pattern of installedScriptPatterns(config)) {
+    for (const file of await globFiles(root, pattern)) {
+      if (seen.has(file)) continue;
+      seen.add(file);
       const content = await fs.readFile(file, 'utf-8');
-      
-      // Check if file has @buildpad/* imports
-      if (content.includes("from '@buildpad/") || content.includes('from "@buildpad/')) {
-        const transformed = transformImports(content, config);
-        
-        if (transformed !== content) {
-          if (dryRun) {
-            console.log(chalk.dim(`  Would fix: ${path.relative(cwd, file)}`));
-          } else {
-            await fs.writeFile(file, transformed);
-          }
-          result.fixed++;
+      if (findUntransformedImports(content).length === 0) continue;
+
+      const rel = path.relative(cwd, file);
+      const record = recorded.get(path.normalize(file));
+      let transformed: string;
+      try {
+        transformed = record
+          ? transformImports(content, config, record.kind === 'component' ? record.target : undefined)
+          : rewriteBuildpadSpecifiersOnly(content, config);
+      } catch (err) {
+        result.errors.push(`${rel}: ${(err as Error).message}`);
+        result.skipped++;
+        continue;
+      }
+
+      if (transformed !== content) {
+        if (dryRun) {
+          console.log(chalk.dim(`  Would fix: ${rel}`));
+        } else {
+          await fs.writeFile(file, transformed);
         }
+        result.fixed++;
+      }
+
+      for (const left of findUntransformedImports(transformed)) {
+        result.errors.push(`${rel}:${left.line} cannot rewrite '${left.specifier}' (${left.kind} import) — fix it by hand`);
+        result.skipped++;
       }
     }
   }
-  
+
   return result;
 }
 
@@ -658,8 +690,8 @@ export async function fix(options: {
     if (tsResult.fixed > 0) {
       console.log(chalk.green(`  ✓ Fixed ${tsResult.fixed} TypeScript error(s)`));
     }
-    if (tsResult.errors.length > 0) {
-      tsResult.errors.forEach(e => console.log(chalk.yellow(`  ⚠ ${e}`)));
+    for (const e of [...importResult.errors, ...tsResult.errors]) {
+      console.log(chalk.yellow(`  ⚠ ${e}`));
     }
     
     if (totalSkipped > 0) {

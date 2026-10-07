@@ -19,6 +19,8 @@ import ora from 'ora';
 import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
 import { globFiles } from '../utils/glob.js';
+import { findUntransformedImports } from '../utils/import-specifiers.js';
+import { installedScriptPatterns, sourceRoot } from '../utils/paths.js';
 
 interface ValidationResult {
   valid: boolean;
@@ -42,45 +44,33 @@ interface ValidationWarning {
 }
 
 /**
- * Check for untransformed @buildpad/* imports
+ * Check for untransformed @buildpad/* imports — in any import form (static,
+ * multi-line, `export … from`, side-effect, dynamic `import()`, `require`),
+ * across every root buildpad.json records installed files under (app/,
+ * components/, lib/, middleware.ts, …), not only components/ and lib/buildpad/.
+ * The @buildpad/* packages are not published, so any such import is broken.
  */
 async function checkUntransformedImports(
   cwd: string,
   config: Config
 ): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
-  
-  const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
-  const patterns = [
-    'components/**/*.{ts,tsx,js,jsx}',
-    'lib/buildpad/**/*.{ts,tsx,js,jsx}',
-  ];
-  
-  for (const pattern of patterns) {
-    const files = await globFiles(srcDir, pattern);
-    
-    for (const file of files) {
+  const root = sourceRoot(cwd, config);
+
+  for (const pattern of installedScriptPatterns(config)) {
+    for (const file of await globFiles(root, pattern)) {
       const content = await fs.readFile(file, 'utf-8');
-      const lines = content.split('\n');
-      
-      lines.forEach((line, index) => {
-        // Check for @buildpad/* imports (not in comments)
-        if (
-          (line.includes("from '@buildpad/") || line.includes('from "@buildpad/')) && 
-          !line.trim().startsWith('//') &&
-          !line.trim().startsWith('*')
-        ) {
-          errors.push({
-            file: path.relative(cwd, file),
-            line: index + 1,
-            message: `Untransformed import: ${line.trim()}`,
-            code: 'UNTRANSFORMED_IMPORT',
-          });
-        }
-      });
+      for (const found of findUntransformedImports(content)) {
+        errors.push({
+          file: path.relative(cwd, file),
+          line: found.line,
+          message: `Untransformed import: ${found.text}`,
+          code: 'UNTRANSFORMED_IMPORT',
+        });
+      }
     }
   }
-  
+
   return errors;
 }
 
