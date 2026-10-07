@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T12:38:24.708Z",
+  "generatedAt": "2026-10-07T12:41:20.168Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -148,7 +148,7 @@
         {
           "source": "utils/src/field-interface-mapper.ts",
           "target": "lib/buildpad/field-interface-mapper.ts",
-          "sourceSha256": "b4b276fedc6af7d86f9bafb8756293cbf22677d17361045abbf6f2d379f6c60f"
+          "sourceSha256": "4d368c2eb66953d1c90dc275644815e34fb1a0f99b522edc14e41d6e3880ad64"
         },
         {
           "source": "utils/src/conceal.ts",
@@ -473,7 +473,7 @@
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "a6ae9623bbba530ffdd0d891e13a357d37c2327395c63f2a4bd402e8c39ada9e"
+          "sourceSha256": "0ba73d1b864bc04e404ea5cc3205ee12cc4f5e580ceae8d4d71fa03eb8a65cbd"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -3147,7 +3147,7 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "3b57f610b8ae417260828d9402a998daa0900061d242fe86b30438cb7cd8483a"
+          "sourceSha256": "b25fe176d5f3e66326aeb4d52e623cf34bdbf6f90baae381939271c09cbdf60e"
         },
         {
           "source": "ui-collections/src/extras-storage.ts",
@@ -3236,7 +3236,7 @@
         {
           "source": "ui-collections/src/CollectionList.tsx",
           "target": "components/ui/collection-list.tsx",
-          "sourceSha256": "a0703fddbba6221cbd90b4b731818bd936be159cc49bb5156e5ff364dd411767"
+          "sourceSha256": "a416994aab16f566947eacb4cd421bd2dd752785deb6b54f691d9fa554a4b099"
         },
         {
           "source": "ui-collections/src/CollectionList.css",

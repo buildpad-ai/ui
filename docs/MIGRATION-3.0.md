@@ -66,7 +66,8 @@ What changes in your copied files:
   and its helpers: `INTERFACE_MANIFEST`, `normalizeInterfaceId`,
   `getInterfaceManifestEntry`, `interfaceHasFlag`, `isPresentationInterface`,
   `isNonFlatRelationalInterface`, `isSelfPersistingInterface`,
-  `isRelationListInterface` and the others. If you edited the barrel and its
+  `isRelationListInterface` and the others, plus the field-level
+  `isNonFlatRelationalField` from `field-interface-mapper`. If you edited the barrel and its
   merge conflicts, copy the `interface-manifest` export block from
   `index.ts.new`: the components below import these names from it.
 - **`collection-form`, `collection-list`, `list-m2a` (`JunctionItemForm`) and

@@ -58,6 +58,7 @@ export {
 export {
   isFieldReadOnly,
   isPresentationField,
+  isNonFlatRelationalField,
   getFieldValidation,
   formatFieldValue,
   getDefaultValuesFromFields,

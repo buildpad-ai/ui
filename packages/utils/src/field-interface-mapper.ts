@@ -10,6 +10,7 @@ import type { Field } from "@buildpad/types";
 import { isNewItem } from "./is-new-item";
 import {
   interfaceAliasMap,
+  isNonFlatRelationalInterface,
   isPresentationInterface,
   normalizeInterfaceId,
 } from "./interface-manifest";
@@ -1263,6 +1264,26 @@ export function formatFieldValue(value: unknown, field: Field): string {
  */
 export function isPresentationField(field: Field): boolean {
   return isPresentationInterface(field.meta?.interface);
+}
+
+/** `meta.special` values of a relational field with no flat column of its own. */
+const NON_FLAT_RELATIONAL_SPECIALS: ReadonlySet<string> = new Set(["m2a", "m2m", "o2m"]);
+
+/**
+ * A relational field with no real flat column value, so it cannot be
+ * requested as a bare name in a `fields=` fetch (only as a nested embed): an
+ * `m2a`/`m2m`/`o2m` special, or an interface with the manifest's
+ * `nonFlatRelational` flag (list-o2m/m2m/m2a). Some DaaS backends do not mark
+ * these fields with column type `alias`, so the type alone is not reliable.
+ * `select-dropdown-m2o` is not one: an M2O field normally backs a real FK
+ * column and fetches fine bare. CollectionForm and CollectionList both use it.
+ */
+export function isNonFlatRelationalField(field: Field): boolean {
+  const special = field.meta?.special ?? [];
+  return (
+    special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) ||
+    isNonFlatRelationalInterface(field.meta?.interface)
+  );
 }
 
 /**

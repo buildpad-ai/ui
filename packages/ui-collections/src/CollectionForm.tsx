@@ -45,7 +45,7 @@ import {
   getDefaultValuesFromFields,
   interpolate,
   isConcealedValue,
-  isNonFlatRelationalInterface,
+  isNonFlatRelationalField,
   isRenderedPresentationInterface,
   isSelfPersistingInterface,
   type CollectionsTranslations,
@@ -136,16 +136,6 @@ const SYSTEM_FIELDS = new Set([
   "date_updated",
   "sort",
 ]);
-
-// Relational fields with no real flat column value — can't be requested as a
-// bare name in a fields= fetch (there's no single column to select), only
-// via a proper nested embed this form doesn't build. Matches the same
-// backend-agnostic signal used by CollectionList (some DaaS backends don't
-// mark these fields with column type "alias", so that alone isn't reliable):
-// these specials, or an interface with the manifest's nonFlatRelational flag
-// (list-o2m/m2m/m2a). select-dropdown-m2o is intentionally excluded from
-// both: M2O fields normally back a real FK column and fetch fine bare.
-const NON_FLAT_RELATIONAL_SPECIALS = new Set(["m2a", "m2m", "o2m"]);
 
 // Fields that are read-only by nature
 const READ_ONLY_FIELDS = new Set([
@@ -540,13 +530,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           // items independently via their relation hooks once mounted with
           // the real primaryKey — they don't depend on this initial value.
           const fetchableFields = editableFields
-            .filter((f) => {
-              const special = f.meta?.special ?? [];
-              const isNonFlatRelational =
-                special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) ||
-                isNonFlatRelationalInterface(f.meta?.interface);
-              return !isNonFlatRelational;
-            })
+            // Same check as CollectionList: an m2a/m2m/o2m special or a
+            // list-o2m/m2m/m2a interface (select-dropdown-m2o fetches fine).
+            .filter((f) => !isNonFlatRelationalField(f))
             .map((f) => f.field);
           const resolvedPkField = schemaPk ?? "id";
           if (!fetchableFields.includes(resolvedPkField)) {
