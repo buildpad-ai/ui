@@ -13,10 +13,11 @@ export interface ComponentMetadata {
   title: string;
   category: string;
   description: string;
-  files: Array<{ source: string; target: string }>;
+  files: Array<{ source: string; target: string; sourceSha256?: string }>;
   dependencies: string[];
   internalDependencies: string[];
   registryDependencies?: string[];
+  sourcePackage?: string;
 }
 
 export interface PackageMetadata {
@@ -36,11 +37,14 @@ export interface CategoryMetadata {
 export interface LibModule {
   name: string;
   description: string;
-  files?: Array<{ source: string; target: string }>;
+  files?: Array<{ source: string; target: string; sourceSha256?: string }>;
+  /** Legacy single-file shape; current lib modules use `files`. */
   path?: string;
   target?: string;
+  sourceSha256?: string;
   dependencies?: string[];
   internalDependencies?: string[];
+  sourcePackage?: string;
 }
 
 export interface Registry {
@@ -56,6 +60,8 @@ export interface Registry {
   lib: Record<string, LibModule>;
   components: ComponentMetadata[];
   categories: CategoryMetadata[];
+  /** Per-package version and changelog location (registry schema 2). */
+  packages?: Record<string, { version: string; changelogUrl?: string }>;
 }
 
 /**

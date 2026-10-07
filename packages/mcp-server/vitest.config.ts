@@ -18,11 +18,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['src/versioning.ts', 'src/index.ts'],
+      include: ['src/versioning.ts', 'src/index.ts', 'src/sources.ts', 'src/bundle-sources.ts', 'src/upgrade.ts'],
       reportOnFailure: true,
-      // Floors just under the coverage measured when they were added
-      // (62.58 / 70.12 / 93.33 / 62.58); raise them as tests are added.
-      thresholds: { statements: 61, branches: 69, functions: 92, lines: 61 },
+      // Floors just under the measured coverage (77.13 / 88.86 / 98.33 / 77.13
+      // after the source-loading and upgrade-tool tests); raise them as tests
+      // are added.
+      thresholds: { statements: 76, branches: 87, functions: 97, lines: 76 },
     },
   },
 });

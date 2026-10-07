@@ -9,11 +9,13 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
+  ErrorCode,
   ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  McpError,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { readFileSync, existsSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -29,42 +31,82 @@ import {
   type ComponentMetadata,
 } from './registry.js';
 import {
-  hashTransformed,
-  staleFilesOf,
   fetchChangelogContent,
   changelogSince,
 } from './versioning.js';
+import {
+  createSourceResolver,
+  detectSourceRoot,
+  registryFilesOf,
+  type MissingSource,
+  type SourceResolver,
+} from './sources.js';
+import {
+  buildUpgradeCommand,
+  entryStatus,
+  installedEntries,
+  isAhead,
+  readConsumerConfig,
+  recordedFileStatuses,
+  staleLibDependencies,
+  validateApplyUpgradeArgs,
+  type EntryStatus,
+} from './upgrade.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Get the packages root (mcp-server/dist -> packages)
-const PACKAGES_ROOT = join(__dirname, '../..');
+/**
+ * This package's version, read from package.json so it never drifts from the
+ * published version. Under lockstep releases it is also the @buildpad/cli
+ * release whose registry this server embeds.
+ */
+const MCP_VERSION = (JSON.parse(
+  readFileSync(join(__dirname, '..', 'package.json'), 'utf8'),
+) as { version: string }).version;
+
+/** How to run the CLI in guidance text. It is published on npm. */
+const CLI = 'npx @buildpad/cli';
 
 /**
- * Read file content safely
- * Handles both direct file paths (e.g., ui-interfaces/src/datetime/DateTime.tsx)
- * and directory paths (tries index.tsx, index.ts variants)
+ * Where component sources are read from: the monorepo `packages/` directory
+ * when running from a checkout, otherwise the `dist/sources` bundle that ships
+ * in the npm package. See sources.ts.
  */
-function readSourceFile(relativePath: string): string | null {
-  const fullPath = join(PACKAGES_ROOT, relativePath);
-  
-  // First, try the exact path (for explicit file paths like DateTime.tsx)
-  if (existsSync(fullPath)) {
-    return readFileSync(fullPath, 'utf-8');
-  }
-  
-  // If path doesn't exist as-is, try as directory with index files
-  const extensions = ['index.tsx', 'index.ts', 'index.jsx', 'index.js'];
-  
-  for (const ext of extensions) {
-    const filePath = join(fullPath, ext);
-    if (existsSync(filePath)) {
-      return readFileSync(filePath, 'utf-8');
-    }
-  }
-  
-  return null;
+let sourceResolver: SourceResolver = createSourceResolver(detectSourceRoot(__dirname));
+
+/**
+ * Replace the source resolver, for tests and embedders. Returns the previous
+ * one so it can be restored.
+ */
+export function setSourceResolver(next: SourceResolver): SourceResolver {
+  const previous = sourceResolver;
+  sourceResolver = next;
+  return previous;
+}
+
+/**
+ * The tool result for sources that could not be read. Returned instead of
+ * empty or placeholder content, so an agent never copies an empty file list.
+ */
+function missingSourcesResult(name: string, missing: MissingSource[]) {
+  return {
+    isError: true,
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        error: missing.length > 0
+          ? `Source code for "${name}" is not available: ${missing.length} file(s) could not be read from ${sourceResolver.describe()}.`
+          : `The registry lists no source files for "${name}".`,
+        name,
+        missingSources: missing,
+        sourceRoot: sourceResolver.root,
+        hint:
+          `Install it with the CLI instead (${CLI} add ${name}), which fetches the sources itself. ` +
+          `If this server came from npm, its bundled sources are incomplete: reinstall it (npx -y @buildpad/mcp@${MCP_VERSION}).`,
+      }, null, 2),
+    }],
+  };
 }
 
 /**
@@ -73,8 +115,8 @@ function readSourceFile(relativePath: string): string | null {
  */
 function generateUsageExample(component: ComponentMetadata): string {
   const examples: Record<string, string> = {
-    Input: `// Copy & Own: Component must be added via CLI from local buildpad-ui
-// cd /path/to/buildpad-ui && pnpm cli add input --project /path/to/your-project
+    Input: `// Copy & Own: add the component to your project first (run in the project root):
+// ${CLI} add input
 import { Input } from '@/components/ui/input';
 
 function MyForm() {
@@ -90,7 +132,7 @@ function MyForm() {
     />
   );
 }`,
-    SelectDropdown: `// Copy & Own: cd /path/to/buildpad-ui && pnpm cli add select-dropdown --project /path/to/your-project
+    SelectDropdown: `// Copy & Own: ${CLI} add select-dropdown
 import { SelectDropdown } from '@/components/ui/select-dropdown';
 
 function StatusSelect() {
@@ -109,7 +151,7 @@ function StatusSelect() {
     />
   );
 }`,
-    DateTime: `// Copy & Own: cd /path/to/buildpad-ui && pnpm cli add datetime --project /path/to/your-project
+    DateTime: `// Copy & Own: ${CLI} add datetime
 import { DateTime } from '@/components/ui/datetime';
 
 function EventForm() {
@@ -125,7 +167,7 @@ function EventForm() {
     />
   );
 }`,
-    Toggle: `// Copy & Own: cd /path/to/buildpad-ui && pnpm cli add toggle --project /path/to/your-project
+    Toggle: `// Copy & Own: ${CLI} add toggle
 import { Toggle } from '@/components/ui/toggle';
 
 function FeatureToggle() {
@@ -142,7 +184,7 @@ function FeatureToggle() {
     />
   );
 }`,
-    CollectionForm: `// Copy & Own: cd /path/to/buildpad-ui && pnpm cli add collection-form --project /path/to/your-project
+    CollectionForm: `// Copy & Own: ${CLI} add collection-form
 import { CollectionForm } from '@/components/ui/collection-form';
 
 function ProductEditor({ productId }: { productId?: string }) {
@@ -156,7 +198,7 @@ function ProductEditor({ productId }: { productId?: string }) {
     />
   );
 }`,
-    CollectionList: `// Copy & Own: cd /path/to/buildpad-ui && pnpm cli add collection-list --project /path/to/your-project
+    CollectionList: `// Copy & Own: ${CLI} add collection-list
 import { CollectionList } from '@/components/ui/collection-list';
 
 function ProductList() {
@@ -172,9 +214,9 @@ function ProductList() {
 }`,
   };
 
-  return examples[component.name] || examples[component.title] || `// Copy & Own model: This component is copied to your project
-// Import from your local components directory after running from buildpad-ui:
-// cd /path/to/buildpad-ui && pnpm cli add ${component.name} --project /path/to/your-project
+  return examples[component.name] || examples[component.title] || `// Copy & Own model: this component is copied into your project.
+// Add it first (run in the project root), then import it from your components directory:
+// ${CLI} add ${component.name}
 
 import { ${component.title} } from '@/components/ui/${component.name}';
 
@@ -240,9 +282,10 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 });
 
 /**
- * Read resource content (package info or component source)
+ * Read resource content (package info or component source). Exported so it
+ * can be tested without the stdio transport.
  */
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+export async function handleReadResourceRequest(request: { params: { uri: string } }) {
   const uri = request.params.uri;
 
   // Handle package info requests
@@ -265,23 +308,28 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     };
   }
 
-  // Handle component source requests
+  // Handle component source requests: the entry's first (primary) file
   if (uri.startsWith('buildpad://components/')) {
     const componentName = uri.replace('buildpad://components/', '');
     const component = getComponent(componentName);
-    const libModule = !component ? getLibModule(componentName) : undefined;
+    const libModule = component ? undefined : getLibModule(componentName);
 
     if (!component && !libModule) {
       throw new Error(`Component not found: ${componentName}`);
     }
 
-    // Get source from first file in files array
-    const files = component ? component.files : libModule!.files ?? [];
-    const sourcePath = files[0]?.source;
-    const source = sourcePath ? readSourceFile(sourcePath) : null;
+    const primary = component ? component.files[0] : registryFilesOf(libModule!)[0];
+    const source = primary ? sourceResolver.read(primary.source) : null;
 
-    if (!source) {
-      throw new Error(`Source file not found for component: ${componentName}`);
+    if (source === null) {
+      const missingSources = primary ? [{ source: primary.source, target: primary.target }] : [];
+      throw new McpError(
+        ErrorCode.InternalError,
+        primary
+          ? `Source file for "${componentName}" is not available: ${primary.source} could not be read from ${sourceResolver.describe()}.`
+          : `The registry lists no source files for "${componentName}".`,
+        { missingSources, sourceRoot: sourceResolver.root },
+      );
     }
 
     return {
@@ -296,7 +344,9 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   }
 
   throw new Error(`Unknown resource URI: ${uri}`);
-});
+}
+
+server.setRequestHandler(ReadResourceRequestSchema, handleReadResourceRequest);
 
 /**
  * List available tools
@@ -433,7 +483,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'copy_component',
-        description: 'Get complete source code and file structure to manually copy a component into your project (shadcn-style). Returns the full implementation code, target paths, and required dependencies.',
+        description: 'Get complete source code and file structure to manually copy a component into your project (shadcn-style). Returns the full implementation code, target paths, and required dependencies. Sources are returned as published, with @buildpad/* imports; the CLI (`npx @buildpad/cli add <name>`) rewrites those to your project paths. Returns isError with a missingSources list if any file cannot be read.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -443,7 +493,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             includeLib: {
               type: 'boolean',
-              description: 'Also include required lib modules (types, services, hooks) if the component depends on them',
+              description: 'Also include the lib modules (types, services, hooks, utils, ...) the component depends on, directly or through other lib modules. Defaults to true.',
             },
           },
           required: ['name'],
@@ -521,7 +571,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'list_outdated',
-        description: "List Buildpad components that have available updates. Reads the consumer project's buildpad.json and compares installed package versions against the registry.",
+        description: "List installed Buildpad components and lib modules (utils, services, hooks, ...) that have updates. Reads the consumer project's buildpad.json and compares each file's recorded source hash with this server's registry. Each entry has kind 'component' or 'lib'.",
         inputSchema: {
           type: 'object',
           properties: {
@@ -553,7 +603,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'get_upgrade_plan',
-        description: 'Dry-run upgrade plan: for each outdated component shows version delta, local-modification status per file, and recommended action. Read-only — does not touch any consumer files.',
+        description: 'Dry-run upgrade plan: for each installed component and lib module shows the release delta, stale files, local-modification status per file (paths resolved the way the CLI writes them), and the recommended action. Naming a component also plans the outdated lib modules it depends on. Read-only — does not touch any consumer files.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -564,7 +614,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             components: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Specific component names to check. Omit to plan all outdated components.',
+              description: 'Specific component or lib-module names to check. Omit to plan every installed component and lib module.',
             },
           },
           required: ['projectPath'],
@@ -572,7 +622,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'apply_upgrade',
-        description: '⚠️ WRITE TOOL — Upgrade Buildpad components in a consumer project by invoking the CLI upgrade command. For locally-modified files, strategy controls conflict resolution: "overwrite" replaces them, "new-file" writes a .new file, "three-way" attempts a 3-way merge.',
+        description: '⚠️ WRITE TOOL — Upgrade Buildpad components and lib modules in a consumer project by running `npx @buildpad/cli@<this server\'s version> upgrade`, so the CLI applies the same registry this server reports. Upgrading everything (omit components) is the safest path. For locally-modified files, strategy controls conflict resolution: "overwrite" replaces them, "new-file" writes a .new file, "three-way" attempts a 3-way merge. Refuses to run when the project was installed from a newer release than this server.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -583,7 +633,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             components: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Component names to upgrade. Omit to upgrade all outdated components.',
+              description: 'Component or lib-module names to upgrade (lowercase, e.g. "input", "utils"). Omit to upgrade every installed component and lib module.',
+            },
+            includeLibDependencies: {
+              type: 'boolean',
+              description: 'When components are named, also upgrade the installed lib modules they depend on that are outdated. Defaults to true.',
             },
             strategy: {
               type: 'string',
@@ -650,17 +704,16 @@ export async function handleCallToolRequest(request: { params: { name: string; a
       }
 
       const component = getComponent(componentName);
-      const libModule = !component ? getLibModule(componentName) : undefined;
+      const libModule = component ? undefined : getLibModule(componentName);
       if (!component && !libModule) {
         throw new Error(`Component not found: ${componentName}`);
       }
 
       // If it's a lib module (e.g. external-oauth, supabase-auth), return its info directly
       if (libModule) {
-        const libFiles: Record<string, string> = {};
-        for (const file of (libModule.files ?? [])) {
-          const content = readSourceFile(file.source);
-          if (content) libFiles[file.target] = content;
+        const { found, missing } = sourceResolver.readFiles(registryFilesOf(libModule));
+        if (missing.length > 0 || found.length === 0) {
+          return missingSourcesResult(libModule.name, missing);
         }
         return {
           content: [{
@@ -672,25 +725,18 @@ export async function handleCallToolRequest(request: { params: { name: string; a
               files: libModule.files,
               dependencies: libModule.dependencies ?? [],
               internalDependencies: libModule.internalDependencies ?? [],
-              allSources: libFiles,
-              installCommand: `npx @buildpad/cli add ${libModule.name}`,
+              allSources: Object.fromEntries(found.map(f => [f.target, f.content])),
+              installCommand: `${CLI} add ${libModule.name}`,
             }, null, 2),
           }],
         };
       }
 
-      // Get source from all files in files array (for components with multiple files)
-      const sources: Record<string, string> = {};
-      for (const file of component!.files) {
-        const content = readSourceFile(file.source);
-        if (content) {
-          sources[file.target] = content;
-        }
+      // Every file of the component; the first one is the primary source.
+      const { found, missing } = sourceResolver.readFiles(component!.files);
+      if (missing.length > 0 || found.length === 0) {
+        return missingSourcesResult(component!.name, missing);
       }
-
-      // Primary source is the first file
-      const primarySource = component!.files[0]?.source;
-      const source = primarySource ? readSourceFile(primarySource) : null;
 
       return {
         content: [
@@ -699,12 +745,16 @@ export async function handleCallToolRequest(request: { params: { name: string; a
             text: JSON.stringify(
               {
                 ...component,
-                source: source || 'Source code not available',
-                allSources: sources,
-                installCommand: `cd /path/to/buildpad-ui && pnpm cli add ${component!.name} --project /path/to/your-project`,
-                installNote: '⚠️ @buildpad/cli is NOT on npm. You must use the CLI from a local clone of buildpad-ui.',
+                source: found[0].content,
+                allSources: Object.fromEntries(found.map(f => [f.target, f.content])),
+                installCommand: `${CLI} add ${component!.name}`,
+                installNote:
+                  'Run in the project root (or pass --cwd <path>); run `npx @buildpad/cli init` first if there is no buildpad.json. ' +
+                  'The CLI copies the files, rewrites @buildpad/* imports to your project paths and records them for later upgrades.',
                 copyOwn: {
-                  description: 'Copy this component to your project using the CLI from buildpad-ui, or manually copy the source code below.',
+                  description:
+                    'Add this component with the CLI (recommended), or copy the source below by hand. ' +
+                    'The source imports @buildpad/* packages, which are not published to npm: a manual copy must rewrite those imports to your local paths.',
                   targetPath: component!.files[0]?.target || `components/ui/${component!.name}.tsx`,
                   peerDependencies: component!.dependencies,
                 },
@@ -753,7 +803,7 @@ export async function handleCallToolRequest(request: { params: { name: string; a
     case 'generate_form': return (function handleGenerateForm() {
       const { collection, fields, mode } = args as any;
       
-      const code = `// Copy & Own: cd /path/to/buildpad-ui && pnpm cli add collection-form --project /path/to/your-project
+      const code = `// Copy & Own: ${CLI} add collection-form
 import { CollectionForm } from '@/components/ui/collection-form';
 
 function ${collection.charAt(0).toUpperCase() + collection.slice(1)}Form() {
@@ -799,7 +849,7 @@ function ${collection.charAt(0).toUpperCase() + collection.slice(1)}Form() {
         .map(([key, value]) => `${key}={${JSON.stringify(value)}}`)
         .join('\n      ');
 
-      const code = `// Copy & Own: cd /path/to/buildpad-ui && pnpm cli add ${type} --project /path/to/your-project
+      const code = `// Copy & Own: ${CLI} add ${type}
 import { ${componentName} } from '@/components/ui/${type}';
 import { useState } from 'react';
 
@@ -839,35 +889,33 @@ function Example() {
 
     case 'get_install_command': return (function handleGetInstallCommand() {
       const { components, category, all } = args as any;
-      
-      // NOTE: @buildpad/cli is NOT published to npm. Must use local CLI from cloned repo
-      let command = 'cd /path/to/buildpad-ui && pnpm cli add';
+
+      // @buildpad/cli is published on npm; run it in the consumer project root.
+      let command = `${CLI} add`;
       let explanation = '';
-      
+
       if (all) {
-        command += ' --all --project /path/to/your-project';
+        command += ' --all';
         explanation = 'This will install all Buildpad components to your project.';
       } else if (category) {
-        command += ` --category ${category} --project /path/to/your-project`;
+        command += ` --category ${category}`;
         explanation = `This will install all components from the ${category} category.`;
       } else if (components && components.length > 0) {
-        command += ` ${components.join(' ')} --project /path/to/your-project`;
+        command += ` ${components.join(' ')}`;
         explanation = `This will install: ${components.join(', ')}.`;
       } else {
         return {
           content: [
             {
               type: 'text',
-              text: `⚠️ **IMPORTANT:** @buildpad/cli is NOT published to npm. You must use the CLI from a local clone.
+              text: `Install Buildpad components with the CLI, published on npm as @buildpad/cli. Run it in your project root, or pass \`--cwd /path/to/your-project\`.
 
-**Prerequisites:**
-1. Clone buildpad-ui: \`git clone <repo-url> buildpad-ui\`
-2. Install & build: \`cd buildpad-ui && pnpm install && pnpm build\`
+**Examples:**
+- \`${CLI} add input select-dropdown\`
+- \`${CLI} add --category selection\`
+- \`${CLI} add --all\`
 
-**Examples (run from buildpad-ui directory):**
-- \`pnpm cli add input select-dropdown --project /path/to/your-project\`
-- \`pnpm cli add --category selection --project /path/to/your-project\`
-- \`pnpm cli add --all --project /path/to/your-project\``,
+Pass component names, a category, or all: true to this tool to get one exact command.`,
             },
           ],
         };
@@ -875,15 +923,7 @@ function Example() {
 
       const result = `## Copy & Own Installation
 
-⚠️ **IMPORTANT:** @buildpad/cli is NOT published to npm.
-You must use the CLI from a local clone of buildpad-ui.
-
-**Prerequisites:**
-1. Clone the repo: \`git clone <repo-url> buildpad-ui\`
-2. Install deps: \`cd buildpad-ui && pnpm install\`
-3. Build CLI: \`pnpm build:cli\`
-
-**Command (from buildpad-ui directory):**
+**Command (run in your project root, or add \`--cwd /path/to/your-project\`):**
 \`\`\`bash
 ${command}
 \`\`\`
@@ -896,10 +936,11 @@ ${explanation}
 3. Imports are transformed to use local paths
 4. Dependencies are tracked in buildpad.json
 
-**First time setup (from buildpad-ui directory):**
+**First time setup (creates buildpad.json):**
 \`\`\`bash
-pnpm cli init --project /path/to/your-project
+${CLI} init
 \`\`\`
+Or set up a whole project in one step: \`${CLI} bootstrap\`.
 
 **Benefits of Copy & Own:**
 ✅ No external package dependencies for component code
@@ -923,18 +964,15 @@ pnpm cli init --project /path/to/your-project
 
 Buildpad uses the **Copy & Own** model (like shadcn/ui) instead of traditional npm packages.
 
-⚠️ **IMPORTANT:** @buildpad/cli is NOT published to npm.
-You must clone buildpad-ui locally and use the CLI from there.
+The component code is not installed as a dependency. The CLI, published on npm as **@buildpad/cli**, copies the source into your project.
 
-### Prerequisites:
-1. Clone: \`git clone <repo-url> buildpad-ui\`
-2. Install: \`cd buildpad-ui && pnpm install\`
-3. Build: \`pnpm build\`
-
-### How it works (all commands from buildpad-ui directory):
-1. **Initialize:** \`pnpm cli init --project /path/to/your-project\`
-2. **Add components:** \`pnpm cli add input select-dropdown --project /path/to/your-project\`
+### How it works (run in your project root, or pass \`--cwd <path>\`):
+1. **Initialize:** \`${CLI} init\`
+2. **Add components:** \`${CLI} add input select-dropdown\`
 3. **Customize:** Components are copied as source code - modify freely!
+4. **Stay current:** \`${CLI} outdated\`, then \`${CLI} upgrade\` (3-way merges your edits)
+
+Or do steps 1-2 for a whole project at once: \`${CLI} bootstrap\`.
 
 ### Project Structure After Installation:
 \`\`\`
@@ -952,13 +990,15 @@ your-project/
 └── buildpad.json           # Tracks installed components
 \`\`\`
 
-### CLI Commands (from buildpad-ui directory):
-- \`pnpm cli init --project <path>\` - Initialize project
-- \`pnpm cli list\` - List available components
-- \`pnpm cli add <components> --project <path>\` - Install components
-- \`pnpm cli add --category <name> --project <path>\` - Install by category
-- \`pnpm cli diff <component> --project <path>\` - Preview before install
-- \`pnpm cli status --project <path>\` - Check installed components
+### CLI Commands:
+- \`${CLI} init\` - Initialize project (creates buildpad.json)
+- \`${CLI} list\` - List available components
+- \`${CLI} add <components>\` - Install components
+- \`${CLI} add --category <name>\` - Install by category
+- \`${CLI} diff <component>\` - Preview before install
+- \`${CLI} status\` - Check installed components
+- \`${CLI} outdated\` - List components and lib modules with updates
+- \`${CLI} upgrade\` - Upgrade them
 
 ### Benefits:
 ✅ **No external dependencies** - Components are part of your codebase
@@ -991,21 +1031,27 @@ your-project/
     case 'copy_component': return (function handleCopyComponent() {
       const componentName = (args as any)?.name;
       const includeLib = (args as any)?.includeLib ?? true;
-      
+
       if (!componentName) {
         throw new Error('Component name is required');
       }
 
       const component = getComponent(componentName);
-      const libModule = !component ? getLibModule(componentName) : undefined;
+      const libModule = component ? undefined : getLibModule(componentName);
       if (!component && !libModule) {
         throw new Error(`Component not found: ${componentName}`);
       }
 
-      // If it's a lib module (e.g. external-oauth), resolve and return its files directly
-      if (libModule) {
-        const registry = getRegistry();
-        const allLibFiles: Array<{ path: string; content: string; module: string }> = [];
+      const registry = getRegistry();
+      const missing: MissingSource[] = [];
+
+      /**
+       * The files of the lib modules reached from `deps` through
+       * internalDependencies, dependencies first, each module once. This is
+       * the set the CLI's `add` installs (copyLibModule recurses the same way).
+       */
+      const collectLibFiles = (deps: string[]) => {
+        const libFiles: Array<{ path: string; content: string; module: string }> = [];
         const visited = new Set<string>();
         const resolveLib = (name: string) => {
           if (visited.has(name)) return;
@@ -1013,12 +1059,20 @@ your-project/
           const mod = registry.lib[name];
           if (!mod) return;
           for (const dep of (mod.internalDependencies ?? [])) resolveLib(dep);
-          for (const file of (mod.files ?? [])) {
-            const content = readSourceFile(file.source);
-            if (content) allLibFiles.push({ path: file.target, content, module: name });
-          }
+          const { found, missing: notFound } = sourceResolver.readFiles(registryFilesOf(mod));
+          missing.push(...notFound);
+          for (const f of found) libFiles.push({ path: f.target, content: f.content, module: name });
         };
-        resolveLib(componentName);
+        for (const dep of deps) resolveLib(dep);
+        return { libFiles, visited };
+      };
+
+      // If it's a lib module (e.g. external-oauth), resolve and return its files directly
+      if (libModule) {
+        const { libFiles: allLibFiles, visited } = collectLibFiles([componentName]);
+        if (missing.length > 0 || allLibFiles.length === 0) {
+          return missingSourcesResult(libModule.name, missing);
+        }
         const allDeps = [...new Set(
           [...visited].flatMap(n => (registry.lib[n]?.dependencies ?? []).map((d: string) => d.replace(/@[^@/]*$/, '')))
         )];
@@ -1031,93 +1085,59 @@ your-project/
               type: 'lib-module',
               files: allLibFiles,
               peerDependencies: allDeps,
-              installCommand: `npx @buildpad/cli add ${libModule.name}`,
-              instructions: `## Install lib module: ${libModule.name}\n\n\`\`\`bash\nnpx @buildpad/cli add ${libModule.name}\n\`\`\`\n\n${libModule.description}\n\nFiles installed:\n${allLibFiles.map(f => `- \`${f.path}\` (${f.module})`).join('\n')}${allDeps.length ? `\n\n### npm dependencies\n\`\`\`bash\npnpm add ${allDeps.join(' ')}\n\`\`\`` : ''}`,
+              installCommand: `${CLI} add ${libModule.name}`,
+              instructions: `## Install lib module: ${libModule.name}\n\n\`\`\`bash\n${CLI} add ${libModule.name}\n\`\`\`\n\n${libModule.description}\n\nFiles installed:\n${allLibFiles.map(f => `- \`${f.path}\` (${f.module})`).join('\n')}${allDeps.length ? `\n\n### npm dependencies\n\`\`\`bash\npnpm add ${allDeps.join(' ')}\n\`\`\`` : ''}`,
             }, null, 2),
           }],
         };
       }
 
-      // Collect all files for this component
-      const files: Array<{ path: string; content: string }> = [];
-      
-      for (const file of component!.files) {
-        const content = readSourceFile(file.source);
-        if (content) {
-          files.push({
-            path: file.target,
-            content: content,
-          });
-        }
+      // All files of the component
+      const { found, missing: notFound } = sourceResolver.readFiles(component!.files);
+      missing.push(...notFound);
+      const files = found.map(f => ({ path: f.target, content: f.content }));
+
+      // With includeLib, the lib modules it depends on, transitively
+      const { libFiles } = includeLib
+        ? collectLibFiles(component!.internalDependencies ?? [])
+        : { libFiles: [] as Array<{ path: string; content: string; module: string }> };
+
+      if (missing.length > 0 || files.length === 0) {
+        return missingSourcesResult(component!.name, missing);
       }
 
-      // If includeLib and component has internal dependencies, include those too
-      const libFiles: Array<{ path: string; content: string; module: string }> = [];
-      
-      if (includeLib && component!.internalDependencies?.length > 0) {
-        const registry = getRegistry();
-        
-        for (const dep of component!.internalDependencies) {
-          const libModule = registry.lib[dep];
-          if (libModule) {
-            if (libModule.files) {
-              for (const file of libModule.files) {
-                const content = readSourceFile(file.source);
-                if (content) {
-                  libFiles.push({
-                    path: file.target,
-                    content: content,
-                    module: dep,
-                  });
-                }
-              }
-            } else if (libModule.path && libModule.target) {
-              const content = readSourceFile(libModule.path);
-              if (content) {
-                libFiles.push({
-                  path: libModule.target,
-                  content: content,
-                  module: dep,
-                });
-              }
-            }
-          }
-        }
-      }
+      const registryDependencies = component!.registryDependencies ?? [];
 
       const result = {
         component: component!.name,
         title: component!.title,
         description: component!.description,
-        
+
         // Primary component file
         files: files,
-        
+
         // Required lib modules (if any)
         libFiles: libFiles.length > 0 ? libFiles : undefined,
-        
+
         // Dependencies to install via npm/pnpm
         peerDependencies: component!.dependencies,
-        
-        // Install command (must use local CLI, not npx)
-        cliCommand: `cd /path/to/buildpad-ui && pnpm cli add ${component!.name} --project /path/to/your-project`,
-        cliNote: '⚠️ @buildpad/cli is NOT on npm. You must use the CLI from a local clone of buildpad-ui.',
-        
+
+        // Other components this one renders; copy (or add) them too
+        registryDependencies,
+
+        // Install command (recommended over a manual copy)
+        cliCommand: `${CLI} add ${component!.name}`,
+        cliNote:
+          'Recommended: the CLI copies these files, installs their dependencies, rewrites @buildpad/* imports to your project paths and records hashes for later upgrades.',
+
         // Instructions
         instructions: `## Copy & Own: ${component!.title}
 
-⚠️ **IMPORTANT:** @buildpad/cli is NOT published to npm.
-You must use the CLI from a local clone of buildpad-ui.
+### Option 1: Use the CLI (Recommended)
 
-### Option 1: Use CLI (Recommended)
-
-**Prerequisites:**
-1. Clone buildpad-ui: \`git clone <repo-url>\`
-2. Install & build: \`cd buildpad-ui && pnpm install && pnpm build\`
-
-**Add component (from buildpad-ui directory):**
+Run in your project root (or pass \`--cwd /path/to/your-project\`). If the project has no buildpad.json yet, run \`${CLI} init\` first.
 \`\`\`bash
-pnpm cli add ${component!.name} --project /path/to/your-project
+${CLI} add ${component!.name}
 \`\`\`
 
 ### Option 2: Manual Copy
@@ -1131,6 +1151,10 @@ ${component!.dependencies.length > 0 ? `3. Install peer dependencies:
 \`\`\`bash
 pnpm add ${component!.dependencies.join(' ')}
 \`\`\`` : ''}
+${registryDependencies.length > 0 ? `
+4. Also add the components it uses: ${registryDependencies.map(d => `\`${d}\``).join(', ')}` : ''}
+
+The sources import \`@buildpad/*\` packages, which are not published to npm. Rewrite those imports to your local paths (for example \`@buildpad/hooks\` → \`@/lib/buildpad/hooks\`, \`@buildpad/ui-interfaces\` → \`@/components/ui\`), or use Option 1, which does it for you.
 
 ### Usage
 \`\`\`tsx
@@ -1163,35 +1187,17 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
     })();
 
     case 'list_outdated': return (function handleListOutdated() {
-        const { projectPath } = args as any;
-        if (!projectPath) throw new Error('projectPath is required');
-        const configPath = join(projectPath, 'buildpad.json');
-        if (!existsSync(configPath)) {
-          throw new Error(`buildpad.json not found at: ${configPath}`);
-        }
-        const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+        const config = readConsumerConfig((args as any)?.projectPath);
         const registry = getRegistry();
-        const registryPackages: Record<string, { version: string; changelogUrl?: string }> =
-          (registry as any).packages ?? {};
-        const components: Record<string, any> = config.components ?? {};
-        const allComps = getAllComponents() as any[];
-        const release: string | undefined = config.release ?? (registry as any).version;
+        const registryPackages = registry.packages ?? {};
 
         const outdated: object[] = [];
-        for (const [name, comp] of Object.entries(components)) {
-          const sourcePackage: string | undefined = (comp as any).sourcePackage;
-          const regComp = allComps.find(c => c.name === name);
-          if (!regComp) continue;
-          const staleFiles = staleFilesOf(regComp, comp);
-          if (staleFiles.length === 0) continue;
-          const pkg = sourcePackage ? registryPackages[sourcePackage] : undefined;
+        for (const entry of installedEntries(config, registry)) {
+          const status = entryStatus(entry, registry.version);
+          if (!status.isOutdated) continue;
           outdated.push({
-            name,
-            sourcePackage: sourcePackage ?? null,
-            installedRelease: (comp as any).release ?? (comp as any).version ?? null,
-            latestRelease: release ?? null,
-            staleFiles,
-            changelogUrl: pkg?.changelogUrl ?? null,
+            ...status,
+            changelogUrl: status.sourcePackage ? registryPackages[status.sourcePackage]?.changelogUrl ?? null : null,
           });
         }
         return {
@@ -1240,92 +1246,99 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
       })();
 
     case 'get_upgrade_plan': return (function handleGetUpgradePlan() {
-        const { projectPath, components: requestedComponents } = args as any;
-        if (!projectPath) throw new Error('projectPath is required');
-        const configPath = join(projectPath, 'buildpad.json');
-        if (!existsSync(configPath)) {
-          throw new Error(`buildpad.json not found at: ${configPath}`);
+        const { projectPath, components: requested } = (args ?? {}) as { projectPath?: unknown; components?: unknown };
+        const config = readConsumerConfig(projectPath);
+        if (requested !== undefined && !(Array.isArray(requested) && requested.every(n => typeof n === 'string'))) {
+          throw new Error('components must be an array of component or lib-module names');
         }
-        const config = JSON.parse(readFileSync(configPath, 'utf-8'));
         const registry = getRegistry();
-        const components: Record<string, any> = config.components ?? {};
-        const allComps = getAllComponents() as any[];
-        const release: string | undefined = config.release ?? (registry as any).version;
-        // Honour the consumer's srcDir layout — files live at `<projectPath>/src/<target>`
-        // when srcDir=true, otherwise `<projectPath>/<target>`.
-        const fileRoot = config.srcDir ? join(projectPath, 'src') : projectPath;
+        const entries = installedEntries(config, registry);
+        const statuses = entries.map(e => entryStatus(e, registry.version));
+
+        // Naming a component also plans the outdated lib modules it depends
+        // on: apply_upgrade upgrades those with it.
+        const requestedNames = (requested as string[] | undefined) ?? [];
+        const selected = requestedNames.length > 0
+          ? new Set([...requestedNames, ...staleLibDependencies(requestedNames, statuses, registry)])
+          : undefined;
 
         const plan: object[] = [];
-        for (const [compName, comp] of Object.entries(components)) {
-          if (requestedComponents?.length && !(requestedComponents as string[]).includes(compName)) {
-            continue;
-          }
-          const sourcePackage: string | undefined = (comp as any).sourcePackage;
-          const regComp = allComps.find(c => c.name === compName);
-          if (!regComp) continue;
-          const staleFiles = staleFilesOf(regComp, comp);
-          const isOutdated = staleFiles.length > 0;
-
-          // Per-file modification check (paths honour srcDir)
-          const files: Array<{ target: string; sha256: string }> = (comp as any).files ?? [];
-          const fileStatuses = files.map(f => {
-            const diskPath = join(fileRoot, f.target);
-            if (!existsSync(diskPath)) return { target: f.target, status: 'missing' as const };
-            const diskContent = readFileSync(diskPath, 'utf-8');
-            const diskHash = hashTransformed(diskContent);
-            return {
-              target: f.target,
-              status: (diskHash === f.sha256 ? 'pristine' : 'modified') as 'pristine' | 'modified',
-            };
-          });
-
-          const modifiedLocally = fileStatuses.some(f => f.status === 'modified');
-          const recommendedAction = !isOutdated
-            ? 'up-to-date'
-            : !modifiedLocally // NOSONAR: idiomatic tri-state ternary, not confusing nesting
-              ? 'safe-overwrite'
-              : 'prompt-or-three-way';
-
+        entries.forEach((entry, i) => {
+          if (selected && !selected.has(entry.name)) return;
+          const status = statuses[i];
+          const files = recordedFileStatuses(projectPath as string, config, entry);
+          const modifiedLocally = files.some(f => f.status === 'modified');
           plan.push({
-            name: compName,
-            sourcePackage: sourcePackage ?? null,
-            installedRelease: (comp as any).release ?? (comp as any).version ?? null,
-            latestRelease: release ?? null,
-            isOutdated,
-            staleFiles,
+            ...status,
             modifiedLocally,
-            recommendedAction,
-            files: fileStatuses,
+            recommendedAction: recommendedActionFor(status, modifiedLocally),
+            staleLibDependencies: entry.kind === 'component'
+              ? staleLibDependencies([entry.name], statuses, registry)
+              : [],
+            files,
           });
-        }
+        });
         return {
           content: [{ type: 'text', text: JSON.stringify(plan, null, 2) }],
         };
       })();
 
     case 'apply_upgrade': return (function handleApplyUpgrade() {
-        const { projectPath, components: requestedComponents, strategy = 'new-file' } = args as any;
-        if (!projectPath) throw new Error('projectPath is required');
-        const configPath = join(projectPath, 'buildpad.json');
-        if (!existsSync(configPath)) {
+        const input = validateApplyUpgradeArgs(args);
+        const config = readConsumerConfig(input.projectPath);
+        const registry = getRegistry();
+        const entries = installedEntries(config, registry);
+        const statuses = entries.map(e => entryStatus(e, registry.version));
+
+        const unknown = input.components.filter(n => !getComponent(n) && !getLibModule(n));
+        if (unknown.length > 0) {
           throw new Error(
-            `buildpad.json not found at: ${configPath}. ` +
-            `Ensure projectPath points to a valid Buildpad consumer project.`
+            `Not in the @buildpad/mcp ${MCP_VERSION} registry: ${unknown.join(', ')}. ` +
+            'Use list_components / list_lib_modules for valid names.'
           );
         }
+        // getComponent also matches titles ("Input"); the CLI needs registry names.
+        const named = input.components.map(n => getComponent(n)?.name ?? n);
 
-        const cliArgs = ['@buildpad/cli', 'upgrade'];
-        if ((requestedComponents as string[] | undefined)?.length) {
-          cliArgs.push(...(requestedComponents as string[]));
-        } else {
-          cliArgs.push('--all');
+        // Upgrading with this server's CLI release must not move anything backwards.
+        const targeted = named.length > 0 ? new Set(named) : undefined;
+        const ahead = statuses.filter(st => st.aheadOfRegistry && (!targeted || targeted.has(st.name)));
+        const projectAhead = isAhead(config.release, MCP_VERSION);
+        if (projectAhead || ahead.length > 0) {
+          return {
+            isError: true,
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                error:
+                  `This project was installed from a newer release (${projectAhead ? config.release : ahead[0].installedRelease}) ` +
+                  `than this server (${MCP_VERSION}). apply_upgrade would run @buildpad/cli@${MCP_VERSION} and downgrade it.`,
+                projectRelease: config.release ?? null,
+                mcpVersion: MCP_VERSION,
+                aheadOfRegistry: ahead.map(st => ({ kind: st.kind, name: st.name, installedRelease: st.installedRelease })),
+                hint: 'Update the MCP server (npx -y @buildpad/mcp@latest), or run the CLI that matches the project directly.',
+              }, null, 2),
+            }],
+          };
         }
-        cliArgs.push('--cwd', projectPath, '--strategy', strategy);
 
-        const result = spawnSync('npx', cliArgs, { // NOSONAR: trusted local dev-tool invocation, not exposed to untrusted PATH input
-          cwd: projectPath,
+        const libDependencies = named.length > 0 && input.includeLibDependencies
+          ? staleLibDependencies(named, statuses, registry)
+          : [];
+        const names = [...named, ...libDependencies];
+
+        const { command, args: cliArgs } = buildUpgradeCommand({
+          cliVersion: MCP_VERSION,
+          projectPath: input.projectPath,
+          strategy: input.strategy,
+          names,
+        });
+
+        // No shell: every argument reaches npx as one argv entry.
+        const result = spawnSync(command, cliArgs, { // NOSONAR: fixed command; arguments validated above
+          cwd: input.projectPath,
           encoding: 'utf-8',
-          timeout: 60_000,
+          timeout: 120_000,
         });
 
         return {
@@ -1336,8 +1349,12 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
               exitCode: result.status ?? -1,
               stdout: result.stdout ?? '',
               stderr: result.stderr ?? '',
-              components: requestedComponents ?? 'all outdated',
-              strategy,
+              ...(result.error ? { error: result.error.message } : {}),
+              components: named.length > 0 ? named : 'all installed',
+              libDependencies,
+              strategy: input.strategy,
+              cliVersion: MCP_VERSION,
+              command: [command, ...cliArgs].join(' '),
             }, null, 2),
           }],
         };
@@ -1349,6 +1366,18 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
 }
 
 server.setRequestHandler(CallToolRequestSchema, handleCallToolRequest);
+
+/**
+ * What an agent should do about one entry in an upgrade plan.
+ * - `update-mcp`: installed from a newer release than this server knows.
+ * - `up-to-date`, `safe-overwrite` (nothing local to lose), or
+ *   `prompt-or-three-way` (local edits; pick a strategy).
+ */
+function recommendedActionFor(status: EntryStatus, modifiedLocally: boolean): string {
+  if (status.aheadOfRegistry) return 'update-mcp';
+  if (!status.isOutdated) return 'up-to-date';
+  return modifiedLocally ? 'prompt-or-three-way' : 'safe-overwrite';
+}
 
 /**
  * Generate RBAC pattern with MCP tool call sequences
