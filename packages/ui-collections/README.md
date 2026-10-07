@@ -136,9 +136,20 @@ import { CollectionsRelationalProvider } from '@buildpad/ui-collections';
 <CollectionsRelationalProvider components={{ CollectionList: MyPicker }}>…</CollectionsRelationalProvider>
 ```
 
-`CollectionList` is loaded lazily (React.lazy); each relational dialog wraps it
-in its own Suspense boundary. The CLI's `/content` layout template already
-wraps its pages in this provider.
+The provider lives in its own module (`components/ui/collections-relational-provider`
+in a CLI project; also re-exported from `collection-form`) and loads all three
+components on demand (React.lazy), so a layout can wrap every page without
+bundling the form system into pages that never open a relational dialog. Each
+relational dialog renders them inside its own Suspense boundary.
+
+Its built-ins only fill slots no provider above chose: a bare
+`<CollectionsRelationalProvider>` nested under an app-level provider with custom
+components keeps those components. Its `components` prop, in contrast, wins over
+every provider above. A plain `VForm` supplies only itself (as the form
+renderer), so a standalone `VForm` with O2M / M2M fields needs this provider.
+
+The CLI scaffold already wraps its pages in this provider: the authenticated
+route-group layout (`api-routes`) and the `/content` layout (`content-routes`).
 
 ### ContentLayout
 

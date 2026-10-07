@@ -2679,6 +2679,10 @@
         {
           "source": "ui-collections/src/extras-storage.ts",
           "target": "components/ui/extras-storage.ts"
+        },
+        {
+          "source": "ui-collections/src/CollectionsRelationalProvider.tsx",
+          "target": "components/ui/collections-relational-provider.tsx"
         }
       ],
       "dependencies": [

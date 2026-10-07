@@ -11,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./CollectionForm": {
+      "types": "./dist/CollectionForm.d.ts",
+      "import": "./dist/CollectionForm.js",
+      "require": "./dist/CollectionForm.cjs"
     }
   },
   "files": [
@@ -18,8 +23,8 @@
     "src"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --external react --external @mantine/core --external @mantine/dates --external @mantine/hooks --external @tabler/icons-react",
-    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "build": "tsup src/index.ts src/CollectionForm.tsx --format esm,cjs --dts --external react --external @mantine/core --external @mantine/dates --external @mantine/hooks --external @tabler/icons-react",
+    "dev": "tsup src/index.ts src/CollectionForm.tsx --format esm,cjs --dts --watch",
     "clean": "rimraf dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

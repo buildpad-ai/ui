@@ -49,6 +49,23 @@ import { VForm } from "@buildpad/ui-form";
 const REACT_LAZY = Symbol.for("react.lazy");
 const isLazy = (c: unknown) => (c as { $$typeof?: symbol } | undefined)?.$$typeof === REACT_LAZY;
 
+/** What a React.lazy component resolves to (starts its import if needed). */
+async function resolveLazy(component: unknown): Promise<unknown> {
+  const lazy = component as { _init: (payload: unknown) => unknown; _payload: unknown };
+  // React.lazy's thenable: calling _init starts the import and throws the
+  // pending promise until it settles.
+  let resolved: unknown;
+  await waitFor(() => {
+    try {
+      resolved = lazy._init(lazy._payload);
+    } catch (pending) {
+      throw pending instanceof Promise ? new Error("pending") : pending;
+    }
+    expect(resolved).toBeTruthy();
+  });
+  return resolved;
+}
+
 function Probe() {
   seen.current = useRelationalUI();
   return null;
@@ -86,36 +103,37 @@ describe("CollectionForm provides the relational UI", () => {
   it("the lazy CollectionList resolves to the real component", async () => {
     render(<CollectionForm collection="posts" />);
     await screen.findByTestId("vform-probe");
-    const lazy = seen.current?.CollectionList as unknown as {
-      _init: (payload: unknown) => unknown;
-      _payload: unknown;
-    };
-    // React.lazy's thenable: calling _init starts the import and throws the
-    // pending promise until it settles.
-    let resolved: unknown;
-    await waitFor(() => {
-      try {
-        resolved = lazy._init(lazy._payload);
-      } catch (pending) {
-        throw pending instanceof Promise ? new Error("pending") : pending;
-      }
-      expect(resolved).toBeTruthy();
-    });
     const { CollectionList } = await import("../src/CollectionList");
-    expect(resolved).toBe(CollectionList);
+    expect(await resolveLazy(seen.current?.CollectionList)).toBe(CollectionList);
   });
 });
 
 describe("CollectionsRelationalProvider", () => {
-  it("supplies the built-in components to standalone relational interfaces", () => {
+  // Behaviour change (review of the cycle-break step): the provider now lives
+  // in its own module and loads all three components on demand, so an app
+  // layout can wrap every page in it without bundling the form system. Its
+  // slots are therefore React.lazy components resolving to the built-ins.
+  it("supplies the built-in components, each loaded on demand, to standalone relational interfaces", async () => {
     render(
       <CollectionsRelationalProvider>
         <Probe />
       </CollectionsRelationalProvider>,
     );
-    expect(seen.current?.CollectionForm).toBe(CollectionForm);
-    expect(seen.current?.FormRenderer).toBe(VForm);
-    expect(isLazy(seen.current?.CollectionList)).toBe(true);
+    const ui = seen.current;
+    expect(isLazy(ui?.CollectionForm)).toBe(true);
+    expect(isLazy(ui?.CollectionList)).toBe(true);
+    expect(isLazy(ui?.FormRenderer)).toBe(true);
+    const { CollectionList } = await import("../src/CollectionList");
+    expect(await resolveLazy(ui?.CollectionForm)).toBe(CollectionForm);
+    expect(await resolveLazy(ui?.CollectionList)).toBe(CollectionList);
+    expect(await resolveLazy(ui?.FormRenderer)).toBe(VForm);
+  });
+
+  it("is the same provider from the package barrel, CollectionForm's module and its own module", async () => {
+    const own = await import("../src/CollectionsRelationalProvider");
+    const barrel = await import("../src/index");
+    expect(own.CollectionsRelationalProvider).toBe(CollectionsRelationalProvider);
+    expect(barrel.CollectionsRelationalProvider).toBe(CollectionsRelationalProvider);
   });
 
   it("`components` replace individual built-ins", () => {
@@ -126,6 +144,45 @@ describe("CollectionsRelationalProvider", () => {
       </CollectionsRelationalProvider>,
     );
     expect(seen.current?.CollectionForm).toBe(MyForm);
-    expect(seen.current?.FormRenderer).toBe(VForm);
+    expect(isLazy(seen.current?.FormRenderer)).toBe(true);
+  });
+
+  it("nested bare under an app-level provider, keeps the app's components (built-ins only fill gaps)", () => {
+    const AppForm = () => null;
+    render(
+      <RelationalUIProvider components={{ CollectionForm: AppForm }}>
+        <CollectionsRelationalProvider>
+          <Probe />
+        </CollectionsRelationalProvider>
+      </RelationalUIProvider>,
+    );
+    expect(seen.current?.CollectionForm).toBe(AppForm);
+    expect(isLazy(seen.current?.CollectionList)).toBe(true);
+    expect(isLazy(seen.current?.FormRenderer)).toBe(true);
+  });
+
+  it("nested under another CollectionsRelationalProvider with `components`, keeps the outer choice", () => {
+    const AppList = () => null;
+    render(
+      <CollectionsRelationalProvider components={{ CollectionList: AppList }}>
+        <CollectionsRelationalProvider>
+          <Probe />
+        </CollectionsRelationalProvider>
+      </CollectionsRelationalProvider>,
+    );
+    expect(seen.current?.CollectionList).toBe(AppList);
+  });
+
+  it("its own `components` win over an app-level provider", () => {
+    const AppForm = () => null;
+    const PageForm = () => null;
+    render(
+      <RelationalUIProvider components={{ CollectionForm: AppForm }}>
+        <CollectionsRelationalProvider components={{ CollectionForm: PageForm }}>
+          <Probe />
+        </CollectionsRelationalProvider>
+      </RelationalUIProvider>,
+    );
+    expect(seen.current?.CollectionForm).toBe(PageForm);
   });
 });

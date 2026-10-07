@@ -1186,8 +1186,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 };
 
 /**
- * The components relational interfaces need, as this package provides them:
- * this form, a lazily loaded CollectionList picker and VForm.
+ * The components relational interfaces need, as this form provides them to
+ * its own fields: this form, a lazily loaded CollectionList picker and VForm.
+ * Declared after CollectionForm (read only at render time).
  */
 const collectionsRelationalUI: RelationalUIComponents = {
   CollectionForm,
@@ -1195,31 +1196,10 @@ const collectionsRelationalUI: RelationalUIComponents = {
   FormRenderer: VForm,
 };
 
-export interface CollectionsRelationalProviderProps {
-  /** Slots to use instead of the built-in ones (each one optional). */
-  components?: RelationalUIComponents;
-  children?: React.ReactNode;
-}
-
-/**
- * Pre-wired relational UI provider: supplies CollectionForm, CollectionList
- * and VForm to every relational interface below it. CollectionForm and VForm
- * already do this for the fields they render; wrap a page (or the app) in this
- * provider when it renders `<ListO2M>`, `<ListM2M>`, `<ListM2A>` or a plain
- * `<VForm>` with relational fields on its own, so their create / edit / select
- * dialogs work.
- *
- * @example
- * <CollectionsRelationalProvider>
- *   <ListO2M collection="categories" field="posts" primaryKey={id} />
- * </CollectionsRelationalProvider>
- */
-export function CollectionsRelationalProvider({ components, children }: CollectionsRelationalProviderProps) {
-  return (
-    <RelationalUIProvider components={collectionsRelationalUI}>
-      {components ? <RelationalUIProvider components={components}>{children}</RelationalUIProvider> : children}
-    </RelationalUIProvider>
-  );
-}
+// The pre-wired provider for standalone relational interfaces lives in its own
+// module (it loads these components on demand); re-exported here so
+// `import { CollectionsRelationalProvider } from '…/collection-form'` keeps working.
+export { CollectionsRelationalProvider } from "./CollectionsRelationalProvider";
+export type { CollectionsRelationalProviderProps } from "./CollectionsRelationalProvider";
 
 export default CollectionForm;

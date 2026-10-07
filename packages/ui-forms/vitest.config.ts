@@ -23,10 +23,15 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      '@buildpad/types': path.resolve(__dirname, '../types/src'),
-      '@buildpad/utils': path.resolve(__dirname, '../utils/src'),
-      '@buildpad/ui-form': path.resolve(__dirname, '../ui-form/src'),
-    },
+    alias: [
+      { find: '@buildpad/types', replacement: path.resolve(__dirname, '../types/src') },
+      { find: '@buildpad/utils', replacement: path.resolve(__dirname, '../utils/src') },
+      { find: '@buildpad/ui-form', replacement: path.resolve(__dirname, '../ui-form/src') },
+      // The deep path FormPreview imports (the package exports it from dist).
+      {
+        find: /^@buildpad\/ui-collections\/CollectionForm$/,
+        replacement: path.resolve(__dirname, '../ui-collections/src/CollectionForm.tsx'),
+      },
+    ],
   },
 });

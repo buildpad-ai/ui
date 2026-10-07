@@ -26,7 +26,9 @@
 import { useMemo, useState } from 'react';
 import { Alert, Text } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
-import { CollectionForm, CollectionsRelationalProvider } from '@buildpad/ui-collections';
+// Deep path (installs as `@/components/ui/collection-form`), not the
+// ui-collections barrel, which would pull every collection component in.
+import { CollectionForm, CollectionsRelationalProvider } from '@buildpad/ui-collections/CollectionForm';
 import { VForm } from '@buildpad/ui-form';
 import { useBuildpadTranslations } from '@buildpad/services';
 import {
