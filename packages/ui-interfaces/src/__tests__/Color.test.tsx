@@ -301,11 +301,11 @@ describe('Color Component', () => {
     const formatSelect = getSelectByDisplayValue('RGB');
     await user.click(formatSelect);
     
-    await waitFor(async () => {
-      const hslOption = screen.getByText('HSL');
-      await user.click(hslOption);
-    });
-    
+    // Find first, then click once: clicking inside waitFor reruns the click on
+    // every retry, and user-event's delays could push it past the timeout
+    // when the suite runs in parallel.
+    await user.click(await screen.findByText('HSL'));
+
     await waitFor(() => {
       expect(getSelectByDisplayValue('HSL')).toBeInTheDocument();
     });
