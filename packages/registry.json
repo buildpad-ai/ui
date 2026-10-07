@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T14:13:26.847Z",
+  "generatedAt": "2026-10-07T15:38:20.045Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -193,7 +193,7 @@
         {
           "source": "utils/src/interface-manifest.ts",
           "target": "lib/buildpad/interface-manifest.ts",
-          "sourceSha256": "0f679a5ba5787446baf4054532717e395e1f54a1262c063c089c8db5978cafd3"
+          "sourceSha256": "6d0c3491dca2965182bc01feb029c3effef9f8bcd3632b68e6363d90d34cc46c"
         },
         {
           "source": "utils/src/i18n/primitives.ts",
@@ -478,7 +478,7 @@
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "0ba73d1b864bc04e404ea5cc3205ee12cc4f5e580ceae8d4d71fa03eb8a65cbd"
+          "sourceSha256": "b58939c2519e0abea80b4a92919c4516c2e0c199bea6183d104b3c9b00a4faa7"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -3035,12 +3035,17 @@
         {
           "source": "ui-form/src/components/FormFieldInterface.tsx",
           "target": "components/ui/vform/components/FormFieldInterface.tsx",
-          "sourceSha256": "58847378090464fea3a2ac5a37ca98448b41910f33f78d17184da6f9fe84758c"
+          "sourceSha256": "8d55666e7cc9662473277c18a15c58dd90403ff604c0cc331270d07e250c0ce8"
+        },
+        {
+          "source": "ui-form/src/components/interface-components.tsx",
+          "target": "components/ui/vform/components/interface-components.tsx",
+          "sourceSha256": "9f119c4cfbeb2cacbd11436942484cf6b350846668c8d208f0522fe8c7ab715d"
         },
         {
           "source": "ui-form/src/components/FormGroupField.tsx",
           "target": "components/ui/vform/components/FormGroupField.tsx",
-          "sourceSha256": "ca0548c7572ca57fad66a287ee7d9e128604beb28ef8957813bda7e9fb21ee0a"
+          "sourceSha256": "45dfe6ffcb52997e591eb616b140a509fb649bd9007d1efff9dca73107bc9ce3"
         },
         {
           "source": "ui-form/src/components/InterfaceErrorBoundary.tsx",
