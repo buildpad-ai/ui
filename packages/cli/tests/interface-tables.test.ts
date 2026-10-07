@@ -334,18 +334,50 @@ function resolveSourceRelative(fromFile: string, spec: string): string {
   throw new Error(`${fromFile}: cannot resolve ${spec}`);
 }
 
-/** Value export names of a source module in the monorepo, following relative `export *`. */
-function valueExportsOf(file: string, seen = new Set<string>()): Set<string> {
-  if (seen.has(file)) return new Set();
-  seen.add(file);
-  const ex = readExports(file);
-  const out = new Set(ex.values);
-  for (const spec of ex.stars) {
-    if (!spec.startsWith('.')) continue;
-    for (const n of valueExportsOf(resolveSourceRelative(file, spec), seen)) if (n !== 'default') out.add(n);
-  }
-  return out;
+interface ExportNames {
+  values: Set<string>;
+  types: Set<string>;
 }
+
+/**
+ * Export names of the modules of one graph: each module's own exports plus
+ * whatever it reaches through relative `export *` (which never re-exports
+ * `default`). Results are memoised per module; the cache is consulted before
+ * cycle detection and only complete results are stored, so a module reached
+ * along two paths (a diamond) always yields its full set. An `export *` cycle
+ * throws instead of producing a partial answer.
+ */
+function createExportResolver(
+  read: (mod: string) => Pick<ExportInfo, 'values' | 'types' | 'stars'>,
+  resolve: (mod: string, spec: string) => string,
+): (mod: string) => ExportNames {
+  const cache = new Map<string, ExportNames>();
+  const inProgress = new Set<string>();
+  const exportsOf = (mod: string): ExportNames => {
+    const cached = cache.get(mod);
+    if (cached) return cached;
+    if (inProgress.has(mod)) throw new Error(`\`export *\` cycle through ${mod}`);
+    inProgress.add(mod);
+    try {
+      const ex = read(mod);
+      const out: ExportNames = { values: new Set(ex.values), types: new Set(ex.types) };
+      for (const spec of ex.stars) {
+        if (!spec.startsWith('.')) continue;
+        const inner = exportsOf(resolve(mod, spec));
+        for (const n of inner.values) if (n !== 'default') out.values.add(n);
+        for (const n of inner.types) out.types.add(n);
+      }
+      cache.set(mod, out);
+      return out;
+    } finally {
+      inProgress.delete(mod);
+    }
+  };
+  return exportsOf;
+}
+
+/** Export names of a source module in the monorepo (path relative to packages/). */
+const sourceExportsOf = createExportResolver(readExports, resolveSourceRelative);
 
 /** `const <name> = ['a', 'b'] as const` → ['a', 'b']. */
 function readStringArray(file: string, name: string): string[] {
@@ -477,7 +509,7 @@ const ffiDefaultFor = (type: string): string =>
   ffiDefaultSwitch.arms.find((a) => a.labels.includes(type))?.returns ?? ffiDefaultSwitch.defaultReturns ?? '';
 
 // Other packages
-const uiInterfacesExports = valueExportsOf(F.uiInterfacesBarrel);
+const uiInterfacesExports = sourceExportsOf(F.uiInterfacesBarrel).values;
 const paletteIcons = readStringRecord(F.palette, 'INTERFACE_ICONS');
 const paletteGroupKeys = readStringRecord(F.palette, 'CATALOG_GROUP_KEYS');
 const addAliases = readStringRecord(F.addCmd, 'COMPONENT_ALIASES');
@@ -513,33 +545,23 @@ function shippedTarget(base: string): string | undefined {
   return [`${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`].find((t) => sourceByTarget.has(t));
 }
 
-const targetExportCache = new Map<string, { values: Set<string>; types: Set<string> }>();
-
 /**
  * Export names of a shipped file *as installed* (consumer target path),
  * following relative `export *` in the consumer layout — which is where the
  * CLI's own barrel templates resolve.
  */
-function exportsOfTarget(target: string, seen = new Set<string>()): { values: Set<string>; types: Set<string> } {
-  const cached = targetExportCache.get(target);
-  if (cached) return cached;
-  const source = sourceByTarget.get(target);
-  if (!source) throw new Error(`no shipped source for ${target}`);
-  seen.add(target);
-  const ex = readExports(source);
-  const out = { values: new Set(ex.values), types: new Set(ex.types) };
-  for (const spec of ex.stars) {
-    if (!spec.startsWith('.')) continue;
+const exportsOfTarget = createExportResolver(
+  (target) => {
+    const source = sourceByTarget.get(target);
+    if (!source) throw new Error(`no shipped source for ${target}`);
+    return readExports(source);
+  },
+  (target, spec) => {
     const next = shippedTarget(path.posix.join(path.posix.dirname(target), spec));
     if (!next) throw new Error(`${target}: \`export * from '${spec}'\` resolves to no shipped file`);
-    if (seen.has(next)) continue;
-    const inner = exportsOfTarget(next, seen);
-    for (const n of inner.values) if (n !== 'default') out.values.add(n);
-    for (const n of inner.types) out.types.add(n);
-  }
-  targetExportCache.set(target, out);
-  return out;
-}
+    return next;
+  },
+);
 
 /**
  * Names the consumer's generated components/ui/index.ts exposes for one
@@ -570,6 +592,37 @@ function componentsExporting(exportName: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
+
+describe('test helpers', () => {
+  /** A resolver over an in-memory graph: module → own value exports and `export *` targets. */
+  const resolverOver = (graph: Record<string, { values: string[]; stars: string[] }>) =>
+    createExportResolver(
+      (mod) => ({ values: new Set(graph[mod].values), types: new Set<string>(), stars: graph[mod].stars }),
+      (_mod, spec) => spec.replace(/^\.\//, ''),
+    );
+
+  test('export resolver: a module reached along two paths keeps its full export set', () => {
+    // A → B → D and A → C → D: resolving A first must not cache C without D.
+    const exportsOf = resolverOver({
+      A: { values: ['a'], stars: ['./B', './C'] },
+      B: { values: ['b'], stars: ['./D'] },
+      C: { values: ['c'], stars: ['./D'] },
+      D: { values: ['d', 'default'], stars: [] },
+    });
+    expect(sorted(exportsOf('A').values)).toEqual(['a', 'b', 'c', 'd']);
+    expect(sorted(exportsOf('C').values)).toEqual(['c', 'd']);
+    expect(sorted(exportsOf('D').values)).toEqual(['d', 'default']);
+  });
+
+  test('export resolver: an `export *` cycle throws instead of caching a partial set', () => {
+    const exportsOf = resolverOver({
+      X: { values: ['x'], stars: ['./Y'] },
+      Y: { values: ['y'], stars: ['./X'] },
+    });
+    expect(() => exportsOf('X')).toThrow('`export *` cycle through X');
+    expect(() => exportsOf('Y')).toThrow('`export *` cycle through Y');
+  });
+});
 
 describe('inventory', () => {
   test('table sizes (adding an interface touches all of these — update them together)', () => {
