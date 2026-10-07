@@ -202,6 +202,41 @@ describe('get_upgrade_plan', () => {
     expect(entry.recommendedAction).toBe('update-mcp');
   });
 
+  test('never reads a recorded target that resolves outside the project', async () => {
+    // A sibling of the project that the recorded target points at, with the
+    // matching hash recorded: reading it would answer "pristine".
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'buildpad-mcp-outside-'));
+    try {
+      fs.writeFileSync(path.join(outside, 'secret.txt'), 'top secret\n');
+      const target = path.relative(tmp, path.join(outside, 'secret.txt')).split(path.sep).join('/');
+      expect(target.startsWith('../')).toBe(true);
+      writeConfig({
+        srcDir: false,
+        lib: { [libName]: { release: MCP_VERSION, files: [{ target, sha256: hashTransformed('top secret\n') }] } },
+      });
+      const [entry] = json(await call('get_upgrade_plan', { projectPath: tmp }));
+      expect(entry.files).toEqual([{ target, path: target, status: 'invalid-target' }]);
+      expect(entry.recommendedAction).toBe('review-invalid-targets');
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  test('a target inside the project but outside src/ is still allowed', async () => {
+    writeConfig({ srcDir: true, lib: { [libName]: { release: MCP_VERSION, files: [{ target: '../notes.txt', sha256: hashTransformed('n\n') }] } } });
+    writeFile('notes.txt', 'n\n');
+    const [entry] = json(await call('get_upgrade_plan', { projectPath: tmp }));
+    expect(entry.files).toEqual([{ target: '../notes.txt', path: 'notes.txt', status: 'pristine' }]);
+  });
+
+  test('a directory where a file should be is reported, not read', async () => {
+    writeConfig({ srcDir: false, lib: { [libName]: { release: MCP_VERSION, files: [{ target: libFiles[0].target, sha256: 'x' }] } } });
+    fs.mkdirSync(path.join(tmp, libFiles[0].target), { recursive: true });
+    const [entry] = json(await call('get_upgrade_plan', { projectPath: tmp }));
+    expect(entry.files).toEqual([{ target: libFiles[0].target, path: libFiles[0].target, status: 'invalid-target' }]);
+    expect(entry.recommendedAction).toBe('review-invalid-targets');
+  });
+
   test('rejects a components argument that is not a list of names', async () => {
     writeConfig({});
     await expect(call('get_upgrade_plan', { projectPath: tmp, components: 'input' })).rejects.toThrow('components must be an array');

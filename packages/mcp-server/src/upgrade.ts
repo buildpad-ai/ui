@@ -18,8 +18,8 @@
  * - apply_upgrade runs the CLI pinned to this server's own version. Under
  *   lockstep releases that CLI fetches the same registry this server embeds.
  */
-import { existsSync, readFileSync } from 'node:fs';
-import { isAbsolute, join, relative } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import { hashTransformed, staleFilesOf, compareSemver } from './versioning.js';
 import { registryFilesOf, type RegistryFile } from './sources.js';
 import type { Registry } from './registry.js';
@@ -218,8 +218,16 @@ export function diskPathOf(projectPath: string, config: ConsumerConfig, kind: En
  * - `untracked`: on disk, but buildpad.json has no install hash for it. The
  *   CLI cannot tell edits from the original, and its upgrade overwrites such
  *   files whatever the strategy.
+ * - `invalid-target`: the recorded target resolves outside the project root,
+ *   or something other than a regular file is at its path. It is not read.
  */
-export type FileStatus = 'pristine' | 'modified' | 'missing' | 'untracked';
+export type FileStatus = 'pristine' | 'modified' | 'missing' | 'untracked' | 'invalid-target';
+
+/** True when `diskPath` is the project root itself or lies outside it. */
+function outsideProject(projectPath: string, diskPath: string): boolean {
+  const rel = relative(projectPath, diskPath);
+  return rel === '' || rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel);
+}
 
 /**
  * The on-disk status of each file of an entry: the recorded files, or for an
@@ -234,7 +242,12 @@ export function fileStatuses(
   return files.map(f => {
     const diskPath = diskPathOf(projectPath, config, entry.kind, f.target);
     const path = relative(projectPath, diskPath).split('\\').join('/');
-    if (!existsSync(diskPath)) return { target: f.target, path, status: 'missing' as const };
+    // buildpad.json is input: never read, or hash, a file it points at
+    // outside the project.
+    if (outsideProject(projectPath, diskPath)) return { target: f.target, path, status: 'invalid-target' as const };
+    const stat = statSync(diskPath, { throwIfNoEntry: false });
+    if (!stat) return { target: f.target, path, status: 'missing' as const };
+    if (!stat.isFile()) return { target: f.target, path, status: 'invalid-target' as const };
     if (!f.sha256) return { target: f.target, path, status: 'untracked' as const };
     const diskHash = hashTransformed(readFileSync(diskPath, 'utf-8'));
     return { target: f.target, path, status: diskHash === f.sha256 ? 'pristine' as const : 'modified' as const };
@@ -245,6 +258,8 @@ export function fileStatuses(
  * What an agent should do about one entry in an upgrade plan:
  * - `update-mcp`: installed from a newer release than this server knows.
  * - `up-to-date`: nothing to do.
+ * - `review-invalid-targets`: a recorded target is outside the project or is
+ *   not a regular file; fix buildpad.json or the file before upgrading.
  * - `overwrite-untracked`: files are on disk with no install hash; the CLI
  *   will overwrite them, so back up any local edits first.
  * - `prompt-or-three-way`: local edits; pick a strategy.
@@ -253,9 +268,16 @@ export function fileStatuses(
 export function recommendedAction(
   status: EntryStatus,
   files: Array<{ status: FileStatus }>
-): 'update-mcp' | 'up-to-date' | 'overwrite-untracked' | 'prompt-or-three-way' | 'safe-overwrite' {
+):
+  | 'update-mcp'
+  | 'up-to-date'
+  | 'review-invalid-targets'
+  | 'overwrite-untracked'
+  | 'prompt-or-three-way'
+  | 'safe-overwrite' {
   if (status.aheadOfRegistry) return 'update-mcp';
   if (!status.isOutdated) return 'up-to-date';
+  if (files.some(f => f.status === 'invalid-target')) return 'review-invalid-targets';
   if (files.some(f => f.status === 'untracked')) return 'overwrite-untracked';
   if (files.some(f => f.status === 'modified')) return 'prompt-or-three-way';
   return 'safe-overwrite';
