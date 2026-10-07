@@ -581,3 +581,41 @@ describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
     );
   });
 });
+
+describe("dynamic import('@buildpad/ui-interfaces/<x>') — lazy-loaded interfaces", () => {
+  test("rewrites to the component's path under the components alias", () => {
+    const input = `const Input = lazy(() => import('@buildpad/ui-interfaces/input'));`;
+    expect(transformImports(input, defaultConfig)).toBe(
+      `const Input = lazy(() => import('@/components/ui/input'));`,
+    );
+  });
+
+  test("normalises quotes and whitespace like every rewritten import()", () => {
+    const input = `const T = lazy(() => import( "@buildpad/ui-interfaces/textarea" ).then(m => ({ default: m.Textarea })));`;
+    expect(transformImports(input, defaultConfig)).toBe(
+      `const T = lazy(() => import('@/components/ui/textarea').then(m => ({ default: m.Textarea })));`,
+    );
+  });
+
+  test("follows a custom components alias", () => {
+    const config = { ...defaultConfig, aliases: { components: "@/ui", lib: "@/lib/bp" } };
+    expect(transformImports(`import('@buildpad/ui-interfaces/select-icon')`, config)).toBe(`import('@/ui/select-icon')`);
+  });
+
+  test("an <x>/<EntryFile> subpath collapses to the flattened component", () => {
+    expect(transformImports(`import('@buildpad/ui-interfaces/upload/Upload')`, defaultConfig)).toBe(
+      `import('@/components/ui/upload')`,
+    );
+  });
+
+  test("inside a VForm file (casing kept) the alias path is untouched by normalisation", () => {
+    const out = transformRegistryFile(
+      `const L = lazy(() => import('@buildpad/ui-interfaces/list-m2a'));\nimport { F } from './FormField';\n`,
+      { source: "ui-form/src/components/FormFieldInterface.tsx", target: "components/ui/vform/components/FormFieldInterface.tsx" },
+      { kind: "component", name: "vform", files: [] },
+      defaultConfig,
+      "1.0.0",
+    );
+    expect(out).toContain(`const L = lazy(() => import('@/components/ui/list-m2a'));\nimport { F } from './FormField';`);
+  });
+});

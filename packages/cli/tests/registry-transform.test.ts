@@ -17,6 +17,7 @@ import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { BUILDPAD_PACKAGES, NON_INSTALLABLE_PACKAGES } from '../src/commands/import-map.js';
+import { rewriteBuildpadSpecifiers } from '../src/commands/transformer.js';
 import {
   BARREL,
   PACKAGES_DIR,
@@ -123,6 +124,21 @@ describe('registry corpus: transformed output', () => {
         if (resolveLocal(s.text, file, present) === null) {
           unresolved.push(`${file}:${s.line} '${s.text}'`);
         }
+      }
+    }
+    expect(unresolved).toEqual([]);
+  });
+
+  test("import('@buildpad/ui-interfaces/<x>') resolves for every ui-interfaces component (lazy loading)", () => {
+    const present = new Set(everything.keys());
+    const interfaces = registry.components.filter(c => c.sourcePackage === '@buildpad/ui-interfaces');
+    expect(interfaces.length).toBeGreaterThan(30);
+    const unresolved: string[] = [];
+    for (const c of interfaces) {
+      const rewritten = rewriteBuildpadSpecifiers(`const C = lazy(() => import('@buildpad/ui-interfaces/${c.name}'));`, config);
+      const [spec] = extractSpecifiers(rewritten);
+      if (!resolveLocal(spec.text, 'components/ui/vform/components/FormFieldInterface.tsx', present)) {
+        unresolved.push(`${c.name} → ${spec.text}`);
       }
     }
     expect(unresolved).toEqual([]);
