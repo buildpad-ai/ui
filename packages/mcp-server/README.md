@@ -314,8 +314,9 @@ A read-only dry run. For each installed component and lib module, it shows the s
 - `modified`: the file has local edits.
 - `missing`: the file is not on disk.
 - `untracked`: the file is on disk, but `buildpad.json` has no install hash for it. The CLI overwrites such files whatever the strategy.
+- `invalid-target`: the recorded target is outside the project root, or the path is not a regular file (for example, a directory). The tool does not read it.
 
-Files are looked up where the CLI writes them: under `src/` when `srcDir` is set, and component `.ts` files as `.tsx`. The plan also gives a `recommendedAction`: `up-to-date`, `safe-overwrite`, `prompt-or-three-way`, `overwrite-untracked` (back up local edits first) or `update-mcp`. If you name a component, the plan also includes the outdated lib modules it depends on.
+Files are looked up where the CLI writes them: under `src/` when `srcDir` is set, and component `.ts` files as `.tsx`. The plan also gives a `recommendedAction`: `up-to-date`, `safe-overwrite`, `prompt-or-three-way`, `overwrite-untracked` (back up local edits first), `review-invalid-targets` (correct `buildpad.json` or the file first) or `update-mcp`. If you name a component, the plan also includes the outdated lib modules it depends on.
 
 ### `apply_upgrade`
 
@@ -331,9 +332,11 @@ Files are looked up where the CLI writes them: under `src/` when `srcDir` is set
 
 - Omit `components` to upgrade everything installed (`--all`). This is the safest choice.
 - If you name components, the outdated lib modules they depend on are added, because `buildpad upgrade <name>` alone does not upgrade them. To turn this off, set `includeLibDependencies: false`.
+- `projectPath` must be an absolute path. Relative paths are rejected.
 - `strategy` must be `overwrite`, `new-file` (the default) or `three-way`. The CLI's interactive `prompt` strategy cannot be answered through MCP.
 - Names must be registry names: lowercase letters, digits and dashes, not starting with a dash. They are passed after `--`, with no shell.
-- The tool refuses to run if the project was installed from a newer release than this server, because that would downgrade the project. Update the server instead (`npx -y @buildpad/mcp@latest`).
+- The tool refuses to run if the project, a named entry or a lib module it would add was installed from a newer release than this server, because that would downgrade it. Update the server instead (`npx -y @buildpad/mcp@latest`). If only an added lib module is newer, you can also set `includeLibDependencies: false`.
+- If the CLI cannot start, exits with a non-zero code or times out (120 s), the result has `isError: true`. The JSON body still gives `success: false`, `exitCode`, `stdout` and `stderr`.
 
 ## Usage with Copilot
 

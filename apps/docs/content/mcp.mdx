@@ -65,11 +65,11 @@ The MCP acts as a bridge between your AI assistant, the component registry, and 
 | `list_outdated` | List installed components and lib modules whose upstream source changed since they were installed |
 | `get_package_versions` | Get the current registry version for each `@buildpad/*` package |
 | `get_component_changelog` | Get the changelog for a component between the installed and latest version |
-| `get_upgrade_plan` | Preview what an upgrade would change (per file: pristine, modified or missing) before applying it |
+| `get_upgrade_plan` | Preview what an upgrade would change before applying it. Each file is `pristine`, `modified`, `missing`, `untracked` (on disk with no install hash: the CLI overwrites it whatever the strategy, so back up edits first) or `invalid-target` (outside the project or not a regular file; not read) |
 | `apply_upgrade` | Run `npx @buildpad/cli@<MCP version> upgrade` for the project (strategy: `overwrite`, `new-file` or `three-way`). Naming a component also upgrades the outdated lib modules it depends on |
 
 <Callout type="warning">
-  `apply_upgrade` runs the CLI release that matches the MCP's own version, so the upgrade applies the same registry that `get_upgrade_plan` showed. The tool refuses to run if the project was installed from a newer release, because that would downgrade the project. In that case, update the MCP (`npx -y @buildpad/mcp@latest`). Upgrading everything (leave out `components`) is the safest choice.
+  `apply_upgrade` runs the CLI release that matches the MCP's own version, so the upgrade applies the same registry that `get_upgrade_plan` showed. The tool refuses to run if the project, or an entry it would upgrade, was installed from a newer release, because that would downgrade it. A failed CLI run returns `isError: true`. In that case, update the MCP (`npx -y @buildpad/mcp@latest`). Upgrading everything (leave out `components`) is the safest choice.
 </Callout>
 
 ## Configuration
