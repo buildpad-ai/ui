@@ -14,7 +14,12 @@ import {
 } from "@mantine/core";
 import { IconAlertCircle, IconDeviceFloppy, IconX } from "@tabler/icons-react";
 import { apiRequest, useBuildpadTranslations } from "@buildpad/services";
-import { interpolate, type DeepPartial, type InterfacesTranslations } from "@buildpad/utils";
+import {
+    interpolate,
+    isPresentationLikeInterface,
+    type DeepPartial,
+    type InterfacesTranslations,
+} from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import type { Field } from "@buildpad/types";
 import type { M2ARelationInfo, M2AItem } from "@buildpad/hooks";
@@ -143,9 +148,8 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
                     if (f.meta?.hidden) return false;
                     // Exclude alias-type fields (O2M/M2M) unless they are groups or presentations
                     if (f.type === 'alias') {
-                        const iface = f.meta?.interface || '';
                         const special = f.meta?.special || [];
-                        if (special.includes('group') || iface.startsWith('presentation-')) return true;
+                        if (special.includes('group') || isPresentationLikeInterface(f.meta?.interface)) return true;
                         return false;
                     }
                     return true;
@@ -157,9 +161,8 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
                     if (f.schema?.is_primary_key) return false;
                     if (f.meta?.hidden) return false;
                     if (f.type === 'alias') {
-                        const iface = f.meta?.interface || '';
                         const special = f.meta?.special || [];
-                        if (special.includes('group') || iface.startsWith('presentation-')) return true;
+                        if (special.includes('group') || isPresentationLikeInterface(f.meta?.interface)) return true;
                         return false;
                     }
                     return true;

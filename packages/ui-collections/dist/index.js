@@ -20,7 +20,10 @@ import {
   buildFieldsFromDefinition,
   getDefaultValuesFromFields,
   interpolate as interpolate2,
-  isConcealedValue
+  isConcealedValue,
+  isNonFlatRelationalInterface,
+  isRenderedPresentationInterface,
+  isSelfPersistingInterface
 } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import { IconAlertCircle, IconCheck as IconCheck2, IconTrash, IconX } from "@tabler/icons-react";
@@ -175,11 +178,6 @@ var SYSTEM_FIELDS = /* @__PURE__ */ new Set([
   "sort"
 ]);
 var NON_FLAT_RELATIONAL_SPECIALS = /* @__PURE__ */ new Set(["m2a", "m2m", "o2m"]);
-var NON_FLAT_RELATIONAL_INTERFACES = /* @__PURE__ */ new Set([
-  "list-m2a",
-  "list-m2m",
-  "list-o2m"
-]);
 var READ_ONLY_FIELDS = /* @__PURE__ */ new Set([
   "id",
   "user_created",
@@ -298,7 +296,7 @@ var CollectionForm = ({
           }
           if (f.type === "alias") {
             const isGroup = f.meta?.special?.includes?.("group");
-            const isPresentation = f.meta?.interface === "presentation-divider" || f.meta?.interface === "presentation-notice";
+            const isPresentation = isRenderedPresentationInterface(f.meta?.interface);
             const isRelationalAlias = f.meta?.special?.includes?.("o2m") || f.meta?.special?.includes?.("m2m") || f.meta?.special?.includes?.("m2a") || f.meta?.special?.includes?.("files");
             if (!isGroup && !isPresentation && !isRelationalAlias) {
               return false;
@@ -387,7 +385,7 @@ var CollectionForm = ({
           const itemsService = new ItemsService(collection);
           const fetchableFields = editableFields.filter((f) => {
             const special = f.meta?.special ?? [];
-            const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) || !!f.meta?.interface && NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface);
+            const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) || isNonFlatRelationalInterface(f.meta?.interface);
             return !isNonFlatRelational;
           }).map((f) => f.field);
           const resolvedPkField = schemaPk ?? "id";
@@ -548,12 +546,11 @@ var CollectionForm = ({
         return { scalar, m2m, extras };
       };
       if (mode === "edit" && id) {
-        const selfPersistingInterfaces = /* @__PURE__ */ new Set(["files"]);
         const allChanged = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           if (initialFormData[key] === value) continue;
           const fieldDef = fields.find((f) => f.field === key);
-          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+          if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
             continue;
           }
           allChanged[key] = value;
@@ -606,11 +603,10 @@ var CollectionForm = ({
         }
         onSuccess?.({ ...dataToSave, id });
       } else {
-        const selfPersistingInterfaces = /* @__PURE__ */ new Set(["files"]);
         const cleanedDataToSave = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           const fieldDef = fields.find((f) => f.field === key);
-          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+          if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
             continue;
           }
           cleanedDataToSave[key] = value;
@@ -856,6 +852,7 @@ import {
 import {
   interfaceRequiresChoices,
   interpolate as interpolate3,
+  isNonFlatRelationalInterface as isNonFlatRelationalInterface2,
   parseChoiceValues,
   resolveChoiceLabel
 } from "@buildpad/utils";
@@ -1655,11 +1652,6 @@ var SYSTEM_FIELDS2 = /* @__PURE__ */ new Set([
   "date_updated"
 ]);
 var NON_FLAT_RELATIONAL_SPECIALS2 = /* @__PURE__ */ new Set(["m2a", "m2m", "o2m"]);
-var NON_FLAT_RELATIONAL_INTERFACES2 = /* @__PURE__ */ new Set([
-  "list-m2a",
-  "list-m2m",
-  "list-o2m"
-]);
 var SPACING_HEIGHT = {
   compact: 32,
   cozy: 48,
@@ -1777,7 +1769,7 @@ var CollectionList = ({
           if (SYSTEM_FIELDS2.has(f.field)) return false;
           if (f.type === "alias") return false;
           const special = f.meta?.special ?? [];
-          const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS2.has(s)) || !!f.meta?.interface && NON_FLAT_RELATIONAL_INTERFACES2.has(f.meta.interface);
+          const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS2.has(s)) || isNonFlatRelationalInterface2(f.meta?.interface);
           if (isNonFlatRelational) return false;
           const isHidden = f.meta?.hidden ?? f.hidden;
           if (isHidden) return false;

@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T11:56:06.183Z",
+  "generatedAt": "2026-10-07T12:01:45.721Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -656,7 +656,7 @@
         {
           "source": "hooks/src/useRelationM2M.ts",
           "target": "lib/buildpad/hooks/useRelationM2M.ts",
-          "sourceSha256": "ed5d41c3f3285c021709b0ff780b57937ef125117adcc8578110782eb67f83ff"
+          "sourceSha256": "ece6f0a25729f5c536eecfe91d6359cc0ad537ce332e06b818627a8a5b8294dd"
         },
         {
           "source": "hooks/src/useRelationM2MItems.ts",
@@ -671,12 +671,12 @@
         {
           "source": "hooks/src/useRelationO2M.ts",
           "target": "lib/buildpad/hooks/useRelationO2M.ts",
-          "sourceSha256": "70357138d91865475a4a23aa6813be06be748478e446b6fded2d3823bf61d26d"
+          "sourceSha256": "d706b41d2a68e73b3efd64b14209defd3bc48999ede1612278f0475adc3e5c06"
         },
         {
           "source": "hooks/src/useRelationM2A.ts",
           "target": "lib/buildpad/hooks/useRelationM2A.ts",
-          "sourceSha256": "63b9690a7ef0772067bdbae738de863f18a8a08c36f5eb2e0e2faf009fcb06a1"
+          "sourceSha256": "acafec1eeb6f21f621c202809c5a304e425b5cdde590781948541dfce1000cde"
         },
         {
           "source": "hooks/src/useRelationPermissionsM2A.ts",
@@ -2609,7 +2609,7 @@
         {
           "source": "ui-interfaces/src/list-m2a/JunctionItemForm.tsx",
           "target": "components/ui/list-m2a/JunctionItemForm.tsx",
-          "sourceSha256": "3fdd4d71e04de3b20771adcdc4f3193f83f365e45ea30f5453638868571a77ab"
+          "sourceSha256": "47269beb8df7b4576387b1aba24e975f0c32a5ff53cf0f99ea04395888730fb9"
         },
         {
           "source": "ui-interfaces/src/list-m2a/render-template.ts",
@@ -3147,7 +3147,7 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "b906c8b800b29b4c8b75934ad82b050bd587a7937a0e8d777f7f4a72e6f94407"
+          "sourceSha256": "3b57f610b8ae417260828d9402a998daa0900061d242fe86b30438cb7cd8483a"
         },
         {
           "source": "ui-collections/src/extras-storage.ts",
@@ -3236,7 +3236,7 @@
         {
           "source": "ui-collections/src/CollectionList.tsx",
           "target": "components/ui/collection-list.tsx",
-          "sourceSha256": "4f0e6bd7e7f7b669573f6d7dfcae57b265d2d017d87e86ed47db28c2504f2313"
+          "sourceSha256": "a0703fddbba6221cbd90b4b731818bd936be159cc49bb5156e5ff364dd411767"
         },
         {
           "source": "ui-collections/src/CollectionList.css",

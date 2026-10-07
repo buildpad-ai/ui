@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useBuildpadTranslations } from './useBuildpadI18n';
 import { apiRequest } from '@buildpad/services';
-import { isNewItem } from '@buildpad/utils';
+import { isNewItem, isRelationListInterface } from '@buildpad/utils';
 
 interface CollectionMeta {
     display_template?: string;
@@ -208,7 +208,7 @@ export function useRelationM2A(collection: string, field: string) {
 
                 // Check interface from meta (DaaS format) or top-level (DaaS flat format)
                 const fieldInterface = currentField.meta?.interface || (currentField as unknown as Record<string, unknown>).interface;
-                if (fieldInterface !== 'list-m2a') {
+                if (!isRelationListInterface(fieldInterface, 'm2a')) {
                     setError(`Field "${field}" is not configured as a list-m2a interface`);
                     setRelationInfo(null);
                     setLoading(false);

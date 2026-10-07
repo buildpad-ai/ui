@@ -56,7 +56,11 @@ What changes in your copied files:
   `isNonFlatRelationalInterface`, `isSelfPersistingInterface`,
   `isRelationListInterface` and the others. If you edited the barrel and its
   merge conflicts, copy the `interface-manifest` export block from
-  `index.ts.new`.
+  `index.ts.new`: the components below import these names from it.
+- **`collection-form`, `collection-list`, `list-m2a` (`JunctionItemForm`) and
+  the relation hooks** (`lib/buildpad/hooks/useRelationO2M.ts`,
+  `useRelationM2M.ts`, `useRelationM2A.ts`) call those predicates instead of
+  keeping their own id lists. Each accepts exactly the ids it accepted before.
 
 Type changes (TypeScript only):
 

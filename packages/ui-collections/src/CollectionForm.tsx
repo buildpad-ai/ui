@@ -45,6 +45,9 @@ import {
   getDefaultValuesFromFields,
   interpolate,
   isConcealedValue,
+  isNonFlatRelationalInterface,
+  isRenderedPresentationInterface,
+  isSelfPersistingInterface,
   type CollectionsTranslations,
   type DeepPartial,
 } from "@buildpad/utils";
@@ -138,15 +141,11 @@ const SYSTEM_FIELDS = new Set([
 // bare name in a fields= fetch (there's no single column to select), only
 // via a proper nested embed this form doesn't build. Matches the same
 // backend-agnostic signal used by CollectionList (some DaaS backends don't
-// mark these fields with column type "alias", so that alone isn't reliable).
-// select-dropdown-m2o is intentionally excluded from both sets: M2O fields
-// normally back a real FK column and fetch fine bare.
+// mark these fields with column type "alias", so that alone isn't reliable):
+// these specials, or an interface with the manifest's nonFlatRelational flag
+// (list-o2m/m2m/m2a). select-dropdown-m2o is intentionally excluded from
+// both: M2O fields normally back a real FK column and fetch fine bare.
 const NON_FLAT_RELATIONAL_SPECIALS = new Set(["m2a", "m2m", "o2m"]);
-const NON_FLAT_RELATIONAL_INTERFACES = new Set([
-  "list-m2a",
-  "list-m2m",
-  "list-o2m",
-]);
 
 // Fields that are read-only by nature
 const READ_ONLY_FIELDS = new Set([
@@ -380,9 +379,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           // Exclude alias fields UNLESS they are group, presentation, or system interfaces
           if (f.type === "alias") {
             const isGroup = f.meta?.special?.includes?.("group");
-            const isPresentation =
-              f.meta?.interface === "presentation-divider" ||
-              f.meta?.interface === "presentation-notice";
+            const isPresentation = isRenderedPresentationInterface(f.meta?.interface);
             const isRelationalAlias =
               f.meta?.special?.includes?.("o2m") ||
               f.meta?.special?.includes?.("m2m") ||
@@ -547,8 +544,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
               const special = f.meta?.special ?? [];
               const isNonFlatRelational =
                 special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) ||
-                (!!f.meta?.interface &&
-                  NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface));
+                isNonFlatRelationalInterface(f.meta?.interface);
               return !isNonFlatRelational;
             })
             .map((f) => f.field);
@@ -817,12 +813,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       if (mode === "edit" && id) {
         // Collect only changed fields, excluding self-persisting interfaces
         // (e.g. "files" manages its own junction table independently)
-        const selfPersistingInterfaces = new Set(['files']);
         const allChanged: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           if (initialFormData[key] === value) continue;
           const fieldDef = fields.find(f => f.field === key);
-          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+          if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
             continue;
           }
           allChanged[key] = value;
@@ -905,11 +900,10 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // Create mode: split out M2M before creating the parent record.
         // Also strip self-persisting interfaces (e.g. "files") that manage
         // their own junction table persistence.
-        const selfPersistingInterfaces = new Set(['files']);
         const cleanedDataToSave: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           const fieldDef = fields.find(f => f.field === key);
-          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+          if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
             continue;
           }
           cleanedDataToSave[key] = value;

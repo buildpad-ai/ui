@@ -66,6 +66,12 @@ import {
   getInterfaceManifestEntry,
   interfaceAliasMap,
   interfaceIdsWithFlag,
+  isNonFlatRelationalInterface,
+  isPresentationInterface,
+  isPresentationLikeInterface,
+  isRelationListInterface,
+  isRenderedPresentationInterface,
+  isSelfPersistingInterface,
   type InterfaceManifestEntry,
 } from '../../utils/src/interface-manifest';
 import { CHOICE_INTERFACES, PROVISIONABLE_INTERFACES } from '../../utils/src/interface-catalog';
@@ -1108,36 +1114,58 @@ describe('ui-forms palette and i18n catalog keys', () => {
 });
 
 describe('ui-collections and hooks interface checks', () => {
-  test('NON_FLAT_RELATIONAL_INTERFACES copies are identical resolved ids', () => {
-    const form = readStringSet(F.collectionForm, 'NON_FLAT_RELATIONAL_INTERFACES');
-    const list = readStringSet(F.collectionList, 'NON_FLAT_RELATIONAL_INTERFACES');
-    expect(sorted(form)).toEqual(sorted(list));
-    expect(minus(form, returnedIds)).toEqual([]);
-  });
-
-  test('selfPersistingInterfaces copies are identical resolved ids', () => {
-    const copies = readAllStringSets(F.collectionForm, 'selfPersistingInterfaces');
-    expect(copies).toEqual([['files'], ['files']]);
-    expect(minus(copies.flat(), returnedIds)).toEqual([]);
+  // Resolved (interface-manifest Phase 1) without a behaviour change: the
+  // two NON_FLAT_RELATIONAL_INTERFACES copies, the two selfPersistingInterfaces
+  // copies and the raw id comparisons below became calls of manifest
+  // predicates; the pre-manifest snapshot pins what each call accepts.
+  test('no local copies of NON_FLAT_RELATIONAL_INTERFACES or selfPersistingInterfaces remain', () => {
+    expect(initializersOf(parseSource(F.collectionForm), 'NON_FLAT_RELATIONAL_INTERFACES')).toEqual([]);
+    expect(initializersOf(parseSource(F.collectionList), 'NON_FLAT_RELATIONAL_INTERFACES')).toEqual([]);
+    expect(readAllStringSets(F.collectionForm, 'selfPersistingInterfaces')).toEqual([]);
+    expect(minus(interfaceIdsWithFlag('nonFlatRelational'), returnedIds)).toEqual([]);
+    expect(minus(interfaceIdsWithFlag('selfPersisting'), returnedIds)).toEqual([]);
   });
 
   test('raw interface-id comparisons', () => {
     const literals = {
       collectionForm: sorted(interfaceComparisons(F.collectionForm)),
       collectionList: sorted(interfaceComparisons(F.collectionList)),
+      junctionItemForm: sorted(interfacePrefixChecks(F.junctionItemForm)),
       ...Object.fromEntries(F.hooks.map((f) => [path.basename(f, '.ts'), sorted(interfaceComparisons(f))])),
     };
     expect(literals).toEqual({
-      // inline presentation check: divider + notice only (isPresentationField also has presentation-links)
-      collectionForm: ['presentation-divider', 'presentation-notice'],
+      collectionForm: [],
+      // a cell-rendering special case, not an identity table (out of scope)
       collectionList: ['collection-item-dropdown'],
-      useRelationM2A: ['list-m2a'],
-      useRelationM2M: ['list-m2m'],
-      useRelationO2M: ['list-o2m', 'one-to-many'],
+      junctionItemForm: [],
+      useRelationM2A: [],
+      useRelationM2M: [],
+      useRelationO2M: [],
     });
-    // divergence (j): useRelationO2M accepts `one-to-many`, which the mapper
-    // does not resolve (such a field renders through the type fallback).
-    expect(minus(Object.values(literals).flat(), acceptedIds)).toEqual(['one-to-many']);
+  });
+
+  test('each check calls the manifest predicate that keeps its behaviour', () => {
+    expect({
+      collectionForm: predicateCalls(F.collectionForm),
+      collectionList: predicateCalls(F.collectionList),
+      junctionItemForm: predicateCalls(F.junctionItemForm),
+      ...Object.fromEntries(F.hooks.map((f) => [path.basename(f, '.ts'), predicateCalls(f)])),
+    }).toEqual({
+      // CollectionForm's alias-field check: divider + notice only, so the
+      // rendered presentation interfaces (isPresentationField also has links)
+      collectionForm: [
+        'isNonFlatRelationalInterface',
+        'isRenderedPresentationInterface',
+        'isSelfPersistingInterface',
+        'isSelfPersistingInterface',
+      ],
+      collectionList: ['isNonFlatRelationalInterface'],
+      // any presentation-* id, known or not (it was a prefix test)
+      junctionItemForm: ['isPresentationLikeInterface', 'isPresentationLikeInterface'],
+      useRelationM2A: ["isRelationListInterface(,'m2a')"],
+      useRelationM2M: ["isRelationListInterface(,'m2m')"],
+      useRelationO2M: ["isRelationListInterface(,'o2m')"],
+    });
   });
 });
 
@@ -1229,6 +1257,65 @@ const PRE_MANIFEST = {
   },
 } as const;
 
+/** The manifest predicates the shipped checks call, by name. */
+const MANIFEST_PREDICATES = {
+  isPresentationInterface,
+  isRenderedPresentationInterface,
+  isPresentationLikeInterface,
+  isNonFlatRelationalInterface,
+  isSelfPersistingInterface,
+  isRelationListInterface,
+} as const;
+type ManifestPredicate = keyof typeof MANIFEST_PREDICATES;
+
+/** Calls of manifest predicates in a file, in source order, with their literal arguments after the first. */
+function manifestPredicateCalls(file: string): { name: ManifestPredicate; args: string[] }[] {
+  return collectNodes(parseSource(file), ts.isCallExpression)
+    .filter((c) => ts.isIdentifier(c.expression) && c.expression.text in MANIFEST_PREDICATES)
+    .map((c) => ({
+      name: (c.expression as ts.Identifier).text as ManifestPredicate,
+      args: c.arguments.slice(1).map((a) => {
+        if (!ts.isStringLiteral(a)) throw new Error(`${file}: non-literal predicate argument ${a.getText()}`);
+        return a.text;
+      }),
+    }));
+}
+
+/** `name` or `name(,'arg')` for each manifest predicate call in a file, sorted (duplicates kept). */
+function predicateCalls(file: string): string[] {
+  return manifestPredicateCalls(file)
+    .map((c) => (c.args.length ? `${c.name}(,${c.args.map((a) => `'${a}'`).join(',')})` : c.name))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * The probe ids each call of one of `names` in `file` accepts (one list per
+ * call, in source order), running the real predicate with the call's literal
+ * arguments.
+ */
+function acceptedByCalls(file: string, names: readonly ManifestPredicate[]): string[][] {
+  return manifestPredicateCalls(file)
+    .filter((c) => names.includes(c.name))
+    .map((c) => {
+      const predicate = MANIFEST_PREDICATES[c.name] as (id: unknown, ...rest: string[]) => boolean;
+      return PROBE_IDS.filter((id) => predicate(id, ...c.args));
+    });
+}
+
+/** The one list every call accepts (calls that disagree, or none, throw). */
+function acceptedByEveryCall(file: string, names: readonly ManifestPredicate[], calls: number): string[] {
+  const lists = acceptedByCalls(file, names);
+  if (lists.length !== calls) throw new Error(`${file}: expected ${calls} call(s) of ${names.join('/')}, found ${lists.length}`);
+  if (new Set(lists.map((l) => JSON.stringify(l))).size !== 1) throw new Error(`${file}: ${names.join('/')} calls disagree`);
+  return lists[0];
+}
+
+const PRESENTATION_PREDICATES: readonly ManifestPredicate[] = [
+  'isPresentationInterface',
+  'isRenderedPresentationInterface',
+  'isPresentationLikeInterface',
+];
+
 /** Prefix-check literals of `<…iface…>.startsWith('…')` calls in a file. */
 function interfacePrefixChecks(file: string): string[] {
   return collectNodes(parseSource(file), ts.isCallExpression)
@@ -1279,26 +1366,28 @@ function resolvesExplicitly(id: string): boolean {
 }
 
 /**
- * The live value of every snapshotted table, read the way the source holds it
- * today: exported values and runtime behaviour where they exist, otherwise the
- * module-private literals (TypeScript AST).
+ * The live value of every snapshotted table: exported values and runtime
+ * behaviour, and — for checks inside React components and hooks, which this
+ * suite does not render — the manifest predicate each check calls (found in
+ * the source with the TypeScript AST) run over the probe ids with the call's
+ * own arguments. Before the manifest these read the module-private literals.
  */
 const live = {
   acceptedIds: PROBE_IDS.filter(resolvesExplicitly),
   concealing: PROBE_IDS.filter((id) => concealingInterface(id)),
   presentationField: PROBE_IDS.filter((id) => isPresentationField({ field: 'probe', meta: { interface: id } } as unknown as Field)),
-  collectionFormPresentation: sorted(interfaceComparisons(F.collectionForm)),
-  junctionItemFormPresentation: (() => {
-    // Both of its field filters (related and junction collection) test this.
-    const prefixes = interfacePrefixChecks(F.junctionItemForm);
-    return prefixes.length === 2 ? PROBE_IDS.filter((id) => prefixes.every((p) => id.startsWith(p))) : [];
-  })(),
+  collectionFormPresentation: acceptedByEveryCall(F.collectionForm, PRESENTATION_PREDICATES, 1),
+  // Both of its field filters (related and junction collection) check this.
+  junctionItemFormPresentation: acceptedByEveryCall(F.junctionItemForm, PRESENTATION_PREDICATES, 2),
   nonFlatRelational: {
-    collectionForm: sorted(readStringSet(F.collectionForm, 'NON_FLAT_RELATIONAL_INTERFACES')),
-    collectionList: sorted(readStringSet(F.collectionList, 'NON_FLAT_RELATIONAL_INTERFACES')),
+    collectionForm: acceptedByEveryCall(F.collectionForm, ['isNonFlatRelationalInterface'], 1),
+    collectionList: acceptedByEveryCall(F.collectionList, ['isNonFlatRelationalInterface'], 1),
   },
-  selfPersisting: readAllStringSets(F.collectionForm, 'selfPersistingInterfaces').map(sorted),
-  relationHooks: Object.fromEntries(F.hooks.map((f) => [path.basename(f, '.ts'), sorted(interfaceComparisons(f))])),
+  // One check per save path (edit, create).
+  selfPersisting: acceptedByCalls(F.collectionForm, ['isSelfPersistingInterface']),
+  relationHooks: Object.fromEntries(
+    F.hooks.map((f) => [path.basename(f, '.ts'), acceptedByEveryCall(f, ['isRelationListInterface'], 1)]),
+  ),
 };
 
 describe('pre-manifest snapshot: every derived table keeps its value', () => {
