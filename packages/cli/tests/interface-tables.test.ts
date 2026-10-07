@@ -1123,15 +1123,36 @@ describe('MCP: generate_interface componentMap', () => {
   });
 });
 
+/**
+ * Whether `abs` (inside the repo) exists with exactly this casing in every
+ * path segment. Each segment is matched against its parent's real directory
+ * entries, so a case-insensitive filesystem (macOS, Windows) cannot pass a
+ * wrong-case directory the Linux CI and GitHub would reject.
+ */
+function existsExactCase(abs: string): boolean {
+  const rel = path.relative(REPO_ROOT, abs);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return false;
+  let dir = REPO_ROOT;
+  for (const segment of rel.split(path.sep)) {
+    if (!fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory() || !fs.readdirSync(dir).includes(segment)) return false;
+    dir = path.join(dir, segment);
+  }
+  return true;
+}
+
 describe('docs', () => {
+  test('existsExactCase checks the casing of every segment, not just the file name', () => {
+    expect(existsExactCase(path.join(PACKAGES_ROOT, F.uiInterfacesBarrel))).toBe(true);
+    expect(existsExactCase(path.join(REPO_ROOT, 'packages/UI-Interfaces/src/index.ts'))).toBe(false);
+    expect(existsExactCase(path.join(REPO_ROOT, 'Packages/ui-interfaces/src/index.ts'))).toBe(false);
+    expect(existsExactCase(path.join(REPO_ROOT, 'packages/ui-interfaces/src/INDEX.ts'))).toBe(false);
+    expect(existsExactCase(path.join(REPO_ROOT, 'packages/ui-interfaces/src/index.ts/x'))).toBe(false);
+  });
+
   test('divergence (l): COMPONENT_MAP.md source links that do not exist (case-sensitive)', () => {
     const doc = fs.readFileSync(path.join(REPO_ROOT, 'docs/COMPONENT_MAP.md'), 'utf8');
     const links = [...doc.matchAll(/\]\((\.\.\/packages\/[^)#\s]+)\)/g)].map((m) => m[1]);
     expect(links.length).toBeGreaterThan(0);
-    const existsExactCase = (abs: string): boolean => {
-      const dir = path.dirname(abs);
-      return fs.existsSync(dir) && fs.readdirSync(dir).includes(path.basename(abs));
-    };
     const broken = links.filter((l) => !existsExactCase(path.resolve(REPO_ROOT, 'docs', l)));
     expect(broken).toEqual(['../packages/ui-interfaces/src/rich-text-html/RichTextHtml.tsx']);
   });
