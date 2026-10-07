@@ -751,3 +751,20 @@ export const VersionedContent: Story = {
         onChange: (_value: any) => {},
     }
 };
+
+/**
+ * Rendered without `CollectionsRelationalProvider` (the decorator opts out):
+ * the field still lists and removes items, but shows the translated
+ * missing-provider alert and hides create, select and edit.
+ */
+export const WithoutProvider: Story = {
+    args: { ...Default.args, label: 'M2M without a relational provider' },
+    parameters: {
+        relationalUI: false,
+        docs: {
+            description: {
+                story: 'No relational provider: the alert explains which components are missing and the create / select / edit actions are hidden. Switch the Locale toolbar to see the translations.',
+            },
+        },
+    },
+};

@@ -37,6 +37,38 @@ const MOCK_REGISTRY = {
     },
   ],
   lib: {
+    // api-routes' layout imports a component (as the real one imports
+    // collection-form's CollectionsRelationalProvider): `demo` stands in.
+    'api-routes': {
+      name: 'api-routes',
+      description: 'API routes + authenticated layout',
+      sourcePackage: '@buildpad/cli',
+      version: '2.0.0',
+      lastChangedIn: '2.0.0',
+      files: [
+        {
+          source: 'cli/templates/app/authenticated-layout.tsx',
+          target: 'app/[lang]/(authenticated)/layout.tsx',
+          sourceSha256: 'stub',
+        },
+      ],
+      registryDependencies: ['demo'],
+    },
+    'external-oauth': {
+      name: 'external-oauth',
+      description: 'OAuth client (depends back on api-routes)',
+      sourcePackage: '@buildpad/cli',
+      version: '2.0.0',
+      lastChangedIn: '2.0.0',
+      files: [
+        {
+          source: 'cli/templates/lib/oauth/config.ts',
+          target: 'lib/oauth/config.ts',
+          sourceSha256: 'stub',
+        },
+      ],
+      internalDependencies: ['api-routes'],
+    },
     'design-system': {
       name: 'design-system',
       description: 'Design tokens, globals, theme, app shell',
@@ -57,12 +89,20 @@ const MOCK_REGISTRY = {
 
 const DEMO_SOURCE = `export function Demo() {\n  return <div>Demo</div>;\n}\n`;
 const GLOBALS_SOURCE = `body { color: black; }\n`;
+const LAYOUT_SOURCE = `import { Demo } from "@/components/ui/demo";\nexport default function Layout() {\n  return <Demo />;\n}\n`;
+const OAUTH_SOURCE = `export const oauth = {};\n`;
+
+// `add --with-api` with no names falls through to the category prompt; answer
+// it with "nothing selected".
+vi.mock('prompts', () => ({ default: vi.fn(async () => ({})) }));
 
 vi.mock('../src/resolver.js', () => ({
   getRegistry: vi.fn(async () => MOCK_REGISTRY),
   resolveSourceFile: vi.fn(async (source: string) => {
     if (source === 'ui-interfaces/src/demo/Demo.tsx') return DEMO_SOURCE;
     if (source === 'cli/templates/app/globals.css') return GLOBALS_SOURCE;
+    if (source === 'cli/templates/app/authenticated-layout.tsx') return LAYOUT_SOURCE;
+    if (source === 'cli/templates/lib/oauth/config.ts') return OAUTH_SOURCE;
     throw new Error(`unexpected source: ${source}`);
   }),
   sourceFileExists: vi.fn(async () => true),
@@ -85,7 +125,7 @@ vi.mock('../src/resolver.js', () => ({
   bundledTemplateExists: vi.fn(async () => false),
 }));
 
-const { add } = await import('../src/commands/add.js');
+const { add, libComponentDependencies } = await import('../src/commands/add.js');
 
 let tmpdir: string;
 
@@ -160,5 +200,40 @@ describe('add — lib module install', () => {
     });
 
     expect(await fs.readFile(path.join(tmpdir, 'app/globals.css'), 'utf-8')).toContain('color: black');
+  });
+});
+
+describe('add — components a lib module needs (registryDependencies)', () => {
+  test('`add --with-api` also installs the components api-routes declares', async () => {
+    await writeV3Manifest();
+
+    await add([], { cwd: tmpdir, withApi: true, nonInteractive: true });
+
+    const after = await readManifest();
+    expect(after.installedLib).toEqual(expect.arrayContaining(['api-routes', 'external-oauth']));
+    expect(after.installedComponents).toContain('demo');
+    expect(await fs.pathExists(path.join(tmpdir, 'components/ui/demo.tsx'))).toBe(true);
+  });
+
+  test('a lib module that pulls in api-routes also queues its components', async () => {
+    await writeV3Manifest();
+
+    await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+
+    const after = await readManifest();
+    expect(after.installedLib).toEqual(expect.arrayContaining(['api-routes', 'external-oauth']));
+    expect(after.installedComponents).toContain('demo');
+  });
+
+  test('libComponentDependencies skips lib modules that are already installed (except the one named)', () => {
+    expect(libComponentDependencies('external-oauth', MOCK_REGISTRY as never, [])).toEqual(['demo']);
+    expect(libComponentDependencies('external-oauth', MOCK_REGISTRY as never, ['api-routes'])).toEqual([]);
+    expect(libComponentDependencies('api-routes', MOCK_REGISTRY as never, ['api-routes'])).toEqual(['demo']);
+  });
+
+  test('the real api-routes declares collection-form (its layout wraps pages in CollectionsRelationalProvider)', async () => {
+    const real = await fs.readJSON(path.resolve(import.meta.dirname, '../../registry.json'));
+    expect(libComponentDependencies('api-routes', real, [])).toContain('collection-form');
+    expect(libComponentDependencies('external-oauth', real, [])).toContain('collection-form');
   });
 });

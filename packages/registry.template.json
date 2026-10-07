@@ -129,6 +129,10 @@
           "target": "lib/buildpad/interface-catalog.ts"
         },
         {
+          "source": "utils/src/interface-manifest.ts",
+          "target": "lib/buildpad/interface-manifest.ts"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts"
         },
@@ -251,6 +255,10 @@
         {
           "source": "utils/src/i18n/namespaces/interfaces/notice.ts",
           "target": "lib/buildpad/i18n/namespaces/interfaces/notice.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/relational-ui.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/relational-ui.ts"
         },
         {
           "source": "utils/src/i18n/namespaces/interfaces/rich-text-html.ts",
@@ -440,6 +448,10 @@
           "target": "lib/buildpad/services/buildpad-i18n-context.tsx"
         },
         {
+          "source": "services/src/relational-ui-context.tsx",
+          "target": "lib/buildpad/services/relational-ui-context.tsx"
+        },
+        {
           "source": "services/src/auth/index.ts",
           "target": "lib/buildpad/services/auth/index.ts"
         },
@@ -624,6 +636,7 @@
       ],
       "internalDependencies": [
         "types",
+        "utils",
         "services"
       ]
     },
@@ -684,7 +697,7 @@
     },
     "api-routes": {
       "name": "api-routes",
-      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout, all under app/[lang]",
+      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout (wrapped in CollectionsRelationalProvider, so it installs collection-form), all under app/[lang]",
       "files": [
         {
           "source": "cli/templates/api/auth-login-route.ts",
@@ -784,6 +797,9 @@
         "i18n",
         "design-system",
         "hooks"
+      ],
+      "registryDependencies": [
+        "collection-form"
       ]
     },
     "content-routes": {
@@ -2185,6 +2201,10 @@
         {
           "source": "ui-interfaces/src/list-m2a/render-template.ts",
           "target": "components/ui/list-m2a/render-template.ts"
+        },
+        {
+          "source": "ui-interfaces/src/list-m2a/relational-slots.tsx",
+          "target": "components/ui/list-m2a/relational-slots.tsx"
         }
       ],
       "dependencies": [
@@ -2662,6 +2682,10 @@
         {
           "source": "ui-collections/src/extras-storage.ts",
           "target": "components/ui/extras-storage.ts"
+        },
+        {
+          "source": "ui-collections/src/CollectionsRelationalProvider.tsx",
+          "target": "components/ui/collections-relational-provider.tsx"
         }
       ],
       "dependencies": [
@@ -2675,7 +2699,8 @@
       ],
       "registryDependencies": [
         "vform",
-        "save-options"
+        "save-options",
+        "collection-list"
       ]
     },
     {

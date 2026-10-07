@@ -23,6 +23,7 @@ import type { DeepPartial, FormTranslations } from '@buildpad/utils';
 import { IconInfoCircle, IconLock } from '@tabler/icons-react';
 import type { Field } from '@buildpad/types';
 import { FieldsService, useDaaSContextOptional, useBuildpadTranslations } from '@buildpad/services';
+import { RelationalUIProvider, type RelationalUIComponents } from '@buildpad/services/relational-ui-context';
 // isPresentationField is available from @buildpad/utils if needed for filtering
 import type { ValidationError, FieldValues } from './types';
 import { FormField } from './components/FormField';
@@ -540,7 +541,7 @@ export const VForm: React.FC<VFormProps> = ({
     );
   }
 
-  return (
+  const form = (
     <Box className={`v-form ${className || ''}`}>
       {/* Validation errors summary banner */}
       {showValidationSummary && stableValidationErrors.length > 0 && (
@@ -616,6 +617,15 @@ export const VForm: React.FC<VFormProps> = ({
       </div>
     </Box>
   );
+
+  // Relational fields (ListM2A's JunctionItemForm) render nested forms with
+  // the FormRenderer slot: supply VForm itself, unless a provider above
+  // already chose one. CollectionForm / CollectionList come from a provider
+  // above (CollectionForm, or CollectionsRelationalProvider for a standalone
+  // VForm).
+  return <RelationalUIProvider defaults={vformRelationalUI}>{form}</RelationalUIProvider>;
 };
+
+const vformRelationalUI: RelationalUIComponents = { FormRenderer: VForm };
 
 export default VForm;

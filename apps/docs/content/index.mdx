@@ -85,6 +85,12 @@ import { VForm } from '@/components/ui/vform/VForm';
 />
 ```
 
+A standalone `VForm` with relational fields (O2M, M2M, M2A) needs the relational
+provider for its create / select / edit dialogs. The scaffolded authenticated
+layout already supplies it; elsewhere, wrap the form in
+`CollectionsRelationalProvider` from `@/components/ui/collections-relational-provider`.
+See [Architecture](/architecture#relational-interfaces-and-the-relational-ui-context).
+
 ## AI-Ready
 
 The design of Buildpad UI makes it easy for AI tools to work with your code. Its open code and consistent API allow AI models to read, understand, and even generate new components.

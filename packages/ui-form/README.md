@@ -125,6 +125,26 @@ function ProtectedForm() {
 />
 ```
 
+### Relational Fields in a Standalone VForm (3.0)
+
+Relational fields (O2M, M2M, M2A) open create / edit / select dialogs that
+render `CollectionForm` and `CollectionList`. `VForm` supplies only itself (as
+the relational `FormRenderer`); inside a `CollectionForm` the rest is supplied
+automatically. When you render `VForm` on its own with relational fields, wrap
+it in the pre-wired provider:
+
+```tsx
+import { CollectionsRelationalProvider } from '@buildpad/ui-collections';
+
+<CollectionsRelationalProvider>
+  <VForm collection="articles" primaryKey={id} modelValue={edits} onUpdate={setEdits} />
+</CollectionsRelationalProvider>
+```
+
+Without it the relational fields still list their items but show an alert and
+hide create / select / edit. See `@buildpad/services/relational-ui-context`
+(`RelationalUIProvider`) for custom components.
+
 ## API Reference
 
 ### VForm Props

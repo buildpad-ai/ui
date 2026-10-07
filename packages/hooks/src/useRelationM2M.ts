@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useBuildpadTranslations } from './useBuildpadI18n';
 import type { Relation as BaseRelation, RelationMeta as BaseRelationMeta } from '@buildpad/types';
+import { isRelationListInterface } from '@buildpad/utils';
 import { apiRequest } from './utils';
 
 /**
@@ -146,7 +147,7 @@ export function useRelationM2M(collection: string, field: string) {
         const fieldInfo = fieldResponse.data || [];
         const currentField = fieldInfo.find((f) => f.field === field);
         
-        if (!currentField?.meta?.interface || currentField.meta.interface !== 'list-m2m') {
+        if (!currentField || !isRelationListInterface(currentField.meta?.interface, 'm2m')) {
           setError(`Field "${field}" is not configured as a list-m2m interface`);
           setRelationInfo(null);
           setLoading(false);

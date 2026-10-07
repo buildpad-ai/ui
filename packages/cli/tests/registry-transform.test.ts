@@ -28,6 +28,7 @@ import {
   initSkeleton,
   installClosure,
   isScript,
+  libFiles,
   loadRegistry,
   makeConfig,
   namesImportedFrom,
@@ -238,6 +239,26 @@ describe('registry corpus: per-entry closure', () => {
   test('every closure allow-list entry is still needed', () => {
     const all = [...problemsByEntry.values()].flat();
     expect(Object.keys(CLOSURE_ALLOWLIST).filter(k => !all.includes(k))).toEqual([]);
+  });
+  // A closure walk that reads only an entry's DIRECT internalDependencies
+  // (installMissingLibDeps, a co-upgrade) must still reach every lib module
+  // the entry's sources import, so a transitive path is not enough: hooks
+  // imports @buildpad/utils itself and must declare it, not only reach it
+  // through services.
+  test('every lib module directly declares each lib-backed @buildpad package its sources import', () => {
+    const libNames = new Set(Object.keys(registry.lib));
+    const undeclared: string[] = [];
+    for (const [name, entry] of Object.entries(registry.lib)) {
+      const declared = new Set(entry.internalDependencies ?? []);
+      for (const file of libFiles(entry)) {
+        if (!isScript(file.target)) continue;
+        for (const s of extractSpecifiers(readSource(file.source))) {
+          const pkg = /^@buildpad\/([\w-]+)(?:\/|$)/.exec(s.text)?.[1];
+          if (pkg && pkg !== name && libNames.has(pkg) && !declared.has(pkg)) undeclared.push(`${name} ${file.source} -> ${pkg}`);
+        }
+      }
+    }
+    expect(undeclared).toEqual([]);
   });
 });
 

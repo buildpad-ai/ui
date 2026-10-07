@@ -40,6 +40,7 @@ import {
 import {
   interfaceRequiresChoices,
   interpolate,
+  isNonFlatRelationalField,
   parseChoiceValues,
   resolveChoiceLabel,
   type CollectionsTranslations,
@@ -196,18 +197,6 @@ const SYSTEM_FIELDS = new Set([
   "user_updated",
   "date_created",
   "date_updated",
-]);
-
-// Relational fields with no real flat column value — can't be requested as a
-// bare name in fields= (there's no single column to select), only via a
-// proper nested embed the list view doesn't build. select-dropdown-m2o is
-// intentionally excluded from both sets: M2O fields normally back a real FK
-// column and select fine bare.
-const NON_FLAT_RELATIONAL_SPECIALS = new Set(["m2a", "m2m", "o2m"]);
-const NON_FLAT_RELATIONAL_INTERFACES = new Set([
-  "list-m2a",
-  "list-m2m",
-  "list-o2m",
 ]);
 
 // Row height per spacing preset
@@ -398,11 +387,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           // field whose type happens to report as "text". select-dropdown-m2o
           // is deliberately NOT excluded — M2O fields normally back a real FK
           // column and select fine as a bare field.
-          const special = f.meta?.special ?? [];
-          const isNonFlatRelational =
-            special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) ||
-            (!!f.meta?.interface && NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface));
-          if (isNonFlatRelational) return false;
+          if (isNonFlatRelationalField(f)) return false;
           const isHidden = f.meta?.hidden ?? (f as unknown as Record<string, unknown>).hidden;
           if (isHidden) return false;
           return true;
