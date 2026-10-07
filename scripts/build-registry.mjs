@@ -28,7 +28,7 @@ import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
-import ts from 'typescript';
+import { createRequire } from 'node:module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -437,7 +437,15 @@ function collectFileHashes(registry) {
  * contents are not specifiers. Exposed for testing.
  */
 export function moduleSpecifiers(text) {
-  return ts.preProcessFile(text, true, true).importedFiles.map((f) => f.fileName);
+  return typescript().preProcessFile(text, true, true).importedFiles.map((f) => f.fileName);
+}
+
+// Loaded on first use, so generating the registry never needs the compiler —
+// only --check does (typescript is a root devDependency).
+let tsModule;
+function typescript() {
+  tsModule ??= createRequire(import.meta.url)('typescript');
+  return tsModule;
 }
 
 const SCRIPT_FILE = /\.(?:[cm]?[jt]sx?)$/;
