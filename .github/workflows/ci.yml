@@ -100,10 +100,12 @@ jobs:
 
       - uses: pnpm/action-setup@v4
 
+      # No pnpm cache here: this job never installs, so setup-node's post
+      # step would fail trying to save a store path that does not exist.
+      # pnpm audit only reads the lockfile.
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level=high
