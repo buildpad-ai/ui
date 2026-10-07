@@ -485,6 +485,17 @@ All 10 packages (publishable **and** private) are in one `fixed` group in change
 
 ---
 
+## Dependency Audit Exceptions
+
+CI runs `pnpm audit --prod --audit-level=high`. An advisory that cannot be fixed
+yet goes in `pnpm.auditConfig.ignoreGhsas` in the root `package.json`; JSON has
+no comments, so each entry is justified here. Remove the entry when the fix
+lands.
+
+| Advisory | Package | Why it is ignored | Mitigation | Remove when |
+| --- | --- | --- | --- | --- |
+| [GHSA-jrc7-96c5-q579](https://github.com/advisories/GHSA-jrc7-96c5-q579) (critical) | `maplibre-gl` < 6.4.1 | The fix is in v6, which needs `setWorkerUrl()` set up in every consumer bundler (and the worker files copied into a Next.js app's `public/`). Without it the map mounts but loads nothing, which no test or build here would catch. | The only untrusted HTML that reaches maplibre is a basemap's `attribution`; `MapWithRealMap` runs it through DOMPurify first. | The map interface moves to maplibre-gl v6. |
+
 ## Checklist Before First Publish
 
 - [x] Repository URL points at `buildpad-ai/ui` (no rename redirect)

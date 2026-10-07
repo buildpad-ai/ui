@@ -81,3 +81,6 @@ tests/ui-files/.files-rbac.json
 tests/ui-users/.users-rbac.json
 playwright-report-users/
 
+
+# Written by amplify.yml at build time; holds COOKIE_SECRET
+.env.production

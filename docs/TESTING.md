@@ -78,6 +78,15 @@ pnpm storybook:form
 This mode forwards all `/api/*` requests from Storybook through Vite's dev proxy to the
 Next.js host app, which then proxies to DaaS. No CORS issues in dev or production.
 
+**Allowed DaaS URLs:** the host app only connects to `https://` URLs whose host matches
+`DAAS_ALLOWED_HOSTS` (default `*.buildpad-daas.xtremax.com`). In development
+(`NODE_ENV !== 'production'`) a local DaaS at `http://localhost:<port>` is also accepted.
+To test against another host, set e.g. `DAAS_ALLOWED_HOSTS=*.buildpad-daas.xtremax.com,daas.example.org`
+in `apps/storybook-host/.env.local`.
+
+**Host-app unit tests:** the DaaS URL validator (SSRF guard) has `node:test` unit tests:
+`pnpm exec tsx --test apps/storybook-host/lib/daas-url.test.ts`
+
 **Permission Enforcement:**
 - Enable "Enforce Field Permissions" in the Permission Settings accordion
 - Select form action: Create, Update, or Read

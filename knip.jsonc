@@ -1,0 +1,44 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // `pnpm deps:check` — dependency hygiene only (unused / unlisted / missing
+  // dependencies and binaries per workspace). Unused files and exports are out
+  // of scope on purpose so this stays CI-gateable.
+  //
+  // Why it matters here: `.npmrc` sets `node-linker=hoisted` (Amplify), so a
+  // package that imports something it never declared still resolves through
+  // the root node_modules — until the dependency is dropped elsewhere.
+  "include": ["dependencies", "devDependencies", "optionalPeerDependencies", "unlisted", "binaries", "unresolved"],
+  // `pnpm -r typecheck` in .github/workflows is a workspace script run through
+  // pnpm, not a binary.
+  "ignoreBinaries": ["typecheck"],
+  "workspaces": {
+    ".": {
+      // Shared Storybook theme/i18n/manager modules that live outside any
+      // package and are imported by relative path from each package's
+      // .storybook/ config; their imports resolve from (and are declared by)
+      // the importing package, not the private root.
+      "ignore": ["packages/storybook-*.{ts,tsx}"]
+    },
+    "packages/cli": {
+      // templates/ is copied verbatim into consumer apps (whose deps the CLI
+      // installs); it is not part of the CLI's own module graph.
+      "ignore": ["templates/**"]
+    },
+    "packages/ui-forms": {
+      // The Storybook (and FormPreview) renders every interface by aliasing
+      // @buildpad/ui-interfaces to its source (.storybook/main.ts), which
+      // imports the rich-text, block-editor and map libraries. They are
+      // declared as optional peerDependencies and mirrored in devDependencies
+      // so they resolve locally; ui-forms' own source never imports them.
+      "ignoreDependencies": [
+        "@mantine/tiptap",
+        "@tiptap/.+",
+        "@editorjs/.+",
+        "highlight\\.js",
+        "lowlight",
+        "maplibre-gl",
+        "@mapbox/mapbox-gl-draw"
+      ]
+    }
+  }
+}

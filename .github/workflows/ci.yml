@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -44,8 +44,82 @@ jobs:
       - name: Typecheck
         run: pnpm -r typecheck
 
-      - name: Unit tests
-        run: pnpm test
+      # Each package's coverage config sets floors just under its current
+      # coverage, so this fails when a change lowers it.
+      - name: Unit tests (with coverage floors)
+        run: pnpm test:coverage
 
       - name: Registry in sync with sources
         run: pnpm registry:check
+
+      # Unused, unlisted or missing dependencies per workspace package
+      # (knip.jsonc). Root hoisting otherwise hides an undeclared import.
+      - name: Dependencies declared where they are used
+        run: pnpm deps:check
+
+  # Storybooks were only built by Amplify after merge, so a broken story
+  # reached the deploy before anyone saw it. Same script Amplify runs.
+  storybook:
+    name: Storybook build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build every package's Storybook
+        run: pnpm build:storybook
+
+  # Separate job: the advisory database changes independently of this repo,
+  # so a new advisory shows up as its own failing check instead of hiding
+  # the build/test result. Accepted exceptions live in pnpm.auditConfig and
+  # are justified in docs/PUBLISHING.md.
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # scan every commit, not just the tip
+
+      # The gitleaks GitHub Action needs a paid license for organization
+      # repos, so run the pinned CLI directly and verify its checksum.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.28.0
+          GITLEAKS_SHA256: a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+        run: |
+          set -euo pipefail
+          TARBALL="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$TARBALL" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${TARBALL}"
+          echo "${GITLEAKS_SHA256}  ${TARBALL}" | sha256sum -c -
+          tar -xzf "$TARBALL" gitleaks
+          sudo mv gitleaks /usr/local/bin/
+
+      # Findings already in history that have been reviewed are listed in
+      # .gitleaksignore; anything else fails the job.
+      - name: Scan git history
+        run: gitleaks git . --redact --no-banner --verbose

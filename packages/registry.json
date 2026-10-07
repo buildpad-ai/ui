@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-09-22T09:51:42.864Z",
+  "generatedAt": "2026-09-30T15:54:20.438Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -70,6 +70,7 @@
       "@editorjs/table",
       "@editorjs/underline",
       "@editorjs/inline-code",
+      "dompurify",
       "highlight.js"
     ],
     "maps": [
@@ -583,22 +584,22 @@
         {
           "source": "services/src/auth/index.ts",
           "target": "lib/buildpad/services/auth/index.ts",
-          "sourceSha256": "861bb2c7ff9383147c959fd04f0fe8fcb2a713c1a16440870fa0b76fd4b8fc89"
+          "sourceSha256": "471e76c182c57735db47df510e8ecc062b911f70883da190b8a7fa63a740abc0"
         },
         {
           "source": "services/src/auth/session.ts",
           "target": "lib/buildpad/services/auth/session.ts",
-          "sourceSha256": "863e2e61a04abbbd9a7768579063ce4595733ec41762f2374e1f538e31084b8a"
+          "sourceSha256": "49116ae850792e9ba14c8f8d5b3de5f587b5da5bf81e4bb1f50529730e1b0449"
         },
         {
           "source": "services/src/auth/enforcer.ts",
           "target": "lib/buildpad/services/auth/enforcer.ts",
-          "sourceSha256": "deb345580666d5438b1fb7487d913c9e0be6e3aed5472f88a1f686b2a036ae51"
+          "sourceSha256": "6ccd0265ad4fcba299b72d6c9ee86cdc57895e0d33ba1bef72677e6c867b2ee3"
         },
         {
           "source": "services/src/auth/filter-to-query.ts",
           "target": "lib/buildpad/services/auth/filter-to-query.ts",
-          "sourceSha256": "498e44e46519230f573f4a6c99dec516f99ff82daf221ef61ed5edf56065b399"
+          "sourceSha256": "4a4472ef521ed851e99ed55b1dcb1a32fd6e60dc99f1fd862c4fa0b7e534bf6e"
         },
         {
           "source": "cli/templates/lib/module-access/enforce.ts",
@@ -621,7 +622,7 @@
       ],
       "sourcePackage": "@buildpad/services",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     "hooks": {
       "name": "hooks",
@@ -1691,7 +1692,7 @@
         {
           "source": "ui-interfaces/src/input-block-editor/InputBlockEditor.tsx",
           "target": "components/ui/input-block-editor.tsx",
-          "sourceSha256": "8f2eb1d8ea146dc061b911d5ee1937c684c7f9d4d99cad7604a69bf797fd5655"
+          "sourceSha256": "36acfec68f0c95dfe1f20438781f5994eb843060165576a058c310922f36df01"
         },
         {
           "source": "ui-interfaces/src/input-block-editor/InputBlockEditor.css",
@@ -1711,7 +1712,8 @@
         "@editorjs/delimiter",
         "@editorjs/table",
         "@editorjs/underline",
-        "@editorjs/inline-code"
+        "@editorjs/inline-code",
+        "dompurify"
       ],
       "internalDependencies": [],
       "interface": {
@@ -1732,7 +1734,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "tags",
@@ -1743,7 +1745,7 @@
         {
           "source": "ui-interfaces/src/tags/Tags.tsx",
           "target": "components/ui/tags.tsx",
-          "sourceSha256": "ebaad18718dc737519c6c340fdc5147b3f39bb51ad81d72951ad1b2bf1754879"
+          "sourceSha256": "79d36859cbaaff4e7c3aae51199c27beb81384d4a881f8c675e801899b00a743"
         }
       ],
       "dependencies": [
@@ -2181,7 +2183,7 @@
         {
           "source": "ui-interfaces/src/toggle/Toggle.tsx",
           "target": "components/ui/toggle.tsx",
-          "sourceSha256": "b62c52f8ecb13639dbf58b99dd871d5d77aef988dfad470e88b22b2dc6af9e85"
+          "sourceSha256": "9f83db1d5456efb7fbe14e259f8ed2aa8da33b47b23418e7b1df658590fa97d8"
         }
       ],
       "dependencies": [
@@ -2206,7 +2208,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "file",
@@ -2393,7 +2395,7 @@
         {
           "source": "ui-interfaces/src/color/Color.tsx",
           "target": "components/ui/color.tsx",
-          "sourceSha256": "eb751e63468ee60b06a0bbbf42655ab934e71aa7ba19ddb7d448d020b3130f8c"
+          "sourceSha256": "9056418aa1321109063eb2cd28e5d34ab5f139395855834e6d5305c53a52e7d1"
         }
       ],
       "dependencies": [
@@ -2417,7 +2419,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.6.0",
-      "lastChangedIn": "2.5.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "list-m2m",
@@ -3408,14 +3410,15 @@
         {
           "source": "ui-interfaces/src/map/MapWithRealMap.tsx",
           "target": "components/ui/map-with-real-map.tsx",
-          "sourceSha256": "455bf938612ff0eb3676c59f332d53ddd20d1bab38e3e389fcea7dc7d3994f64"
+          "sourceSha256": "fb9c02f90587d7250166de4447bef86b62db917db31032858d4ec95f67eac388"
         }
       ],
       "dependencies": [
         "@mantine/core",
         "@tabler/icons-react",
         "maplibre-gl",
-        "@mapbox/mapbox-gl-draw"
+        "@mapbox/mapbox-gl-draw",
+        "dompurify"
       ],
       "internalDependencies": [],
       "interface": {
@@ -3440,7 +3443,7 @@
       ],
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "workflow-button",

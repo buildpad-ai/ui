@@ -1,0 +1,18 @@
+# Baseline for `gitleaks git` (see .github/workflows/ci.yml, "Secret scan").
+# Each line is a finding already in history that has been reviewed; anything
+# new still fails CI. Add a line here only after the secret is revoked or
+# confirmed to be non-sensitive, with a comment saying which.
+
+# DaaS static token hardcoded in four one-off seeding scripts (removed). The
+# tenant it belonged to has been decommissioned, so the token is dead.
+ec76f409b1b99802da7809e930f1d05f9d960f16:scripts/add-remaining-fields.sh:generic-api-key:5
+ec76f409b1b99802da7809e930f1d05f9d960f16:scripts/add-missing-interfaces.sh:generic-api-key:5
+ec76f409b1b99802da7809e930f1d05f9d960f16:scripts/create-interface-showcase.sh:generic-api-key:7
+ec76f409b1b99802da7809e930f1d05f9d960f16:scripts/add-final-interfaces.sh:generic-api-key:5
+
+# Public feedback-widget key: it is rendered into every docs page's HTML.
+fe1bb14b6afcdbbc30c4ba992a645bd87884551c:apps/docs/app/layout.tsx:generic-api-key:24
+
+# Test fixtures, not credentials.
+e1ba0d5f78f4498d1ff799f7c71b148899ad9749:packages/ui-collections/tests/collection-list.test.tsx:generic-api-key:640
+639c0c077cb4ddb2e2e80033dbd4c431060e8031:packages/ui-users/tests/TokenInput.test.tsx:generic-api-key:2

@@ -54,9 +54,12 @@ describe('InputHash', () => {
       const { container } = renderWithProvider(
         <InputHash label="Hash" data-testid="hash-input" onChange={mockOnChange} />
       );
-      // The style is applied to the Mantine input wrapper
-      const styledEl = container.querySelector('[style*="Monaco"]');
+      // The style is applied to the Mantine input wrapper. Since 021e56c the
+      // font comes from the theme's monospace stack rather than a hard-coded
+      // 'Monaco, Menlo, ...' list.
+      const styledEl = container.querySelector('[style*="font-family"]') as HTMLElement | null;
       expect(styledEl).not.toBeNull();
+      expect(styledEl!.style.fontFamily).toBe('var(--mantine-font-family-monospace, monospace)');
     });
   });
 

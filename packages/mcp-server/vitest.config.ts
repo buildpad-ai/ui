@@ -20,6 +20,9 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: ['src/versioning.ts', 'src/index.ts'],
       reportOnFailure: true,
+      // Floors just under the coverage measured when they were added
+      // (62.58 / 70.12 / 93.33 / 62.58); raise them as tests are added.
+      thresholds: { statements: 61, branches: 69, functions: 92, lines: 61 },
     },
   },
 });

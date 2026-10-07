@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@mantine/notifications": "^8.3.9",
+    "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^22",
     "@types/react": "^19",

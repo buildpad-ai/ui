@@ -20,9 +20,12 @@ const mockCountriesResponse = {
   ]
 };
 
-// Test wrapper with Mantine provider
+// Test wrapper with Mantine provider. env="test" is Mantine's documented test
+// mode: without it the Popover's floating-ui `hide` middleware sees jsdom's
+// all-zero layout as a detached reference and renders the dropdown with
+// `display: none`, so role-based queries can't see the options.
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <MantineProvider>{children}</MantineProvider>
+  <MantineProvider env="test">{children}</MantineProvider>
 );
 
 describe('AutocompleteAPI', () => {
@@ -410,8 +413,13 @@ describe('AutocompleteAPI', () => {
       
       render(
         <TestWrapper>
+          {/* The mock returns objects, so textPath/valuePath are required to
+              get distinct options; without them every result stringifies to
+              "[object Object]", dedupes to one entry, and never matches "U". */}
           <AutocompleteAPI 
             url="https://usmanlive.com/wp-json/api/countries?q={{value}}"
+            textPath="name"
+            valuePath="code"
             limit={2}
             trigger="debounce"
             rate={100}

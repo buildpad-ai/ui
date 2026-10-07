@@ -269,6 +269,15 @@ if (filter) {
 }
 ```
 
+Permission filters **fail closed**. `getPermissionFilters` resolves `$CURRENT_USER`,
+`$CURRENT_ROLE`, `$CURRENT_ROLES`, `$CURRENT_POLICIES` and `$NOW`; if a filter
+uses anything it cannot enforce (an unknown operator, a relational path such as
+`{ owner: { id: { _eq: … } } }`, an unresolvable variable such as
+`$CURRENT_USER.email`, a non-array `_in`, …) it returns a deny-all filter.
+`applyFilterToQuery` throws `UnsupportedPermissionFilterError` — a
+`PermissionError` with `statusCode` 403 — for such filters before touching the
+query, so never run the query when it throws.
+
 ### API Route Example
 
 ```typescript
@@ -339,8 +348,9 @@ export async function GET(request, { params }) {
 | `filterFieldsArray(data[], allowedFields)` | Filter array of objects |
 | `filterResponseFields(data, collection, action)` | Auto-filter by permissions |
 | `getPermissionFilters(collection, action)` | Get item-level filters |
-| `applyFilterToQuery(query, filter)` | Apply filter to Supabase query |
-| `resolveFilterDynamicValues(filter, userId, roleId)` | Resolve $CURRENT_USER, etc. |
+| `applyFilterToQuery(query, filter)` | Apply filter to Supabase query (throws `UnsupportedPermissionFilterError` if it cannot be enforced) |
+| `resolveFilterDynamicValues(filter, userId, roleId, { roles, policies, now })` | Resolve $CURRENT_USER, $CURRENT_ROLE(S), $CURRENT_POLICIES, $NOW (throws if unresolvable) |
+| `UnsupportedPermissionFilterError` | 403 `PermissionError` for filters that cannot be enforced |
 | `AuthenticationError` | Error class for auth failures |
 | `PermissionError` | Error class for permission failures |
 

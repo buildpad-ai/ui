@@ -212,7 +212,15 @@ export const Toggle: React.FC<ToggleProps> = ({
           >
             {t.off}
           </Text>
-          <Switch {...switchComponentProps} label={undefined} />
+          {/* Label, description and error text are rendered below the state
+              labels, so keep the Switch from rendering them a second time.
+              A boolean `error` keeps the Switch's error styling without text. */}
+          <Switch
+            {...switchComponentProps}
+            label={undefined}
+            description={undefined}
+            error={Boolean(error)}
+          />
           <Text
             size="sm"
             c={checked ? undefined : "dimmed"}

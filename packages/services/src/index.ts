@@ -61,8 +61,10 @@ export {
   AuthenticationError,
   FILTER_OPERATORS,
   PermissionError,
+  UnsupportedPermissionFilterError,
   applyFieldOperators,
   applyFilter,
+  assertPermissionFilterSupported,
   // Filter utilities
   applyFilterToQuery,
   // Session management
@@ -83,15 +85,18 @@ export {
   isAdmin,
   isAuthenticationError,
   isFieldAccessible,
+  isUnsupportedPermissionFilterError,
   resolveFilterDynamicValues,
   validateFieldsAccess,
   type AccountabilityInfo,
   type AuthClientConfig,
   type AuthenticatedClient,
+  type DynamicVariableContext,
   type FilterObject,
   type PermissionCheck,
   type PermissionDetails,
   type QueryBuilder,
+  type UnsupportedPermissionFilterReason,
 } from "./auth";
 
 // Component i18n provider — locale, dictionary and formatting for every
