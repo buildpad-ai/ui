@@ -81,6 +81,7 @@ import {
 import { threeWayMerge } from '../utils/three-way-merge.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
 import { applyNavItems, copyLibModule } from './add.js';
+import { componentFilePath } from '../utils/paths.js';
 
 async function getRegistry(): Promise<Registry> {
   try {
@@ -448,9 +449,7 @@ async function upgradeOneComponent(
   for (const file of regComponent.files) {
     fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
 
-    const targetPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
-    const ext = config.tsx ? '.tsx' : '.jsx';
-    const finalPath = targetPath.replace(/\.tsx?$/, ext);
+    const finalPath = componentFilePath(cwd, config, file.target);
     const installed = installedRecord?.files.find(f => f.target === file.target);
 
     // Upstream unchanged and the file is present → leave it alone entirely,

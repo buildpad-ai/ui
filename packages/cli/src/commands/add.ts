@@ -25,6 +25,7 @@ import {
 } from './transformer.js';
 import { verifySourceSha256 } from '../utils/checksum.js';
 import { renderComponentsIndex } from '../utils/components-index.js';
+import { componentFilePath, sourceRoot } from '../utils/paths.js';
 import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
 import { validate } from './validate.js';
@@ -524,15 +525,24 @@ export function getInstalledStaleness(
  * True when every file recorded for the installed component is either missing
  * on disk or byte-identical (modulo origin header / line endings) to what the
  * CLI originally wrote — i.e. re-copying cannot destroy any user edits.
+ *
+ * Looks where copyComponent writes: under src/ for `srcDir` projects, with the
+ * project's extension (a `.ts` target is written as `.tsx`). A copy at the
+ * literal target path (an older CLI's) must match too.
  */
 export function isInstallPristine(componentName: string, config: Config, cwd: string): boolean {
   const record = config.components?.[componentName];
   if (!record?.files?.length) return false; // no manifest — can't verify, don't touch
   for (const file of record.files) {
-    const abs = path.join(cwd, file.target);
-    if (!fs.existsSync(abs)) continue; // missing → nothing to lose by re-copying
-    const content = fs.readFileSync(abs, 'utf-8');
-    if (hashTransformed(content) !== file.sha256) return false;
+    const candidates = new Set([
+      componentFilePath(cwd, config, file.target),
+      path.join(sourceRoot(cwd, config), file.target),
+    ]);
+    for (const abs of candidates) {
+      if (!fs.existsSync(abs)) continue; // missing → nothing to lose by re-copying
+      const content = fs.readFileSync(abs, 'utf-8');
+      if (hashTransformed(content) !== file.sha256) return false;
+    }
   }
   return true;
 }
@@ -695,10 +705,8 @@ async function copyComponent(
 
   // Copy component files
   for (const file of component.files) {
-    const targetPath = path.join(
-      config.srcDir ? path.join(cwd, 'src') : cwd,
-      file.target
-    );
+    // Component .ts/.tsx targets take the project's extension (see componentFilePath).
+    const finalPath = componentFilePath(cwd, config, file.target);
 
     if (!(await sourceFileExists(file.source))) {
       spinner.warn(`Source not found: ${file.source}`);
@@ -734,12 +742,8 @@ async function copyComponent(
     // Add origin header for maintainability
     content = addOriginHeader(content, component.name, sourcePackage, release);
 
-    // Ensure directory exists
-    await fs.ensureDir(path.dirname(targetPath));
-    
     // Write transformed file
-    const ext = config.tsx ? '.tsx' : '.jsx';
-    const finalPath = targetPath.replace(/\.tsx?$/, ext);
+    await fs.ensureDir(path.dirname(finalPath));
     await fs.writeFile(finalPath, content);
 
     // v3: record the upstream hash, the local hash, the ref, and the state.
