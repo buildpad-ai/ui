@@ -18,6 +18,19 @@ vi.mock('node:child_process', async (importOriginal) => ({
 
 const { handleCallToolRequest } = await import('../src/index.js');
 const { getAllComponents, getRegistry } = await import('../src/registry.js');
+const { hashSource } = await import('../src/sources.js');
+
+const MCP_VERSION = (JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'),
+) as { version: string }).version;
+
+/**
+ * The registry's sourceSha256 for one lib module's target. Looked up per
+ * module: two modules can write the same target from different sources.
+ */
+function libHash(module: string, target: string): string | undefined {
+  return getRegistry().lib[module]?.files?.find(f => f.target === target)?.sourceSha256;
+}
 
 function call(name: string, args?: unknown) {
   return handleCallToolRequest({ params: { name, arguments: args } });
@@ -60,12 +73,20 @@ describe('handleCallToolRequest — read-only registry tools', () => {
       .rejects.toThrow('Component not found');
   });
 
-  test('get_component returns sources for a real component', async () => {
+  test('get_component returns every source of a real component, matching the registry hashes', async () => {
     const [first] = getAllComponents();
-    const result = JSON.parse(firstText(await call('get_component', { name: first.name })));
+    const raw = await call('get_component', { name: first.name });
+    expect(raw).not.toHaveProperty('isError');
+    const result = JSON.parse(firstText(raw));
     expect(result.name).toBe(first.name);
-    expect(result.allSources).toBeDefined();
-    expect(result.installCommand).toContain(first.name);
+    expect(Object.keys(result.allSources)).toEqual(first.files.map(f => f.target));
+    for (const f of first.files) {
+      expect(hashSource(result.allSources[f.target])).toBe(f.sourceSha256);
+    }
+    // The primary source is the first file, read once.
+    expect(result.source).toBe(result.allSources[first.files[0].target]);
+    expect(result.installCommand).toBe(`npx @buildpad/cli add ${first.name}`);
+    expect(JSON.stringify(result)).not.toMatch(/NOT on npm|buildpad-ui|--project/);
   });
 
   test('list_packages returns the static package metadata list', async () => {
@@ -82,7 +103,8 @@ describe('handleCallToolRequest — read-only registry tools', () => {
   test('get_usage_example returns a code sample for a real component', async () => {
     const [first] = getAllComponents();
     const text = firstText(await call('get_usage_example', { component: first.name }));
-    expect(text).toContain(`pnpm cli add ${first.name}`);
+    expect(text).toContain(`npx @buildpad/cli add ${first.name}`);
+    expect(text).not.toMatch(/buildpad-ui|pnpm cli|--project/);
   });
 
   test('get_usage_example throws when no component name is given', async () => {
@@ -105,17 +127,33 @@ describe('handleCallToolRequest — read-only registry tools', () => {
 
   test('get_install_command builds an --all command', async () => {
     const text = firstText(await call('get_install_command', { all: true }));
-    expect(text).toContain('--all --project');
+    expect(text).toContain('npx @buildpad/cli add --all');
+    expect(text).not.toMatch(/NOT published|buildpad-ui|--project/);
   });
 
   test('get_install_command builds a named-components command', async () => {
     const text = firstText(await call('get_install_command', { components: ['demo', 'input'] }));
-    expect(text).toContain('demo input --project');
+    expect(text).toContain('npx @buildpad/cli add demo input');
   });
 
   test('get_copy_own_info returns the distribution-model explainer', async () => {
     const text = firstText(await call('get_copy_own_info'));
     expect(text).toContain('Copy & Own');
+    expect(text).toContain('npx @buildpad/cli init');
+    expect(text).not.toMatch(/NOT published|clone|buildpad-ui|--project/);
+  });
+
+  test('get_install_command with no selection explains the npx CLI', async () => {
+    const text = firstText(await call('get_install_command', {}));
+    expect(text).toContain('npx @buildpad/cli add --all');
+    expect(text).not.toMatch(/NOT published|clone|buildpad-ui/);
+  });
+
+  test('generate_form and generate_interface point at the published CLI', async () => {
+    const form = firstText(await call('generate_form', { collection: 'articles' }));
+    expect(form).toContain('npx @buildpad/cli add collection-form');
+    const iface = firstText(await call('generate_interface', { type: 'toggle', field: 'x' }));
+    expect(iface).toContain('npx @buildpad/cli add toggle');
   });
 
   test('get_rbac_pattern returns steps for a known pattern', async () => {
@@ -201,6 +239,9 @@ describe('handleCallToolRequest — get_component with a lib module name', () =>
     const result = JSON.parse(firstText(await call('get_component', { name: libName })));
     expect(result.type).toBe('lib-module');
     expect(result.name).toBe(libName);
+    const files = registry.lib[libName].files ?? [];
+    expect(Object.keys(result.allSources)).toHaveLength(files.length);
+    for (const f of files) expect(hashSource(result.allSources[f.target])).toBe(f.sourceSha256);
   });
 });
 
@@ -209,8 +250,14 @@ describe('handleCallToolRequest — copy_component', () => {
     const [first] = getAllComponents();
     const result = JSON.parse(firstText(await call('copy_component', { name: first.name, includeLib: false })));
     expect(result.component).toBe(first.name);
-    expect(Array.isArray(result.files)).toBe(true);
+    expect(result.files.map((f: { path: string }) => f.path)).toEqual(first.files.map(f => f.target));
+    for (const [i, f] of first.files.entries()) {
+      expect(hashSource(result.files[i].content)).toBe(f.sourceSha256);
+    }
+    expect(result.libFiles).toBeUndefined();
     expect(result.peerDependencies).toEqual(first.dependencies);
+    expect(result.cliCommand).toBe(`npx @buildpad/cli add ${first.name}`);
+    expect(result.instructions).not.toMatch(/NOT published|buildpad-ui|--project/);
   });
 
   test('resolves internal lib dependencies transitively when includeLib is true', async () => {
@@ -221,7 +268,32 @@ describe('handleCallToolRequest — copy_component', () => {
     const result = JSON.parse(firstText(await call('copy_component', { name: withDeps.name, includeLib: true })));
     expect(result.libFiles).toBeDefined();
     expect(result.libFiles.some((f: { module: string }) => withDeps.internalDependencies!.includes(f.module))).toBe(true);
-    void registry;
+
+    // Every lib module reachable through internalDependencies is included,
+    // as the CLI's add would install it.
+    const expected = new Set<string>();
+    const walk = (n: string) => {
+      if (expected.has(n) || !registry.lib[n]) return;
+      expected.add(n);
+      for (const d of registry.lib[n].internalDependencies ?? []) walk(d);
+    };
+    for (const d of withDeps.internalDependencies) walk(d);
+    expect(new Set(result.libFiles.map((f: { module: string }) => f.module))).toEqual(expected);
+
+    for (const f of result.libFiles as Array<{ path: string; content: string; module: string }>) {
+      expect(f.content.length).toBeGreaterThan(0);
+      expect(hashSource(f.content)).toBe(libHash(f.module, f.path));
+    }
+  });
+
+  test('returns every file of a lib module and its lib dependencies', async () => {
+    const registry = getRegistry();
+    const [libName, mod] = Object.entries(registry.lib).find(([, m]) => m.internalDependencies?.length)!;
+    const result = JSON.parse(firstText(await call('copy_component', { name: libName })));
+    expect(result.type).toBe('lib-module');
+    const own = (result.files as Array<{ module: string }>).filter(f => f.module === libName);
+    expect(own).toHaveLength(mod.files!.length);
+    expect(result.installCommand).toBe(`npx @buildpad/cli add ${libName}`);
   });
 
   test('throws when the name matches neither a component nor a lib module', async () => {
@@ -308,20 +380,31 @@ describe('handleCallToolRequest — apply_upgrade', () => {
     await expect(call('apply_upgrade', { projectPath: tmpdir })).rejects.toThrow('buildpad.json not found');
   });
 
-  test('invokes the CLI via spawnSync and reports its result', async () => {
+  test('invokes the CLI pinned to this server\'s version via spawnSync and reports its result', async () => {
     spawnSyncMock.mockReturnValue({
       status: 0,
       stdout: 'upgraded 1 component',
       stderr: '',
     });
 
-    const result = JSON.parse(firstText(await call('apply_upgrade', { projectPath: tmpdir, components: ['demo'] })));
+    const result = JSON.parse(firstText(await call('apply_upgrade', { projectPath: tmpdir, components: ['input'] })));
 
     expect(result.success).toBe(true);
     expect(result.stdout).toContain('upgraded');
+    expect(result.cliVersion).toBe(MCP_VERSION);
     expect(spawnSyncMock).toHaveBeenCalledWith(
       'npx',
-      expect.arrayContaining(['@buildpad/cli', 'upgrade', 'demo']),
+      ['--yes', `@buildpad/cli@${MCP_VERSION}`, 'upgrade', '--cwd', tmpdir, '--strategy', 'new-file', '--', 'input'],
+      expect.objectContaining({ cwd: tmpdir }),
+    );
+  });
+
+  test('with no components it upgrades everything installed, still pinned', async () => {
+    spawnSyncMock.mockReturnValue({ status: 0, stdout: '', stderr: '' });
+    await call('apply_upgrade', { projectPath: tmpdir, strategy: 'three-way' });
+    expect(spawnSyncMock).toHaveBeenCalledWith(
+      'npx',
+      ['--yes', `@buildpad/cli@${MCP_VERSION}`, 'upgrade', '--cwd', tmpdir, '--strategy', 'three-way', '--all'],
       expect.any(Object),
     );
   });

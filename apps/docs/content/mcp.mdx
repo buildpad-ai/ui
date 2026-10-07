@@ -29,7 +29,7 @@ Restart your MCP client and try the following prompts:
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open protocol that enables AI assistants to securely connect to external data sources and tools. With the Buildpad MCP, your AI assistant gains direct access to:
 
 - **Browse Components** — List all available components, their categories, and dependencies from the registry
-- **Read Source Code** — Access full component source code and documentation
+- **Read Source Code** — Access full component and lib-module source code. The sources ship inside the MCP package, so this works offline
 - **Install with Natural Language** — Add components using simple conversational prompts like "add a collection form"
 - **Generate Code** — Generate forms, interfaces, and usage examples
 - **RBAC Patterns** — Get role-based access control setup patterns for DaaS applications
@@ -38,10 +38,14 @@ Restart your MCP client and try the following prompts:
 
 The MCP acts as a bridge between your AI assistant, the component registry, and the Buildpad CLI.
 
-1. **Registry Connection** — MCP connects to the Buildpad component registry (`registry.json`)
+1. **Registry** — Each MCP release embeds the Buildpad component registry (`registry.json`) of its release. It also bundles every source file that the registry lists, checked against the registry's hashes at build time
 2. **Natural Language** — You describe what you need in plain English
 3. **AI Processing** — The assistant translates your request into registry commands
-4. **Component Delivery** — Source code is fetched and installed in your project via the CLI
+4. **Component Delivery** — The CLI installs the components in your project and rewrites their imports to your paths
+
+<Callout type="info">
+  The source tools (`get_component`, `copy_component` and the component resources) return the files exactly as published, with `@buildpad/*` imports. If a file cannot be read, the tool returns an error that lists the `missingSources`. It never returns an empty result. To install a component with its imports rewritten for your project, use `npx @buildpad/cli add <name>`.
+</Callout>
 
 ## Available Tools
 
@@ -58,11 +62,15 @@ The MCP acts as a bridge between your AI assistant, the component registry, and 
 | `get_copy_own_info` | Get detailed information about the Copy & Own distribution model |
 | `get_rbac_pattern` | Get RBAC setup patterns (own_items, role_hierarchy, public_read, multi_tenant, etc.) |
 | `list_lib_modules` | List available CLI lib modules (e.g. external-oauth, supabase-auth, api-routes) |
-| `list_outdated` | List installed components/lib modules that have newer registry versions |
+| `list_outdated` | List installed components and lib modules whose upstream source changed since they were installed |
 | `get_package_versions` | Get the current registry version for each `@buildpad/*` package |
 | `get_component_changelog` | Get the changelog for a component between the installed and latest version |
-| `get_upgrade_plan` | Preview what an upgrade would change before applying it |
-| `apply_upgrade` | Apply an upgrade to installed components (honours the modification-safe strategy) |
+| `get_upgrade_plan` | Preview what an upgrade would change before applying it. Each file is `pristine`, `modified`, `missing`, `untracked` (on disk with no install hash: the CLI overwrites it whatever the strategy, so back up edits first) or `invalid-target` (outside the project or not a regular file; not read) |
+| `apply_upgrade` | Run `npx @buildpad/cli@<MCP version> upgrade` for the project (strategy: `overwrite`, `new-file` or `three-way`). Naming a component also upgrades the outdated lib modules it depends on |
+
+<Callout type="warning">
+  `apply_upgrade` runs the CLI release that matches the MCP's own version, so the upgrade applies the same registry that `get_upgrade_plan` showed. The tool refuses to run if the project, or an entry it would upgrade, was installed from a newer release, because that would downgrade it. A failed CLI run returns `isError: true`. In that case, update the MCP (`npx -y @buildpad/mcp@latest`). Upgrading everything (leave out `components`) is the safest choice.
+</Callout>
 
 ## Configuration
 
@@ -215,6 +223,14 @@ If the MCP isn't responding to prompts:
 2. **Restart MCP Client** — Restart your MCP client after configuration changes
 3. **Verify Installation** — Ensure `npx @buildpad/mcp@latest` is accessible
 4. **Check Network** — Confirm you can access npm for the npx command
+
+### Source Tools Return `missingSources`
+
+If `get_component` or `copy_component` returns an error with a `missingSources` list, the MCP package could not read its bundled sources. To fix this:
+
+1. Clear the npx cache: `npx clear-npx-cache`
+2. Reinstall the MCP: `npx -y @buildpad/mcp@latest`
+3. As an alternative, install the component with the CLI: `npx @buildpad/cli add <name>`
 
 ### No Tools or Prompts
 
