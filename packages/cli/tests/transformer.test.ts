@@ -14,10 +14,8 @@ import type { Config } from "../src/commands/init.js";
 import {
   addOriginHeader,
   extractOriginInfo,
-  hasBuildpadImports,
   normalizeImportPaths,
   toKebabCase,
-  toPascalCase,
   transformImports,
   transformIntraComponentImports,
   transformRelativeImports,
@@ -192,17 +190,6 @@ describe("toKebabCase", () => {
   });
 });
 
-describe("toPascalCase", () => {
-  test("converts kebab-case to PascalCase", () => {
-    expect(toPascalCase("input-block-editor")).toBe("InputBlockEditor");
-    expect(toPascalCase("file-image")).toBe("FileImage");
-  });
-
-  test("handles single word", () => {
-    expect(toPascalCase("input")).toBe("Input");
-  });
-});
-
 describe("transformVFormImports", () => {
   test("preserves types import in components folder", () => {
     const input = `import type { FormField } from '../types';`;
@@ -247,27 +234,6 @@ describe("transformRelativeImports", () => {
     );
     expect(result).toContain("./list-m2a/render-template");
     expect(result).not.toContain("../list-m2a/render-template");
-  });
-});
-
-describe("hasBuildpadImports", () => {
-  test("returns true for @buildpad imports", () => {
-    expect(hasBuildpadImports("import { X } from '@buildpad/types'")).toBe(
-      true,
-    );
-    expect(
-      hasBuildpadImports("import { X } from '@buildpad/services'"),
-    ).toBe(true);
-    expect(hasBuildpadImports("import { X } from '@buildpad/hooks'")).toBe(
-      true,
-    );
-  });
-
-  test("returns false for non-buildpad imports", () => {
-    expect(hasBuildpadImports("import React from 'react'")).toBe(false);
-    expect(hasBuildpadImports("import { Button } from '@mantine/core'")).toBe(
-      false,
-    );
   });
 });
 
@@ -470,9 +436,4 @@ describe("transformImports (@buildpad/ui-table)", () => {
     expect(result).toBe(`import { something } from '@/components/ui/utils';`);
   });
 
-  test("hasBuildpadImports detects @buildpad/ui-table", () => {
-    expect(
-      hasBuildpadImports(`import { VTable } from '@buildpad/ui-table';`),
-    ).toBe(true);
-  });
 });

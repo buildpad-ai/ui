@@ -16,14 +16,7 @@ import ts from 'typescript';
 import type { Config } from '../../src/commands/init.js';
 import { INIT_SKELETON_FILES } from '../../src/commands/init.js';
 import type { ComponentEntry, LibModule, Registry } from '../../src/resolver.js';
-import {
-  transformImports,
-  transformIntraComponentImports,
-  transformRelativeImports,
-  transformVFormImports,
-  addOriginHeader,
-  originHeaderApplies,
-} from '../../src/commands/transformer.js';
+import { transformRegistryFile } from '../../src/commands/transformer.js';
 import { collectExportedNames, renderComponentsIndex } from '../../src/utils/components-index.js';
 
 export const PACKAGES_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -74,32 +67,19 @@ export type TransformFn = (
 ) => string;
 
 /**
- * The install pipeline, statement for statement as `add` runs it:
- * copyComponent (intra → imports(target) → relative | vform → header) and
- * copyLibModule (imports → header when the target can carry a comment).
+ * The install pipeline: transformRegistryFile, the one transform `add`,
+ * `upgrade` and `migrate` share.
  */
-export const addPipeline: TransformFn = (raw, file, owner, registry, config) => {
-  if (owner.kind === 'component') {
-    const component = owner.entry;
-    let content = transformIntraComponentImports(raw, file.source, file.target, component.files);
-    content = transformImports(content, config, file.target);
-    const isVForm = component.name === 'vform' || file.target.includes('/vform/');
-    if (!isVForm) {
-      content = transformRelativeImports(content, file.source, file.target, config.aliases.components);
-    } else {
-      content = transformVFormImports(content, file.source, file.target);
-    }
-    return addOriginHeader(content, component.name, component.sourcePackage ?? '@buildpad/ui-interfaces', registry.version);
-  }
-  let content = transformImports(raw, config);
-  if (originHeaderApplies(file.target)) {
-    const label = file.single
-      ? owner.name
-      : `${owner.name}/${path.basename(file.source, path.extname(file.source))}`;
-    content = addOriginHeader(content, label, owner.entry.sourcePackage ?? '@buildpad/cli', registry.version);
-  }
-  return content;
-};
+export const addPipeline: TransformFn = (raw, file, owner, registry, config) =>
+  transformRegistryFile(
+    raw,
+    file,
+    owner.kind === 'component'
+      ? { kind: 'component', name: owner.name, files: owner.entry.files, sourcePackage: owner.entry.sourcePackage }
+      : { kind: 'lib', name: owner.name, sourcePackage: owner.entry.sourcePackage },
+    config,
+    registry.version,
+  );
 
 export interface CorpusFile {
   owner: Owner;

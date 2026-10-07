@@ -14,15 +14,7 @@ import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import prompts from 'prompts';
 import { type Config, type FileChecksum, loadConfig, saveConfig } from './init.js';
-import {
-  transformImports,
-  transformRelativeImports,
-  transformIntraComponentImports,
-  transformVFormImports,
-  addOriginHeader,
-  hashTransformed,
-  originHeaderApplies,
-} from './transformer.js';
+import { hashTransformed, transformRegistryFile, type RegistryFileOwner } from './transformer.js';
 import { verifySourceSha256 } from '../utils/checksum.js';
 import { renderComponentsIndex } from '../utils/components-index.js';
 import { componentFilePath, sourceRoot } from '../utils/paths.js';
@@ -256,6 +248,7 @@ export async function copyLibModule(
   const release = registry.version;
   const ref = getRecordedRef();
   const existingRecord = config.lib?.[moduleName];
+  const libOwner: RegistryFileOwner = { kind: 'lib', name: moduleName, sourcePackage: libSourcePackage };
 
   /**
    * Record for a file the install deliberately left alone (the adopt-once nav
@@ -284,10 +277,13 @@ export async function copyLibModule(
     if (await checkSource(libModule.path)) {
       let content = await readSource(libModule.path);
       verifySourceSha256(libModule.path, content, libModule.sourceSha256);
-      content = transformImports(content, config);
-      if (originHeaderApplies(libModule.target)) {
-        content = addOriginHeader(content, moduleName, libSourcePackage, release);
-      }
+      content = transformRegistryFile(
+        content,
+        { source: libModule.path, target: libModule.target, single: true },
+        libOwner,
+        config,
+        release
+      );
       await fs.ensureDir(path.dirname(targetPath));
       await fs.writeFile(targetPath, content);
       writtenFiles.push({
@@ -350,12 +346,7 @@ export async function copyLibModule(
       if (await checkSource(file.source)) {
         let content = await readSource(file.source);
         verifySourceSha256(file.source, content, file.sourceSha256);
-        content = transformImports(content, config);
-        // Extract filename for origin tracking (JSON etc. cannot carry a comment header)
-        const fileName = path.basename(file.source, path.extname(file.source));
-        if (originHeaderApplies(file.target)) {
-          content = addOriginHeader(content, `${moduleName}/${fileName}`, libSourcePackage, release);
-        }
+        content = transformRegistryFile(content, file, libOwner, config, release);
         await fs.ensureDir(path.dirname(targetPath));
         await fs.writeFile(targetPath, content);
         writtenFiles.push({
@@ -713,34 +704,16 @@ async function copyComponent(
       continue;
     }
 
-    // Read and transform
-    let content = await resolveSourceFile(file.source);
-    
-    // Transform intra-component relative imports using registry file mappings
-    // (must run BEFORE normalizeImportPaths to avoid partial/incorrect transforms)
-    content = transformIntraComponentImports(content, file.source, file.target, component.files);
-    
-    content = transformImports(content, config, file.target);
-    
-    // Transform relative imports for flattened folder structure
-    // Skip for VForm files — they keep their nested folder structure and
-    // transformIntraComponentImports already resolved their paths correctly.
-    if (!(component.name === 'vform' || file.target.includes('/vform/'))) {
-      content = transformRelativeImports(content, file.source, file.target, config.aliases.components);
-    }
-    
-    // Apply VForm-specific transformations for files in vform folder
-    if (component.name === 'vform' || file.target.includes('/vform/')) {
-      content = transformVFormImports(content, file.source, file.target);
-    }
-    
-    // The registry states the owning package; the release is the lockstep
-    // version the whole registry was built at.
+    // Read and transform (the one install transform — see transformRegistryFile)
     const sourcePackage = component.sourcePackage ?? '@buildpad/ui-interfaces';
     const release = registry.version;
-
-    // Add origin header for maintainability
-    content = addOriginHeader(content, component.name, sourcePackage, release);
+    const content = transformRegistryFile(
+      await resolveSourceFile(file.source),
+      file,
+      { kind: 'component', name: component.name, files: component.files, sourcePackage },
+      config,
+      release
+    );
 
     // Write transformed file
     await fs.ensureDir(path.dirname(finalPath));

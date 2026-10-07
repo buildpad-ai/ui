@@ -191,35 +191,67 @@ export function transformImports(content: string, config: Config, targetPath?: s
   return result;
 }
 
-/**
- * Transform internal component imports
- * e.g., import { CollectionList } from '@buildpad/ui-collections' 
- *    -> import { CollectionList } from '@/components/ui/collection-list'
- */
-export function transformComponentImports(
-  content: string,
-  _componentName: string,
-  config: Config
-): string {
-  const componentsAlias = config.aliases.components;
-  
-  // Handle default exports that reference other components
-  const componentImportPattern = new RegExp(
-    `from ['"]\\.\\.?\\/([^'"]+)['""]`,
-    'g'
-  );
-  
-  return content.replace(componentImportPattern, (match, importPath) => {
-    // If it's a relative import to another component file, transform it
-    if (importPath.startsWith('..')) {
-      // Extract component folder name and convert to kebab-case
-      const parts = importPath.split('/');
-      const componentFolder = parts[parts.length - 1] || parts[parts.length - 2];
-      const kebabName = toKebabCase(componentFolder);
-      return `from '${componentsAlias}/${kebabName}'`;
+/** A registry file as its entry lists it. */
+export interface RegistryFile {
+  source: string;
+  target: string;
+  /**
+   * A lib module's legacy single `path`/`target` pair: `add` names the module
+   * alone in its origin header (multi-file modules name `<module>/<file>`).
+   */
+  single?: boolean;
+}
+
+/** The registry entry that ships a file. */
+export type RegistryFileOwner =
+  | {
+      kind: 'component';
+      name: string;
+      /** Every file of the component — relative imports between them are re-pointed at their targets. */
+      files: Array<{ source: string; target: string }>;
+      sourcePackage?: string;
     }
-    return match;
-  });
+  | { kind: 'lib'; name: string; sourcePackage?: string };
+
+/**
+ * Transform one registry file's raw source into exactly what the consumer
+ * gets. The one install transform: `add` writes it, `upgrade` writes it and
+ * re-runs it on the old source for the three-way-merge base, and `migrate`
+ * hashes it — so all of them must agree byte for byte.
+ *
+ * Components: intra-component imports → @buildpad/* rewrite and casing
+ * normalisation (target-aware) → flattened sibling imports, or VForm's own
+ * rules for files that keep their folder → origin header.
+ * Lib modules: @buildpad/* rewrite and casing normalisation → origin header,
+ * unless the target cannot carry a comment (JSON, Markdown, …).
+ *
+ * @param version - release recorded in the origin header
+ */
+export function transformRegistryFile(
+  content: string,
+  file: RegistryFile,
+  owner: RegistryFileOwner,
+  config: Config,
+  version: string
+): string {
+  if (owner.kind === 'component') {
+    const keepsFolder = owner.name === 'vform' || file.target.includes('/vform/');
+    // Intra-component imports first: the passes below re-match relative
+    // paths, and must see them already pointed at their targets.
+    let result = transformIntraComponentImports(content, file.source, file.target, owner.files);
+    result = transformImports(result, config, file.target);
+    result = keepsFolder
+      ? transformVFormImports(result, file.source, file.target)
+      : transformRelativeImports(result, file.source, file.target, config.aliases.components);
+    return addOriginHeader(result, owner.name, owner.sourcePackage ?? '@buildpad/ui-interfaces', version);
+  }
+
+  const result = transformImports(content, config);
+  if (!originHeaderApplies(file.target)) return result;
+  const label = file.single
+    ? owner.name
+    : `${owner.name}/${path.basename(file.source, path.extname(file.source))}`;
+  return addOriginHeader(result, label, owner.sourcePackage ?? '@buildpad/cli', version);
 }
 
 /**
@@ -230,16 +262,6 @@ export function toKebabCase(str: string): string {
     .replace(/([a-z])([A-Z])/g, '$1-$2')
     .replace(/[\s_]+/g, '-')
     .toLowerCase();
-}
-
-/**
- * Convert kebab-case to PascalCase
- */
-export function toPascalCase(str: string): string {
-  return str
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join('');
 }
 
 /**
@@ -401,13 +423,6 @@ export function transformIntraComponentImports(
 }
 
 /**
- * Check if content has @buildpad/* imports
- */
-export function hasBuildpadImports(content: string): boolean {
-  return /@buildpad\/(types|services|hooks|utils|ui-interfaces|ui-collections|ui-files|ui-form|ui-table)/.test(content);
-}
-
-/**
  * Known relative import mappings for ui-interfaces components
  * Maps source folder imports to target file imports when flattening structure
  */
@@ -530,56 +545,6 @@ export function transformRelativeImports(
   });
 
   return result;
-}
-
-/**
- * Extract which @buildpad/* packages are imported
- */
-export function extractBuildpadDependencies(content: string): string[] {
-  const deps: Set<string> = new Set();
-  
-  const patterns = [
-    /@buildpad\/types/g,
-    /@buildpad\/services/g,
-    /@buildpad\/hooks/g,
-    /@buildpad\/ui-interfaces/g,
-    /@buildpad\/ui-collections/g,
-  ];
-
-  for (const pattern of patterns) {
-    if (pattern.test(content)) {
-      const match = /@buildpad\/([^/]+)/.exec(pattern.source);
-      if (match) {
-        // Map package names to lib names
-        const libName = match[1].replace('ui-', '');
-        if (['types', 'services', 'hooks'].includes(libName)) {
-          deps.add(libName);
-        }
-      }
-    }
-  }
-
-  return Array.from(deps);
-}
-
-/**
- * Add "use client" directive if not present (for Next.js App Router)
- */
-export function ensureUseClient(content: string): string {
-  const trimmed = content.trim();
-  if (trimmed.startsWith('"use client"') || trimmed.startsWith("'use client'")) {
-    return content;
-  }
-  return `"use client";\n\n${content}`;
-}
-
-/**
- * Remove "use client" directive if present
- */
-export function removeUseClient(content: string): string {
-  return content
-    .replace(/^["']use client["'];\s*\n*/m, '')
-    .trim();
 }
 
 /**
