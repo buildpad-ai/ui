@@ -20,7 +20,7 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       include: ['src/versioning.ts', 'src/index.ts', 'src/sources.ts', 'src/bundle-sources.ts', 'src/upgrade.ts'],
       reportOnFailure: true,
-      // Floors just under the measured coverage (77.13 / 88.86 / 98.33 / 77.13
+      // Floors just under the measured coverage (77.48 / 89.32 / 98.36 / 77.48
       // after the source-loading and upgrade-tool tests); raise them as tests
       // are added.
       thresholds: { statements: 76, branches: 87, functions: 97, lines: 76 },
