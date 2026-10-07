@@ -30,7 +30,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const pkgDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const repoRoot = path.resolve(pkgDir, '../..');
+// Real paths on both sides, so a symlinked checkout or temp dir compares correctly.
+const repoRoot = fs.realpathSync(path.resolve(pkgDir, '../..'));
 const registry = JSON.parse(fs.readFileSync(path.join(pkgDir, '../registry.json'), 'utf-8'));
 const isWindows = process.platform === 'win32';
 const npm = isWindows ? 'npm.cmd' : 'npm';
@@ -76,12 +77,19 @@ function matchesRegistry(files, label, entryName) {
 
 // ─── 1. Pack outside the repository ──────────────────────────────
 
+/** True when `child` is `parent` or inside it. Both must be real paths. */
+function isInside(parent, child) {
+  const rel = path.relative(parent, child);
+  return !(rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel));
+}
+
+// Check before creating anything, so a refused run leaves nothing behind.
 const tmpBase = fs.realpathSync(process.env.SMOKE_TMPDIR ?? os.tmpdir());
-const work = fs.mkdtempSync(path.join(tmpBase, 'buildpad-mcp-smoke-'));
-if (!path.relative(repoRoot, work).startsWith('..')) {
-  console.error(`Temp directory ${work} is inside the repository; set SMOKE_TMPDIR to a directory outside it.`);
+if (isInside(repoRoot, tmpBase)) {
+  console.error(`Temp directory ${tmpBase} is inside the repository; set SMOKE_TMPDIR to a directory outside it.`);
   process.exit(1);
 }
+const work = fs.mkdtempSync(path.join(tmpBase, 'buildpad-mcp-smoke-'));
 
 let server;
 function cleanup() {
