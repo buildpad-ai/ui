@@ -120,6 +120,16 @@ describe('INTERFACE_MANIFEST invariants', () => {
     expect(flaggedWithAliases).toEqual([]);
   });
 
+  it('exactly the entries with a relation are non-flat relational', () => {
+    // Kept as two fields on purpose (see InterfaceFlags.nonFlatRelational);
+    // a new relation-list entry must still get both, or CollectionForm and
+    // CollectionList would request it as a bare column.
+    for (const e of manifest) {
+      expect([e.id, !!e.flags?.nonFlatRelational]).toEqual([e.id, !!e.relation]);
+    }
+    expect(manifest.filter((e) => e.relation).map((e) => e.id)).toEqual(['list-o2m', 'list-m2m', 'list-m2a']);
+  });
+
   it('declares only registry field types', () => {
     const valid = new Set([
       'string', 'text', 'boolean', 'integer', 'bigInteger', 'float', 'decimal', 'timestamp', 'dateTime', 'date',

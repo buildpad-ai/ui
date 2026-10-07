@@ -1,9 +1,9 @@
 /**
  * Interface manifest
  *
- * The single table of field-interface identity. Every interface id the
- * system knows has exactly one entry, which records what used to be spread
- * over hand-kept tables in four key spaces:
+ * One table of field-interface identity. Every interface id the system
+ * knows has exactly one entry, which records what used to be spread over
+ * hand-kept tables in four key spaces:
  *
  *   - `id` — the renderer id: what `getFieldInterface` returns as `type`, and
  *     what the form builder stores in `meta.interface` (`tags`, `map`).
@@ -12,16 +12,30 @@
  *     data (`textarea`, `wysiwyg`, `xtremax-workflow-button`).
  *   - `registryComponent` — the registry entry `buildpad add` installs
  *     (`tags`, `color`, `divider`).
- *   - `exportName` — the component export VForm renders (`Tags`, `Color`).
+ *   - `exportName` — the component export VForm renders (`Tags`, `Color`);
+ *     a copy for now, see below.
  *
  * Plus field-type compatibility, the registry group, behaviour flags, the
  * form builder's picker descriptor and how VForm loads the component.
  *
  * DATA ONLY. No React and no component references: a consumer installs only
- * the components it uses, so components are named, never imported. The
- * tables that used to be hand-kept are derived from this one under their old
- * names (`REGISTRY_INTERFACE_ALIASES`, `PROVISIONABLE_INTERFACES`,
- * `CHOICE_INTERFACES`, the concealing set, `isPresentationField`, …).
+ * the components it uses, so components are named, never imported.
+ *
+ * WHAT READS IT (Phase 1). Derived from this table at runtime: the aliases
+ * (`normalizeInterfaceId`, `REGISTRY_INTERFACE_ALIASES`), the flags (the
+ * concealing set, `CHOICE_INTERFACES`, `isPresentationField`, the
+ * ui-collections / JunctionItemForm / relation-hook predicates), `relation`
+ * and `provision` minus `labelKey` (`PROVISIONABLE_INTERFACES`). The other
+ * fields — `exportName`, `registryComponent`, `types`, `group`,
+ * `typeLiterals`, `flags.csvMultiValue`, `provision.labelKey`, `loading`,
+ * `fallbackHeight` — are COPIES of tables that are still kept by hand (each
+ * field's JSDoc names its table). Nothing reads them at runtime yet; editing
+ * one changes no behaviour and only fails the parity checks in
+ * packages/cli/tests/interface-tables.test.ts. Phase 2 makes those tables
+ * read the manifest: FormFieldInterface (exportName, typeLiterals,
+ * csvMultiValue, loading, fallbackHeight) in the lazy-loading step; the
+ * registry interface blocks, CLI add/info, the MCP server and FieldPalette
+ * (registryComponent, types, group, labelKey) in manifest Phase 2.
  *
  * CURRENT BEHAVIOUR, EXACTLY. This table describes how stored records render
  * today, including the known divergences; changing one changes how existing
@@ -95,11 +109,20 @@ export interface InterfaceFlags {
   /**
    * VForm hands it an array for a csv column's comma-separated string and
    * writes a string back (FormFieldInterface's multi-select normalisation).
+   * COPY of FormFieldInterface's MULTI_SELECT_INTERFACE_TYPES, not read at
+   * runtime yet.
    */
   readonly csvMultiValue?: true;
   /**
    * A relational field with no flat column of its own: it cannot be requested
-   * as a bare name in a `fields=` fetch (ui-collections' NON_FLAT checks).
+   * as a bare name in a `fields=` fetch (isNonFlatRelationalField, used by
+   * CollectionForm and CollectionList).
+   *
+   * Exactly the entries with a `relation` carry it (a manifest test enforces
+   * this), but the two are kept apart on purpose: `relation` says which
+   * relation hook manages the field, this says how the collection views
+   * fetch it. A future relational interface that backs a real column (as
+   * select-dropdown-m2o does) would have one without the other.
    */
   readonly nonFlatRelational?: true;
   /** Saves its own value (junction rows); the collection form leaves it out of the item save. */
@@ -112,7 +135,11 @@ export interface ProvisionableDescriptor {
   readonly label: string;
   /** Picker group. */
   readonly group: ProvisionableInterfaceGroup;
-  /** Key of the label in the `forms.interfaceCatalog.label` dictionary. */
+  /**
+   * Key of the label in the `forms.interfaceCatalog.label` dictionary.
+   * COPY of the key FieldPalette derives by camel-casing the id
+   * (catalogLabelKey); FieldPalette reads it from here in manifest Phase 2.
+   */
   readonly labelKey: keyof FormsTranslations['interfaceCatalog']['label'];
 }
 
@@ -131,11 +158,19 @@ interface InterfaceManifestEntryBase {
   /** Renderer id (see the module note). */
   readonly id: string;
   readonly aliases?: InterfaceAliases;
-  /** Registry component that ships the interface, or null when none does. */
+  /**
+   * Registry component that ships the interface, or null when none does.
+   * COPY of the registry.template.json entry that carries this interface
+   * block (and of the CLI add/info and MCP name tables).
+   */
   readonly registryComponent: string | null;
-  /** Compatible field types, as the registry declares them. Order matters: the form builder provisions `types[0]`. */
+  /**
+   * Compatible field types, as the registry declares them. Order matters: the
+   * form builder provisions `types[0]` (PROVISIONABLE_INTERFACES reads this).
+   * Otherwise a COPY of the registry interface block's `types`.
+   */
   readonly types: readonly FieldType[];
-  /** Registry interface group. */
+  /** Registry interface group. COPY of the registry interface block's `group`. */
   readonly group: InterfaceGroup;
   readonly flags?: InterfaceFlags;
   readonly relation?: InterfaceRelationInfo;
@@ -144,17 +179,27 @@ interface InterfaceManifestEntryBase {
 /** An interface `getFieldInterface` resolves and VForm renders. */
 export interface RenderedInterfaceEntry extends InterfaceManifestEntryBase {
   readonly renders: true;
-  /** Export name of the component VForm renders. */
+  /**
+   * Export name of the component VForm renders. COPY of FormFieldInterface's
+   * interfaceComponentMap / relationalFullComponentMap value; VForm reads it
+   * from here once the lazy-loading step rewrites FormFieldInterface.
+   */
   readonly exportName: string;
   /**
    * Deprecated `InterfaceType` literals that name this interface. The
-   * renderer never returns them; VForm still maps them to `exportName`.
+   * renderer never returns them; VForm still maps them to `exportName`
+   * (COPY of those keys of FormFieldInterface's maps).
    */
   readonly typeLiterals?: readonly string[];
   /** Present when the form builder can put this interface on a real column. */
   readonly provision?: ProvisionableDescriptor;
+  /** How VForm will load the component; read by the lazy-loading step, unused before it. */
   readonly loading: InterfaceLoading;
-  /** Skeleton height (px) while the component loads; `DEFAULT_INTERFACE_FALLBACK_HEIGHT` if unset. */
+  /**
+   * Skeleton height (px) while the component loads;
+   * `DEFAULT_INTERFACE_FALLBACK_HEIGHT` if unset. Read by the lazy-loading
+   * step, unused before it.
+   */
   readonly fallbackHeight?: number;
 }
 
