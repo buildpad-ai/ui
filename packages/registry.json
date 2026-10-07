@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T13:29:09.131Z",
+  "generatedAt": "2026-10-07T13:30:01.415Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1038,7 +1038,7 @@
         {
           "source": "cli/templates/app/content/layout.tsx",
           "target": "app/[lang]/content/layout.tsx",
-          "sourceSha256": "56bed14a31da50a38c464756bb1ad4e553fef84a86ac237d0aa11f2fedcee38b"
+          "sourceSha256": "9b847c0d67a6ff16d69fb05e412f7e29498c9e2d074beec841fc00404fe90821"
         },
         {
           "source": "cli/templates/app/content/page.tsx",
@@ -2499,7 +2499,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "select-dropdown-m2o",
@@ -2604,7 +2604,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "list-m2a",
@@ -3152,7 +3152,7 @@
       ],
       "sourcePackage": "@buildpad/ui-form",
       "version": "2.6.0",
-      "lastChangedIn": "2.5.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "collection-form",
@@ -3911,7 +3911,7 @@
       ],
       "sourcePackage": "@buildpad/ui-forms",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     }
   ],
   "categories": [

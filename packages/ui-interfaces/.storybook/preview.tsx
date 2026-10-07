@@ -4,6 +4,11 @@ import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { enterpriseTheme } from '../../storybook-enterprise-theme';
 import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../storybook-i18n';
+// Relational interfaces (ListO2M/M2M/M2A, relational fields in a standalone
+// VForm) read CollectionForm / CollectionList / VForm from a provider. Imported
+// by relative path on purpose: a package.json edge to @buildpad/ui-collections
+// would re-create the ui-form ⇄ ui-interfaces ⇄ ui-collections dependency cycle.
+import { CollectionsRelationalProvider } from '../../ui-collections/src/CollectionForm';
 
 // Mantine CSS
 import '@mantine/core/styles.css';
@@ -34,9 +39,11 @@ const preview: Preview = {
     (Story) => (
       <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
         <Notifications position="top-right" />
-        <div className="sb-enterprise-wrapper sb-interfaces-pad">
-          <Story />
-        </div>
+        <CollectionsRelationalProvider>
+          <div className="sb-enterprise-wrapper sb-interfaces-pad">
+            <Story />
+          </div>
+        </CollectionsRelationalProvider>
       </MantineProvider>
     ),
     withBuildpadI18n,

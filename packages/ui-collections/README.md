@@ -12,6 +12,7 @@ Dynamic collection components for Buildpad projects. Includes CRUD forms, data t
 | `ContentNavigation` | Hierarchical sidebar navigation for collections |
 | `FilterPanel` | Field-type-aware filter builder for collection queries |
 | `SaveOptions` | Dropdown menu with save actions (save & stay, save & add new, etc.) |
+| `CollectionsRelationalProvider` | Supplies CollectionForm / CollectionList / VForm to relational interfaces used outside a CollectionForm |
 
 ## Architecture
 
@@ -114,6 +115,30 @@ function ProductList() {
   );
 }
 ```
+
+### CollectionsRelationalProvider
+
+Relational interfaces (`ListO2M`, `ListM2M`, `ListM2A`) render `CollectionForm`,
+`CollectionList` and `VForm` in their dialogs but cannot import them (that
+would be a package cycle); they read them from a relational UI context.
+`CollectionForm` provides it for every field it renders — a provider above it
+(e.g. this one with custom `components`) still wins. Wrap pages that render
+relational interfaces or a plain `VForm` with relational fields on their own:
+
+```tsx
+import { CollectionsRelationalProvider } from '@buildpad/ui-collections';
+
+<CollectionsRelationalProvider>
+  <ListM2M collection="articles" field="tags" primaryKey={id} />
+</CollectionsRelationalProvider>
+
+// Replace one built-in (the others stay):
+<CollectionsRelationalProvider components={{ CollectionList: MyPicker }}>…</CollectionsRelationalProvider>
+```
+
+`CollectionList` is loaded lazily (React.lazy); each relational dialog wraps it
+in its own Suspense boundary. The CLI's `/content` layout template already
+wraps its pages in this provider.
 
 ### ContentLayout
 

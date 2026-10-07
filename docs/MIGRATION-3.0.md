@@ -95,3 +95,72 @@ Deprecated (still exported):
   `InterfaceRegistry.getGrouped(true)` now returns 8 groups instead of 7,
   and includes interfaces registered in the `system` group, which it used
   to drop. `getInterfacesForApi` names that group `"System"`.
+
+## Relational dialogs come from a provider
+
+In 2.6, `ListO2M`, `ListM2M` and `ListM2A` imported `CollectionForm` and
+`CollectionList` from the components barrel, and `JunctionItemForm` imported
+`VForm`. That made a package cycle (ui-form → ui-interfaces → ui-collections →
+ui-form). In 3.0 they read those components from a React context instead.
+
+New files (written on upgrade, nothing to do):
+
+- `lib/buildpad/services/relational-ui-context.tsx` — `RelationalUIProvider`,
+  `useRelationalUI` and the slot types. The components import it by its deep
+  path, so an edited services barrel cannot break them; the barrel
+  (`lib/buildpad/services/index.ts`) also re-exports it.
+- `components/ui/list-m2a/relational-slots.tsx` — the shared loading boundary
+  and missing-provider alert.
+- `lib/buildpad/i18n/namespaces/interfaces/relational-ui.ts` — the alert and
+  loading strings (`interfaces.relationalUI`, English and Indonesian).
+
+What you get without changing anything:
+
+- Every relational field inside a **`CollectionForm`** works as before:
+  `CollectionForm` supplies `CollectionForm`, `CollectionList` and `VForm` to the
+  fields it renders. That covers the generated `/content` pages,
+  `DynamicForm` and `FormPreview`.
+- **`VForm`** supplies itself (`FormRenderer`), so `ListM2A`'s item form works
+  in any VForm.
+- `collection-form` now depends on `collection-list` (it loads the picker
+  lazily from `./collection-list`). If your project has `collection-form` but
+  not `collection-list`, the build fails on that import until you add it:
+  `npx @buildpad/cli@3 add collection-list`.
+
+What you must do:
+
+- **A standalone `<ListO2M>`, `<ListM2M>` or `<ListM2A>`, or a plain `<VForm>`
+  with relational fields** (outside any `CollectionForm`) now needs a provider.
+  Wrap the page — or your authenticated layout, if `collection-form` is
+  installed — in `CollectionsRelationalProvider`:
+
+  ```tsx
+  import { CollectionsRelationalProvider } from '@/components/ui/collection-form';
+
+  <CollectionsRelationalProvider>{children}</CollectionsRelationalProvider>
+  ```
+
+  The new `/content` layout template already does this. Without a provider the
+  field still lists, removes and reorders items, but shows an alert ("Related
+  items cannot be edited here") and hides create, select and edit.
+- **Custom components:** pass `components={{ CollectionForm, CollectionList }}`
+  (or `FormRenderer` for `ListM2A`/`JunctionItemForm`) to one field, or wrap a
+  subtree in `RelationalUIProvider components={…}`. A `components` prop wins
+  over providers; nested providers merge; `CollectionForm`/`VForm` only fill
+  slots no provider above them chose.
+- **Upgrade the whole set together.** A new `list-o2m.tsx` with a 2.6
+  `collection-form.tsx` has no provider and shows the alert. A 2.6
+  `list-o2m.tsx` with a new `collection-form.tsx` keeps working (it still
+  imports from the barrel).
+- If you edited `list-o2m.tsx`, `list-m2m.tsx`, `list-m2a.tsx`,
+  `list-m2a/JunctionItemForm.tsx`, `collection-form.tsx` or
+  `vform/VForm.tsx`, expect a 3-way merge there. The changes are small: the
+  import of `CollectionForm`/`CollectionList`/`VForm` becomes a
+  `useRelationalSlots(components)` call, the create/select/edit conditions gain
+  a "component available" check, and `VForm`'s final `return (` becomes
+  `const form = (` plus a provider-wrapped return.
+
+Type changes (TypeScript only): `ListO2MProps`, `ListM2MProps`, `ListM2AProps`
+and `JunctionItemFormProps` gain an optional `components` prop;
+`CollectionsRelationalProvider` and `CollectionsRelationalProviderProps` are new
+exports of `collection-form`.

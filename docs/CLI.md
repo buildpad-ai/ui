@@ -136,8 +136,16 @@ collection-form
 │   └── services
 │
 └── registryDependencies:
-    └── vform (includes all 32 interface components)
+    ├── vform (includes all 32 interface components)
+    ├── save-options
+    └── collection-list (the picker relational fields open; loaded lazily)
 ```
+
+CollectionForm also supplies CollectionForm / CollectionList / VForm to the
+relational fields it renders (the relational UI context in
+`lib/buildpad/services/relational-ui-context.tsx`). Relational fields used
+outside a CollectionForm need `CollectionsRelationalProvider` (exported by
+`collection-form`); see docs/MIGRATION-3.0.md.
 
 ## Common Agent Tasks
 
