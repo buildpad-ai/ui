@@ -64,15 +64,7 @@ import {
   type ComponentEntry,
   type LibModule,
 } from '../resolver.js';
-import {
-  transformImports,
-  transformRelativeImports,
-  transformIntraComponentImports,
-  transformVFormImports,
-  addOriginHeader,
-  hashTransformed,
-  originHeaderApplies,
-} from './transformer.js';
+import { hashTransformed, transformRegistryFile } from './transformer.js';
 import {
   computeEntryStaleness,
   registryFilesOf,
@@ -81,6 +73,7 @@ import {
 import { threeWayMerge } from '../utils/three-way-merge.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
 import { applyNavItems, copyLibModule } from './add.js';
+import { componentFilePath } from '../utils/paths.js';
 
 async function getRegistry(): Promise<Registry> {
   try {
@@ -92,32 +85,28 @@ async function getRegistry(): Promise<Registry> {
 }
 
 /**
- * Transform a component source file's content the same way add.ts does.
+ * Transform a component source file's content exactly as `add` does.
  */
-async function transformContent(
+function transformContent(
   rawContent: string,
   file: { source: string; target: string },
   component: ComponentEntry,
   config: Config,
   sourcePackage: string,
   version: string
-): Promise<string> {
-  let content = rawContent;
-  content = transformIntraComponentImports(content, file.source, file.target, component.files);
-  content = transformImports(content, config, file.target);
-  if (!(component.name === 'vform' || file.target.includes('/vform/'))) {
-    content = transformRelativeImports(content, file.source, file.target, config.aliases.components);
-  }
-  if (component.name === 'vform' || file.target.includes('/vform/')) {
-    content = transformVFormImports(content, file.source, file.target);
-  }
-  content = addOriginHeader(content, component.name, sourcePackage, version);
-  return content;
+): string {
+  return transformRegistryFile(
+    rawContent,
+    file,
+    { kind: 'component', name: component.name, files: component.files, sourcePackage },
+    config,
+    version
+  );
 }
 
 /**
- * Transform a lib-module source file's content the same way copyLibModule does.
- * Must match `add.ts` so the recomputed sha equals the recorded baseline.
+ * Transform a lib-module source file's content exactly as copyLibModule does,
+ * so the recomputed sha equals the recorded baseline.
  */
 function transformLibContent(
   rawContent: string,
@@ -127,12 +116,7 @@ function transformLibContent(
   sourcePackage: string,
   version: string
 ): string {
-  let content = transformImports(rawContent, config);
-  const fileName = path.basename(file.source, path.extname(file.source));
-  if (originHeaderApplies(file.target)) {
-    content = addOriginHeader(content, `${moduleName}/${fileName}`, sourcePackage, version);
-  }
-  return content;
+  return transformRegistryFile(rawContent, file, { kind: 'lib', name: moduleName, sourcePackage }, config, version);
 }
 
 export type UpgradeStrategy = 'overwrite' | 'new-file' | 'three-way' | 'prompt';
@@ -448,9 +432,7 @@ async function upgradeOneComponent(
   for (const file of regComponent.files) {
     fileSpinner.text = `  Processing ${path.basename(file.target)}...`;
 
-    const targetPath = path.join(config.srcDir ? path.join(cwd, 'src') : cwd, file.target);
-    const ext = config.tsx ? '.tsx' : '.jsx';
-    const finalPath = targetPath.replace(/\.tsx?$/, ext);
+    const finalPath = componentFilePath(cwd, config, file.target);
     const installed = installedRecord?.files.find(f => f.target === file.target);
 
     // Upstream unchanged and the file is present → leave it alone entirely,
@@ -468,7 +450,7 @@ async function upgradeOneComponent(
     }
 
     const rawContent = await resolveSourceFile(file.source);
-    const newContent = await transformContent(rawContent, file, regComponent, config, sourcePackage, release);
+    const newContent = transformContent(rawContent, file, regComponent, config, sourcePackage, release);
 
     const { record, conflict } = await processModifiableFile({
       finalPath,

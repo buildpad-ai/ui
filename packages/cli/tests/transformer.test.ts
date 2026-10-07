@@ -14,14 +14,15 @@ import type { Config } from "../src/commands/init.js";
 import {
   addOriginHeader,
   extractOriginInfo,
-  hasBuildpadImports,
   normalizeImportPaths,
   toKebabCase,
-  toPascalCase,
   transformImports,
   transformIntraComponentImports,
   transformRelativeImports,
   transformVFormImports,
+  rewriteBuildpadSpecifiers,
+  transformRegistryFile,
+  UnmappedImportError,
 } from "../src/commands/transformer.js";
 
 const defaultConfig: Config = {
@@ -192,17 +193,6 @@ describe("toKebabCase", () => {
   });
 });
 
-describe("toPascalCase", () => {
-  test("converts kebab-case to PascalCase", () => {
-    expect(toPascalCase("input-block-editor")).toBe("InputBlockEditor");
-    expect(toPascalCase("file-image")).toBe("FileImage");
-  });
-
-  test("handles single word", () => {
-    expect(toPascalCase("input")).toBe("Input");
-  });
-});
-
 describe("transformVFormImports", () => {
   test("preserves types import in components folder", () => {
     const input = `import type { FormField } from '../types';`;
@@ -247,27 +237,6 @@ describe("transformRelativeImports", () => {
     );
     expect(result).toContain("./list-m2a/render-template");
     expect(result).not.toContain("../list-m2a/render-template");
-  });
-});
-
-describe("hasBuildpadImports", () => {
-  test("returns true for @buildpad imports", () => {
-    expect(hasBuildpadImports("import { X } from '@buildpad/types'")).toBe(
-      true,
-    );
-    expect(
-      hasBuildpadImports("import { X } from '@buildpad/services'"),
-    ).toBe(true);
-    expect(hasBuildpadImports("import { X } from '@buildpad/hooks'")).toBe(
-      true,
-    );
-  });
-
-  test("returns false for non-buildpad imports", () => {
-    expect(hasBuildpadImports("import React from 'react'")).toBe(false);
-    expect(hasBuildpadImports("import { Button } from '@mantine/core'")).toBe(
-      false,
-    );
   });
 });
 
@@ -464,15 +433,225 @@ describe("transformImports (@buildpad/ui-table)", () => {
     );
   });
 
-  test("subpath import → componentsAlias/subpath", () => {
-    const input = `import { something } from '@buildpad/ui-table/utils';`;
-    const result = transformImports(input, defaultConfig);
-    expect(result).toBe(`import { something } from '@/components/ui/utils';`);
+  test("subpaths map to the registry targets they install as", () => {
+    // Previously `@buildpad/ui-table/<x>` → `@/components/ui/<x>`, which only
+    // exists by accident (types.ts installs as vtable-types.tsx). No shipped
+    // file used a ui-table subpath.
+    const input = [
+      `import type { Header } from '@buildpad/ui-table/types';`,
+      `import { VTable } from '@buildpad/ui-table/VTable';`,
+      `import { TableHeader } from '@buildpad/ui-table/components/TableHeader';`,
+      `import { TableRow } from '@buildpad/ui-table/components/TableRow';`,
+    ].join("\n");
+    expect(transformImports(input, defaultConfig)).toBe(
+      [
+        `import type { Header } from '@/components/ui/vtable-types';`,
+        `import { VTable } from '@/components/ui/vtable';`,
+        `import { TableHeader } from '@/components/ui/table-header';`,
+        `import { TableRow } from '@/components/ui/table-row';`,
+      ].join("\n"),
+    );
   });
 
-  test("hasBuildpadImports detects @buildpad/ui-table", () => {
+  test("a subpath the registry does not install fails instead of shipping a broken import", () => {
+    expect(() => transformImports(`import { something } from '@buildpad/ui-table/utils';`, defaultConfig)).toThrow(
+      UnmappedImportError,
+    );
+  });
+
+  test("type-only imports of a component's props type go to that component", () => {
+    expect(transformImports(`import type { VTableProps } from '@buildpad/ui-table';`, defaultConfig)).toBe(
+      `import type { VTableProps } from '@/components/ui/vtable';`,
+    );
+    expect(transformImports(`import type { TableRowProps } from '@buildpad/ui-table';`, defaultConfig)).toBe(
+      `import type { TableRowProps } from '@/components/ui/table-row';`,
+    );
+    expect(() =>
+      transformImports(`import type { VTableProps, Header } from '@buildpad/ui-table';`, defaultConfig),
+    ).toThrow(/split the import/);
+  });
+
+  test("export type { … } re-exports go to vtable-types like import type", () => {
+    expect(transformImports(`export type { Header } from '@buildpad/ui-table';`, defaultConfig)).toBe(
+      `export type { Header } from '@/components/ui/vtable-types';`,
+    );
+  });
+
+});
+
+describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
+  const config = defaultConfig;
+
+  test("side-effect, require, declare module and line-broken `from` are rewritten", () => {
+    const input = [
+      `import '@buildpad/ui-form/VForm.css';`,
+      `const s = require("@buildpad/services");`,
+      `declare module '@buildpad/types' {}`,
+      `import {\n  a,\n} from\n  '@buildpad/hooks';`,
+    ].join("\n");
+    expect(rewriteBuildpadSpecifiers(input, config)).toBe(
+      [
+        `import '@/components/ui/vform/VForm.css';`,
+        `const s = require('@/lib/buildpad/services');`,
+        `declare module '@/lib/buildpad/types' {}`,
+        `import {\n  a,\n} from\n  '@/lib/buildpad/hooks';`,
+      ].join("\n"),
+    );
+  });
+
+  test("dynamic import of any mapped specifier", () => {
+    expect(rewriteBuildpadSpecifiers(`const m = await import( '@buildpad/services/auth/session' );`, config)).toBe(
+      `const m = await import('@/lib/buildpad/services/auth/session');`,
+    );
+  });
+
+  test("an unmapped @buildpad import throws, naming the specifier and line", () => {
+    const run = () => rewriteBuildpadSpecifiers(`import x from 'react';\nimport { y } from '@buildpad/not-a-package';`, config);
+    expect(run).toThrow(UnmappedImportError);
+    expect(run).toThrow(/line 2: cannot rewrite '@buildpad\/not-a-package'/);
+    expect(() => rewriteBuildpadSpecifiers(`import '@buildpad/mcp';`, config)).toThrow(/never installed/);
+  });
+
+  test("keepPublished (fix, on a consumer's own code) leaves @buildpad/cli and @buildpad/mcp as written", () => {
+    const input = `import { s } from '@buildpad/mcp';\nimport type { C } from "@buildpad/cli/dist/x";\nimport { a } from '@buildpad/types';\n`;
+    expect(rewriteBuildpadSpecifiers(input, config, { keepPublished: true })).toBe(
+      `import { s } from '@buildpad/mcp';\nimport type { C } from "@buildpad/cli/dist/x";\nimport { a } from '@/lib/buildpad/types';\n`,
+    );
+    expect(() => rewriteBuildpadSpecifiers(`import '@buildpad/nope';`, config, { keepPublished: true })).toThrow(UnmappedImportError);
+  });
+
+  test("dynamic import() with magic comments, attributes or a trailing comma: only the literal changes", () => {
+    expect(rewriteBuildpadSpecifiers(`import(/* webpackChunkName: 'h' */ '@buildpad/hooks')`, config)).toBe(
+      `import(/* webpackChunkName: 'h' */ '@/lib/buildpad/hooks')`,
+    );
+    expect(rewriteBuildpadSpecifiers(`import("@buildpad/types", { with: { type: "json" } })`, config)).toBe(
+      `import('@/lib/buildpad/types', { with: { type: "json" } })`,
+    );
+    expect(rewriteBuildpadSpecifiers(`import( '@buildpad/utils', )`, config)).toBe(`import( '@/lib/buildpad/utils', )`);
+    expect(rewriteBuildpadSpecifiers('import(`@buildpad/ui-interfaces/upload`)', config)).toBe(
+      `import('@/components/ui/upload')`,
+    );
+  });
+
+  test("import() forms the scanner used to miss fail closed too", () => {
+    expect(() => rewriteBuildpadSpecifiers(`import(/* webpackChunkName: "x" */ '@buildpad/bogus')`, config)).toThrow(UnmappedImportError);
+    expect(() => rewriteBuildpadSpecifiers(`import('@buildpad/bogus', {})`, config)).toThrow(UnmappedImportError);
+    expect(() => rewriteBuildpadSpecifiers('import(`@buildpad/ui-interfaces/${name}`)', config)).toThrow(/template literal/);
+  });
+
+  test("an unmapped specifier after a closed comment on the same line is code, and throws", () => {
+    expect(() => rewriteBuildpadSpecifiers(`/* eslint-disable */ import { x } from '@buildpad/bogus';`, config)).toThrow(
+      UnmappedImportError,
+    );
+    expect(() => rewriteBuildpadSpecifiers(`/**\n * doc\n */ import { x } from '@buildpad/bogus';`, config)).toThrow(
+      /line 3/,
+    );
+  });
+
+  test("transformRegistryFile names the shipped file in the error", () => {
+    expect(() =>
+      transformRegistryFile(
+        `import { y } from '@buildpad/cli';`,
+        { source: "ui-interfaces/src/x/X.tsx", target: "components/ui/x.tsx" },
+        { kind: "component", name: "x", files: [] },
+        config,
+        "1.0.0",
+      ),
+    ).toThrow(/^ui-interfaces\/src\/x\/X\.tsx:1: cannot rewrite '@buildpad\/cli'/);
+  });
+
+  test("an unmapped specifier on a comment line is documentation, left as written", () => {
+    const input = `/**\n * import { y } from '@buildpad/not-a-package';\n */\n// import { z } from '@buildpad/mcp';\n`;
+    expect(rewriteBuildpadSpecifiers(input, config)).toBe(input);
+  });
+
+  test("mapped specifiers in comment lines are rewritten, as they always were", () => {
+    expect(rewriteBuildpadSpecifiers(` * import { VForm } from "@buildpad/ui-form";`, config)).toBe(
+      ` * import { VForm } from '@/components/ui/vform';`,
+    );
+  });
+
+  test("ui-forms maps to the form-builder component", () => {
+    expect(rewriteBuildpadSpecifiers(`import { FormBuilder } from '@buildpad/ui-forms';\nimport { D } from '@buildpad/ui-forms/DynamicForm';`, config)).toBe(
+      `import { FormBuilder } from '@/components/ui/form-builder';\nimport { D } from '@/components/ui/form-builder/dynamic-form';`,
+    );
+  });
+
+  test("ui-collections / ui-files / ui-users subpaths are kebab-cased like their targets", () => {
     expect(
-      hasBuildpadImports(`import { VTable } from '@buildpad/ui-table';`),
-    ).toBe(true);
+      rewriteBuildpadSpecifiers(
+        [
+          `import { CollectionList } from '@buildpad/ui-collections/CollectionList';`,
+          `import { D } from '@buildpad/ui-files/DeleteConfirmModal';`,
+          `import { u } from '@buildpad/ui-users/userDisplay';`,
+        ].join("\n"),
+        config,
+      ),
+    ).toBe(
+      [
+        `import { CollectionList } from '@/components/ui/collection-list';`,
+        `import { D } from '@/components/ui/file-manager/delete-confirm-modal';`,
+        `import { u } from '@/components/ui/users-management/user-display';`,
+      ].join("\n"),
+    );
+  });
+
+  test("ui-interfaces <x>/<EntryFile> collapses to the flattened component; other subpaths are kept", () => {
+    expect(
+      rewriteBuildpadSpecifiers(
+        [
+          `import { Upload } from '@buildpad/ui-interfaces/upload/Upload';`,
+          `import { M } from '@buildpad/ui-interfaces/list-m2a/ListM2A';`,
+          `import { J } from '@buildpad/ui-interfaces/list-m2a/JunctionItemForm';`,
+          `import { r } from '@buildpad/ui-interfaces/list-m2a/render-template';`,
+        ].join("\n"),
+        config,
+      ),
+    ).toBe(
+      [
+        `import { Upload } from '@/components/ui/upload';`,
+        `import { M } from '@/components/ui/list-m2a';`,
+        `import { J } from '@/components/ui/list-m2a/JunctionItemForm';`,
+        `import { r } from '@/components/ui/list-m2a/render-template';`,
+      ].join("\n"),
+    );
+  });
+});
+
+describe("dynamic import('@buildpad/ui-interfaces/<x>') — lazy-loaded interfaces", () => {
+  test("rewrites to the component's path under the components alias", () => {
+    const input = `const Input = lazy(() => import('@buildpad/ui-interfaces/input'));`;
+    expect(transformImports(input, defaultConfig)).toBe(
+      `const Input = lazy(() => import('@/components/ui/input'));`,
+    );
+  });
+
+  test("normalises quotes and whitespace like every rewritten import()", () => {
+    const input = `const T = lazy(() => import( "@buildpad/ui-interfaces/textarea" ).then(m => ({ default: m.Textarea })));`;
+    expect(transformImports(input, defaultConfig)).toBe(
+      `const T = lazy(() => import('@/components/ui/textarea').then(m => ({ default: m.Textarea })));`,
+    );
+  });
+
+  test("follows a custom components alias", () => {
+    const config = { ...defaultConfig, aliases: { components: "@/ui", lib: "@/lib/bp" } };
+    expect(transformImports(`import('@buildpad/ui-interfaces/select-icon')`, config)).toBe(`import('@/ui/select-icon')`);
+  });
+
+  test("an <x>/<EntryFile> subpath collapses to the flattened component", () => {
+    expect(transformImports(`import('@buildpad/ui-interfaces/upload/Upload')`, defaultConfig)).toBe(
+      `import('@/components/ui/upload')`,
+    );
+  });
+
+  test("inside a VForm file (casing kept) the alias path is untouched by normalisation", () => {
+    const out = transformRegistryFile(
+      `const L = lazy(() => import('@buildpad/ui-interfaces/list-m2a'));\nimport { F } from './FormField';\n`,
+      { source: "ui-form/src/components/FormFieldInterface.tsx", target: "components/ui/vform/components/FormFieldInterface.tsx" },
+      { kind: "component", name: "vform", files: [] },
+      defaultConfig,
+      "1.0.0",
+    );
+    expect(out).toContain(`const L = lazy(() => import('@/components/ui/list-m2a'));\nimport { F } from './FormField';`);
   });
 });

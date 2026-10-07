@@ -125,7 +125,8 @@ export async function diff(component: string, options: { cwd: string }) {
         }
       });
       
-      const transformed = transformImports(content, config);
+      // Same target-aware rewrite `add` applies (VForm keeps PascalCase paths).
+      const transformed = transformImports(content, config, comp.files[0].target);
       const transformedLines = transformed.split('\n').slice(0, 15);
       
       console.log(chalk.dim('\nTransformed imports:'));

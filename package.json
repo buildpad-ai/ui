@@ -9,6 +9,7 @@
     "build:registry": "node scripts/build-registry.mjs",
     "version:packages": "changeset version && pnpm build:registry",
     "registry:check": "node scripts/build-registry.mjs --check",
+    "graph:check": "node scripts/check-import-graph.mjs",
     "build:host": "pnpm --filter storybook-host build",
     "build:mcp": "pnpm --filter @buildpad/mcp build",
     "build:packages": "pnpm --filter './packages/**' build",

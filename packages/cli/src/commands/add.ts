@@ -14,16 +14,10 @@ import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import prompts from 'prompts';
 import { type Config, type FileChecksum, loadConfig, saveConfig } from './init.js';
-import {
-  transformImports,
-  transformRelativeImports,
-  transformIntraComponentImports,
-  transformVFormImports,
-  addOriginHeader,
-  hashTransformed,
-  originHeaderApplies,
-} from './transformer.js';
+import { hashTransformed, transformRegistryFile, type RegistryFileOwner } from './transformer.js';
 import { verifySourceSha256 } from '../utils/checksum.js';
+import { renderComponentsIndex } from '../utils/components-index.js';
+import { componentFilePath, sourceRoot } from '../utils/paths.js';
 import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
 import { validate } from './validate.js';
@@ -254,6 +248,7 @@ export async function copyLibModule(
   const release = registry.version;
   const ref = getRecordedRef();
   const existingRecord = config.lib?.[moduleName];
+  const libOwner: RegistryFileOwner = { kind: 'lib', name: moduleName, sourcePackage: libSourcePackage };
 
   /**
    * Record for a file the install deliberately left alone (the adopt-once nav
@@ -282,10 +277,13 @@ export async function copyLibModule(
     if (await checkSource(libModule.path)) {
       let content = await readSource(libModule.path);
       verifySourceSha256(libModule.path, content, libModule.sourceSha256);
-      content = transformImports(content, config);
-      if (originHeaderApplies(libModule.target)) {
-        content = addOriginHeader(content, moduleName, libSourcePackage, release);
-      }
+      content = transformRegistryFile(
+        content,
+        { source: libModule.path, target: libModule.target, single: true },
+        libOwner,
+        config,
+        release
+      );
       await fs.ensureDir(path.dirname(targetPath));
       await fs.writeFile(targetPath, content);
       writtenFiles.push({
@@ -348,12 +346,7 @@ export async function copyLibModule(
       if (await checkSource(file.source)) {
         let content = await readSource(file.source);
         verifySourceSha256(file.source, content, file.sourceSha256);
-        content = transformImports(content, config);
-        // Extract filename for origin tracking (JSON etc. cannot carry a comment header)
-        const fileName = path.basename(file.source, path.extname(file.source));
-        if (originHeaderApplies(file.target)) {
-          content = addOriginHeader(content, `${moduleName}/${fileName}`, libSourcePackage, release);
-        }
+        content = transformRegistryFile(content, file, libOwner, config, release);
         await fs.ensureDir(path.dirname(targetPath));
         await fs.writeFile(targetPath, content);
         writtenFiles.push({
@@ -523,15 +516,24 @@ export function getInstalledStaleness(
  * True when every file recorded for the installed component is either missing
  * on disk or byte-identical (modulo origin header / line endings) to what the
  * CLI originally wrote — i.e. re-copying cannot destroy any user edits.
+ *
+ * Looks where copyComponent writes: under src/ for `srcDir` projects, with the
+ * project's extension (a `.ts` target is written as `.tsx`). A copy at the
+ * literal target path (an older CLI's) must match too.
  */
 export function isInstallPristine(componentName: string, config: Config, cwd: string): boolean {
   const record = config.components?.[componentName];
   if (!record?.files?.length) return false; // no manifest — can't verify, don't touch
   for (const file of record.files) {
-    const abs = path.join(cwd, file.target);
-    if (!fs.existsSync(abs)) continue; // missing → nothing to lose by re-copying
-    const content = fs.readFileSync(abs, 'utf-8');
-    if (hashTransformed(content) !== file.sha256) return false;
+    const candidates = new Set([
+      componentFilePath(cwd, config, file.target),
+      path.join(sourceRoot(cwd, config), file.target),
+    ]);
+    for (const abs of candidates) {
+      if (!fs.existsSync(abs)) continue; // missing → nothing to lose by re-copying
+      const content = fs.readFileSync(abs, 'utf-8');
+      if (hashTransformed(content) !== file.sha256) return false;
+    }
   }
   return true;
 }
@@ -694,51 +696,27 @@ async function copyComponent(
 
   // Copy component files
   for (const file of component.files) {
-    const targetPath = path.join(
-      config.srcDir ? path.join(cwd, 'src') : cwd,
-      file.target
-    );
+    // Component .ts/.tsx targets take the project's extension (see componentFilePath).
+    const finalPath = componentFilePath(cwd, config, file.target);
 
     if (!(await sourceFileExists(file.source))) {
       spinner.warn(`Source not found: ${file.source}`);
       continue;
     }
 
-    // Read and transform
-    let content = await resolveSourceFile(file.source);
-    
-    // Transform intra-component relative imports using registry file mappings
-    // (must run BEFORE normalizeImportPaths to avoid partial/incorrect transforms)
-    content = transformIntraComponentImports(content, file.source, file.target, component.files);
-    
-    content = transformImports(content, config, file.target);
-    
-    // Transform relative imports for flattened folder structure
-    // Skip for VForm files — they keep their nested folder structure and
-    // transformIntraComponentImports already resolved their paths correctly.
-    if (!(component.name === 'vform' || file.target.includes('/vform/'))) {
-      content = transformRelativeImports(content, file.source, file.target, config.aliases.components);
-    }
-    
-    // Apply VForm-specific transformations for files in vform folder
-    if (component.name === 'vform' || file.target.includes('/vform/')) {
-      content = transformVFormImports(content, file.source, file.target);
-    }
-    
-    // The registry states the owning package; the release is the lockstep
-    // version the whole registry was built at.
+    // Read and transform (the one install transform — see transformRegistryFile)
     const sourcePackage = component.sourcePackage ?? '@buildpad/ui-interfaces';
     const release = registry.version;
+    const content = transformRegistryFile(
+      await resolveSourceFile(file.source),
+      file,
+      { kind: 'component', name: component.name, files: component.files, sourcePackage },
+      config,
+      release
+    );
 
-    // Add origin header for maintainability
-    content = addOriginHeader(content, component.name, sourcePackage, release);
-
-    // Ensure directory exists
-    await fs.ensureDir(path.dirname(targetPath));
-    
     // Write transformed file
-    const ext = config.tsx ? '.tsx' : '.jsx';
-    const finalPath = targetPath.replace(/\.tsx?$/, ext);
+    await fs.ensureDir(path.dirname(finalPath));
     await fs.writeFile(finalPath, content);
 
     // v3: record the upstream hash, the local hash, the ref, and the state.
@@ -812,8 +790,9 @@ async function copyComponent(
 /**
  * Generate components/ui/index.ts with exports for all installed components
  * This allows import { ComponentA, ComponentB } from '@/components/ui'
- * 
- * Also detects duplicate named exports across files and warns the user.
+ *
+ * Names exported by more than one component are re-exported explicitly from
+ * the first (see renderComponentsIndex) and reported.
  */
 async function generateComponentsIndex(
   config: Config,
@@ -824,119 +803,36 @@ async function generateComponentsIndex(
   const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
   const componentsDir = path.join(srcDir, 'components/ui');
   const indexPath = path.join(componentsDir, 'index.ts');
-  
-  spinner.text = 'Generating components/ui/index.ts...';
-  
-  // Build export lines for each installed component
-  const exportLines: string[] = [
-    '/**',
-    ' * Buildpad UI Components Index',
-    ' * ',
-    ' * Auto-generated by Buildpad CLI.',
-    ' * Re-run "buildpad add" to update after adding new components.',
-    ' */',
-    '',
-  ];
-  
-  // Use Set to track unique export paths and prevent duplicates
-  const exportedPaths = new Set<string>();
-  
-  // Track named exports across files to detect duplicates
-  const namedExportMap = new Map<string, string[]>(); // exportName -> [files]
-  
-  // Sort components alphabetically for consistent output
-  const sortedComponents = [...config.installedComponents].sort((a, b) => a.localeCompare(b));
-  
-  // Components with known SSR issues that should use wrappers
-  const ssrUnsafeComponents: Record<string, string> = {
-    'input-block-editor': 'input-block-editor-wrapper',
-  };
-  
-  // Track skipped components due to SSR wrappers
-  const skippedForWrapper: string[] = [];
-  
-  for (const componentName of sortedComponents) {
-    const component = registry.components.find(c => c.name === componentName);
-    if (!component) continue;
-    
-    // Determine the export path based on component structure
-    const mainFile = component.files[0];
-    if (!mainFile) continue;
-    
-    const targetPath = mainFile.target;
-    let exportPath: string;
 
-    // Check if component is in a subfolder (e.g., vform/VForm.tsx,
-    // users-management/users-manager.tsx) or flat (e.g., input.tsx).
-    // Foldered components ship their own index.ts barrel — export the folder.
-    const relToComponents = targetPath.replace(/^components\/ui\//, '');
-    const folderName = relToComponents.includes('/')
-      ? relToComponents.split('/')[0]
-      : null;
-    if (folderName) {
-      exportPath = `./${folderName}`;
-    } else {
-      // Flat structure - export from kebab-case file
-      const fileName = path.basename(targetPath, path.extname(targetPath));
-      
-      // Check for SSR wrapper replacements
-      if (ssrUnsafeComponents[fileName]) {
-        const wrapperPath = path.join(componentsDir, `${ssrUnsafeComponents[fileName]}.tsx`);
-        if (fs.existsSync(wrapperPath)) {
-          exportPath = `./${ssrUnsafeComponents[fileName]}`;
-          skippedForWrapper.push(fileName);
-        } else {
-          exportPath = `./${fileName}`;
-        }
-      } else {
-        exportPath = `./${fileName}`;
+  spinner.text = 'Generating components/ui/index.ts...';
+
+  const { content, duplicates, skippedForWrapper } = renderComponentsIndex(
+    config.installedComponents,
+    registry,
+    (rel) => {
+      const abs = path.join(componentsDir, rel);
+      try {
+        return fs.statSync(abs).isFile() ? fs.readFileSync(abs, 'utf-8') : undefined;
+      } catch {
+        return undefined;
       }
-    }
-    
-    // Only add if not already exported (prevents duplicates)
-    if (!exportedPaths.has(exportPath)) {
-      exportedPaths.add(exportPath);
-      exportLines.push(`export * from '${exportPath}';`);
-      
-      // Check for named exports in the file
-      const filePath = path.join(componentsDir, exportPath.slice(2) + '.tsx');
-      if (fs.existsSync(filePath)) {
-        try {
-          const content = await fs.readFile(filePath, 'utf-8');
-          const namedExportPattern = /export\s+(?:const|function|class)\s+(\w+)/g;
-          let match;
-          while ((match = namedExportPattern.exec(content)) !== null) {
-            const exportName = match[1];
-            if (!namedExportMap.has(exportName)) {
-              namedExportMap.set(exportName, []);
-            }
-            namedExportMap.get(exportName)!.push(exportPath);
-          }
-        } catch {
-          // Ignore read errors
-        }
-      }
-    }
-  }
-  
-  // Write the index file
-  await fs.writeFile(indexPath, exportLines.join('\n') + '\n');
-  
-  // Warn about duplicate named exports
-  const duplicates = Array.from(namedExportMap.entries())
-    .filter(([_, files]) => files.length > 1);
-  
+    },
+    config.aliases.components
+  );
+
+  await fs.writeFile(indexPath, content);
+
   if (duplicates.length > 0) {
     spinner.warn('Generated components/ui/index.ts (with duplicate warnings)');
     console.log(chalk.yellow('\n⚠ Duplicate export names detected:'));
-    for (const [exportName, files] of duplicates) {
-      console.log(chalk.dim(`  "${exportName}" exported from: ${files.join(', ')}`));
+    for (const { name, paths } of duplicates) {
+      console.log(chalk.dim(`  "${name}" exported from: ${paths.join(', ')} — the barrel re-exports it from ${paths[0]}`));
     }
-    console.log(chalk.dim('  Consider using named imports or renaming exports.\n'));
+    console.log(chalk.dim(`  Import the others by path, e.g. '${config.aliases.components}/${duplicates[0].paths[1].slice(2)}'.\n`));
   } else {
     spinner.info('Generated components/ui/index.ts');
   }
-  
+
   if (skippedForWrapper.length > 0) {
     console.log(chalk.dim(`  ℹ Using SSR-safe wrappers for: ${skippedForWrapper.join(', ')}`));
   }

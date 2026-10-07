@@ -41,15 +41,7 @@ import {
   getRecordedRef,
   type Registry,
 } from '../resolver.js';
-import {
-  transformImports,
-  transformRelativeImports,
-  transformIntraComponentImports,
-  transformVFormImports,
-  addOriginHeader,
-  hashTransformed,
-  originHeaderApplies,
-} from './transformer.js';
+import { hashTransformed, transformRegistryFile } from './transformer.js';
 import { registryFilesOf } from '../utils/staleness.js';
 import { copyLibModule } from './add.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
@@ -231,20 +223,14 @@ export async function migrate(options: {
           continue;
         }
 
-        let content = await resolveSourceFile(file.source);
-
-        // Apply the same transforms as add.ts
-        content = transformIntraComponentImports(content, file.source, file.target, regComponent.files);
-        content = transformImports(content, config, file.target);
-
-        if (!(componentName === 'vform' || file.target.includes('/vform/'))) {
-          content = transformRelativeImports(content, file.source, file.target, config.aliases.components);
-        }
-        if (componentName === 'vform' || file.target.includes('/vform/')) {
-          content = transformVFormImports(content, file.source, file.target);
-        }
-
-        content = addOriginHeader(content, componentName, sourcePackage, release);
+        // Exactly what `add` would have written.
+        const content = transformRegistryFile(
+          await resolveSourceFile(file.source),
+          file,
+          { kind: 'component', name: componentName, files: regComponent.files, sourcePackage },
+          config,
+          release
+        );
 
         files.push({
           target: file.target,
@@ -314,12 +300,13 @@ export async function migrate(options: {
       for (const file of registryFiles) {
         try {
           if (!(await sourceFileExists(file.source))) continue;
-          let content = await resolveSourceFile(file.source);
-          content = transformImports(content, config);
-          const fileName = path.basename(file.source, path.extname(file.source));
-          if (originHeaderApplies(file.target)) {
-            content = addOriginHeader(content, `${libName}/${fileName}`, sourcePackage, release);
-          }
+          const content = transformRegistryFile(
+            await resolveSourceFile(file.source),
+            file,
+            { kind: 'lib', name: libName, sourcePackage },
+            config,
+            release
+          );
           files.push({
             target: file.target,
             sourceSha256: file.sourceSha256,
