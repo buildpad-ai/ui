@@ -51,6 +51,7 @@ import { transformImports } from '../src/commands/transformer.js';
 // utils runtime, imported straight from source (pure TS, no React).
 import {
   getFieldInterface,
+  isPresentationField,
   REGISTRY_INTERFACE_ALIASES,
 } from '../../utils/src/field-interface-mapper';
 import { concealingInterface } from '../../utils/src/conceal';
@@ -483,6 +484,7 @@ const F = {
   palette: 'ui-forms/src/FieldPalette.tsx',
   collectionForm: 'ui-collections/src/CollectionForm.tsx',
   collectionList: 'ui-collections/src/CollectionList.tsx',
+  junctionItemForm: 'ui-interfaces/src/list-m2a/JunctionItemForm.tsx',
   addCmd: 'cli/src/commands/add.ts',
   infoCmd: 'cli/src/commands/info.ts',
   mcpIndex: 'mcp-server/src/index.ts',
@@ -1035,6 +1037,234 @@ describe('ui-collections and hooks interface checks', () => {
     // divergence (j): useRelationO2M accepts `one-to-many`, which the mapper
     // does not resolve (such a field renders through the type fallback).
     expect(minus(Object.values(literals).flat(), acceptedIds)).toEqual(['one-to-many']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pre-manifest snapshot (interface-manifest, Phase 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * The value of every interface-id table that interface-manifest Phase 1
+ * re-derives from one data module, recorded from the source BEFORE that
+ * module existed (59fc8f3). A refactor must leave every live value equal to
+ * its literal here; only a deliberate behaviour change may edit one, and the
+ * 3.0 release has none (owner decision D6: no change to how stored records
+ * render).
+ */
+const PRE_MANIFEST = {
+  /** field-interface-mapper REGISTRY_INTERFACE_ALIASES, entries in declaration order. */
+  registryInterfaceAliases: [
+    ['input-tags', 'tags'],
+    ['input-map', 'map'],
+    ['input-map-gl', 'map'],
+  ],
+  /** getExplicitInterface's fall-through case labels that return another id. */
+  inlineSwitchAliases: {
+    textarea: 'input-multiline',
+    wysiwyg: 'input-rich-text-html',
+    markdown: 'input-rich-text-md',
+    'list-m2o': 'select-dropdown-m2o',
+    'xtr-interface-workflow': 'workflow-button',
+    'xtr-interface-workflow-old': 'workflow-button',
+    'xtremax-workflow-button': 'workflow-button',
+    'xtremax-workflow-button-v2': 'workflow-button',
+    'xtremax-workflow-button-scheduled': 'workflow-button',
+  },
+  /** Every `meta.interface` value getFieldInterface resolves explicitly (46 case labels + the 3 registry aliases). */
+  acceptedIds: [
+    'boolean', 'collection-item-dropdown', 'datetime', 'file', 'file-image', 'files', 'group-accordion',
+    'group-detail', 'group-raw', 'input', 'input-autocomplete-api', 'input-block-editor', 'input-code',
+    'input-hash', 'input-map', 'input-map-gl', 'input-multiline', 'input-rich-text-html', 'input-rich-text-md',
+    'input-tags', 'list-m2a', 'list-m2m', 'list-m2o', 'list-o2m', 'map', 'markdown', 'presentation-divider',
+    'presentation-notice', 'select-color', 'select-dropdown', 'select-dropdown-m2o', 'select-icon',
+    'select-multiple-checkbox', 'select-multiple-checkbox-tree', 'select-multiple-dropdown', 'select-radio',
+    'slider', 'system-permissions', 'system-token', 'tags', 'textarea', 'toggle', 'workflow-button', 'wysiwyg',
+    'xtr-interface-workflow', 'xtr-interface-workflow-old', 'xtremax-workflow-button',
+    'xtremax-workflow-button-scheduled', 'xtremax-workflow-button-v2',
+  ],
+  /** conceal.ts CONCEALING_INTERFACES (what concealingInterface() accepts). */
+  concealing: ['input-hash', 'system-token'],
+  /** interface-catalog CHOICE_INTERFACES, in insertion order. */
+  choice: ['select-dropdown', 'select-radio', 'select-multiple-checkbox', 'select-multiple-checkbox-tree', 'select-multiple-dropdown'],
+  /** interface-catalog PROVISIONABLE_INTERFACES, in picker order (types[0] is the provisioned column type). */
+  provisionable: [
+    { value: 'input', label: 'Text input', group: 'Text', types: ['string', 'text', 'integer', 'bigInteger', 'float', 'decimal'] },
+    { value: 'input-multiline', label: 'Multiline text', group: 'Text', types: ['string', 'text'] },
+    { value: 'input-code', label: 'Code / JSON', group: 'Text', types: ['string', 'text', 'json'] },
+    { value: 'input-hash', label: 'Hash (masked)', group: 'Text', types: ['hash'] },
+    { value: 'tags', label: 'Tags', group: 'Text', types: ['json', 'csv'] },
+    { value: 'input-rich-text-html', label: 'Rich text (WYSIWYG)', group: 'Rich content', types: ['text'] },
+    { value: 'input-rich-text-md', label: 'Rich text (Markdown)', group: 'Rich content', types: ['text'] },
+    { value: 'input-block-editor', label: 'Block editor', group: 'Rich content', types: ['json', 'text'] },
+    { value: 'select-dropdown', label: 'Dropdown (choices)', group: 'Selection', types: ['string', 'integer', 'bigInteger', 'float', 'decimal'] },
+    { value: 'select-radio', label: 'Radio (choices)', group: 'Selection', types: ['string', 'integer'] },
+    { value: 'select-multiple-checkbox', label: 'Checkboxes (multiple)', group: 'Selection', types: ['json', 'csv'] },
+    { value: 'select-multiple-checkbox-tree', label: 'Checkboxes (tree)', group: 'Selection', types: ['json', 'csv'] },
+    { value: 'select-multiple-dropdown', label: 'Multi-select dropdown', group: 'Selection', types: ['json', 'csv'] },
+    { value: 'select-icon', label: 'Icon picker', group: 'Selection', types: ['string'] },
+    { value: 'select-color', label: 'Color picker', group: 'Selection', types: ['string'] },
+    { value: 'boolean', label: 'Checkbox', group: 'Selection', types: ['boolean'] },
+    { value: 'toggle', label: 'Toggle', group: 'Selection', types: ['boolean'] },
+    { value: 'slider', label: 'Slider', group: 'Numeric & date', types: ['integer', 'bigInteger', 'float', 'decimal'] },
+    { value: 'datetime', label: 'Date / time picker', group: 'Numeric & date', types: ['dateTime', 'date', 'time', 'timestamp'] },
+    { value: 'map', label: 'Map (geometry)', group: 'Geospatial', types: ['geometry', 'json', 'text'] },
+  ],
+  /** field-interface-mapper isPresentationField. */
+  presentationField: ['presentation-divider', 'presentation-links', 'presentation-notice'],
+  /** CollectionForm's inline alias-field check (divider + notice only). */
+  collectionFormPresentation: ['presentation-divider', 'presentation-notice'],
+  /** JunctionItemForm keeps an alias field whose interface starts with this. */
+  junctionItemFormPresentationPrefix: 'presentation-',
+  /** NON_FLAT_RELATIONAL_INTERFACES (one copy each in CollectionForm and CollectionList). */
+  nonFlatRelational: ['list-m2a', 'list-m2m', 'list-o2m'],
+  /** CollectionForm selfPersistingInterfaces (two copies). */
+  selfPersisting: ['files'],
+  /** The ids each relation hook accepts as its own interface. */
+  relationHooks: {
+    useRelationM2A: ['list-m2a'],
+    useRelationM2M: ['list-m2m'],
+    useRelationO2M: ['list-o2m', 'one-to-many'],
+  },
+} as const;
+
+/** Prefix-check literals of `<…iface…>.startsWith('…')` calls in a file. */
+function interfacePrefixChecks(file: string): string[] {
+  return collectNodes(parseSource(file), ts.isCallExpression)
+    .filter((c) => ts.isPropertyAccessExpression(c.expression) && c.expression.name.text === 'startsWith')
+    .filter((c) => /iface|interface/i.test((c.expression as ts.PropertyAccessExpression).expression.getText()))
+    .map((c) => {
+      const arg = c.arguments[0];
+      if (!arg || !ts.isStringLiteral(arg)) throw new Error(`${file}: non-literal startsWith ${c.getText()}`);
+      return arg.text;
+    });
+}
+
+/**
+ * Ids probed for behaviour: every id the snapshot names, every registry id,
+ * every InterfaceType literal, and near misses nothing should accept (case
+ * and whitespace variants, unknown members of known families).
+ */
+const PROBE_IDS = sorted([
+  ...PRE_MANIFEST.acceptedIds,
+  ...PRE_MANIFEST.presentationField,
+  ...Object.values(PRE_MANIFEST.relationHooks).flat(),
+  ...registryBlocks.flatMap((b) => [b.id, ...(b.aliases ?? [])]),
+  ...interfaceTypeUnion,
+  'presentation-custom',
+  'list-custom',
+  'not-an-interface',
+  'Input',
+  'LIST-M2M',
+  ' list-m2m',
+  '',
+]);
+
+/**
+ * Whether getFieldInterface resolves `id` through its explicit switch rather
+ * than the type-based fallback. For an unknown field type the fallback is
+ * `input` without the field's options; every explicit case returns another id
+ * or, for `input`, spreads the options.
+ */
+function resolvesExplicitly(id: string): boolean {
+  const field = {
+    field: 'probe',
+    type: 'probe-type',
+    schema: null,
+    meta: { interface: id, options: { __probe: true } },
+  } as unknown as Field;
+  const config = getFieldInterface(field);
+  return config.type !== 'input' || config.props?.__probe === true;
+}
+
+/**
+ * The live value of every snapshotted table, read the way the source holds it
+ * today: exported values and runtime behaviour where they exist, otherwise the
+ * module-private literals (TypeScript AST).
+ */
+const live = {
+  acceptedIds: PROBE_IDS.filter(resolvesExplicitly),
+  concealing: PROBE_IDS.filter((id) => concealingInterface(id)),
+  presentationField: PROBE_IDS.filter((id) => isPresentationField({ field: 'probe', meta: { interface: id } } as unknown as Field)),
+  collectionFormPresentation: sorted(interfaceComparisons(F.collectionForm)),
+  junctionItemFormPresentation: (() => {
+    // Both of its field filters (related and junction collection) test this.
+    const prefixes = interfacePrefixChecks(F.junctionItemForm);
+    return prefixes.length === 2 ? PROBE_IDS.filter((id) => prefixes.every((p) => id.startsWith(p))) : [];
+  })(),
+  nonFlatRelational: {
+    collectionForm: sorted(readStringSet(F.collectionForm, 'NON_FLAT_RELATIONAL_INTERFACES')),
+    collectionList: sorted(readStringSet(F.collectionList, 'NON_FLAT_RELATIONAL_INTERFACES')),
+  },
+  selfPersisting: readAllStringSets(F.collectionForm, 'selfPersistingInterfaces').map(sorted),
+  relationHooks: Object.fromEntries(F.hooks.map((f) => [path.basename(f, '.ts'), sorted(interfaceComparisons(f))])),
+};
+
+describe('pre-manifest snapshot: every derived table keeps its value', () => {
+  test('REGISTRY_INTERFACE_ALIASES (exported) keeps its entries and their order', () => {
+    expect(Object.entries(REGISTRY_INTERFACE_ALIASES)).toEqual(PRE_MANIFEST.registryInterfaceAliases);
+  });
+
+  test('getFieldInterface accepts exactly the same ids', () => {
+    expect(live.acceptedIds).toEqual(PRE_MANIFEST.acceptedIds);
+  });
+
+  test('every alias resolves to its target, with the same props for the same options', () => {
+    const aliases = { ...Object.fromEntries(PRE_MANIFEST.registryInterfaceAliases), ...PRE_MANIFEST.inlineSwitchAliases };
+    // Options every props builder reads somewhere, so a builder difference shows.
+    const options = { __probe: true, toolbar: ['bold', 'link'], font: 'serif', selectMode: 'modal', collection: 'c', type: 'date' };
+    const config = (id: string, type: string) =>
+      getFieldInterface({ field: 'probe', type, schema: null, meta: { interface: id, options } } as unknown as Field);
+    for (const [alias, target] of Object.entries(aliases)) {
+      for (const type of ['string', 'json', 'alias']) {
+        expect([alias, type, config(alias, type)]).toEqual([alias, type, config(target, type)]);
+      }
+    }
+    // Every other accepted id resolves to itself.
+    for (const id of PRE_MANIFEST.acceptedIds.filter((i) => !(i in aliases))) {
+      expect([id, renderedType(id, 'probe-type')]).toEqual([id, id]);
+    }
+  });
+
+  test('concealingInterface() accepts the same ids', () => {
+    expect(live.concealing).toEqual(PRE_MANIFEST.concealing);
+  });
+
+  test('CHOICE_INTERFACES (exported) keeps its members and their order', () => {
+    expect([...CHOICE_INTERFACES]).toEqual(PRE_MANIFEST.choice);
+  });
+
+  test('PROVISIONABLE_INTERFACES (exported) keeps every descriptor, in order', () => {
+    expect(PROVISIONABLE_INTERFACES).toEqual(PRE_MANIFEST.provisionable);
+  });
+
+  test('isPresentationField accepts the same ids', () => {
+    expect(live.presentationField).toEqual(PRE_MANIFEST.presentationField);
+  });
+
+  test("CollectionForm's alias-field presentation check accepts the same ids", () => {
+    expect(live.collectionFormPresentation).toEqual(PRE_MANIFEST.collectionFormPresentation);
+  });
+
+  test("JunctionItemForm's presentation check accepts every presentation-* id, known or not", () => {
+    const prefix = PRE_MANIFEST.junctionItemFormPresentationPrefix;
+    expect(live.junctionItemFormPresentation).toEqual(PROBE_IDS.filter((id) => id.startsWith(prefix)));
+    expect(live.junctionItemFormPresentation).toContain('presentation-custom');
+  });
+
+  test('NON_FLAT_RELATIONAL_INTERFACES: both ui-collections checks accept the same ids', () => {
+    expect(live.nonFlatRelational).toEqual({
+      collectionForm: PRE_MANIFEST.nonFlatRelational,
+      collectionList: PRE_MANIFEST.nonFlatRelational,
+    });
+  });
+
+  test("selfPersistingInterfaces: both of CollectionForm's save paths accept the same ids", () => {
+    expect(live.selfPersisting).toEqual([PRE_MANIFEST.selfPersisting, PRE_MANIFEST.selfPersisting]);
+  });
+
+  test('the relation hooks accept the same interface ids', () => {
+    expect(live.relationHooks).toEqual(PRE_MANIFEST.relationHooks);
   });
 });
 
