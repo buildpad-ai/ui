@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T14:01:46.954Z",
+  "generatedAt": "2026-10-07T14:09:21.708Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1018,7 +1018,7 @@
         {
           "source": "cli/templates/app/authenticated-layout.tsx",
           "target": "app/[lang]/(authenticated)/layout.tsx",
-          "sourceSha256": "f2e8681c78d308f8402a879162154f1ed525a385a758570fd6c108350c2b54b2"
+          "sourceSha256": "72e329b9fa1a557ae6fbe78b163cb8d77cd9482fe42ea50e1ccdc7b6780dfd31"
         }
       ],
       "internalDependencies": [
@@ -3163,7 +3163,7 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "ead736e0b6b34da0e4e11af054187710b97ef62e7389b1875732e9b077ffa64b"
+          "sourceSha256": "5983cd5d467c68dc70fd7676892d458a608df1e65390c2f6a5e874afc5c04280"
         },
         {
           "source": "ui-collections/src/extras-storage.ts",
@@ -3173,7 +3173,7 @@
         {
           "source": "ui-collections/src/CollectionsRelationalProvider.tsx",
           "target": "components/ui/collections-relational-provider.tsx",
-          "sourceSha256": "fa25649b6509da4451ef4994848f8a7b3979efaef9adb76f082daf3bd52acc6a"
+          "sourceSha256": "8528cb642b62613212aac4880c686149721da9b48cd2c914802eaa4765d182ed"
         }
       ],
       "dependencies": [
@@ -3877,7 +3877,7 @@
         {
           "source": "ui-forms/src/FormPreview.tsx",
           "target": "components/ui/form-builder/form-preview.tsx",
-          "sourceSha256": "1a37acb005d4cba6f7d56e99b5e43d1100a8979badd988dc8064e402e7d4fa81"
+          "sourceSha256": "ced63c7d49cf05e91196e8b53122e88dcb3733050da0e8aaa73e943891dc3aa6"
         },
         {
           "source": "ui-forms/src/DynamicForm.tsx",

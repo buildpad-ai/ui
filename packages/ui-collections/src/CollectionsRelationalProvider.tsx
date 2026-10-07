@@ -28,6 +28,8 @@ import {
   type RelationalUIComponents,
 } from "@buildpad/services/relational-ui-context";
 
+// CollectionForm's module imports VForm statically, so one chunk serves both
+// the form and the form renderer.
 const LazyCollectionForm = React.lazy(() =>
   import("./CollectionForm").then((m) => ({ default: m.CollectionForm })),
 );
@@ -35,7 +37,7 @@ const LazyCollectionList = React.lazy(() =>
   import("./CollectionList").then((m) => ({ default: m.CollectionList })),
 );
 const LazyVForm = React.lazy(() =>
-  import("@buildpad/ui-form").then((m) => ({ default: m.VForm })),
+  import("./CollectionForm").then((m) => ({ default: m.collectionsRelationalUI.FormRenderer! })),
 );
 
 /** The built-in components, each loaded on first use. */

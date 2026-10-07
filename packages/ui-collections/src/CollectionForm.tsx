@@ -1188,9 +1188,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 /**
  * The components relational interfaces need, as this form provides them to
  * its own fields: this form, a lazily loaded CollectionList picker and VForm.
- * Declared after CollectionForm (read only at render time).
+ * Declared after CollectionForm (read only at render time). Exported for
+ * CollectionsRelationalProvider, which loads this module on demand and takes
+ * VForm from here (a relative dynamic import, not one of `@buildpad/ui-form`).
  */
-const collectionsRelationalUI: RelationalUIComponents = {
+export const collectionsRelationalUI: Readonly<RelationalUIComponents> = {
   CollectionForm,
   CollectionList: LazyCollectionList,
   FormRenderer: VForm,

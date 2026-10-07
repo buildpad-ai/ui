@@ -30,6 +30,11 @@ vi.mock('@buildpad/ui-form', async () => {
   };
 });
 
+// FormPreview takes CollectionForm and CollectionsRelationalProvider from the
+// ui-collections barrel; serve them from the live source (CollectionForm's
+// module re-exports the provider) instead of a possibly stale dist.
+vi.mock('@buildpad/ui-collections', async () => await import('../../ui-collections/src/CollectionForm'));
+
 import { FormPreview } from '../src/FormPreview';
 
 const FIELDS: Field[] = [
