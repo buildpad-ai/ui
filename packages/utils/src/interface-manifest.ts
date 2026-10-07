@@ -699,9 +699,8 @@ export function isSelfPersistingInterface(interfaceId: unknown): boolean {
  */
 export function isRelationListInterface(interfaceId: unknown, relation: InterfaceRelation): boolean {
   if (typeof interfaceId !== 'string') return false;
+  const id = normalizeInterfaceId(interfaceId);
   return ENTRIES.some(
-    (e) =>
-      e.relation?.kind === relation &&
-      (e.id === normalizeInterfaceId(interfaceId) || (e.relation.hookAliases ?? []).includes(interfaceId)),
+    (e) => e.relation?.kind === relation && (e.id === id || (e.relation.hookAliases ?? []).includes(interfaceId)),
   );
 }
