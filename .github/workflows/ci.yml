@@ -41,6 +41,12 @@ jobs:
       - name: Build all packages
         run: pnpm build
 
+      # Packs @buildpad/mcp, installs the tarball outside the checkout and
+      # calls its tools over stdio: the published package must serve
+      # component sources without the monorepo next to it.
+      - name: MCP package smoke test (pack, install, stdio)
+        run: node packages/mcp-server/scripts/pack-smoke.mjs
+
       - name: Typecheck
         run: pnpm -r typecheck
 
@@ -51,6 +57,11 @@ jobs:
 
       - name: Registry in sync with sources
         run: pnpm registry:check
+
+      # Fails on any import cycle between packages or registry entries that is
+      # not already allow-listed in scripts/check-import-graph.mjs.
+      - name: Import-cycle guard
+        run: pnpm graph:check
 
       # Unused, unlisted or missing dependencies per workspace package
       # (knip.jsonc). Root hoisting otherwise hides an undeclared import.
@@ -89,10 +100,12 @@ jobs:
 
       - uses: pnpm/action-setup@v4
 
+      # No pnpm cache here: this job never installs, so setup-node's post
+      # step would fail trying to save a store path that does not exist.
+      # pnpm audit only reads the lockfile.
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level=high

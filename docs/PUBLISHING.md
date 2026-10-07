@@ -300,9 +300,36 @@ npx @buildpad/cli@latest bootstrap   # full setup
 
 ```
 dist/
-├── index.js          ← MCP server entry (bin: buildpad-mcp)
-└── index.d.ts
+├── index.js          ← MCP server entry (bin: buildpad-mcp); registry.json embedded
+├── index.d.ts
+└── sources/          ← every file registry.json references, at its `source` path
+    ├── ui-interfaces/src/input/Input.tsx
+    ├── utils/src/…
+    ├── cli/templates/…
+    └── …             (364 files, ~2.8 MB, in 2.6.0)
 ```
+
+`dist/index.js.map` is built but left out of the tarball (`"!dist/**/*.map"`
+in `package.json` `files`).
+
+The build's tsup `onSuccess` step copies the sources from the same
+`packages/registry.json` that it embeds, and checks each copy against that
+file's `sourceSha256`. The build fails if a file is missing or its hash differs.
+So run `pnpm build:registry` before `pnpm --filter @buildpad/mcp build`. The
+root `pnpm build` already does this. Because of this step, the source tools
+(`get_component`, `copy_component`, `resources/read`) work from an npm install,
+with no network access, and return the exact bytes of that release. In a
+monorepo checkout the server reads `packages/` directly instead.
+
+Before you publish, check the tarball itself. Run this after `pnpm build`:
+
+```bash
+pnpm --filter @buildpad/mcp smoke:pack
+```
+
+The smoke test packs the package and installs it in a temp project. Then it
+starts the server over stdio and checks that the source tools return
+registry-matching content.
 
 Users configure in VS Code:
 ```json
@@ -495,6 +522,7 @@ lands.
 | Advisory | Package | Why it is ignored | Mitigation | Remove when |
 | --- | --- | --- | --- | --- |
 | [GHSA-jrc7-96c5-q579](https://github.com/advisories/GHSA-jrc7-96c5-q579) (critical) | `maplibre-gl` < 6.4.1 | The fix is in v6, which needs `setWorkerUrl()` set up in every consumer bundler (and the worker files copied into a Next.js app's `public/`). Without it the map mounts but loads nothing, which no test or build here would catch. | The only untrusted HTML that reaches maplibre is a basemap's `attribution`; `MapWithRealMap` runs it through DOMPurify first. | The map interface moves to maplibre-gl v6. |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) (high) | `braces` <= 3.0.3 | No patched version exists. Stack exhaustion needs attacker-supplied glob patterns. The only production path left is `apps/docs` → nextra → fast-glob → micromatch, which runs at build time on this repo's own patterns (the docs are a static export). `@buildpad/cli` dropped fast-glob for tinyglobby, so the CLI no longer ships it to consumers. | — | A patched `braces` (or a micromatch without it) is published. |
 
 ## Checklist Before First Publish
 

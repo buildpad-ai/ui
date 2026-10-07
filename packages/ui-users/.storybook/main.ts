@@ -49,6 +49,7 @@ const config: StorybookConfig = {
           '@buildpad/hooks': path.resolve(__dirname, '../../hooks/src'),
           '@buildpad/utils': path.resolve(__dirname, '../../utils/src'),
           '@buildpad/ui-interfaces': path.resolve(__dirname, '../../ui-interfaces/src'),
+          '@buildpad/ui-table': path.resolve(__dirname, '../../ui-table/src'),
           '@buildpad/ui-users': path.resolve(__dirname, '../src'),
         },
       },

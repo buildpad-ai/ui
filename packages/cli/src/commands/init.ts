@@ -183,6 +183,24 @@ const DEFAULT_CONFIG: Config = {
 
 const TEMPLATES_ROOT = getTemplatesRoot();
 
+/**
+ * Skeleton files `init` copies verbatim from the bundled templates (target is
+ * relative to the src root). They are not registry entries, so they are never
+ * transformed or tracked — but registry files may import them, which is why the
+ * corpus tests resolve against this list.
+ *
+ * Every page is locale-prefixed: the root layout lives at app/[lang]/ and there
+ * must be NO app/layout.tsx beside it. The home page lives INSIDE the
+ * (authenticated) group so "/<lang>" renders within AuthenticatedShell (header
+ * + sidebar) once api-routes adds the layout. (No app/[lang]/page.tsx — that
+ * would render "/" outside the shell and conflict with this route.)
+ * Unauthenticated "/" is redirected to /<lang>/login by the Supabase middleware.
+ */
+export const INIT_SKELETON_FILES: ReadonlyArray<{ template: string; target: string }> = [
+  { template: 'app/layout.tsx', target: 'app/[lang]/layout.tsx' },
+  { template: 'app/authenticated-page.tsx', target: 'app/[lang]/(authenticated)/page.tsx' },
+];
+
 async function copyTemplateFile(sourceRelativePath: string, targetPath: string, cwd: string) {
   const sourcePath = path.join(TEMPLATES_ROOT, sourceRelativePath);
 
@@ -479,19 +497,9 @@ export async function init(options: InitOptions) {
       }
 
       // Plain skeleton files (not part of the upgradeable design system).
-      // Every page is locale-prefixed: the root layout lives at app/[lang]/
-      // and there must be NO app/layout.tsx beside it.
-      await copyTemplateFile('app/layout.tsx', path.join(appDir, '[lang]', 'layout.tsx'), cwd);
-      // Home page lives INSIDE the (authenticated) group so "/<lang>" renders
-      // within AuthenticatedShell (header + sidebar) once api-routes adds the
-      // layout. (No app/[lang]/page.tsx — that would render "/" outside the
-      // shell and conflict with this route.) Unauthenticated "/" is redirected
-      // to /<lang>/login by the Supabase middleware.
-      await copyTemplateFile(
-        'app/authenticated-page.tsx',
-        path.join(appDir, '[lang]', '(authenticated)', 'page.tsx'),
-        cwd
-      );
+      for (const file of INIT_SKELETON_FILES) {
+        await copyTemplateFile(file.template, path.join(srcRoot, file.target), cwd);
+      }
 
       // Install the design system (tokens, globals, theme, app shell) as a
       // tracked lib module from the bundled CLI templates — offline and

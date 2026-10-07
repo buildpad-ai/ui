@@ -21,10 +21,26 @@ Buildpad uses the **Copy & Own** distribution model (similar to shadcn/ui):
 ## Features
 
 - 📦 **Component Discovery** - List all available Buildpad components
-- 📖 **Source Code Access** - Read component source code and documentation
+- 📖 **Source Code Access** - Read component and lib-module source code. The sources ship inside the package, so this works offline
 - 🛠️ **Code Generation** - Generate components, forms, and interfaces
 - 🔧 **CLI Integration** - Get CLI commands to install components
+- ⬆️ **Upgrades** - Find outdated components and lib modules in a project, plan the upgrade, and run it with the matching CLI
 - 📚 **Usage Examples** - Get real-world usage examples with local imports
+
+## Where the sources come from
+
+Each release of `@buildpad/mcp` contains two things from the same commit:
+
+- the component registry (`registry.json`), embedded in `dist/index.js`
+- every source file that registry lists, in `dist/sources/<source path>`
+
+The build checks each bundled file against the registry's `sourceSha256` and fails on a mismatch. So `get_component`, `copy_component` and `resources/read` return the exact bytes of that release, with no network access.
+
+If you run the server from a monorepo checkout (`packages/mcp-server/dist`), it reads `packages/` directly instead. It never reads other packages under `node_modules/@buildpad`.
+
+If a file cannot be read, the tool returns `isError: true` with a `missingSources` list. `resources/read` returns an MCP error with `missingSources` in its `data`. A tool never returns an empty file list or placeholder text in place of the source.
+
+Sources are returned as published. They import `@buildpad/*` packages, which are not on npm. `npx @buildpad/cli add <name>` rewrites those imports to your project's paths. If you copy the files by hand, you must rewrite the imports yourself.
 
 ## Installation
 
@@ -105,20 +121,22 @@ await client.connect(transport);
 
 ### Packages
 
-- `buildpad://packages/types` - TypeScript type definitions
-- `buildpad://packages/services` - CRUD service classes
-- `buildpad://packages/hooks` - React hooks for relations
-- `buildpad://packages/ui-interfaces` - Field interface components
-- `buildpad://packages/ui-collections` - Dynamic collection components
+- `buildpad://packages/@buildpad/types` - TypeScript type definitions
+- `buildpad://packages/@buildpad/services` - CRUD service classes
+- `buildpad://packages/@buildpad/hooks` - React hooks for relations
+- `buildpad://packages/@buildpad/ui-interfaces` - Field interface components
+- `buildpad://packages/@buildpad/ui-collections` - Dynamic collection components
 
 ### Components
 
-- `buildpad://components/Input` - Text input component
-- `buildpad://components/SelectDropdown` - Dropdown select
-- `buildpad://components/DateTime` - Date/time picker
-- `buildpad://components/FileImage` - Image upload
-- `buildpad://components/CollectionForm` - Dynamic form
-- ... and many more
+Each resource returns the primary (first) source file of a component. A lib-module name (for example `buildpad://components/utils`) also works.
+
+- `buildpad://components/input` - Text input component
+- `buildpad://components/select-dropdown` - Dropdown select
+- `buildpad://components/datetime` - Date/time picker
+- `buildpad://components/file-image` - Image upload
+- `buildpad://components/collection-form` - Dynamic form
+- ... and many more (component titles such as `Input` also match)
 
 ## Available Tools
 
@@ -128,7 +146,7 @@ List all available components with descriptions and categories.
 
 ### `get_component`
 
-Get detailed information and source code for a specific component.
+Get detailed information and source code for a specific component or lib module. `source` is the primary file, and `allSources` maps each target path to its content.
 
 ```json
 {
@@ -176,9 +194,11 @@ Get complete source code and file structure to manually copy a component into yo
 Returns:
 - Full component source code
 - Target file paths
-- Required lib modules (types, services, hooks)
-- Peer dependencies to install
+- Required lib modules (types, services, hooks, utils, ...), including the lib modules those depend on
+- Peer dependencies to install, and the other components it uses (`registryDependencies`)
 - Copy instructions
+
+The CLI (`npx @buildpad/cli add datetime`) is the recommended way to install: it also rewrites the `@buildpad/*` imports and records the files for later upgrades.
 
 ### `generate_form`
 
@@ -276,6 +296,48 @@ Returns the `module_access_keys` + `policies` tool calls to register and grant t
 
 Registry management UI ships in the `users-management` component (`ModuleAccessKeysManager`, mounted at `/module-access-keys`); per-policy granting is the "Module-Level Access" tab of `PolicyDetail`.
 
+### `list_outdated`
+
+List the installed components **and lib modules** (utils, services, hooks, ...) whose upstream source changed. The tool reads the project's `buildpad.json` and compares each recorded `sourceSha256` with this server's registry. Each entry includes `kind` (`component` or `lib`), `staleFiles`, `installedRelease`, and `latestRelease` (the release this server ships). Entries that were installed from a newer release than this server are flagged `aheadOfRegistry`.
+
+```json
+{
+  "projectPath": "/absolute/path/to/your-project"
+}
+```
+
+### `get_upgrade_plan`
+
+A read-only dry run. For each installed component and lib module, it shows the stale files and the status of each file on disk:
+
+- `pristine`: the file matches the hash recorded at install.
+- `modified`: the file has local edits.
+- `missing`: the file is not on disk.
+- `untracked`: the file is on disk, but `buildpad.json` has no install hash for it. The CLI overwrites such files whatever the strategy.
+- `invalid-target`: the recorded target is outside the project root, or the path is not a regular file (for example, a directory). The tool does not read it.
+
+Files are looked up where the CLI writes them: under `src/` when `srcDir` is set, and component `.ts` files as `.tsx`. The plan also gives a `recommendedAction`: `up-to-date`, `safe-overwrite`, `prompt-or-three-way`, `overwrite-untracked` (back up local edits first), `review-invalid-targets` (correct `buildpad.json` or the file first) or `update-mcp`. If you name a component, the plan also includes the outdated lib modules it depends on.
+
+### `apply_upgrade`
+
+⚠️ Writes to the project. This tool runs `npx --yes @buildpad/cli@<this server's version> upgrade --cwd <projectPath> --strategy <strategy> -- <names>`. The CLI is pinned to the server's own version, so it applies the same registry that `get_upgrade_plan` reported.
+
+```json
+{
+  "projectPath": "/absolute/path/to/your-project",
+  "components": ["input"],
+  "strategy": "three-way"
+}
+```
+
+- Omit `components` to upgrade everything installed (`--all`). This is the safest choice.
+- If you name components, the outdated lib modules they depend on are added, because `buildpad upgrade <name>` alone does not upgrade them. To turn this off, set `includeLibDependencies: false`.
+- `projectPath` must be an absolute path. Relative paths are rejected.
+- `strategy` must be `overwrite`, `new-file` (the default) or `three-way`. The CLI's interactive `prompt` strategy cannot be answered through MCP.
+- Names must be registry names: lowercase letters, digits and dashes, not starting with a dash. They are passed after `--`, with no shell.
+- The tool refuses to run if the project, a named entry or a lib module it would add was installed from a newer release than this server, because that would downgrade it. Update the server instead (`npx -y @buildpad/mcp@latest`). If only an added lib module is newer, you can also set `includeLibDependencies: false`.
+- If the CLI cannot start, exits with a non-zero code or times out (120 s), the result has `isError: true`. The JSON body still gives `success: false`, `exitCode`, `stdout` and `stderr`.
+
 ## Usage with Copilot
 
 Once configured, you can ask Copilot:
@@ -302,6 +364,13 @@ pnpm dev
 
 # Type check
 pnpm typecheck
+
+# Tests
+pnpm test
+
+# After a build: pack the package, install it in a temp project and check
+# that the source tools return the registry's bytes over stdio
+pnpm smoke:pack
 ```
 
 ## Architecture
@@ -333,6 +402,11 @@ pnpm typecheck
 │  │  - Metadata & Categories         │   │
 │  │  - Dependencies                  │   │
 │  │  - File mappings                 │   │
+│  └──────────────────────────────────┘   │
+│  ┌──────────────────────────────────┐   │
+│  │  dist/sources (bundled)          │   │
+│  │  - Every registry source file    │   │
+│  │  - sha256-checked at build time  │   │
 │  └──────────────────────────────────┘   │
 └─────────────────────────────────────────┘
                  │

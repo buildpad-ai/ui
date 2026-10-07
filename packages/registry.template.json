@@ -782,7 +782,8 @@
       "internalDependencies": [
         "supabase-auth",
         "i18n",
-        "design-system"
+        "design-system",
+        "hooks"
       ]
     },
     "content-routes": {
@@ -809,6 +810,12 @@
       "internalDependencies": [
         "api-routes",
         "hooks"
+      ],
+      "registryDependencies": [
+        "content-layout",
+        "content-navigation",
+        "collection-list",
+        "collection-form"
       ]
     },
     "files-routes": {
@@ -3180,7 +3187,8 @@
       "registryDependencies": [
         "system-permissions",
         "select-icon",
-        "system-token"
+        "system-token",
+        "vtable"
       ]
     },
     {

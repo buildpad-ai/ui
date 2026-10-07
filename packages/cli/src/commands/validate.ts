@@ -16,9 +16,11 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
-import fg from 'fast-glob';
 import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
+import { globFiles } from '../utils/glob.js';
+import { findUntransformedImports } from '../utils/import-specifiers.js';
+import { installedScriptPatterns, sourceRoot, unsafeRecordedTargets } from '../utils/paths.js';
 
 interface ValidationResult {
   valid: boolean;
@@ -42,45 +44,34 @@ interface ValidationWarning {
 }
 
 /**
- * Check for untransformed @buildpad/* imports
+ * Check for untransformed @buildpad/* imports — in any import form (static,
+ * multi-line, `export … from`, side-effect, dynamic `import()`, `require`),
+ * across every root buildpad.json records installed files under (app/,
+ * components/, lib/, middleware.ts, …), not only components/ and lib/buildpad/.
+ * The library packages (@buildpad/types, @buildpad/ui-*, …) are private, so such
+ * an import is broken; the published @buildpad/cli and @buildpad/mcp are not flagged.
  */
 async function checkUntransformedImports(
   cwd: string,
   config: Config
 ): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
-  
-  const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
-  const patterns = [
-    path.join(srcDir, 'components/**/*.{ts,tsx,js,jsx}'),
-    path.join(srcDir, 'lib/buildpad/**/*.{ts,tsx,js,jsx}'),
-  ];
-  
-  for (const pattern of patterns) {
-    const files = await fg(pattern, { ignore: ['**/node_modules/**'] });
-    
-    for (const file of files) {
+  const root = sourceRoot(cwd, config);
+
+  for (const pattern of installedScriptPatterns(config)) {
+    for (const file of await globFiles(root, pattern)) {
       const content = await fs.readFile(file, 'utf-8');
-      const lines = content.split('\n');
-      
-      lines.forEach((line, index) => {
-        // Check for @buildpad/* imports (not in comments)
-        if (
-          (line.includes("from '@buildpad/") || line.includes('from "@buildpad/')) && 
-          !line.trim().startsWith('//') &&
-          !line.trim().startsWith('*')
-        ) {
-          errors.push({
-            file: path.relative(cwd, file),
-            line: index + 1,
-            message: `Untransformed import: ${line.trim()}`,
-            code: 'UNTRANSFORMED_IMPORT',
-          });
-        }
-      });
+      for (const found of findUntransformedImports(content)) {
+        errors.push({
+          file: path.relative(cwd, file),
+          line: found.line,
+          message: `Untransformed import: ${found.text}`,
+          code: 'UNTRANSFORMED_IMPORT',
+        });
+      }
     }
   }
-  
+
   return errors;
 }
 
@@ -347,15 +338,15 @@ async function checkBrokenRelativeImports(
   
   const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
   const patterns = [
-    path.join(srcDir, 'components/**/*.{ts,tsx,js,jsx}'),
-    path.join(srcDir, 'lib/buildpad/**/*.{ts,tsx,js,jsx}'),
+    'components/**/*.{ts,tsx,js,jsx}',
+    'lib/buildpad/**/*.{ts,tsx,js,jsx}',
   ];
   
   // Regex to extract relative imports
   const relativeImportPattern = /from\s+['"](\.\.?\/[^'"]+)['"]/g;
   
   for (const pattern of patterns) {
-    const files = await fg(pattern, { ignore: ['**/node_modules/**'] });
+    const files = await globFiles(srcDir, pattern);
     
     for (const file of files) {
       const content = await fs.readFile(file, 'utf-8');
@@ -414,8 +405,7 @@ async function checkReact19Compatibility(
     return warnings;
   }
   
-  const serverComponentPattern = path.join(appDir, '**/page.tsx');
-  const files = await fg(serverComponentPattern, { ignore: ['**/node_modules/**'] });
+  const files = await globFiles(appDir, '**/page.tsx');
   
   // Pattern for component prop passing (React 19 breaking change)
   const componentPropPattern = /component=\{[A-Z][a-zA-Z]*\}/;
@@ -741,6 +731,15 @@ export async function validate(options: {
     
     const errors = [...untransformedErrors, ...brokenImportErrors, ...libModuleErrors, ...i18nLayout.errors, ...tsErrors];
     const warnings = [...missingCssWarnings, ...ssrWarnings, ...apiRouteWarnings, ...react19Warnings, ...duplicateExportWarnings, ...i18nLayout.warnings];
+
+    // The import scan skipped these (they could reach outside the project).
+    for (const target of unsafeRecordedTargets(config)) {
+      warnings.push({
+        file: 'buildpad.json',
+        message: `Recorded target '${target}' is not a relative path inside the project; validate and fix ignore it.`,
+        code: 'UNSAFE_TARGET',
+      });
+    }
 
     // Schema checks. v3 decides staleness by comparing each file's recorded
     // upstream hash with the registry's, so a manifest without those hashes

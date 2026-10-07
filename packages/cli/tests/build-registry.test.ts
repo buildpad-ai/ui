@@ -5,12 +5,23 @@
  * by `pnpm build:registry` in CI.
  */
 
-import { describe, expect, test } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 import fs from 'fs-extra';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-// @ts-expect-error — pure ESM helper file lives outside the TS project
-import { extractSemverFromTag, releaseTagSemver, earliestReleaseSemver, deriveLastChangedIn } from '../../../scripts/build-registry.mjs';
+import { BUILDPAD_PACKAGES } from '../src/commands/import-map.js';
+import {
+  extractSemverFromTag,
+  releaseTagSemver,
+  earliestReleaseSemver,
+  deriveLastChangedIn,
+  collectUndeclaredImports,
+  moduleSpecifiers,
+  PACKAGE_FOLDERS,
+  inferSourcePackage,
+  // @ts-expect-error — pure ESM helper file lives outside the TS project
+} from '../../../scripts/build-registry.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REGISTRY_PATH = path.resolve(__dirname, '../../registry.json');
@@ -148,5 +159,148 @@ describe('generated registry — lib module enrichment', () => {
     );
     // every file has a computed source hash
     for (const f of ds.files) expect(f.sourceSha256).toBeTruthy();
+  });
+});
+
+describe('moduleSpecifiers', () => {
+  test('finds every import form and skips comments and strings', () => {
+    const text = [
+      "import a from './a';",
+      "import type {\n  B,\n} from './b';",
+      "export { c } from './c';",
+      "export * from './d';",
+      "import './e.css';",
+      "const F = lazy(() => import('./F'));",
+      "// import g from './g';",
+      "/* import h from './h'; */",
+      "const s = \"import i from './i'\";",
+    ].join('\n');
+    expect(moduleSpecifiers(text)).toEqual(['./a', './b', './c', './d', './e.css', './F']);
+  });
+});
+
+describe('collectUndeclaredImports', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'buildpad-registry-check-'));
+  afterAll(() => fs.removeSync(root));
+
+  const write = (rel: string, text: string) => fs.outputFileSync(path.join(root, rel), text);
+  const component = (name: string, sources: string[], registryDependencies?: string[]) => ({
+    name,
+    files: sources.map((source) => ({ source, target: `components/ui/${path.basename(source)}` })),
+    ...(registryDependencies ? { registryDependencies } : {}),
+  });
+
+  write('ui-interfaces/src/select-icon/SelectIcon.tsx', 'export const SelectIcon = 1;');
+  write('ui-interfaces/src/upload/Upload.tsx', 'export const Upload = 1;');
+  write('ui-collections/src/CollectionList.tsx', 'export const CollectionList = 1;');
+  write('ui-interfaces/src/lazy/Lazy.tsx', "export const L = () => import('../select-icon/SelectIcon');");
+  write('ui-users/src/Uses.tsx', "import { SelectIcon } from '@buildpad/ui-interfaces/select-icon';");
+  write('ui-users/src/Dynamic.tsx', "export const U = () => import('@buildpad/ui-interfaces/upload');");
+  write('ui-users/src/Bogus.tsx', "import { X } from '@buildpad/ui-interfaces/not-a-component';");
+  write('ui-collections/src/CollectionForm.tsx', "import { CollectionList } from './CollectionList';");
+  write('ui-interfaces/src/commented/Commented.tsx', "// import { Upload } from '../upload/Upload';\nexport {};");
+  write('ui-collections/src/UnshippedHelper.tsx', 'export const H = 1;');
+  write('ui-collections/src/Helped.tsx', "import { H } from './UnshippedHelper';");
+  write('ui-interfaces/src/upload/internal.ts', 'export const I = 1;');
+  write('ui-interfaces/src/deep/Deep.tsx', "export const D = () => import('../upload/internal');");
+  write('cli/templates/lib/vf/index.ts', "export { VF } from './VF';");
+  write('ui-form/src/VF.tsx', 'export const VF = 1;');
+
+  const base = [
+    component('select-icon', ['ui-interfaces/src/select-icon/SelectIcon.tsx']),
+    component('upload', ['ui-interfaces/src/upload/Upload.tsx']),
+    component('collection-list', ['ui-collections/src/CollectionList.tsx']),
+  ];
+  const check = (...entries: object[]) => collectUndeclaredImports({ components: [...base, ...entries], lib: {} }, root);
+
+  test('a dynamic relative import must be declared', () => {
+    expect(check(component('lazy', ['ui-interfaces/src/lazy/Lazy.tsx']))).toEqual([
+      { component: 'lazy', file: 'ui-interfaces/src/lazy/Lazy.tsx', spec: '../select-icon/SelectIcon', needs: 'select-icon' },
+    ]);
+    expect(check(component('lazy', ['ui-interfaces/src/lazy/Lazy.tsx'], ['select-icon']))).toEqual([]);
+  });
+
+  test('an @buildpad/ui-interfaces/<x> subpath (static or dynamic) must be a declared component', () => {
+    expect(check(component('users', ['ui-users/src/Uses.tsx', 'ui-users/src/Dynamic.tsx']))).toEqual([
+      { component: 'users', file: 'ui-users/src/Uses.tsx', spec: '@buildpad/ui-interfaces/select-icon', needs: 'select-icon' },
+      { component: 'users', file: 'ui-users/src/Dynamic.tsx', spec: '@buildpad/ui-interfaces/upload', needs: 'upload' },
+    ]);
+    expect(check(component('users', ['ui-users/src/Uses.tsx', 'ui-users/src/Dynamic.tsx'], ['select-icon', 'upload']))).toEqual([]);
+  });
+
+  test('an @buildpad/ui-interfaces/<x> subpath must name a registry component', () => {
+    expect(check(component('bogus', ['ui-users/src/Bogus.tsx'], ['select-icon']))).toEqual([
+      {
+        kind: 'unknown-component',
+        component: 'bogus',
+        file: 'ui-users/src/Bogus.tsx',
+        spec: '@buildpad/ui-interfaces/not-a-component',
+        needs: 'not-a-component',
+      },
+    ]);
+  });
+
+  test('a PascalCase sibling import names the component that ships the file', () => {
+    expect(check(component('collection-form', ['ui-collections/src/CollectionForm.tsx']))).toEqual([
+      { component: 'collection-form', file: 'ui-collections/src/CollectionForm.tsx', spec: './CollectionList', needs: 'collection-list' },
+    ]);
+    expect(check(component('collection-form', ['ui-collections/src/CollectionForm.tsx'], ['collection-list']))).toEqual([]);
+  });
+
+  test('a relative import of a file no registry entry ships is reported', () => {
+    expect(check(component('helped', ['ui-collections/src/Helped.tsx']))).toEqual([
+      {
+        kind: 'unshipped-file',
+        component: 'helped',
+        file: 'ui-collections/src/Helped.tsx',
+        spec: './UnshippedHelper',
+        needs: 'ui-collections/src/UnshippedHelper',
+      },
+    ]);
+    // Declaring the component whose folder holds it does not ship the file.
+    expect(check(component('deep', ['ui-interfaces/src/deep/Deep.tsx'], ['upload']))).toEqual([
+      {
+        kind: 'unshipped-file',
+        component: 'deep',
+        file: 'ui-interfaces/src/deep/Deep.tsx',
+        spec: '../upload/internal',
+        needs: 'ui-interfaces/src/upload/internal',
+      },
+    ]);
+  });
+
+  test("a file sourced from elsewhere may import its entry's files by target path", () => {
+    // vform's index.ts comes from cli/templates/ but installs beside VForm.tsx.
+    const vf = {
+      name: 'vf',
+      files: [
+        { source: 'cli/templates/lib/vf/index.ts', target: 'components/ui/vf/index.ts' },
+        { source: 'ui-form/src/VF.tsx', target: 'components/ui/vf/VF.tsx' },
+      ],
+    };
+    expect(check(vf)).toEqual([]);
+  });
+
+  test('commented-out imports are ignored', () => {
+    expect(check(component('commented', ['ui-interfaces/src/commented/Commented.tsx']))).toEqual([]);
+  });
+
+  test('the committed registry has no undeclared imports', async () => {
+    const registry = await fs.readJSON(REGISTRY_PATH);
+    expect(collectUndeclaredImports(registry)).toEqual([]);
+  });
+});
+
+describe('package folders agree with the CLI install map', () => {
+  test('PACKAGE_FOLDERS = the install map plus @buildpad/cli (owner of templates)', () => {
+    const fromMap = Object.fromEntries(Object.entries(BUILDPAD_PACKAGES).map(([name, t]) => [name, t.folder]));
+    expect(PACKAGE_FOLDERS).toEqual({ ...fromMap, '@buildpad/cli': 'cli' });
+  });
+
+  test('inferSourcePackage attributes each folder to its package', () => {
+    for (const [name, folder] of Object.entries<string>(PACKAGE_FOLDERS)) {
+      expect(inferSourcePackage(`${folder}/src/x.ts`), folder).toBe(name);
+    }
+    expect(inferSourcePackage('cli/templates/app/layout.tsx')).toBe('@buildpad/cli');
   });
 });

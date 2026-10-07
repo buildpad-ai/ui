@@ -23,11 +23,12 @@
  *   pnpm registry:check
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,7 +37,11 @@ const PACKAGES_DIR = join(ROOT, 'packages');
 
 // ─── Package name → folder name ─────────────────────────────────
 
-const PACKAGE_FOLDERS = {
+/**
+ * Kept in step with the CLI's install map (packages/cli/src/commands/import-map.ts)
+ * by packages/cli/tests/build-registry.test.ts. Exposed for that test.
+ */
+export const PACKAGE_FOLDERS = {
   '@buildpad/ui-interfaces': 'ui-interfaces',
   '@buildpad/ui-form': 'ui-form',
   '@buildpad/ui-table': 'ui-table',
@@ -239,8 +244,9 @@ function getLastChangedTag(fullPath) {
 /**
  * Infer which source package owns a registry file path.
  * Files coming from cli/templates/* are treated as CLI-owned.
+ * Exposed for testing.
  */
-function inferSourcePackage(source) {
+export function inferSourcePackage(source) {
   if (source.startsWith('ui-interfaces/')) return '@buildpad/ui-interfaces';
   if (source.startsWith('ui-form/'))        return '@buildpad/ui-form';
   if (source.startsWith('ui-table/'))       return '@buildpad/ui-table';
@@ -425,59 +431,114 @@ function collectFileHashes(registry) {
  *      artifact was never regenerated).
  */
 /**
- * Every relative import in a shipped file must resolve to something the
- * consumer will actually have: another file in the SAME entry, or a component
- * named in `registryDependencies`.
+ * Every module specifier in a script, as TypeScript's pre-processor reads
+ * them: static imports (multi-line and type-only included), `export … from`,
+ * side-effect imports, `import()` and `require()`. Comments and string
+ * contents are not specifiers. Exposed for testing.
+ */
+export function moduleSpecifiers(text) {
+  return typescript().preProcessFile(text, true, true).importedFiles.map((f) => f.fileName);
+}
+
+// Loaded on first use, so generating the registry never needs the compiler —
+// only --check does (typescript is a root devDependency).
+let tsModule;
+function typescript() {
+  tsModule ??= createRequire(import.meta.url)('typescript');
+  return tsModule;
+}
+
+const SCRIPT_FILE = /\.(?:[cm]?[jt]sx?)$/;
+const UI_INTERFACES_SUBPATH = '@buildpad/ui-interfaces/';
+
+/** Resolve a relative specifier against a directory given as path segments. */
+function resolveSegments(dir, spec) {
+  const segments = [...dir];
+  for (const part of spec.split('/')) {
+    if (part === '.' || part === '') continue;
+    if (part === '..') segments.pop();
+    else segments.push(part);
+  }
+  return segments;
+}
+
+/** True when `resolved` (extensionless or not) names one of `paths`, or a directory index among them. */
+function shipsPath(paths, resolved) {
+  return paths.some((p) => p === resolved || p.startsWith(`${resolved}.`) || p.startsWith(`${resolved}/`));
+}
+
+/**
+ * Every import in a shipped file must resolve to something the consumer will
+ * actually have: another file in the SAME entry, or a component named in
+ * `registryDependencies`.
  *
  * The sourceSha256 check below compares file hashes against version bumps and
  * has no notion of an import graph, so a cross-component import could be added
  * with nothing declared and the CLI would emit a file importing a component it
  * never installs — a TS2307 the consumer discovers, not CI.
+ *
+ * Component files are checked for:
+ *   - relative imports in every form, dynamic `import()` included. The needed
+ *     component is the one whose files include the resolved path (so a flat
+ *     PascalCase sibling such as './CollectionList' names collection-list). A
+ *     path no entry ships is reported as 'unshipped-file' (no declaration can
+ *     install it), unless it names one of the entry's own files in target
+ *     space (vform's index.ts, sourced from cli/templates/, imports './VForm');
+ *   - `@buildpad/ui-interfaces/<x>` subpaths (static or dynamic): <x> must be
+ *     a registry component, declared unless it is the entry itself.
+ *
+ * Exposed for testing; `packagesDir` defaults to this repo's packages/.
  */
-function collectUndeclaredImports(registry) {
+export function collectUndeclaredImports(registry, packagesDir = PACKAGES_DIR) {
   const problems = [];
-  // Only a directory that is itself a registry component can be a missing
-  // registryDependency. Shared helper directories (lib/, utils/) ship by other
-  // means and are not installable components, so flagging them would be noise.
-  const componentNames = new Set(
-    (registry.components ?? registry.items ?? []).map((c) => c.name).filter(Boolean),
-  );
-  // Must tolerate multi-line specifier lists: barrels are written as
-  // `export {\n  a,\n  b,\n} from '../mod';`, and a newline-free pattern
-  // silently skips every one of them — which is why an unregistered module
-  // could be re-exported without the check noticing.
-  const RELATIVE_IMPORT =
-    /(?:^|\n)\s*(?:import|export)\b(?:[^'"{}\n]|\{[^}]*\})*from\s+['"](\.[^'"]+)['"]/g; // NOSONAR: alternation branches are disjoint char classes (no {}), so the repetition can't backtrack ambiguously; only ever run over this repo's own trusted source files at build time
+  const components = registry.components ?? registry.items ?? [];
+  // Only a registry component can be a missing registryDependency.
+  const componentNames = new Set(components.map((c) => c.name).filter(Boolean));
+  const componentSources = components.map((c) => ({
+    name: c.name,
+    sources: (c.files ?? []).map((f) => f.source).filter(Boolean),
+  }));
+  const shippedBy = (resolved) => componentSources.find((c) => shipsPath(c.sources, resolved))?.name;
 
-  for (const component of registry.components ?? registry.items ?? []) {
+  for (const component of components) {
     const files = component.files ?? [];
     const ownSources = files.map((f) => f.source).filter(Boolean);
+    const ownTargets = files.map((f) => f.target).filter(Boolean);
     const declared = new Set(component.registryDependencies ?? []);
+    const needsDeclared = (needs) => needs !== component.name && !declared.has(needs);
 
     for (const file of files) {
-      if (!file.source) continue;
-      const fullPath = join(PACKAGES_DIR, file.source);
+      if (!file.source || !SCRIPT_FILE.test(file.source)) continue;
+      const fullPath = join(packagesDir, file.source);
       if (!existsSync(fullPath)) continue;
       const text = readFileSync(fullPath, 'utf8');
       const dir = file.source.split('/').slice(0, -1);
 
-      for (const match of text.matchAll(RELATIVE_IMPORT)) {
-        const spec = match[1];
-        const segments = [...dir];
-        for (const part of spec.split('/')) {
-          if (part === '.' || part === '') continue;
-          if (part === '..') segments.pop();
-          else segments.push(part);
-        }
-        const resolved = segments.join('/');
-        // Same-entry import: a file this entry already ships.
-        if (ownSources.some((src) => src === resolved || src.startsWith(`${resolved}.`) || src.startsWith(`${resolved}/`))) {
+      for (const spec of moduleSpecifiers(text)) {
+        if (spec.startsWith(UI_INTERFACES_SUBPATH)) {
+          const needs = spec.slice(UI_INTERFACES_SUBPATH.length).split('/')[0];
+          if (!componentNames.has(needs)) {
+            problems.push({ kind: 'unknown-component', component: component.name, file: file.source, spec, needs });
+          } else if (needsDeclared(needs)) {
+            problems.push({ component: component.name, file: file.source, spec, needs });
+          }
           continue;
         }
-        // Cross-component: by convention the directory under the package is
-        // the component name (e.g. ui-interfaces/src/select-icon/... ).
-        const needs = segments[2];
-        if (!needs || !componentNames.has(needs) || declared.has(needs)) continue;
+        if (!spec.startsWith('.')) continue;
+        const resolved = resolveSegments(dir, spec).join('/');
+        // Same-entry import: a file this entry already ships.
+        if (shipsPath(ownSources, resolved)) continue;
+        // Cross-component: the component that ships the resolved file.
+        const needs = shippedBy(resolved);
+        if (!needs) {
+          // Same entry, in target space: the import is left as written and
+          // resolves beside the file's target.
+          const targetDir = (file.target ?? '').split('/').slice(0, -1);
+          if (file.target && shipsPath(ownTargets, resolveSegments(targetDir, spec).join('/'))) continue;
+          problems.push({ kind: 'unshipped-file', component: component.name, file: file.source, spec, needs: resolved });
+          continue;
+        }
+        if (!needsDeclared(needs)) continue;
         problems.push({ component: component.name, file: file.source, spec, needs });
       }
     }
@@ -494,25 +555,16 @@ function collectUndeclaredImports(registry) {
     if (mod.path && mod.target) ownTargets.push(mod.target);
 
     for (const file of files) {
-      if (!file.source || !file.target) continue;
-      const fullPath = join(PACKAGES_DIR, file.source);
+      if (!file.source || !file.target || !SCRIPT_FILE.test(file.source)) continue;
+      const fullPath = join(packagesDir, file.source);
       if (!existsSync(fullPath)) continue;
       const text = readFileSync(fullPath, 'utf8');
       const dir = file.target.split('/').slice(0, -1);
 
-      for (const match of text.matchAll(RELATIVE_IMPORT)) {
-        const spec = match[1];
-        const segments = [...dir];
-        for (const part of spec.split('/')) {
-          if (part === '.' || part === '') continue;
-          if (part === '..') segments.pop();
-          else segments.push(part);
-        }
-        const resolved = segments.join('/');
-        const shipped = ownTargets.some(
-          (t) => t === resolved || t.startsWith(`${resolved}.`) || t.startsWith(`${resolved}/`),
-        );
-        if (shipped) continue;
+      for (const spec of moduleSpecifiers(text)) {
+        if (!spec.startsWith('.')) continue;
+        const resolved = resolveSegments(dir, spec).join('/');
+        if (shipsPath(ownTargets, resolved)) continue;
         problems.push({
           kind: 'lib-file',
           component: `lib:${moduleName}`,
@@ -538,11 +590,15 @@ function checkRegistry() {
 
   const undeclared = collectUndeclaredImports(committed);
   if (undeclared.length > 0) {
-    console.error('\n✗ A shipped file imports a component its entry does not declare:\n');
+    console.error('\n✗ A shipped file imports something its entry does not ship or declare:\n');
     for (const u of undeclared) {
       console.error(`    ${u.component}: ${u.file} imports '${u.spec}'`);
       if (u.kind === 'lib-file') {
         console.error(`      → ${u.needs} is not shipped by that lib entry; register its source file`);
+      } else if (u.kind === 'unshipped-file') {
+        console.error(`      → ${u.needs} is not shipped by any registry entry; register its source file`);
+      } else if (u.kind === 'unknown-component') {
+        console.error(`      → "${u.needs}" is not a registry component; @buildpad/ui-interfaces/<x> must name one`);
       } else {
         console.error(`      → add "${u.needs}" to that entry's registryDependencies`);
       }
@@ -612,9 +668,23 @@ function checkRegistry() {
   console.log('✓ registry.json is in sync — all source changes are versioned.');
 }
 
+/**
+ * Whether this module is the script node was asked to run. Compares real
+ * paths: node resolves symlinks for import.meta.url but not for argv[1], so a
+ * URL comparison silently skipped main() — and exited 0 — when the checkout
+ * was reached through a symlink (e.g. macOS /tmp).
+ */
+function isMainModule() {
+  try {
+    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
 // Run only when invoked directly (e.g. `node scripts/build-registry.mjs`),
 // not when imported by tests for the helper exports.
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isMainModule()) {
   if (process.argv.includes('--check')) {
     checkRegistry();
   } else {

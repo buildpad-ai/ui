@@ -15,11 +15,13 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
-import fg from 'fast-glob';
 import prompts from 'prompts';
 import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
-import { transformImports, toKebabCase } from './transformer.js';
+import { globFiles } from '../utils/glob.js';
+import { rewriteBuildpadSpecifiers, toKebabCase, UnmappedImportError } from './transformer.js';
+import { findUntransformedImports } from '../utils/import-specifiers.js';
+import { installedScriptPatterns, isInsideDir, sourceRoot, unsafeRecordedTargets } from '../utils/paths.js';
 
 interface FixResult {
   fixed: number;
@@ -28,7 +30,15 @@ interface FixResult {
 }
 
 /**
- * Fix untransformed @buildpad/* imports
+ * Fix untransformed @buildpad/* imports, found in any import form across every
+ * root buildpad.json records installed files under (the same scan as validate).
+ *
+ * Only the @buildpad/* specifiers are rewritten, in every file — installed or
+ * the user's own. The full install transform also normalises the casing of
+ * relative imports, but `add` already did that to every file it wrote, so
+ * re-running it here could only rename imports the user added: a recorded
+ * components/ui/input.tsx importing the user's './MyHelper' got './my-helper',
+ * and VForm's './FormFieldInterface' got './form-field-interface'.
  */
 async function fixUntransformedImports(
   cwd: string,
@@ -36,35 +46,52 @@ async function fixUntransformedImports(
   dryRun: boolean
 ): Promise<FixResult> {
   const result: FixResult = { fixed: 0, skipped: 0, errors: [] };
-  
-  const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
-  const patterns = [
-    path.join(srcDir, 'components/**/*.{ts,tsx,js,jsx}'),
-    path.join(srcDir, 'lib/buildpad/**/*.{ts,tsx,js,jsx}'),
-  ];
-  
-  for (const pattern of patterns) {
-    const files = await fg(pattern, { ignore: ['**/node_modules/**'] });
-    
-    for (const file of files) {
+
+  const root = sourceRoot(cwd, config);
+  const seen = new Set<string>();
+
+  // installedScriptPatterns leaves these out: they could reach outside the project.
+  for (const target of unsafeRecordedTargets(config)) {
+    result.errors.push(`buildpad.json records '${target}', which is not a relative path inside the project — ignored`);
+    result.skipped++;
+  }
+
+  for (const pattern of installedScriptPatterns(config)) {
+    for (const file of await globFiles(root, pattern)) {
+      // Never write outside the source root, whatever the patterns matched.
+      if (seen.has(file) || !isInsideDir(root, file)) continue;
+      seen.add(file);
       const content = await fs.readFile(file, 'utf-8');
-      
-      // Check if file has @buildpad/* imports
-      if (content.includes("from '@buildpad/") || content.includes('from "@buildpad/')) {
-        const transformed = transformImports(content, config);
-        
-        if (transformed !== content) {
-          if (dryRun) {
-            console.log(chalk.dim(`  Would fix: ${path.relative(cwd, file)}`));
-          } else {
-            await fs.writeFile(file, transformed);
-          }
-          result.fixed++;
+      if (findUntransformedImports(content).length === 0) continue;
+
+      const rel = path.relative(cwd, file);
+      let transformed: string;
+      try {
+        transformed = rewriteBuildpadSpecifiers(content, config, { keepPublished: true });
+      } catch (err) {
+        // The transform fails closed on a @buildpad/* import it has no target for.
+        if (!(err instanceof UnmappedImportError)) throw err;
+        result.errors.push(`${rel}:${err.line ?? '?'} cannot rewrite '${err.specifier}' (${err.reason}) — fix it by hand`);
+        result.skipped++;
+        continue;
+      }
+
+      if (transformed !== content) {
+        if (dryRun) {
+          console.log(chalk.dim(`  Would fix: ${rel}`));
+        } else {
+          await fs.writeFile(file, transformed);
         }
+        result.fixed++;
+      }
+
+      for (const left of findUntransformedImports(transformed)) {
+        result.errors.push(`${rel}:${left.line} cannot rewrite '${left.specifier}' (${left.kind} import) — fix it by hand`);
+        result.skipped++;
       }
     }
   }
-  
+
   return result;
 }
 
@@ -194,9 +221,7 @@ async function fixBrokenImports(
   const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
   const componentsDir = path.join(srcDir, 'components/ui');
   
-  const files = await fg(path.join(componentsDir, '**/*.{ts,tsx}'), {
-    ignore: ['**/node_modules/**']
-  });
+  const files = await globFiles(componentsDir, '**/*.{ts,tsx}');
   
   for (const file of files) {
     const content = await fs.readFile(file, 'utf-8');
@@ -660,8 +685,8 @@ export async function fix(options: {
     if (tsResult.fixed > 0) {
       console.log(chalk.green(`  ✓ Fixed ${tsResult.fixed} TypeScript error(s)`));
     }
-    if (tsResult.errors.length > 0) {
-      tsResult.errors.forEach(e => console.log(chalk.yellow(`  ⚠ ${e}`)));
+    for (const e of [...importResult.errors, ...tsResult.errors]) {
+      console.log(chalk.yellow(`  ⚠ ${e}`));
     }
     
     if (totalSkipped > 0) {

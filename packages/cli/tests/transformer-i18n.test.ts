@@ -1,7 +1,7 @@
 /**
  * The component i18n core ships as lib/buildpad/i18n/* (a sibling of the
- * utils barrel, not under it), so `@buildpad/utils/i18n` must map there — and
- * the generic `@buildpad/utils/<sub>` rule must not claim it first.
+ * utils barrel, not under it), so `@buildpad/utils/i18n` must map there — like
+ * every utils module, which installs flat into the lib root.
  */
 import { describe, expect, test } from 'vitest';
 import { transformImports } from '../src/commands/transformer.js';
@@ -28,9 +28,12 @@ describe('transformImports — @buildpad/utils/i18n', () => {
     expect(out).toBe(`import { id } from '@/lib/buildpad/i18n/locales/id';`);
   });
 
-  test('leaves other utils subpaths on the utils rule', () => {
+  test('other utils subpaths map to the same flat layout (lib/buildpad/<module>)', () => {
+    // utils' modules install flat into the lib root (utils/src/conceal.ts →
+    // lib/buildpad/conceal.ts). The old rule produced lib/buildpad/utils/conceal,
+    // a path the registry never installs; no shipped file used it.
     const out = transformImports(`import { x } from '@buildpad/utils/conceal';`, config);
-    expect(out).toBe(`import { x } from '@/lib/buildpad/utils/conceal';`);
+    expect(out).toBe(`import { x } from '@/lib/buildpad/conceal';`);
   });
 
   test('the bare utils barrel still maps to lib/buildpad/utils', () => {
