@@ -7,7 +7,7 @@
 
 import path from 'node:path';
 import { sha256 } from '../utils/checksum.js';
-import { isCommentLine, scanSpecifiers } from '../utils/import-specifiers.js';
+import { isCommentedOut, scanSpecifiers } from '../utils/import-specifiers.js';
 import { isNonInstallableSpecifier, resolveBuildpadImport, toKebabCase, UnmappedImportError } from './import-map.js';
 import type { Config } from './init.js';
 
@@ -27,6 +27,9 @@ function typeOnlyClauseNames(content: string, fromIndex: number): string[] | und
     .filter(Boolean);
 }
 
+/** An `import()` holding nothing but a quoted specifier (what the transform has always normalised). */
+const PLAIN_DYNAMIC_IMPORT = /^import\s*\(\s*(['"])[^'"\n]+\1\s*\)$/;
+
 /**
  * Rewrite every `@buildpad/*` module specifier to the consumer path the
  * package map (import-map.ts) gives it, in every import form the scanner finds
@@ -37,11 +40,12 @@ function typeOnlyClauseNames(content: string, fromIndex: number): string[] | und
  * The output keeps what consumers' copies have always contained, because
  * `upgrade` diffs them against a base re-transformed with this code:
  *   - every rewritten specifier is single-quoted;
- *   - `import( '…' )` becomes `import('…')`;
+ *   - `import( '…' )` becomes `import('…')` (an `import()` with comments or
+ *     attributes keeps everything but the literal);
  *   - matching is lexical, so comment lines (JSDoc usage examples) and strings
  *     are rewritten too.
- * A specifier with no target throws UnmappedImportError — except on a comment
- * line, which is left as written.
+ * A specifier with no target — or an interpolated template literal — throws
+ * UnmappedImportError, unless it is commented out (left as written).
  */
 export function rewriteBuildpadSpecifiers(
   content: string,
@@ -64,9 +68,14 @@ export function rewriteBuildpadSpecifiers(
   let out = '';
   let last = 0;
   for (const m of matches) {
-    if (m.start < last) continue;
+    // The plain `import('x')` form is rewritten whole, to normalise spacing.
+    const wholeImport = m.kind === 'dynamic' && PLAIN_DYNAMIC_IMPORT.test(content.slice(m.start, m.end));
+    if ((wholeImport ? m.start : m.literalStart) < last) continue;
     let target: string;
     try {
+      if (m.quote === '`' && m.specifier.includes('${')) {
+        throw new UnmappedImportError(m.specifier, 'an interpolated template literal cannot be rewritten');
+      }
       target = resolveBuildpadImport(
         m.specifier,
         config.aliases,
@@ -75,10 +84,10 @@ export function rewriteBuildpadSpecifiers(
     } catch (err) {
       if (!(err instanceof UnmappedImportError)) throw err;
       lines ??= content.split('\n');
-      if (isCommentLine(lines[m.line - 1] ?? '')) continue;
+      if (isCommentedOut(lines[m.line - 1] ?? '', m.column)) continue;
       throw new UnmappedImportError(m.specifier, err.reason, m.line);
     }
-    if (m.kind === 'dynamic') {
+    if (wholeImport) {
       out += `${content.slice(last, m.start)}import('${target}')`;
       last = m.end;
     } else {

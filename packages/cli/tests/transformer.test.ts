@@ -520,6 +520,34 @@ describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
     expect(() => rewriteBuildpadSpecifiers(`import '@buildpad/nope';`, config, { keepPublished: true })).toThrow(UnmappedImportError);
   });
 
+  test("dynamic import() with magic comments, attributes or a trailing comma: only the literal changes", () => {
+    expect(rewriteBuildpadSpecifiers(`import(/* webpackChunkName: 'h' */ '@buildpad/hooks')`, config)).toBe(
+      `import(/* webpackChunkName: 'h' */ '@/lib/buildpad/hooks')`,
+    );
+    expect(rewriteBuildpadSpecifiers(`import("@buildpad/types", { with: { type: "json" } })`, config)).toBe(
+      `import('@/lib/buildpad/types', { with: { type: "json" } })`,
+    );
+    expect(rewriteBuildpadSpecifiers(`import( '@buildpad/utils', )`, config)).toBe(`import( '@/lib/buildpad/utils', )`);
+    expect(rewriteBuildpadSpecifiers('import(`@buildpad/ui-interfaces/upload`)', config)).toBe(
+      `import('@/components/ui/upload')`,
+    );
+  });
+
+  test("import() forms the scanner used to miss fail closed too", () => {
+    expect(() => rewriteBuildpadSpecifiers(`import(/* webpackChunkName: "x" */ '@buildpad/bogus')`, config)).toThrow(UnmappedImportError);
+    expect(() => rewriteBuildpadSpecifiers(`import('@buildpad/bogus', {})`, config)).toThrow(UnmappedImportError);
+    expect(() => rewriteBuildpadSpecifiers('import(`@buildpad/ui-interfaces/${name}`)', config)).toThrow(/template literal/);
+  });
+
+  test("an unmapped specifier after a closed comment on the same line is code, and throws", () => {
+    expect(() => rewriteBuildpadSpecifiers(`/* eslint-disable */ import { x } from '@buildpad/bogus';`, config)).toThrow(
+      UnmappedImportError,
+    );
+    expect(() => rewriteBuildpadSpecifiers(`/**\n * doc\n */ import { x } from '@buildpad/bogus';`, config)).toThrow(
+      /line 3/,
+    );
+  });
+
   test("transformRegistryFile names the shipped file in the error", () => {
     expect(() =>
       transformRegistryFile(

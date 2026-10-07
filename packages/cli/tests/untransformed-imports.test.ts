@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
+import ts from 'typescript';
 import { findUntransformedImports, scanSpecifiers } from '../src/utils/import-specifiers.js';
 import { installedTargetRoots, unsafeRecordedTargets } from '../src/utils/paths.js';
 import { validate } from '../src/commands/validate.js';
@@ -89,6 +90,32 @@ describe('findUntransformedImports', () => {
     ].join('\n');
     expect(findUntransformedImports(content).map(f => f.specifier)).toEqual(['@buildpad/types']);
   });
+});
+
+describe('scanner vs the TypeScript pre-processor', () => {
+  // Every form TypeScript reads as an import must be seen by the lexical
+  // scanner too, or validate misses it and the transform lets it through.
+  const forms: Record<string, string> = {
+    'magic comment': `const a = import(/* webpackChunkName: "x" */ '@buildpad/hooks');`,
+    'magic comment with the same quote': `const b = import(/* webpackChunkName: 'b' */ /* webpackPrefetch: true */ "@buildpad/types");`,
+    'line comment inside import()': `const c = import(\n  // lazy\n  '@buildpad/services'\n);`,
+    'import attributes': `const d = import('@buildpad/services', { with: { type: 'json' } });`,
+    'trailing comma': `const e = import('@buildpad/utils',);`,
+    'template literal': 'const f = import(`@buildpad/ui-form`);',
+    'code after a block comment': `/* eslint-disable */ import { g } from '@buildpad/ui-table';`,
+    'code after a closing JSDoc line': `/**\n * doc\n */ import { h } from '@buildpad/ui-files';`,
+    'documentation only': `/**\n * import { i } from '@buildpad/ui-users';\n */\n// import('@buildpad/ui-forms')\nexport {};`,
+  };
+
+  for (const [name, content] of Object.entries(forms)) {
+    test(name, () => {
+      const expected = ts
+        .preProcessFile(content, true, true)
+        .importedFiles.map(f => f.fileName)
+        .filter(s => s.startsWith('@buildpad/'));
+      expect(findUntransformedImports(content).map(f => f.specifier)).toEqual(expected);
+    });
+  }
 });
 
 describe('installedTargetRoots', () => {

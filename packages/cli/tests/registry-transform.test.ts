@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { BUILDPAD_PACKAGES, NON_INSTALLABLE_PACKAGES } from '../src/commands/import-map.js';
 import { rewriteBuildpadSpecifiers } from '../src/commands/transformer.js';
+import { isCommentedOut, scanSpecifiers } from '../src/utils/import-specifiers.js';
 import {
   BARREL,
   PACKAGES_DIR,
@@ -31,6 +32,7 @@ import {
   makeConfig,
   namesImportedFrom,
   ownerKey,
+  readSource,
   renderBarrel,
   resolveLocal,
   transformCorpus,
@@ -112,6 +114,30 @@ describe('registry corpus: transformed output', () => {
       }
     }
     expect(leftovers).toEqual([]);
+  });
+
+  test("the CLI's lexical scanner sees every import TypeScript sees, in every shipped source", () => {
+    // validate, fix and the transform's fail-closed rule all rely on the
+    // scanner; a form it misses would pass through all three unnoticed.
+    const missed: string[] = [];
+    let checked = 0;
+    for (const f of corpus) {
+      if (!isScript(f.source)) continue;
+      const raw = readSource(f.source);
+      const lines = raw.split('\n');
+      const seen = new Set(
+        scanSpecifiers(raw)
+          .filter(m => !isCommentedOut(lines[m.line - 1] ?? '', m.column))
+          .map(m => `${m.line} ${m.specifier}`),
+      );
+      for (const s of extractSpecifiers(raw)) {
+        if (s.ambient) continue;
+        checked++;
+        if (!seen.has(`${s.line} ${s.text}`)) missed.push(`${f.source}:${s.line} '${s.text}'`);
+      }
+    }
+    expect(missed).toEqual([]);
+    expect(checked).toBeGreaterThan(1500);
   });
 
   test("every '@/' and relative specifier resolves (registry targets + barrel + init skeleton)", () => {
