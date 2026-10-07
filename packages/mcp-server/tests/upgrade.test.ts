@@ -368,11 +368,60 @@ describe('apply_upgrade', () => {
     expect(json(result).error).toContain('newer release (999.0.0)');
   });
 
-  test('reports a CLI that could not be started', async () => {
+  test('refuses when a stale lib dependency it would add is ahead of this server', async () => {
+    staleLibProject();
+    const config = JSON.parse(fs.readFileSync(path.join(tmp, 'buildpad.json'), 'utf-8'));
+    config.lib[libName].release = '999.0.0';
+    writeConfig(config);
+
+    // The plan already says to update the MCP for that lib module ...
+    const plan = json(await call('get_upgrade_plan', { projectPath: tmp, components: [component.name] }));
+    expect(plan.find((e: { name: string }) => e.name === libName).recommendedAction).toBe('update-mcp');
+
+    // ... so apply_upgrade must not pass it to the older pinned CLI.
+    const result = await call('apply_upgrade', { projectPath: tmp, components: [component.name] });
+    expect(result.isError).toBe(true);
+    expect(json(result)).toMatchObject({
+      aheadOfRegistry: [{ kind: 'lib', name: libName, installedRelease: '999.0.0' }],
+      libDependencies: [libName],
+    });
+    expect(json(result).hint).toContain('includeLibDependencies: false');
+    expect(spawnSyncMock).not.toHaveBeenCalled();
+  });
+
+  test('an ahead lib dependency is left alone with includeLibDependencies: false', async () => {
+    staleLibProject();
+    const config = JSON.parse(fs.readFileSync(path.join(tmp, 'buildpad.json'), 'utf-8'));
+    config.lib[libName].release = '999.0.0';
+    writeConfig(config);
+    spawnSyncMock.mockReturnValue({ status: 0, stdout: '', stderr: '' });
+    const result = await call('apply_upgrade', { projectPath: tmp, components: [component.name], includeLibDependencies: false });
+    expect(result.isError).toBeUndefined();
+    expect(spawnSyncMock.mock.calls[0][1].slice(-2)).toEqual(['--', component.name]);
+  });
+
+  test('reports a CLI that could not be started as an error', async () => {
     writeConfig({ components: {} });
     spawnSyncMock.mockReturnValue({ status: null, stdout: null, stderr: null, error: new Error('spawn npx ENOENT') });
-    const result = json(await call('apply_upgrade', { projectPath: tmp }));
-    expect(result).toMatchObject({ success: false, exitCode: -1, error: 'spawn npx ENOENT', components: 'all installed' });
+    const result = await call('apply_upgrade', { projectPath: tmp });
+    expect(result.isError).toBe(true);
+    expect(json(result)).toMatchObject({ success: false, exitCode: -1, error: 'spawn npx ENOENT', components: 'all installed' });
+  });
+
+  test('reports a CLI that exits non-zero as an error', async () => {
+    writeConfig({ components: {} });
+    spawnSyncMock.mockReturnValue({ status: 3, stdout: '', stderr: 'boom' });
+    const result = await call('apply_upgrade', { projectPath: tmp });
+    expect(result.isError).toBe(true);
+    expect(json(result)).toMatchObject({ success: false, exitCode: 3, stderr: 'boom' });
+  });
+
+  test('a successful run is not an error', async () => {
+    writeConfig({ components: {} });
+    spawnSyncMock.mockReturnValue({ status: 0, stdout: 'done', stderr: '' });
+    const result = await call('apply_upgrade', { projectPath: tmp });
+    expect(result.isError).toBeUndefined();
+    expect(json(result)).toMatchObject({ success: true, exitCode: 0, stdout: 'done' });
   });
 });
 

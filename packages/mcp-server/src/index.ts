@@ -1299,11 +1299,20 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         // getComponent also matches titles ("Input"); the CLI needs registry names.
         const named = input.components.map(n => getComponent(n)?.name ?? n);
 
-        // Upgrading with this server's CLI release must not move anything backwards.
-        const targeted = named.length > 0 ? new Set(named) : undefined;
+        const libDependencies = named.length > 0 && input.includeLibDependencies
+          ? staleLibDependencies(named, statuses, registry)
+          : [];
+        const names = [...named, ...libDependencies];
+
+        // Upgrading with this server's CLI release must not move anything
+        // backwards. Check every name the CLI will get, including the lib
+        // dependencies added above, not only the names the caller passed.
+        const targeted = names.length > 0 ? new Set(names) : undefined;
         const ahead = statuses.filter(st => st.aheadOfRegistry && (!targeted || targeted.has(st.name)));
         const projectAhead = isAhead(config.release, MCP_VERSION);
         if (projectAhead || ahead.length > 0) {
+          const aheadLibDependencies = ahead.filter(st => libDependencies.includes(st.name));
+          const onlyLibDependenciesAhead = !projectAhead && aheadLibDependencies.length === ahead.length;
           return {
             isError: true,
             content: [{
@@ -1315,16 +1324,15 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
                 projectRelease: config.release ?? null,
                 mcpVersion: MCP_VERSION,
                 aheadOfRegistry: ahead.map(st => ({ kind: st.kind, name: st.name, installedRelease: st.installedRelease })),
-                hint: 'Update the MCP server (npx -y @buildpad/mcp@latest), or run the CLI that matches the project directly.',
+                libDependencies,
+                hint: 'Update the MCP server (npx -y @buildpad/mcp@latest), or run the CLI that matches the project directly.' +
+                  (onlyLibDependenciesAhead
+                    ? ' To upgrade only the named entries and leave their lib dependencies alone, pass includeLibDependencies: false.'
+                    : ''),
               }, null, 2),
             }],
           };
         }
-
-        const libDependencies = named.length > 0 && input.includeLibDependencies
-          ? staleLibDependencies(named, statuses, registry)
-          : [];
-        const names = [...named, ...libDependencies];
 
         const { command, args: cliArgs } = buildUpgradeCommand({
           cliVersion: MCP_VERSION,
@@ -1340,15 +1348,20 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
           timeout: 120_000,
         });
 
+        // A CLI that could not start, exited non-zero or was killed (timeout)
+        // is a failed write: flag it so the client does not read it as done.
+        const success = !result.error && result.status === 0;
         return {
+          ...(success ? {} : { isError: true }),
           content: [{
             type: 'text',
             text: JSON.stringify({
-              success: result.status === 0,
+              success,
               exitCode: result.status ?? -1,
               stdout: result.stdout ?? '',
               stderr: result.stderr ?? '',
               ...(result.error ? { error: result.error.message } : {}),
+              ...(result.signal ? { signal: result.signal } : {}),
               components: named.length > 0 ? named : 'all installed',
               libDependencies,
               strategy: input.strategy,
