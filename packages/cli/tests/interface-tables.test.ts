@@ -1320,14 +1320,15 @@ describe('consumer utils barrel', () => {
   });
 
   test('utils subpath imports resolve, as the transformer maps them, to shipped modules exporting what they take', () => {
-    // transformer.ts maps `@buildpad/utils/i18n(/…)` to lib/buildpad/i18n(/…),
-    // which the utils lib ships, and any other `@buildpad/utils/<x>` to
-    // lib/buildpad/utils/<x>, which it never creates (the barrel is the only
-    // file under lib/buildpad/utils/).
+    // transformer.ts maps `@buildpad/utils/<x>` to the utils lib's flattened
+    // layout, lib/buildpad/<x>, where the module really is. (It used to map
+    // non-i18n subpaths to lib/buildpad/utils/<x>, which the lib never
+    // creates: the barrel is the only file under lib/buildpad/utils/.)
     const at = (spec: string): string | undefined => consumerModulePath({ target: 'lib/buildpad/conceal.ts' }, { spec, kind: 'import', typeOnly: false });
     expect(shippedTarget(at('@buildpad/utils/i18n') ?? '')).toBe('lib/buildpad/i18n/index.ts');
     expect(shippedTarget(at('@buildpad/utils/i18n/locales/id') ?? '')).toBe('lib/buildpad/i18n/locales/id.ts');
-    expect(at('@buildpad/utils/conceal')).toBe('lib/buildpad/utils/conceal');
+    expect(at('@buildpad/utils/conceal')).toBe('lib/buildpad/conceal');
+    expect(shippedTarget(at('@buildpad/utils/conceal') ?? '')).toBe('lib/buildpad/conceal.ts');
     expect([...sourceByTarget.keys()].filter((t) => t.startsWith('lib/buildpad/utils/'))).toEqual([BARREL_TARGET]);
 
     const subpathImports = shippedImports.filter(
