@@ -495,6 +495,7 @@ lands.
 | Advisory | Package | Why it is ignored | Mitigation | Remove when |
 | --- | --- | --- | --- | --- |
 | [GHSA-jrc7-96c5-q579](https://github.com/advisories/GHSA-jrc7-96c5-q579) (critical) | `maplibre-gl` < 6.4.1 | The fix is in v6, which needs `setWorkerUrl()` set up in every consumer bundler (and the worker files copied into a Next.js app's `public/`). Without it the map mounts but loads nothing, which no test or build here would catch. | The only untrusted HTML that reaches maplibre is a basemap's `attribution`; `MapWithRealMap` runs it through DOMPurify first. | The map interface moves to maplibre-gl v6. |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) (high) | `braces` <= 3.0.3 | No patched version exists. Stack exhaustion needs attacker-supplied glob patterns. The only production path left is `apps/docs` → nextra → fast-glob → micromatch, which runs at build time on this repo's own patterns (the docs are a static export). `@buildpad/cli` dropped fast-glob for tinyglobby, so the CLI no longer ships it to consumers. | — | A patched `braces` (or a micromatch without it) is published. |
 
 ## Checklist Before First Publish
 

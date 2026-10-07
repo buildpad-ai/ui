@@ -15,10 +15,10 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
-import fg from 'fast-glob';
 import prompts from 'prompts';
 import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
+import { globFiles } from '../utils/glob.js';
 import { transformImports, toKebabCase } from './transformer.js';
 
 interface FixResult {
@@ -39,12 +39,12 @@ async function fixUntransformedImports(
   
   const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
   const patterns = [
-    path.join(srcDir, 'components/**/*.{ts,tsx,js,jsx}'),
-    path.join(srcDir, 'lib/buildpad/**/*.{ts,tsx,js,jsx}'),
+    'components/**/*.{ts,tsx,js,jsx}',
+    'lib/buildpad/**/*.{ts,tsx,js,jsx}',
   ];
   
   for (const pattern of patterns) {
-    const files = await fg(pattern, { ignore: ['**/node_modules/**'] });
+    const files = await globFiles(srcDir, pattern);
     
     for (const file of files) {
       const content = await fs.readFile(file, 'utf-8');
@@ -194,9 +194,7 @@ async function fixBrokenImports(
   const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
   const componentsDir = path.join(srcDir, 'components/ui');
   
-  const files = await fg(path.join(componentsDir, '**/*.{ts,tsx}'), {
-    ignore: ['**/node_modules/**']
-  });
+  const files = await globFiles(componentsDir, '**/*.{ts,tsx}');
   
   for (const file of files) {
     const content = await fs.readFile(file, 'utf-8');

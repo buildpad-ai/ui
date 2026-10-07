@@ -16,9 +16,9 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import chalk from 'chalk';
 import ora from 'ora';
-import fg from 'fast-glob';
 import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
+import { globFiles } from '../utils/glob.js';
 
 interface ValidationResult {
   valid: boolean;
@@ -52,12 +52,12 @@ async function checkUntransformedImports(
   
   const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
   const patterns = [
-    path.join(srcDir, 'components/**/*.{ts,tsx,js,jsx}'),
-    path.join(srcDir, 'lib/buildpad/**/*.{ts,tsx,js,jsx}'),
+    'components/**/*.{ts,tsx,js,jsx}',
+    'lib/buildpad/**/*.{ts,tsx,js,jsx}',
   ];
   
   for (const pattern of patterns) {
-    const files = await fg(pattern, { ignore: ['**/node_modules/**'] });
+    const files = await globFiles(srcDir, pattern);
     
     for (const file of files) {
       const content = await fs.readFile(file, 'utf-8');
@@ -347,15 +347,15 @@ async function checkBrokenRelativeImports(
   
   const srcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
   const patterns = [
-    path.join(srcDir, 'components/**/*.{ts,tsx,js,jsx}'),
-    path.join(srcDir, 'lib/buildpad/**/*.{ts,tsx,js,jsx}'),
+    'components/**/*.{ts,tsx,js,jsx}',
+    'lib/buildpad/**/*.{ts,tsx,js,jsx}',
   ];
   
   // Regex to extract relative imports
   const relativeImportPattern = /from\s+['"](\.\.?\/[^'"]+)['"]/g;
   
   for (const pattern of patterns) {
-    const files = await fg(pattern, { ignore: ['**/node_modules/**'] });
+    const files = await globFiles(srcDir, pattern);
     
     for (const file of files) {
       const content = await fs.readFile(file, 'utf-8');
@@ -414,8 +414,7 @@ async function checkReact19Compatibility(
     return warnings;
   }
   
-  const serverComponentPattern = path.join(appDir, '**/page.tsx');
-  const files = await fg(serverComponentPattern, { ignore: ['**/node_modules/**'] });
+  const files = await globFiles(appDir, '**/page.tsx');
   
   // Pattern for component prop passing (React 19 breaking change)
   const componentPropPattern = /component=\{[A-Z][a-zA-Z]*\}/;
