@@ -24,13 +24,12 @@ const MCP_VERSION = (JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'),
 ) as { version: string }).version;
 
-/** registry target → sourceSha256, across components and lib modules. */
-function registryHashesByTarget(): Map<string, string | undefined> {
-  const registry = getRegistry();
-  const map = new Map<string, string | undefined>();
-  for (const c of registry.components) for (const f of c.files) map.set(f.target, f.sourceSha256);
-  for (const m of Object.values(registry.lib)) for (const f of m.files ?? []) map.set(f.target, f.sourceSha256);
-  return map;
+/**
+ * The registry's sourceSha256 for one lib module's target. Looked up per
+ * module: two modules can write the same target from different sources.
+ */
+function libHash(module: string, target: string): string | undefined {
+  return getRegistry().lib[module]?.files?.find(f => f.target === target)?.sourceSha256;
 }
 
 function call(name: string, args?: unknown) {
@@ -281,10 +280,9 @@ describe('handleCallToolRequest — copy_component', () => {
     for (const d of withDeps.internalDependencies) walk(d);
     expect(new Set(result.libFiles.map((f: { module: string }) => f.module))).toEqual(expected);
 
-    const hashes = registryHashesByTarget();
-    for (const f of result.libFiles as Array<{ path: string; content: string }>) {
+    for (const f of result.libFiles as Array<{ path: string; content: string; module: string }>) {
       expect(f.content.length).toBeGreaterThan(0);
-      expect(hashSource(f.content)).toBe(hashes.get(f.path));
+      expect(hashSource(f.content)).toBe(libHash(f.module, f.path));
     }
   });
 
