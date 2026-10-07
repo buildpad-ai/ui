@@ -67,7 +67,7 @@ async function fixUntransformedImports(
       const rel = path.relative(cwd, file);
       let transformed: string;
       try {
-        transformed = rewriteBuildpadSpecifiers(content, config);
+        transformed = rewriteBuildpadSpecifiers(content, config, { keepPublished: true });
       } catch (err) {
         // The transform fails closed on a @buildpad/* import it has no target for.
         if (!(err instanceof UnmappedImportError)) throw err;

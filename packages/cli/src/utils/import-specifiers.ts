@@ -16,6 +16,8 @@
  * Callers that must ignore comments filter by line (see isCommentLine).
  */
 
+import { isNonInstallableSpecifier } from '../commands/import-map.js';
+
 export type SpecifierKind = 'from' | 'side-effect' | 'dynamic' | 'require' | 'ambient';
 
 export interface SpecifierMatch {
@@ -102,13 +104,14 @@ export interface UntransformedImport {
 
 /**
  * `@buildpad/*` module references left in a consumer file, in any import form,
- * ignoring comment lines (JSDoc usage examples).
+ * ignoring comment lines (JSDoc usage examples) and the packages published to
+ * npm (@buildpad/cli, @buildpad/mcp), which a consumer's own code may import.
  */
 export function findUntransformedImports(content: string): UntransformedImport[] {
   const lines = content.split('\n');
   const found: UntransformedImport[] = [];
   for (const m of scanSpecifiers(content)) {
-    if (!m.specifier.startsWith('@buildpad/')) continue;
+    if (!m.specifier.startsWith('@buildpad/') || isNonInstallableSpecifier(m.specifier)) continue;
     const text = lines[m.line - 1] ?? '';
     if (isCommentLine(text)) continue;
     found.push({ line: m.line, kind: m.kind, specifier: m.specifier, text: text.trim() });

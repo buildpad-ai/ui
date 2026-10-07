@@ -48,7 +48,8 @@ interface ValidationWarning {
  * multi-line, `export … from`, side-effect, dynamic `import()`, `require`),
  * across every root buildpad.json records installed files under (app/,
  * components/, lib/, middleware.ts, …), not only components/ and lib/buildpad/.
- * The @buildpad/* packages are not published, so any such import is broken.
+ * The library packages (@buildpad/types, @buildpad/ui-*, …) are private, so such
+ * an import is broken; the published @buildpad/cli and @buildpad/mcp are not flagged.
  */
 async function checkUntransformedImports(
   cwd: string,

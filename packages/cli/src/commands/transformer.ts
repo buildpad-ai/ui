@@ -8,7 +8,7 @@
 import path from 'node:path';
 import { sha256 } from '../utils/checksum.js';
 import { isCommentLine, scanSpecifiers } from '../utils/import-specifiers.js';
-import { resolveBuildpadImport, toKebabCase, UnmappedImportError } from './import-map.js';
+import { isNonInstallableSpecifier, resolveBuildpadImport, toKebabCase, UnmappedImportError } from './import-map.js';
 import type { Config } from './init.js';
 
 export { BUILDPAD_PACKAGES, toKebabCase, UnmappedImportError } from './import-map.js';
@@ -43,8 +43,21 @@ function typeOnlyClauseNames(content: string, fromIndex: number): string[] | und
  * A specifier with no target throws UnmappedImportError — except on a comment
  * line, which is left as written.
  */
-export function rewriteBuildpadSpecifiers(content: string, config: Config): string {
-  const matches = scanSpecifiers(content).filter(m => m.specifier.startsWith('@buildpad/'));
+export function rewriteBuildpadSpecifiers(
+  content: string,
+  config: Config,
+  options: {
+    /**
+     * Leave imports of the published packages (@buildpad/cli, @buildpad/mcp)
+     * as written instead of throwing — for a consumer's own code (`fix`).
+     * Registry files must never import them.
+     */
+    keepPublished?: boolean;
+  } = {}
+): string {
+  const matches = scanSpecifiers(content).filter(
+    m => m.specifier.startsWith('@buildpad/') && !(options.keepPublished && isNonInstallableSpecifier(m.specifier))
+  );
   if (matches.length === 0) return content;
   let lines: string[] | undefined;
 

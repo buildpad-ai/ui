@@ -512,6 +512,14 @@ describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
     expect(() => rewriteBuildpadSpecifiers(`import '@buildpad/mcp';`, config)).toThrow(/never installed/);
   });
 
+  test("keepPublished (fix, on a consumer's own code) leaves @buildpad/cli and @buildpad/mcp as written", () => {
+    const input = `import { s } from '@buildpad/mcp';\nimport type { C } from "@buildpad/cli/dist/x";\nimport { a } from '@buildpad/types';\n`;
+    expect(rewriteBuildpadSpecifiers(input, config, { keepPublished: true })).toBe(
+      `import { s } from '@buildpad/mcp';\nimport type { C } from "@buildpad/cli/dist/x";\nimport { a } from '@/lib/buildpad/types';\n`,
+    );
+    expect(() => rewriteBuildpadSpecifiers(`import '@buildpad/nope';`, config, { keepPublished: true })).toThrow(UnmappedImportError);
+  });
+
   test("transformRegistryFile names the shipped file in the error", () => {
     expect(() =>
       transformRegistryFile(

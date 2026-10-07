@@ -72,11 +72,21 @@ export const BUILDPAD_PACKAGES: Readonly<Record<string, PackageTarget>> = {
   '@buildpad/ui-forms': { folder: 'ui-forms', alias: 'components', root: 'form-builder', subpaths: 'kebab' },
 };
 
-/** Workspace packages that are never installed into a consumer project. */
+/**
+ * Workspace packages that are never installed into a consumer project. Both
+ * are published to npm, so a consumer's own code may import them; registry
+ * files may not (the install transform throws).
+ */
 export const NON_INSTALLABLE_PACKAGES: Readonly<Record<string, string>> = {
   '@buildpad/cli': 'it is the installer; its templates install under their own targets',
   '@buildpad/mcp': 'it is the MCP server, not a library',
 };
+
+/** Whether `specifier` imports one of NON_INSTALLABLE_PACKAGES (the published ones) or a subpath of it. */
+export function isNonInstallableSpecifier(specifier: string): boolean {
+  const pkg = /^@buildpad\/[^/]+/.exec(specifier)?.[0];
+  return pkg !== undefined && Object.hasOwn(NON_INSTALLABLE_PACKAGES, pkg);
+}
 
 /** A `@buildpad/*` specifier the install transform cannot place. */
 export class UnmappedImportError extends Error {

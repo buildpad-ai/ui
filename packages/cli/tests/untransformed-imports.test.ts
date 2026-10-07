@@ -80,6 +80,15 @@ describe('findUntransformedImports', () => {
       [10, 'from', '@buildpad/services'],
     ]);
   });
+
+  test('leaves the published packages (@buildpad/cli, @buildpad/mcp) alone', () => {
+    const content = [
+      "import { createServer } from '@buildpad/mcp';",
+      "import type { Config } from '@buildpad/cli/dist/index';",
+      "import { a } from '@buildpad/types';",
+    ].join('\n');
+    expect(findUntransformedImports(content).map(f => f.specifier)).toEqual(['@buildpad/types']);
+  });
 });
 
 describe('installedTargetRoots', () => {
@@ -263,11 +272,27 @@ describe('validate / fix over a project', () => {
     expect(logged).toContain("'../victim/x.ts'");
   });
 
+  test('validate and fix accept imports of the published packages in user code', async () => {
+    const mcp = "import { createServer } from '@buildpad/mcp';\nimport type { Field } from '@buildpad/types';\n";
+    await project({ 'lib/mcp.ts': mcp });
+
+    const result = await validate({ cwd, noExit: true });
+    expect(result!.errors.filter(e => e.code === 'UNTRANSFORMED_IMPORT').map(e => e.message)).toEqual([
+      "Untransformed import: import type { Field } from '@buildpad/types';",
+    ]);
+
+    await fix({ cwd, yes: true });
+    expect(await fs.readFile(path.join(src, 'lib/mcp.ts'), 'utf8')).toBe(
+      "import { createServer } from '@buildpad/mcp';\nimport type { Field } from '@/lib/buildpad/types';\n",
+    );
+    expect(vi.mocked(console.log).mock.calls.flat().join('\n')).not.toContain('cannot rewrite');
+  });
+
   test('fix reaches installed files outside components/ and lib/buildpad/, and reports what it cannot rewrite', async () => {
     await project({
       'app/api/thing/route.ts': "export { apiRequest } from '@buildpad/services';\n",
       'lib/i18n/config.ts': "export const load = () => import('@buildpad/hooks');\n",
-      'middleware.ts': "import '@buildpad/mcp';\n",
+      'middleware.ts': "import '@buildpad/ui-table/nope';\n",
     });
 
     await fix({ cwd, yes: true });
@@ -278,8 +303,8 @@ describe('validate / fix over a project', () => {
     expect(await fs.readFile(path.join(src, 'lib/i18n/config.ts'), 'utf8')).toBe(
       "export const load = () => import('@/lib/buildpad/hooks');\n",
     );
-    expect(await fs.readFile(path.join(src, 'middleware.ts'), 'utf8')).toBe("import '@buildpad/mcp';\n");
+    expect(await fs.readFile(path.join(src, 'middleware.ts'), 'utf8')).toBe("import '@buildpad/ui-table/nope';\n");
     const logged = vi.mocked(console.log).mock.calls.flat().join('\n');
-    expect(logged).toContain("src/middleware.ts:1 cannot rewrite '@buildpad/mcp'");
+    expect(logged).toContain("src/middleware.ts:1 cannot rewrite '@buildpad/ui-table/nope'");
   });
 });
