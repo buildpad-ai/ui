@@ -14,7 +14,7 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 import { findUntransformedImports, scanSpecifiers } from '../src/utils/import-specifiers.js';
-import { installedTargetRoots } from '../src/utils/paths.js';
+import { installedTargetRoots, unsafeRecordedTargets } from '../src/utils/paths.js';
 import { validate } from '../src/commands/validate.js';
 import { fix } from '../src/commands/fix.js';
 import type { Config } from '../src/commands/init.js';
@@ -92,6 +92,27 @@ describe('installedTargetRoots', () => {
     } as unknown as Config;
     expect(installedTargetRoots(config)).toEqual(['app', 'components', 'lib', 'middleware.ts']);
     expect(installedTargetRoots({} as Config)).toEqual(['components', 'lib/buildpad']);
+  });
+
+  test('ignores a recorded target that is not a plain relative path inside the source root', () => {
+    // buildpad.json is committed and hand-editable; these roots decide what
+    // validate scans and fix rewrites, so none may widen the glob.
+    const bad = [
+      '../victim/x.ts',
+      '/etc/x.ts',
+      './components/ui/a.tsx',
+      '**/x.ts',
+      '{app,..}/x.ts',
+      'C:/x.ts',
+      'components\\ui\\a.tsx',
+      'components/../../x.ts',
+      '',
+    ];
+    const config = {
+      lib: { x: { files: [...bad.map(target => ({ target })), { target: 'app/api/x/route.ts' }] } },
+    } as unknown as Config;
+    expect(installedTargetRoots(config)).toEqual(['app', 'components', 'lib/buildpad']);
+    expect(unsafeRecordedTargets(config)).toEqual(bad);
   });
 });
 
@@ -212,6 +233,34 @@ describe('validate / fix over a project', () => {
     expect(await fs.readFile(path.join(src, 'app/api/thing/route.ts'), 'utf8')).toBe(
       "import { apiRequest } from '@/lib/buildpad/services';\nimport { Util } from './RouteUtil';\n",
     );
+  });
+
+  test('validate and fix never leave the project, whatever buildpad.json records', async () => {
+    const proj = path.join(cwd, 'proj');
+    const victim = path.join(cwd, 'victim/y.ts');
+    const leftover = "import { a } from '@buildpad/types';\n";
+    await fs.outputFile(victim, leftover);
+    await fs.outputFile(path.join(proj, 'components/ui/a.tsx'), 'export const A = 1;\n');
+    await fs.writeJSON(path.join(proj, 'buildpad.json'), {
+      schemaVersion: 3,
+      model: 'copy-own',
+      tsx: true,
+      srcDir: false,
+      aliases: { components: '@/components/ui', lib: '@/lib/buildpad' },
+      installedComponents: [],
+      installedLib: ['x'],
+      components: {},
+      lib: { x: { release: '1', ref: 'v1', sourcePackage: '@buildpad/cli', installedAt: 'x', files: [rec('../victim/x.ts')] } },
+    });
+
+    const result = await validate({ cwd: proj, noExit: true });
+    expect(result!.errors.filter(e => e.code === 'UNTRANSFORMED_IMPORT')).toEqual([]);
+    expect(result!.warnings).toContainEqual(expect.objectContaining({ code: 'UNSAFE_TARGET', file: 'buildpad.json' }));
+
+    await fix({ cwd: proj, yes: true });
+    expect(await fs.readFile(victim, 'utf8')).toBe(leftover);
+    const logged = vi.mocked(console.log).mock.calls.flat().join('\n');
+    expect(logged).toContain("'../victim/x.ts'");
   });
 
   test('fix reaches installed files outside components/ and lib/buildpad/, and reports what it cannot rewrite', async () => {

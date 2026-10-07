@@ -21,7 +21,7 @@ import { type Config, loadConfig } from './init.js';
 import { globFiles } from '../utils/glob.js';
 import { rewriteBuildpadSpecifiers, toKebabCase, UnmappedImportError } from './transformer.js';
 import { findUntransformedImports } from '../utils/import-specifiers.js';
-import { installedScriptPatterns, sourceRoot } from '../utils/paths.js';
+import { installedScriptPatterns, isInsideDir, sourceRoot, unsafeRecordedTargets } from '../utils/paths.js';
 
 interface FixResult {
   fixed: number;
@@ -50,9 +50,16 @@ async function fixUntransformedImports(
   const root = sourceRoot(cwd, config);
   const seen = new Set<string>();
 
+  // installedScriptPatterns leaves these out: they could reach outside the project.
+  for (const target of unsafeRecordedTargets(config)) {
+    result.errors.push(`buildpad.json records '${target}', which is not a relative path inside the project — ignored`);
+    result.skipped++;
+  }
+
   for (const pattern of installedScriptPatterns(config)) {
     for (const file of await globFiles(root, pattern)) {
-      if (seen.has(file)) continue;
+      // Never write outside the source root, whatever the patterns matched.
+      if (seen.has(file) || !isInsideDir(root, file)) continue;
       seen.add(file);
       const content = await fs.readFile(file, 'utf-8');
       if (findUntransformedImports(content).length === 0) continue;

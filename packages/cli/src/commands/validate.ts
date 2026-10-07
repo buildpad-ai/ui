@@ -20,7 +20,7 @@ import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
 import { globFiles } from '../utils/glob.js';
 import { findUntransformedImports } from '../utils/import-specifiers.js';
-import { installedScriptPatterns, sourceRoot } from '../utils/paths.js';
+import { installedScriptPatterns, sourceRoot, unsafeRecordedTargets } from '../utils/paths.js';
 
 interface ValidationResult {
   valid: boolean;
@@ -730,6 +730,15 @@ export async function validate(options: {
     
     const errors = [...untransformedErrors, ...brokenImportErrors, ...libModuleErrors, ...i18nLayout.errors, ...tsErrors];
     const warnings = [...missingCssWarnings, ...ssrWarnings, ...apiRouteWarnings, ...react19Warnings, ...duplicateExportWarnings, ...i18nLayout.warnings];
+
+    // The import scan skipped these (they could reach outside the project).
+    for (const target of unsafeRecordedTargets(config)) {
+      warnings.push({
+        file: 'buildpad.json',
+        message: `Recorded target '${target}' is not a relative path inside the project; validate and fix ignore it.`,
+        code: 'UNSAFE_TARGET',
+      });
+    }
 
     // Schema checks. v3 decides staleness by comparing each file's recorded
     // upstream hash with the registry's, so a manifest without those hashes
