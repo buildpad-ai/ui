@@ -199,6 +199,12 @@ describe('collectUndeclaredImports', () => {
   write('ui-users/src/Bogus.tsx', "import { X } from '@buildpad/ui-interfaces/not-a-component';");
   write('ui-collections/src/CollectionForm.tsx', "import { CollectionList } from './CollectionList';");
   write('ui-interfaces/src/commented/Commented.tsx', "// import { Upload } from '../upload/Upload';\nexport {};");
+  write('ui-collections/src/UnshippedHelper.tsx', 'export const H = 1;');
+  write('ui-collections/src/Helped.tsx', "import { H } from './UnshippedHelper';");
+  write('ui-interfaces/src/upload/internal.ts', 'export const I = 1;');
+  write('ui-interfaces/src/deep/Deep.tsx', "export const D = () => import('../upload/internal');");
+  write('cli/templates/lib/vf/index.ts', "export { VF } from './VF';");
+  write('ui-form/src/VF.tsx', 'export const VF = 1;');
 
   const base = [
     component('select-icon', ['ui-interfaces/src/select-icon/SelectIcon.tsx']),
@@ -239,6 +245,40 @@ describe('collectUndeclaredImports', () => {
       { component: 'collection-form', file: 'ui-collections/src/CollectionForm.tsx', spec: './CollectionList', needs: 'collection-list' },
     ]);
     expect(check(component('collection-form', ['ui-collections/src/CollectionForm.tsx'], ['collection-list']))).toEqual([]);
+  });
+
+  test('a relative import of a file no registry entry ships is reported', () => {
+    expect(check(component('helped', ['ui-collections/src/Helped.tsx']))).toEqual([
+      {
+        kind: 'unshipped-file',
+        component: 'helped',
+        file: 'ui-collections/src/Helped.tsx',
+        spec: './UnshippedHelper',
+        needs: 'ui-collections/src/UnshippedHelper',
+      },
+    ]);
+    // Declaring the component whose folder holds it does not ship the file.
+    expect(check(component('deep', ['ui-interfaces/src/deep/Deep.tsx'], ['upload']))).toEqual([
+      {
+        kind: 'unshipped-file',
+        component: 'deep',
+        file: 'ui-interfaces/src/deep/Deep.tsx',
+        spec: '../upload/internal',
+        needs: 'ui-interfaces/src/upload/internal',
+      },
+    ]);
+  });
+
+  test("a file sourced from elsewhere may import its entry's files by target path", () => {
+    // vform's index.ts comes from cli/templates/ but installs beside VForm.tsx.
+    const vf = {
+      name: 'vf',
+      files: [
+        { source: 'cli/templates/lib/vf/index.ts', target: 'components/ui/vf/index.ts' },
+        { source: 'ui-form/src/VF.tsx', target: 'components/ui/vf/VF.tsx' },
+      ],
+    };
+    expect(check(vf)).toEqual([]);
   });
 
   test('commented-out imports are ignored', () => {

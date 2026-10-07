@@ -480,8 +480,10 @@ function shipsPath(paths, resolved) {
  * Component files are checked for:
  *   - relative imports in every form, dynamic `import()` included. The needed
  *     component is the one whose files include the resolved path (so a flat
- *     PascalCase sibling such as './CollectionList' names collection-list), or
- *     by convention the directory under the package (ui-interfaces/src/<name>/);
+ *     PascalCase sibling such as './CollectionList' names collection-list). A
+ *     path no entry ships is reported as 'unshipped-file' (no declaration can
+ *     install it), unless it names one of the entry's own files in target
+ *     space (vform's index.ts, sourced from cli/templates/, imports './VForm');
  *   - `@buildpad/ui-interfaces/<x>` subpaths (static or dynamic): <x> must be
  *     a registry component, declared unless it is the entry itself.
  *
@@ -490,9 +492,7 @@ function shipsPath(paths, resolved) {
 export function collectUndeclaredImports(registry, packagesDir = PACKAGES_DIR) {
   const problems = [];
   const components = registry.components ?? registry.items ?? [];
-  // Only a registry component can be a missing registryDependency. Shared
-  // helper directories (lib/, utils/) ship by other means and are not
-  // installable components, so flagging them would be noise.
+  // Only a registry component can be a missing registryDependency.
   const componentNames = new Set(components.map((c) => c.name).filter(Boolean));
   const componentSources = components.map((c) => ({
     name: c.name,
@@ -503,6 +503,7 @@ export function collectUndeclaredImports(registry, packagesDir = PACKAGES_DIR) {
   for (const component of components) {
     const files = component.files ?? [];
     const ownSources = files.map((f) => f.source).filter(Boolean);
+    const ownTargets = files.map((f) => f.target).filter(Boolean);
     const declared = new Set(component.registryDependencies ?? []);
     const needsDeclared = (needs) => needs !== component.name && !declared.has(needs);
 
@@ -524,14 +525,20 @@ export function collectUndeclaredImports(registry, packagesDir = PACKAGES_DIR) {
           continue;
         }
         if (!spec.startsWith('.')) continue;
-        const segments = resolveSegments(dir, spec);
-        const resolved = segments.join('/');
+        const resolved = resolveSegments(dir, spec).join('/');
         // Same-entry import: a file this entry already ships.
         if (shipsPath(ownSources, resolved)) continue;
-        // Cross-component: the component that ships the resolved file, else
-        // the directory under the package (ui-interfaces/src/select-icon/...).
-        const needs = shippedBy(resolved) ?? (componentNames.has(segments[2]) ? segments[2] : undefined);
-        if (!needs || !needsDeclared(needs)) continue;
+        // Cross-component: the component that ships the resolved file.
+        const needs = shippedBy(resolved);
+        if (!needs) {
+          // Same entry, in target space: the import is left as written and
+          // resolves beside the file's target.
+          const targetDir = (file.target ?? '').split('/').slice(0, -1);
+          if (file.target && shipsPath(ownTargets, resolveSegments(targetDir, spec).join('/'))) continue;
+          problems.push({ kind: 'unshipped-file', component: component.name, file: file.source, spec, needs: resolved });
+          continue;
+        }
+        if (!needsDeclared(needs)) continue;
         problems.push({ component: component.name, file: file.source, spec, needs });
       }
     }
@@ -583,11 +590,13 @@ function checkRegistry() {
 
   const undeclared = collectUndeclaredImports(committed);
   if (undeclared.length > 0) {
-    console.error('\n✗ A shipped file imports a component its entry does not declare:\n');
+    console.error('\n✗ A shipped file imports something its entry does not ship or declare:\n');
     for (const u of undeclared) {
       console.error(`    ${u.component}: ${u.file} imports '${u.spec}'`);
       if (u.kind === 'lib-file') {
         console.error(`      → ${u.needs} is not shipped by that lib entry; register its source file`);
+      } else if (u.kind === 'unshipped-file') {
+        console.error(`      → ${u.needs} is not shipped by any registry entry; register its source file`);
       } else if (u.kind === 'unknown-component') {
         console.error(`      → "${u.needs}" is not a registry component; @buildpad/ui-interfaces/<x> must name one`);
       } else {
