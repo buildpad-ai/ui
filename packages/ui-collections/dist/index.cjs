@@ -173,7 +173,6 @@ var SYSTEM_FIELDS = /* @__PURE__ */ new Set([
   "date_updated",
   "sort"
 ]);
-var NON_FLAT_RELATIONAL_SPECIALS = /* @__PURE__ */ new Set(["m2a", "m2m", "o2m"]);
 var READ_ONLY_FIELDS = /* @__PURE__ */ new Set([
   "id",
   "user_created",
@@ -379,11 +378,7 @@ var CollectionForm = ({
         }
         if (mode === "edit" && id) {
           const itemsService = new import_services2.ItemsService(collection);
-          const fetchableFields = editableFields.filter((f) => {
-            const special = f.meta?.special ?? [];
-            const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) || (0, import_utils2.isNonFlatRelationalInterface)(f.meta?.interface);
-            return !isNonFlatRelational;
-          }).map((f) => f.field);
+          const fetchableFields = editableFields.filter((f) => !(0, import_utils2.isNonFlatRelationalField)(f)).map((f) => f.field);
           const resolvedPkField = schemaPk ?? "id";
           if (!fetchableFields.includes(resolvedPkField)) {
             fetchableFields.unshift(resolvedPkField);
@@ -1555,7 +1550,6 @@ var SYSTEM_FIELDS2 = /* @__PURE__ */ new Set([
   "date_created",
   "date_updated"
 ]);
-var NON_FLAT_RELATIONAL_SPECIALS2 = /* @__PURE__ */ new Set(["m2a", "m2m", "o2m"]);
 var SPACING_HEIGHT = {
   compact: 32,
   cozy: 48,
@@ -1672,9 +1666,7 @@ var CollectionList = ({
         let visible = fieldsResult.filter((f) => {
           if (SYSTEM_FIELDS2.has(f.field)) return false;
           if (f.type === "alias") return false;
-          const special = f.meta?.special ?? [];
-          const isNonFlatRelational = special.some((s) => NON_FLAT_RELATIONAL_SPECIALS2.has(s)) || (0, import_utils3.isNonFlatRelationalInterface)(f.meta?.interface);
-          if (isNonFlatRelational) return false;
+          if ((0, import_utils3.isNonFlatRelationalField)(f)) return false;
           const isHidden = f.meta?.hidden ?? f.hidden;
           if (isHidden) return false;
           return true;
