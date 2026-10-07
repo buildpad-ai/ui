@@ -149,6 +149,12 @@ try {
     ? [process.execPath, [path.join(installed, 'dist', 'index.js')]]
     : [path.join(project, 'node_modules', '.bin', 'buildpad-mcp'), []];
   server = spawn(bin[0], bin[1], { cwd: project, stdio: ['pipe', 'pipe', 'pipe'] });
+  // Decode as streams: concatenating raw chunks as strings corrupts any UTF-8
+  // character split across two chunks (it becomes U+FFFD), which then fails
+  // the hash check on files with non-ASCII text depending only on where the
+  // pipe happened to split.
+  server.stdout.setEncoding('utf8');
+  server.stderr.setEncoding('utf8');
   let stderr = '';
   server.stderr.on('data', d => { stderr += d; });
 
