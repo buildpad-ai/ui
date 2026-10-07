@@ -17,7 +17,9 @@
  * TypeScript AST so a reshaped table fails loudly instead of parsing as
  * empty, and running a non-exported helper's own declaration rather than
  * copying it), asserts the invariants that hold today, and pins every CURRENT
- * divergence as an exact, commented expectation.
+ * divergence as an exact, commented expectation. Import specifiers of shipped
+ * files are resolved through the CLI's real transformer into the consumer
+ * layout, so checks see what an installed project sees.
  *
  * A failing `divergence (x)` expectation is not necessarily a regression: it
  * means a change fixed or worsened that divergence. Update the expectation
@@ -43,6 +45,8 @@ vi.mock('../src/resolver.js', async (importOriginal) => {
 import { getRegistry, type ComponentEntry, type Registry } from '../src/resolver.js';
 import { findComponentWithSuggestions } from '../src/commands/add.js';
 import { info } from '../src/commands/info.js';
+import type { Config } from '../src/commands/init.js';
+import { transformImports } from '../src/commands/transformer.js';
 
 // utils runtime, imported straight from source (pure TS, no React).
 import {
@@ -408,35 +412,47 @@ function readStringArray(file: string, name: string): string[] {
 }
 
 interface ImportedName {
+  /** `default`, a named binding, or `*` (namespace import / `export *`). */
   name: string;
   typeOnly: boolean;
 }
 
-/** Names a module imports (or re-exports) from module specifier `spec`. */
-function importsFrom(file: string, matches: (spec: string) => boolean): ImportedName[] {
+interface ImportDecl {
+  spec: string;
+  kind: 'import' | 'export';
+  /** `import type` / `export type` (the whole statement). */
+  typeOnly: boolean;
+  names: ImportedName[];
+}
+
+/** Every static `import … from` / `export … from` of a module, with the names it takes. */
+function importDeclsOf(file: string): ImportDecl[] {
   const sf = parseSource(file);
-  const out: ImportedName[] = [];
+  const out: ImportDecl[] = [];
   for (const stmt of sf.statements) {
     if (ts.isImportDeclaration(stmt)) {
-      if (!ts.isStringLiteral(stmt.moduleSpecifier) || !matches(stmt.moduleSpecifier.text)) continue;
+      if (!ts.isStringLiteral(stmt.moduleSpecifier)) continue;
       const clause = stmt.importClause;
-      if (!clause) continue;
-      if (clause.name) out.push({ name: 'default', typeOnly: clause.isTypeOnly });
-      const nb = clause.namedBindings;
-      if (nb && ts.isNamespaceImport(nb)) out.push({ name: '*', typeOnly: clause.isTypeOnly });
+      const typeOnly = !!clause?.isTypeOnly;
+      const names: ImportedName[] = [];
+      if (clause?.name) names.push({ name: 'default', typeOnly });
+      const nb = clause?.namedBindings;
+      if (nb && ts.isNamespaceImport(nb)) names.push({ name: '*', typeOnly });
       if (nb && ts.isNamedImports(nb)) {
-        for (const el of nb.elements) {
-          out.push({ name: (el.propertyName ?? el.name).text, typeOnly: clause.isTypeOnly || el.isTypeOnly });
-        }
+        for (const el of nb.elements) names.push({ name: (el.propertyName ?? el.name).text, typeOnly: typeOnly || el.isTypeOnly });
       }
+      out.push({ spec: stmt.moduleSpecifier.text, kind: 'import', typeOnly, names });
     } else if (ts.isExportDeclaration(stmt)) {
-      if (!stmt.moduleSpecifier || !ts.isStringLiteral(stmt.moduleSpecifier) || !matches(stmt.moduleSpecifier.text)) continue;
-      if (!stmt.exportClause) out.push({ name: '*', typeOnly: stmt.isTypeOnly });
-      else if (ts.isNamedExports(stmt.exportClause)) {
+      if (!stmt.moduleSpecifier || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+      const typeOnly = stmt.isTypeOnly;
+      const names: ImportedName[] = [];
+      if (!stmt.exportClause || ts.isNamespaceExport(stmt.exportClause)) names.push({ name: '*', typeOnly });
+      else {
         for (const el of stmt.exportClause.elements) {
-          out.push({ name: (el.propertyName ?? el.name).text, typeOnly: stmt.isTypeOnly || el.isTypeOnly });
+          names.push({ name: (el.propertyName ?? el.name).text, typeOnly: typeOnly || el.isTypeOnly });
         }
       }
+      out.push({ spec: stmt.moduleSpecifier.text, kind: 'export', typeOnly, names });
     }
   }
   return out;
@@ -577,6 +593,40 @@ const exportsOfTarget = createExportResolver(
     return next;
   },
 );
+
+/** The CLI's default config (`buildpad init` aliases, no src/ dir: '@/' is the project root). */
+const CONSUMER_CONFIG: Config = {
+  schemaVersion: 3,
+  model: 'copy-own',
+  tsx: true,
+  srcDir: false,
+  aliases: { components: '@/components/ui', lib: '@/lib/buildpad' },
+  installedLib: [],
+  installedComponents: [],
+};
+/** Targets of lib-module files, which the CLI writes through `transformImports` alone. */
+const libTargets = new Set(Object.values(registry.lib).flatMap((m) => (m.files ?? []).map((f) => f.target)));
+
+/**
+ * Where an import of a shipped file points once installed, as a project path
+ * without extension (resolve it with `shippedTarget`); undefined for a bare
+ * package. `@buildpad/*` specifiers go through the real transformer — the
+ * same `transformImports` call `buildpad add` makes, statement kind included
+ * — `@/` is the project root, and a relative specifier resolves against the
+ * target. Relative imports are resolved for lib-module files only: those are
+ * copied verbatim, while component files have theirs rewritten by the
+ * component transforms (and, sitting in other packages, never reach into the
+ * utils lib by a relative path).
+ */
+function consumerModulePath(file: { target: string }, decl: Pick<ImportDecl, 'spec' | 'kind' | 'typeOnly'>): string | undefined {
+  const isLib = libTargets.has(file.target);
+  const stmt = `${decl.kind}${decl.typeOnly ? ' type' : ''} { x } from '${decl.spec}';`;
+  const mapped = /from ['"]([^'"]+)['"]/.exec(transformImports(stmt, CONSUMER_CONFIG, isLib ? undefined : file.target))?.[1];
+  if (!mapped) throw new Error(`transformer dropped the specifier of: ${stmt}`);
+  if (mapped.startsWith('@/')) return mapped.slice(2);
+  if (mapped.startsWith('.')) return isLib ? path.posix.join(path.posix.dirname(file.target), mapped) : undefined;
+  return undefined;
+}
 
 /**
  * Names the consumer's generated components/ui/index.ts exposes for one
@@ -1194,46 +1244,106 @@ describe('docs', () => {
 // ---------------------------------------------------------------------------
 
 describe('consumer utils barrel', () => {
-  /** Every TS source the registry ships (components and lib modules). */
-  const shippedSources = sorted(shippedFiles.map((f) => f.source).filter((s) => /\.tsx?$/.test(s)));
   const BARREL_TARGET = 'lib/buildpad/utils/index.ts';
+  /**
+   * `@/lib/buildpad/utils` resolves to this file before the folder index (TS
+   * and bundlers try `<path>.ts` first); it only forwards to the barrel.
+   */
+  const BARREL_FILE_TARGET = 'lib/buildpad/utils.ts';
   const barrel = readExports(F.utilsBarrelTemplate);
+  const utilsLibTargets = new Set((registry.lib.utils?.files ?? []).map((f) => f.target));
+
+  interface ResolvedImport extends ImportDecl {
+    /** The importing file: monorepo source and consumer target. */
+    file: string;
+    fileTarget: string;
+    /** Consumer path the specifier points at (no extension); undefined for a bare package. */
+    base: string | undefined;
+    /** The shipped file `base` resolves to, if any. */
+    target: string | undefined;
+  }
+
+  /** Every static import of every shipped TS file, resolved in the consumer layout. */
+  const shippedImports: ResolvedImport[] = [...sourceByTarget]
+    .filter(([, source]) => /\.tsx?$/.test(source))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .flatMap(([target, source]) =>
+      importDeclsOf(source).map((d) => {
+        const base = consumerModulePath({ target }, d);
+        return { ...d, file: source, fileTarget: target, base, target: base === undefined ? undefined : shippedTarget(base) };
+      }),
+    );
+
+  /** Names imports take that their (resolved) consumer target does not export. */
+  function unexportedNames(imports: ResolvedImport[]): { missing: string[]; valueImportOfTypeExport: string[] } {
+    const missing: string[] = [];
+    const valueImportOfTypeExport: string[] = [];
+    for (const i of imports) {
+      if (!i.target) continue;
+      const ex = exportsOfTarget(i.target);
+      for (const { name, typeOnly } of i.names) {
+        if (name === '*' || ex.values.has(name)) continue;
+        if (ex.types.has(name)) {
+          if (!typeOnly) valueImportOfTypeExport.push(`${i.file}: ${name} (from '${i.spec}')`);
+          continue;
+        }
+        missing.push(`${i.file}: ${name} (from '${i.spec}')`);
+      }
+    }
+    return { missing, valueImportOfTypeExport };
+  }
 
   test('the template is what the registry ships as the barrel, with explicit names only', () => {
     expect(sourceByTarget.get(BARREL_TARGET)).toBe(F.utilsBarrelTemplate);
     expect(barrel.stars).toEqual([]);
+    expect(shippedTarget('lib/buildpad/utils')).toBe(BARREL_FILE_TARGET);
+    expect(sourceByTarget.get(BARREL_FILE_TARGET)).toBe('cli/templates/lib/utils.ts');
+    const forwarder = readExports('cli/templates/lib/utils.ts');
+    expect([forwarder.stars, [...forwarder.values], [...forwarder.types]]).toEqual([['./utils/index'], [], []]);
   });
 
-  test('exports every @buildpad/utils symbol a shipped file imports', () => {
-    const missing: string[] = [];
-    const valueImportOfTypeExport: string[] = [];
-    const importers: string[] = [];
-    for (const file of shippedSources) {
-      const names = importsFrom(file, (s) => s === '@buildpad/utils');
-      if (names.length) importers.push(file);
-      for (const { name, typeOnly } of names) {
-        if (barrel.values.has(name)) continue;
-        if (barrel.types.has(name)) {
-          if (!typeOnly) valueImportOfTypeExport.push(`${file}: ${name}`);
-          continue;
-        }
-        // includes a namespace (`*`) or default import, which the barrel cannot satisfy by name
-        missing.push(`${file}: ${name}`);
-      }
-    }
-    expect(importers.length).toBeGreaterThan(0);
+  test('exports every symbol a shipped file imports from it, in every import form', () => {
+    const barrelImports = shippedImports.filter((i) => i.target === BARREL_TARGET || i.target === BARREL_FILE_TARGET);
+    const importersVia = (spec: string): string[] => sorted(barrelImports.filter((i) => i.spec === spec).map((i) => i.file));
+    // Package sources import `@buildpad/utils` (the transformer maps it to
+    // `@/lib/buildpad/utils`); CLI templates are written in consumer form and
+    // import `@/lib/buildpad/utils` directly. Both reach this barrel, so both
+    // are checked — the second form must not silently drop out of coverage.
+    expect(importersVia('@buildpad/utils').length).toBeGreaterThan(0);
+    expect(importersVia('@/lib/buildpad/utils')).toEqual(
+      expect.arrayContaining(['cli/templates/app/content/[collection]/[id]/page.tsx', 'cli/templates/lib/i18n/provider.tsx']),
+    );
     // No gaps today. A shipped file importing a utils symbol the template
     // barrel does not re-export compiles in the monorepo but breaks every
     // consumer at `lib/buildpad/utils`.
-    expect(missing).toEqual([]);
-    expect(valueImportOfTypeExport).toEqual([]);
+    expect(unexportedNames(barrelImports)).toEqual({ missing: [], valueImportOfTypeExport: [] });
   });
 
-  test('no shipped file imports a @buildpad/utils subpath', () => {
-    // transformer.ts maps `@buildpad/utils/<x>` to lib/buildpad/utils/<x>, a
-    // path the flattened utils lib layout (lib/buildpad/<x>.ts) never creates.
-    const subpaths = shippedSources.filter((f) => importsFrom(f, (s) => s.startsWith('@buildpad/utils/')).length > 0);
-    expect(subpaths).toEqual([]);
+  test('utils subpath imports resolve, as the transformer maps them, to shipped modules exporting what they take', () => {
+    // transformer.ts maps `@buildpad/utils/i18n(/…)` to lib/buildpad/i18n(/…),
+    // which the utils lib ships, and any other `@buildpad/utils/<x>` to
+    // lib/buildpad/utils/<x>, which it never creates (the barrel is the only
+    // file under lib/buildpad/utils/).
+    const at = (spec: string): string | undefined => consumerModulePath({ target: 'lib/buildpad/conceal.ts' }, { spec, kind: 'import', typeOnly: false });
+    expect(shippedTarget(at('@buildpad/utils/i18n') ?? '')).toBe('lib/buildpad/i18n/index.ts');
+    expect(shippedTarget(at('@buildpad/utils/i18n/locales/id') ?? '')).toBe('lib/buildpad/i18n/locales/id.ts');
+    expect(at('@buildpad/utils/conceal')).toBe('lib/buildpad/utils/conceal');
+    expect([...sourceByTarget.keys()].filter((t) => t.startsWith('lib/buildpad/utils/'))).toEqual([BARREL_TARGET]);
+
+    const subpathImports = shippedImports.filter(
+      (i) => /^(@buildpad\/utils|@\/lib\/buildpad\/utils)\//.test(i.spec) || /^@\/lib\/buildpad\/i18n(\/|$)/.test(i.spec),
+    );
+    expect(subpathImports.filter((i) => !i.target).map((i) => `${i.file}: '${i.spec}'`)).toEqual([]);
+    expect(unexportedNames(subpathImports)).toEqual({ missing: [], valueImportOfTypeExport: [] });
+  });
+
+  test('imports inside the utils lib resolve in its flattened consumer layout', () => {
+    // utils/src/<x> ships as lib/buildpad/<x>; relative imports between those
+    // files are copied verbatim, so they must still land on shipped files.
+    const inUtilsLib = shippedImports.filter((i) => i.spec.startsWith('.') && utilsLibTargets.has(i.fileTarget));
+    expect(inUtilsLib.length).toBeGreaterThan(0);
+    expect(inUtilsLib.filter((i) => !i.target).map((i) => `${i.file}: '${i.spec}'`)).toEqual([]);
+    expect(unexportedNames(inUtilsLib)).toEqual({ missing: [], valueImportOfTypeExport: [] });
   });
 
   test('every name the barrel re-exports exists in the shipped module it points at', () => {
