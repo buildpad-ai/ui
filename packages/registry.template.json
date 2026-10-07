@@ -2566,6 +2566,10 @@
           "target": "components/ui/vform/components/FormFieldInterface.tsx"
         },
         {
+          "source": "ui-form/src/components/interface-components.tsx",
+          "target": "components/ui/vform/components/interface-components.tsx"
+        },
+        {
           "source": "ui-form/src/components/FormGroupField.tsx",
           "target": "components/ui/vform/components/FormGroupField.tsx"
         },

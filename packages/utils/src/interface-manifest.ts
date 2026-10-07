@@ -21,21 +21,24 @@
  * DATA ONLY. No React and no component references: a consumer installs only
  * the components it uses, so components are named, never imported.
  *
- * WHAT READS IT (Phase 1). Derived from this table at runtime: the aliases
+ * WHAT READS IT. Derived from this table at runtime: the aliases
  * (`normalizeInterfaceId`, `REGISTRY_INTERFACE_ALIASES`), the flags (the
  * concealing set, `CHOICE_INTERFACES`, `isPresentationField`, the
- * ui-collections / JunctionItemForm / relation-hook predicates), `relation`
- * and `provision` minus `labelKey` (`PROVISIONABLE_INTERFACES`). The other
- * fields — `exportName`, `registryComponent`, `types`, `group`,
- * `typeLiterals`, `flags.csvMultiValue`, `provision.labelKey`, `loading`,
- * `fallbackHeight` — are COPIES of tables that are still kept by hand (each
- * field's JSDoc names its table). Nothing reads them at runtime yet; editing
- * one changes no behaviour and only fails the parity checks in
- * packages/cli/tests/interface-tables.test.ts. Phase 2 makes those tables
- * read the manifest: FormFieldInterface (exportName, typeLiterals,
- * csvMultiValue, loading, fallbackHeight) in the lazy-loading step; the
+ * ui-collections / JunctionItemForm / relation-hook predicates, VForm's csv
+ * normalisation), `relation`, `provision` minus `labelKey`
+ * (`PROVISIONABLE_INTERFACES`), and what VForm's FormFieldInterface needs to
+ * render a field: `exportName`, `typeLiterals` and `fallbackHeight`
+ * (`getRenderedInterfaceEntry`) and whether `loading` is `client-only`.
+ *
+ * `loading` is also a COPY in one respect: which components VForm imports
+ * statically and which on demand is written out in vform's
+ * `components/interface-components.tsx`, because a bundler only splits a
+ * literal `import()`. The other COPIES are `registryComponent`, `types`,
+ * `group` and `provision.labelKey` (each field's JSDoc names its table).
+ * Editing a copy changes no behaviour and only fails the parity checks in
+ * packages/cli/tests/interface-tables.test.ts. Manifest Phase 2 makes the
  * registry interface blocks, CLI add/info, the MCP server and FieldPalette
- * (registryComponent, types, group, labelKey) in manifest Phase 2.
+ * read them (registryComponent, types, group, labelKey).
  *
  * CURRENT BEHAVIOUR, EXACTLY. This table describes how stored records render
  * today, including the known divergences; changing one changes how existing
@@ -109,8 +112,6 @@ export interface InterfaceFlags {
   /**
    * VForm hands it an array for a csv column's comma-separated string and
    * writes a string back (FormFieldInterface's multi-select normalisation).
-   * COPY of FormFieldInterface's MULTI_SELECT_INTERFACE_TYPES, not read at
-   * runtime yet.
    */
   readonly csvMultiValue?: true;
   /**
@@ -180,25 +181,28 @@ interface InterfaceManifestEntryBase {
 export interface RenderedInterfaceEntry extends InterfaceManifestEntryBase {
   readonly renders: true;
   /**
-   * Export name of the component VForm renders. COPY of FormFieldInterface's
-   * interfaceComponentMap / relationalFullComponentMap value; VForm reads it
-   * from here once the lazy-loading step rewrites FormFieldInterface.
+   * Export name of the component VForm renders: FormFieldInterface looks it
+   * up in vform's `components/interface-components.tsx`.
    */
   readonly exportName: string;
   /**
    * Deprecated `InterfaceType` literals that name this interface. The
    * renderer never returns them; VForm still maps them to `exportName`
-   * (COPY of those keys of FormFieldInterface's maps).
+   * (`getRenderedInterfaceEntry`).
    */
   readonly typeLiterals?: readonly string[];
   /** Present when the form builder can put this interface on a real column. */
   readonly provision?: ProvisionableDescriptor;
-  /** How VForm will load the component; read by the lazy-loading step, unused before it. */
+  /**
+   * How VForm loads the component. VForm reads `client-only` from here (it
+   * mounts those after hydration); the eager / on-demand split is a COPY of
+   * the static and dynamic imports in vform's
+   * `components/interface-components.tsx`.
+   */
   readonly loading: InterfaceLoading;
   /**
-   * Skeleton height (px) while the component loads;
-   * `DEFAULT_INTERFACE_FALLBACK_HEIGHT` if unset. Read by the lazy-loading
-   * step, unused before it.
+   * Skeleton height (px) VForm shows while the component loads;
+   * `DEFAULT_INTERFACE_FALLBACK_HEIGHT` if unset.
    */
   readonly fallbackHeight?: number;
 }
@@ -688,6 +692,22 @@ export function normalizeInterfaceId(interfaceId: string): string {
 export function getInterfaceManifestEntry(interfaceId: unknown): InterfaceManifestEntry | undefined {
   if (typeof interfaceId !== 'string') return undefined;
   return ENTRY_BY_ID.get(normalizeInterfaceId(interfaceId));
+}
+
+/** Every rendered entry by the renderer ids that name it: its `id` and its deprecated `typeLiterals`. */
+const RENDERED_ENTRY_BY_RENDERER_ID: ReadonlyMap<string, RenderedInterfaceEntry> = new Map(
+  ENTRIES.flatMap((e) => (e.renders ? [e.id, ...(e.typeLiterals ?? [])].map((id) => [id, e] as const) : [])),
+);
+
+/**
+ * The rendered entry a renderer id names — what `getFieldInterface` returned
+ * as `type`: an entry's `id` or one of its deprecated `typeLiterals`
+ * (`number` → the `input` entry). Aliases are NOT resolved here:
+ * `getFieldInterface` has already resolved them, and an id it passed through
+ * unresolved is not a built-in interface.
+ */
+export function getRenderedInterfaceEntry(rendererId: unknown): RenderedInterfaceEntry | undefined {
+  return typeof rendererId === 'string' ? RENDERED_ENTRY_BY_RENDERER_ID.get(rendererId) : undefined;
 }
 
 /** `alias → id` for one kind of alias, in manifest order. */

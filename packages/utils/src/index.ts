@@ -39,6 +39,7 @@ export {
   PRESENTATION_INTERFACE_PREFIX,
   normalizeInterfaceId,
   getInterfaceManifestEntry,
+  getRenderedInterfaceEntry,
   interfaceAliasMap,
   interfaceIdsWithFlag,
   interfaceHasFlag,

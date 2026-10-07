@@ -15,6 +15,7 @@ import {
   INTERFACE_MANIFEST,
   PRESENTATION_INTERFACE_PREFIX,
   getInterfaceManifestEntry,
+  getRenderedInterfaceEntry,
   interfaceAliasMap,
   interfaceHasFlag,
   interfaceIdsWithFlag,
@@ -158,6 +159,24 @@ describe('normalizeInterfaceId / getInterfaceManifestEntry', () => {
     expect(getInterfaceManifestEntry('tags')?.exportName).toBe('Tags');
     expect(getInterfaceManifestEntry('one-to-many')).toBeUndefined();
     for (const value of ['nope', '', null, undefined, 42, {}]) expect(getInterfaceManifestEntry(value)).toBeUndefined();
+  });
+
+  it('getRenderedInterfaceEntry finds a rendered entry by its id or a type literal, never by an alias', () => {
+    expect(getRenderedInterfaceEntry('tags')?.exportName).toBe('Tags');
+    // deprecated InterfaceType literals
+    expect(getRenderedInterfaceEntry('number')?.id).toBe('input');
+    expect(getRenderedInterfaceEntry('uuid')?.id).toBe('input');
+    expect(getRenderedInterfaceEntry('list-m2o')?.exportName).toBe('SelectDropdownM2O');
+    // aliases are getFieldInterface's to resolve
+    expect(getRenderedInterfaceEntry('input-tags')).toBeUndefined();
+    expect(getRenderedInterfaceEntry('wysiwyg')).toBeUndefined();
+    // unrendered ids, unknown ids, non-strings
+    expect(getRenderedInterfaceEntry('upload')).toBeUndefined();
+    for (const value of ['nope', '', 'constructor', null, undefined, 42, {}]) {
+      expect(getRenderedInterfaceEntry(value)).toBeUndefined();
+    }
+    // every rendered entry is reachable by its own id
+    for (const e of manifest) expect(getRenderedInterfaceEntry(e.id)).toBe(e.renders ? e : undefined);
   });
 
   it('interfaceAliasMap lists each kind in manifest order', () => {

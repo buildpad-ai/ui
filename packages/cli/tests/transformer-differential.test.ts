@@ -55,6 +55,17 @@ const ALIAS_CONFIGS = {
 
 const registry = loadRegistry();
 
+/**
+ * Files written after the refactor that use an import form only the current
+ * transformer rewrites. The frozen transformer cannot produce them, and does
+ * not need to: no project installed one with it, so no three-way-merge base
+ * of theirs was ever built by it.
+ *
+ * - vform's interface-components.tsx (new in 3.0) loads the heavy interfaces
+ *   with `import('@buildpad/ui-interfaces/<x>')`.
+ */
+const NEW_DYNAMIC_IMPORT_FILES = ['ui-form/src/components/interface-components.tsx'];
+
 describe.each(Object.entries(ALIAS_CONFIGS))('registry corpus, %s', (_label, aliases) => {
   const config = makeConfig({ aliases });
   const expected = transformCorpus(registry, config, frozenPipeline);
@@ -64,9 +75,16 @@ describe.each(Object.entries(ALIAS_CONFIGS))('registry corpus, %s', (_label, ali
     expect(actual.length).toBe(expected.length);
     const drift = actual
       .map((f, i) => ({ f, want: expected[i].content }))
-      .filter(({ f, want }) => f.content !== want)
-      .map(({ f }) => `${f.owner.name} ${f.source}`);
-    expect(drift).toEqual([]);
+      .filter(({ f, want }) => f.content !== want);
+    expect(drift.map(({ f }) => f.source)).toEqual(NEW_DYNAMIC_IMPORT_FILES);
+    // Even there, the two differ only where the frozen one left an import() unrewritten.
+    for (const { f, want } of drift) {
+      const got = f.content.split('\n');
+      const frozenLines = want.split('\n');
+      expect(got.length).toBe(frozenLines.length);
+      const changed = got.flatMap((line, i) => (line === frozenLines[i] ? [] : [frozenLines[i]]));
+      expect(changed.filter(line => !/import\('@buildpad\/ui-interfaces(\/[a-z0-9-]+)?'\)/.test(line))).toEqual([]);
+    }
   });
 
   test('the corpus exercises the rewrite (it is not trivially unchanged)', () => {
@@ -112,8 +130,10 @@ describe.each(Object.entries(ALIAS_CONFIGS))('synthetic inputs, %s', (_label, al
  * The refactor changed the output for a few specifier shapes on purpose —
  * mappings that pointed at files the registry never installs, and import forms
  * the old regexes left unrewritten. That is byte-safe only while no shipped
- * file uses those shapes, so each count here must stay 0. (If one is needed,
- * its consumers' three-way-merge bases change: ship it deliberately.)
+ * file that the old transformer installed uses those shapes, so each count
+ * here must stay 0. (If one is needed in such a file, its consumers'
+ * three-way-merge bases change: ship it deliberately.) The exception is
+ * NEW_DYNAMIC_IMPORT_FILES, above.
  */
 describe('shapes whose output changed have no hits in the registry corpus', () => {
   const sources = new Set<string>();
@@ -163,7 +183,14 @@ describe('shapes whose output changed have no hits in the registry corpus', () =
     expect(hits.length).toBeGreaterThan(400);
   });
 
-  test.each(Object.keys(CHANGED))('%s', label => {
+  const DYNAMIC = 'import() of anything but bare services|hooks|types|utils (newly rewritten)';
+
+  test.each(Object.keys(CHANGED).filter(label => label !== DYNAMIC))('%s', label => {
     expect(hits.filter(CHANGED[label]).map(h => `${h.source}:${h.line} ${h.specifier}`)).toEqual([]);
+  });
+
+  test(`${DYNAMIC}: only in files written after the refactor`, () => {
+    const sources = new Set(hits.filter(CHANGED[DYNAMIC]).map(h => h.source));
+    expect([...sources]).toEqual(NEW_DYNAMIC_IMPORT_FILES);
   });
 });

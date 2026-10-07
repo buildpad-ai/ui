@@ -204,3 +204,78 @@ Type changes (TypeScript only): `ListO2MProps`, `ListM2MProps`, `ListM2AProps`
 and `JunctionItemFormProps` gain an optional `components` prop;
 `CollectionsRelationalProvider` and `CollectionsRelationalProviderProps` are new
 exports of `collection-form` and `collections-relational-provider`.
+
+## VForm loads heavy interfaces on demand
+
+In 2.6, `vform/components/FormFieldInterface.tsx` imported the whole
+components barrel (`import * as Interfaces from '@/components/ui'`), so every
+form bundled every installed component. In 3.0 it imports each interface from
+its own file, and loads the heavy ones only when a field renders one.
+
+New file (written on upgrade, nothing to do):
+
+- `components/ui/vform/components/interface-components.tsx` — two tables of
+  the interface components VForm renders, by export name:
+  - `EAGER_INTERFACE_COMPONENTS`: the light controls, imported statically
+    (`import { Input } from '@/components/ui/input'`).
+  - `LAZY_INTERFACE_COMPONENTS`: `RichTextHTML`, `RichTextMarkdown`,
+    `InputBlockEditor`, `SelectIcon`, `Map`, `AutocompleteAPI`,
+    `CollectionItemDropdown`, `File`, `FileImage`, `Files`, `ListO2M`,
+    `ListM2M` and `ListM2A`, each behind `React.lazy(() => import(…))`.
+
+What changes for the user:
+
+- A field with one of the lazy interfaces shows a skeleton until its component
+  has loaded, then renders exactly as before. The skeleton has the height the
+  interface manifest records for it (for example 240px for rich text), and
+  each field has its own Suspense boundary, so the rest of the form is usable
+  meanwhile. Light interfaces render at once, as before.
+- The block editor is loaded as `components/ui/input-block-editor.tsx`
+  directly. VForm waits for hydration before it renders the editor, so it no
+  longer goes through the `next/dynamic` wrapper
+  (`input-block-editor-wrapper.tsx`). The wrapper is still installed and
+  exported from the barrel for your own pages.
+- If a component fails to load (a failed chunk request), the field shows the
+  "Unexpected error in interface" notice of its error boundary. Reload the
+  page to try again.
+
+What changes in your copied files:
+
+- **`vform/components/FormFieldInterface.tsx`**: the two id → component-name
+  maps and the multi-select id set are gone. The component name, the skeleton
+  height and the csv handling now come from the interface manifest
+  (`getRenderedInterfaceEntry`, `interfaceHasFlag(…, 'csvMultiValue')`), so
+  this file needs the 3.0 utils lib: upgrade the whole project.
+- **`vform/components/FormGroupField.tsx`** imports `GroupDetail`,
+  `GroupAccordion` and `GroupRaw` from their own files instead of the barrel.
+- If you edited `FormFieldInterface.tsx`, expect a 3-way merge. If you added
+  an entry to one of the removed maps, move it: see the next point.
+
+What you must do:
+
+- **Nothing, if you did not add interfaces of your own.** Every id renders the
+  same component with the same props as in 2.6.
+- **An interface component of your own** that VForm found through the barrel
+  (an id with no built-in component resolves to the PascalCase of the id:
+  `my-widget` → `MyWidget`) still works: a name the two tables do not have is
+  looked up in `@/components/ui`, loaded on demand. `system-permissions` is
+  found the same way, because `vform` does not install that component. To
+  load your component with the form instead, or to give it a chunk of its own,
+  add it to a table in `interface-components.tsx`:
+
+  ```tsx
+  export const LAZY_INTERFACE_COMPONENTS = {
+    // …
+    MyWidget: lazy(() => import('@/components/my-widget').then((m) => ({ default: m.MyWidget }))),
+  };
+  ```
+
+- **Tests that render a lazy interface** through `VForm`, `CollectionForm` or
+  `FormFieldInterface` must wait for it: use `await screen.findBy…` instead of
+  `screen.getBy…` for rich text, files, the map, the icon picker and the
+  relational lists. A test that mocked `@/components/ui` to stub interface
+  components must mock `@/components/ui/vform/components/interface-components`
+  (`getInterfaceComponent`, `loadInstalledInterfaceComponent`) or the
+  interface's own file instead.
+- **Use the 3.0 CLI.** `interface-components.tsx` contains `import()` calls
+  that only the 3.0 CLI rewrites to your aliases.

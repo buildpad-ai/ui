@@ -9,8 +9,10 @@
  *      (`input-tags`, `input-map`, `input-map-gl`);
  *   3. registry component names — what `buildpad add` installs (`tags`,
  *      `color`, `divider`, `map-with-real-map`);
- *   4. component export names — what FormFieldInterface looks up in the
- *      consumer's generated `components/ui/index.ts` (`Tags`, `Color`).
+ *   4. component export names — what FormFieldInterface looks up in vform's
+ *      `components/interface-components.tsx` (`Tags`, `Color`), and, for a
+ *      name that file lacks, in the consumer's generated
+ *      `components/ui/index.ts`.
  *
  * This file extracts every one of those tables (importing the utils runtime
  * where its values are exported, otherwise parsing the source with the
@@ -30,7 +32,10 @@
  * utils/src/interface-manifest.ts, and re-derived them from it; the
  * "pre-manifest snapshot" block pins each derived value to what it was
  * before, and the "interface manifest" block checks the manifest against the
- * tables that are still hand-kept (FormFieldInterface, the registry).
+ * tables that are still hand-kept (the registry). The lazy-loading step made
+ * FormFieldInterface read the manifest too; what is left by hand there is
+ * vform's `interface-components.tsx` (a bundler only splits a literal
+ * `import()`), checked against the manifest and the consumer layout below.
  *
  * Tests only: nothing here changes runtime behaviour.
  */
@@ -65,6 +70,7 @@ import { concealingInterface } from '../../utils/src/conceal';
 import {
   INTERFACE_MANIFEST,
   getInterfaceManifestEntry,
+  getRenderedInterfaceEntry,
   interfaceAliasMap,
   interfaceIdsWithFlag,
   isNonFlatRelationalInterface,
@@ -183,11 +189,6 @@ function readSetLiteral(sf: ts.SourceFile, init: ts.Expression, name: string): s
 }
 
 /** `const <name> = new Set(['a', 'b'])` → ['a', 'b'] (exactly one declaration). */
-function readStringSet(file: string, name: string): string[] {
-  const sf = parseSource(file);
-  return readSetLiteral(sf, initializerOf(sf, name), name);
-}
-
 /** Every `const <name> = new Set([...])` in the file (for duplicated local copies). */
 function readAllStringSets(file: string, name: string): string[][] {
   const sf = parseSource(file);
@@ -421,17 +422,6 @@ function loadFunctions<T>(file: string, names: readonly string[]): T {
 }
 
 /** `const <name> = ['a', 'b'] as const` → ['a', 'b']. */
-function readStringArray(file: string, name: string): string[] {
-  const sf = parseSource(file);
-  const init = initializerOf(sf, name);
-  if (!ts.isArrayLiteralExpression(init)) throw new Error(`${file}: \`${name}\` is not an array literal`);
-  return init.elements.map((e) => {
-    const u = unwrap(e);
-    if (!ts.isStringLiteral(u)) throw new Error(`${file}: \`${name}\` has a non-string member ${u.getText()}`);
-    return u.text;
-  });
-}
-
 interface ImportedName {
   /** `default`, a named binding, or `*` (namespace import / `export *`). */
   name: string;
@@ -479,6 +469,84 @@ function importDeclsOf(file: string): ImportDecl[] {
   return out;
 }
 
+/** One entry of vform's interface-components tables: where the component comes from. */
+interface TableComponent {
+  /** Module specifier it is imported from. */
+  spec: string;
+  /** The name taken from that module. */
+  imported: string;
+}
+
+/**
+ * vform's two component tables, export name → import.
+ *
+ * `EAGER_INTERFACE_COMPONENTS` members are identifiers bound by a static
+ * `import { X } from '<spec>'` (or `{ X as Y }`); `LAZY_INTERFACE_COMPONENTS`
+ * members are `lazy(() => import('<spec>').then((m) => ({ default: m.X })))`.
+ * Any other shape throws.
+ */
+function readInterfaceComponentTables(file: string): Record<'eager' | 'lazy', Record<string, TableComponent>> {
+  const sf = parseSource(file);
+  const table = (name: string): ts.ObjectLiteralExpression => {
+    const init = unwrap(initializerOf(sf, name));
+    if (!ts.isObjectLiteralExpression(init)) throw new Error(`${file}: \`${name}\` is not an object literal`);
+    return init;
+  };
+
+  const bindings = new Map<string, TableComponent>();
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const nb = stmt.importClause?.namedBindings;
+    if (!nb || !ts.isNamedImports(nb)) continue;
+    for (const el of nb.elements) {
+      bindings.set(el.name.text, { spec: stmt.moduleSpecifier.text, imported: (el.propertyName ?? el.name).text });
+    }
+  }
+
+  const eager: Record<string, TableComponent> = {};
+  for (const prop of table('EAGER_INTERFACE_COMPONENTS').properties) {
+    const local = ts.isShorthandPropertyAssignment(prop)
+      ? prop.name.text
+      : ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.initializer)
+        ? prop.initializer.text
+        : undefined;
+    const bound = local === undefined ? undefined : bindings.get(local);
+    if (!prop.name || !bound) throw new Error(`${file}: eager member ${prop.getText(sf)} is not a named import`);
+    eager[propertyKey(sf, prop.name)] = bound;
+  }
+
+  const lazy: Record<string, TableComponent> = {};
+  for (const prop of table('LAZY_INTERFACE_COMPONENTS').properties) {
+    if (!ts.isPropertyAssignment(prop)) throw new Error(`${file}: lazy member ${prop.getText(sf)} is not \`name: lazy(…)\``);
+    const key = propertyKey(sf, prop.name);
+    const call = unwrap(prop.initializer);
+    const imports = collectNodes(
+      call,
+      (n): n is ts.CallExpression => ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword,
+    );
+    const defaults = collectNodes(
+      call,
+      (n): n is ts.PropertyAssignment => ts.isPropertyAssignment(n) && propertyKey(sf, n.name) === 'default',
+    );
+    const arg = imports[0]?.arguments[0];
+    const picked = defaults[0]?.initializer;
+    if (
+      !ts.isCallExpression(call) ||
+      call.expression.getText(sf) !== 'lazy' ||
+      imports.length !== 1 ||
+      defaults.length !== 1 ||
+      !arg ||
+      !ts.isStringLiteral(arg) ||
+      !picked ||
+      !ts.isPropertyAccessExpression(picked)
+    ) {
+      throw new Error(`${file}: lazy member \`${key}\` is not lazy(() => import('…').then((m) => ({ default: m.X })))`);
+    }
+    lazy[key] = { spec: arg.text, imported: picked.name.text };
+  }
+  return { eager, lazy };
+}
+
 // ---------------------------------------------------------------------------
 // Small set helpers
 // ---------------------------------------------------------------------------
@@ -499,7 +567,7 @@ const F = {
   specMapper: 'utils/src/field-spec-mapper.ts',
   interfaceTypes: 'utils/src/interface-types.ts',
   ffi: 'ui-form/src/components/FormFieldInterface.tsx',
-  leafProbe: 'ui-form/src/__tests__/helpers/leafProbe.tsx',
+  interfaceComponents: 'ui-form/src/components/interface-components.tsx',
   uiInterfacesBarrel: 'ui-interfaces/src/index.ts',
   palette: 'ui-forms/src/FieldPalette.tsx',
   collectionForm: 'ui-collections/src/CollectionForm.tsx',
@@ -555,14 +623,19 @@ const specInterfaceByType = readStringRecord(F.specMapper, 'INTERFACE_BY_TYPE');
 const fieldTypeUnion = readStringUnion(F.interfaceTypes, 'FieldType');
 const interfaceGroupUnion = readStringUnion(F.interfaceTypes, 'InterfaceGroup');
 
-// vform — FormFieldInterface
-const ffiComponentMap = readStringRecord(F.ffi, 'interfaceComponentMap');
-const ffiRelationalMap = readStringRecord(F.ffi, 'relationalFullComponentMap');
-const ffiMultiSelect = readStringSet(F.ffi, 'MULTI_SELECT_INTERFACE_TYPES');
+// vform — FormFieldInterface and its component tables
+const vformTables = readInterfaceComponentTables(F.interfaceComponents);
+/** Every component the tables import, with the table it is in. */
+const vformTableRows = (['eager', 'lazy'] as const).flatMap((table) =>
+  Object.entries(vformTables[table]).map(([exportName, from]) => ({ exportName, table, ...from })),
+);
+/** Renderer ids VForm hands a csv column's string to as an array (manifest `csvMultiValue`). */
+const csvMultiValueIds = interfaceIdsWithFlag('csvMultiValue');
 const ffiDefaultSwitch = readSwitch(F.ffi, 'getDefaultInterfaceForType', returnedString);
-/** FormFieldInterface's lookup order: relational map, then the component map. */
-const ffiExportFor = (rendererId: string): string | undefined =>
-  ffiRelationalMap[rendererId] ?? ffiComponentMap[rendererId];
+/** The export name FormFieldInterface resolves a renderer id to (an entry id or a deprecated type literal). */
+const ffiExportFor = (rendererId: string): string | undefined => getRenderedInterfaceEntry(rendererId)?.exportName;
+/** Export names of every interface VForm renders. */
+const renderedExportNames = sorted(renderedEntries.flatMap((e) => (e.renders ? [e.exportName] : [])));
 const ffiDefaultFor = (type: string): string =>
   ffiDefaultSwitch.arms.find((a) => a.labels.includes(type))?.returns ?? ffiDefaultSwitch.defaultReturns ?? '';
 
@@ -730,9 +803,9 @@ describe('inventory', () => {
       provisionable: provisionableIds.length,
       choice: CHOICE_INTERFACES.size,
       specInterfaceByType: Object.keys(specInterfaceByType).length,
-      ffiComponentMap: Object.keys(ffiComponentMap).length,
-      ffiRelationalMap: Object.keys(ffiRelationalMap).length,
-      ffiMultiSelect: ffiMultiSelect.length,
+      vformEagerComponents: Object.keys(vformTables.eager).length,
+      vformLazyComponents: Object.keys(vformTables.lazy).length,
+      csvMultiValue: csvMultiValueIds.length,
       registryInterfaceBlocks: registryBlocks.length,
       vformRegistryDependencies: vformDeps.length,
       addAliases: Object.keys(addAliases).length,
@@ -757,9 +830,11 @@ describe('inventory', () => {
       provisionable: 20,
       choice: 5,
       specInterfaceByType: 15,
-      ffiComponentMap: 36,
-      ffiRelationalMap: 5,
-      ffiMultiSelect: 3,
+      // 23 + 13 = the 37 rendered entries minus SystemPermissions, which vform
+      // does not install (divergence (h)) and so cannot import
+      vformEagerComponents: 23,
+      vformLazyComponents: 13,
+      csvMultiValue: 3,
       registryInterfaceBlocks: 39,
       vformRegistryDependencies: 37,
       addAliases: 37,
@@ -852,7 +927,7 @@ describe('utils: interface manifest vs the tables still kept by hand', () => {
     expect(sorted(interfaceTypeUnion)).toEqual(sorted([...renderedEntries.map((e) => e.id), ...literals]));
   });
 
-  test('exportName is the component FormFieldInterface renders, for the id and each type literal', () => {
+  test('FormFieldInterface resolves an entry by its id and each type literal, not by an alias', () => {
     const mismatches = renderedEntries.flatMap((e) =>
       e.renders
         ? [e.id, ...(e.typeLiterals ?? [])]
@@ -861,10 +936,38 @@ describe('utils: interface manifest vs the tables still kept by hand', () => {
         : [],
     );
     expect(mismatches).toEqual([]);
+    // getFieldInterface has resolved the aliases already, so an alias that
+    // reaches FormFieldInterface is not resolved a second time — except the
+    // two legacy aliases that are type literals too.
+    expect(sorted(Object.keys(manifestAliases).filter((alias) => ffiExportFor(alias)))).toEqual(['list-m2o', 'textarea']);
   });
 
-  test("the csvMultiValue flag is FormFieldInterface's MULTI_SELECT_INTERFACE_TYPES", () => {
-    expect(sorted(interfaceIdsWithFlag('csvMultiValue'))).toEqual(sorted(ffiMultiSelect));
+  test("vform's component tables hold each rendered entry in the table its loading class names", () => {
+    const tableOf = (exportName: string) => vformTableRows.find((r) => r.exportName === exportName)?.table ?? 'barrel';
+    const misplaced = renderedEntries
+      .flatMap((e) =>
+        e.renders
+          ? [{ id: e.id, exportName: e.exportName, loading: e.loading, table: tableOf(e.exportName) }]
+          : [],
+      )
+      .filter((r) => r.table !== (r.loading === 'eager' ? 'eager' : 'lazy'));
+    // vform does not install system-permissions (divergence (h)), so its
+    // tables cannot import it: FormFieldInterface finds SystemPermissions in
+    // the components barrel when it is installed.
+    expect(misplaced).toEqual([
+      { id: 'system-permissions', exportName: 'SystemPermissions', loading: 'lazy', table: 'barrel' },
+    ]);
+    // Nothing else is in the tables, and no name is in both.
+    expect(minus(vformTableRows.map((r) => r.exportName), renderedExportNames)).toEqual([]);
+    expect(sorted(vformTableRows.map((r) => r.exportName))).toHaveLength(vformTableRows.length);
+  });
+
+  test('the csvMultiValue flag marks the three multi-select interfaces', () => {
+    expect(sorted(csvMultiValueIds)).toEqual([
+      'select-multiple-checkbox',
+      'select-multiple-checkbox-tree',
+      'select-multiple-dropdown',
+    ]);
   });
 
   test("registryComponent ships the entry's exportName, and its registry block describes the entry", () => {
@@ -945,41 +1048,67 @@ describe('utils: catalog, choices and field-spec defaults', () => {
   });
 });
 
-describe('vform: FormFieldInterface maps', () => {
-  test('the two maps cover exactly the InterfaceType union, without overlap', () => {
-    const ffiKeys = [...Object.keys(ffiComponentMap), ...Object.keys(ffiRelationalMap)];
-    expect(sorted(ffiKeys)).toHaveLength(ffiKeys.length);
-    expect(sorted(ffiKeys)).toEqual(sorted(interfaceTypeUnion));
+describe('vform: FormFieldInterface and its component tables', () => {
+  test('every InterfaceType literal names a rendered manifest entry', () => {
+    expect(sorted(interfaceTypeUnion).filter((id) => !ffiExportFor(id))).toEqual([]);
   });
 
   test('every id the mapper returns has an explicit component (the PascalCase fallback is never needed upstream)', () => {
     expect(returnedIds.filter((id) => !ffiExportFor(id))).toEqual([]);
   });
 
-  test('every mapped component is a ui-interfaces barrel export', () => {
-    const values = [...Object.values(ffiComponentMap), ...Object.values(ffiRelationalMap)];
-    expect(minus(values, uiInterfacesExports)).toEqual([]);
+  test('every rendered component is a ui-interfaces barrel export', () => {
+    expect(minus(renderedExportNames, uiInterfacesExports)).toEqual([]);
   });
 
-  test('every mapped component is exported by the consumer copy of some registry component', () => {
-    const values = sorted([...Object.values(ffiComponentMap), ...Object.values(ffiRelationalMap)]);
-    expect(values.filter((v) => componentsExporting(v).length === 0)).toEqual([]);
+  test('each table member is imported under its own name from a module of its own', () => {
+    // `Boolean` is the one renamed binding (it would shadow the global).
+    expect(vformTableRows.filter((r) => r.imported !== r.exportName)).toEqual([]);
+    expect(sorted(vformTableRows.map((r) => r.spec))).toHaveLength(vformTableRows.length);
+    // Never the barrel: that would put every installed component back in the form's bundle.
+    expect(vformTableRows.filter((r) => !r.spec.startsWith('@buildpad/ui-interfaces/'))).toEqual([]);
+  });
+
+  test('in an installed project each table import resolves to a file vform installs, which exports the name', () => {
+    const vform = registry.components.find((c) => c.name === 'vform');
+    const file = vform?.files.find((f) => f.source === F.interfaceComponents);
+    if (!file) throw new Error('vform does not ship interface-components.tsx');
+    const ownerOf = new Map(registry.components.flatMap((c) => c.files.map((f) => [f.target, c.name] as const)));
+
+    const rows = vformTableRows.map((r) => {
+      // The statement as written, through the real install transform.
+      const stmt = r.table === 'eager' ? `import { ${r.imported} } from '${r.spec}';` : `const m = import('${r.spec}');`;
+      const mapped = /['"]([^'"]+)['"]/.exec(transformImports(stmt, CONSUMER_CONFIG, file.target))?.[1] ?? '';
+      const target = mapped.startsWith('@/') ? shippedTarget(mapped.slice(2)) : undefined;
+      const owner = target ? ownerOf.get(target) : undefined;
+      return {
+        exportName: r.exportName,
+        mapped,
+        resolves: !!target,
+        exports: !!target && exportsOfTarget(target).values.has(r.imported),
+        installedByVform: !!owner && vformDeps.includes(owner),
+      };
+    });
+    expect(rows.filter((r) => !r.resolves || !r.exports || !r.installedByVform)).toEqual([]);
+    // The block editor is loaded as the editor itself, not through its
+    // next/dynamic wrapper (input-block-editor-wrapper): FormFieldInterface
+    // does the client-only gating.
+    expect(rows.find((r) => r.exportName === 'InputBlockEditor')?.mapped).toBe('@/components/ui/input-block-editor');
   });
 
   test('divergence (h): vform registryDependencies omit components FormFieldInterface can render', () => {
     expect(minus(vformDeps, template.components.map((c) => c.name))).toEqual([]);
-    const providers = sorted(
-      [...Object.values(ffiComponentMap), ...Object.values(ffiRelationalMap)].flatMap(componentsExporting),
-    );
-    // FormFieldInterface maps `system-permissions` → SystemPermissions, but a
-    // vform install never pulls that component in.
+    const providers = sorted(renderedExportNames.flatMap(componentsExporting));
+    // The manifest renders `system-permissions` as SystemPermissions, but a
+    // vform install never pulls that component in. FormFieldInterface looks
+    // it up in the components barrel instead of importing it.
     expect(minus(providers, vformDeps)).toEqual(['system-permissions']);
     // Registry interface components a vform install does not bring along.
     expect(minus(registryBlocks.map((b) => b.component), vformDeps)).toEqual(['map-with-real-map', 'system-permissions']);
   });
 
-  test('MULTI_SELECT_INTERFACE_TYPES are resolved ids', () => {
-    expect(minus(ffiMultiSelect, returnedIds)).toEqual([]);
+  test('the csvMultiValue interfaces are resolved ids', () => {
+    expect(minus(csvMultiValueIds, returnedIds)).toEqual([]);
   });
 
   test('divergence (i): csv-compatible interfaces that FormFieldInterface does not normalise', () => {
@@ -987,17 +1116,9 @@ describe('vform: FormFieldInterface maps', () => {
       .filter((b) => b.types.includes('csv'))
       .map((b) => renderedType(b.id, 'csv'));
     // Tags is declared csv-compatible (and is field-spec-mapper's csv default)
-    // but is not in MULTI_SELECT_INTERFACE_TYPES, so a csv string reaches it raw.
-    expect(minus(csvRenderers, ffiMultiSelect)).toEqual(['tags']);
+    // but does not carry the csvMultiValue flag, so a csv string reaches it raw.
+    expect(minus(csvRenderers, csvMultiValueIds)).toEqual(['tags']);
     expect(interfaceForFieldType('csv')).toBe('tags');
-  });
-
-  test('divergence (k): leafProbe hand-copies the export names', () => {
-    const probe = readStringArray(F.leafProbe, 'INTERFACE_COMPONENT_NAMES');
-    const mapped = [...Object.values(ffiComponentMap), ...Object.values(ffiRelationalMap)];
-    expect(minus(probe, mapped)).toEqual([]);
-    // The relational exports are missing from the probe list.
-    expect(minus(mapped, probe)).toEqual(['ListM2A', 'ListM2M', 'ListO2M', 'SelectDropdownM2O']);
   });
 });
 

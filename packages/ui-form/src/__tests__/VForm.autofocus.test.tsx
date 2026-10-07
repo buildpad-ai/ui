@@ -11,7 +11,7 @@
 import { render } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 
-jest.mock('@buildpad/ui-interfaces', () =>
+jest.mock('../components/interface-components', () =>
     require('./helpers/leafProbe').makeInterfacesMock());
 jest.mock('@buildpad/utils', () => ({
     ...jest.requireActual('@buildpad/utils'),

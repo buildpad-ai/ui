@@ -12,14 +12,14 @@ import {
 
 const mockSeen: { current: RelationalUIComponents | null } = { current: null };
 
-jest.mock('@buildpad/ui-interfaces', () => {
+jest.mock('../components/interface-components', () => {
     const { useRelationalUI } = jest.requireActual('@buildpad/services/relational-ui-context');
     // The leaf a field renders: record the relational components in scope.
     const Leaf = () => {
         mockSeen.current = useRelationalUI();
         return null;
     };
-    return { Input: Leaf };
+    return { getInterfaceComponent: () => Leaf, loadInstalledInterfaceComponent: () => Promise.resolve(null) };
 });
 jest.mock('@buildpad/utils', () => ({
     ...jest.requireActual('@buildpad/utils'),

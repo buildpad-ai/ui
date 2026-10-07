@@ -82,24 +82,34 @@ catalog tables that used to be kept by hand (`REGISTRY_INTERFACE_ALIASES`,
 concealing set) are derived from it, and small predicates answer the questions
 other packages used to answer with their own id lists.
 
-The other fields (`exportName`, `registryComponent`, `types`, `group`,
-`typeLiterals`, `flags.csvMultiValue`, `provision.labelKey`, `loading`,
-`fallbackHeight`) are copies of tables that are still kept by hand:
-FormFieldInterface's component maps, the registry interface blocks, the CLI
-and MCP name tables and FieldPalette. Nothing reads these copies at runtime
-yet, so editing one changes no behaviour. `packages/cli/tests/interface-tables.test.ts`
-keeps them equal to the tables until those tables read the manifest.
+VForm reads the manifest too. `getRenderedInterfaceEntry(type)` gives
+FormFieldInterface the component to render (`exportName`, for the id or one of
+its deprecated `typeLiterals`), the skeleton height while it loads
+(`fallbackHeight`) and whether it is `client-only`; `flags.csvMultiValue`
+marks the interfaces whose csv string VForm turns into an array.
+
+The remaining fields (`registryComponent`, `types`, `group`,
+`provision.labelKey`) are copies of tables that are still kept by hand: the
+registry interface blocks, the CLI and MCP name tables and FieldPalette.
+`loading` is a copy in one respect: which components VForm imports statically
+and which on demand is written out in vform's
+`components/interface-components.tsx`, because a bundler only splits a literal
+`import()`. Editing a copy changes no behaviour.
+`packages/cli/tests/interface-tables.test.ts` keeps the copies equal to their
+tables.
 
 ```tsx
 import {
   normalizeInterfaceId,
   getInterfaceManifestEntry,
+  getRenderedInterfaceEntry,
   isNonFlatRelationalInterface,
   isRelationListInterface,
 } from '@buildpad/utils';
 
 normalizeInterfaceId('input-tags'); // 'tags' (registry and legacy aliases)
 getInterfaceManifestEntry('wysiwyg')?.exportName; // 'RichTextHTML'
+getRenderedInterfaceEntry('number')?.exportName; // 'Input' (a renderer id or type literal; aliases are not resolved)
 isNonFlatRelationalInterface('list-m2m'); // true: no flat column to fetch
 isRelationListInterface('one-to-many', 'o2m'); // true: what useRelationO2M accepts
 ```
