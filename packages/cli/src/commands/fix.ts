@@ -19,9 +19,9 @@ import prompts from 'prompts';
 import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
 import { globFiles } from '../utils/glob.js';
-import { rewriteBuildpadSpecifiers, transformImports, toKebabCase, UnmappedImportError } from './transformer.js';
+import { rewriteBuildpadSpecifiers, toKebabCase, UnmappedImportError } from './transformer.js';
 import { findUntransformedImports } from '../utils/import-specifiers.js';
-import { installedScriptPatterns, recordedInstalledFiles, sourceRoot } from '../utils/paths.js';
+import { installedScriptPatterns, sourceRoot } from '../utils/paths.js';
 
 interface FixResult {
   fixed: number;
@@ -33,12 +33,12 @@ interface FixResult {
  * Fix untransformed @buildpad/* imports, found in any import form across every
  * root buildpad.json records installed files under (the same scan as validate).
  *
- * A file buildpad.json records is re-transformed the way `add` transformed it:
- * component files with their registry target, so target-dependent rules apply
- * (VForm keeps its PascalCase file names — without the target, './FormField'
- * became './form-field' and stopped resolving). Any other file only gets its
- * @buildpad/* specifiers rewritten: the transformer's kebab-casing of relative
- * imports would break a user's own './MyPanel' import.
+ * Only the @buildpad/* specifiers are rewritten, in every file — installed or
+ * the user's own. The full install transform also normalises the casing of
+ * relative imports, but `add` already did that to every file it wrote, so
+ * re-running it here could only rename imports the user added: a recorded
+ * components/ui/input.tsx importing the user's './MyHelper' got './my-helper',
+ * and VForm's './FormFieldInterface' got './form-field-interface'.
  */
 async function fixUntransformedImports(
   cwd: string,
@@ -48,7 +48,6 @@ async function fixUntransformedImports(
   const result: FixResult = { fixed: 0, skipped: 0, errors: [] };
 
   const root = sourceRoot(cwd, config);
-  const recorded = recordedInstalledFiles(cwd, config);
   const seen = new Set<string>();
 
   for (const pattern of installedScriptPatterns(config)) {
@@ -59,12 +58,9 @@ async function fixUntransformedImports(
       if (findUntransformedImports(content).length === 0) continue;
 
       const rel = path.relative(cwd, file);
-      const record = recorded.get(path.normalize(file));
       let transformed: string;
       try {
-        transformed = record
-          ? transformImports(content, config, record.kind === 'component' ? record.target : undefined)
-          : rewriteBuildpadSpecifiers(content, config);
+        transformed = rewriteBuildpadSpecifiers(content, config);
       } catch (err) {
         // The transform fails closed on a @buildpad/* import it has no target for.
         if (!(err instanceof UnmappedImportError)) throw err;

@@ -120,12 +120,16 @@ describe('validate / fix over a project', () => {
       tsx: true,
       srcDir: true,
       aliases: { components: '@/components/ui', lib: '@/lib/buildpad' },
-      installedComponents: ['vform'],
+      installedComponents: ['vform', 'input'],
       installedLib: ['api-routes'],
       components: {
         vform: {
           release: '1', ref: 'v1', sourcePackage: '@buildpad/ui-form', installedAt: 'x',
           files: [rec('components/ui/vform/components/FormField.tsx'), rec('components/ui/vform/components/FormFieldInterface.tsx')],
+        },
+        input: {
+          release: '1', ref: 'v1', sourcePackage: '@buildpad/ui-interfaces', installedAt: 'x',
+          files: [rec('components/ui/input.tsx')],
         },
       },
       lib: {
@@ -185,6 +189,28 @@ describe('validate / fix over a project', () => {
 
     expect(await fs.readFile(path.join(src, 'components/MyWidget.tsx'), 'utf8')).toBe(
       "import { VForm } from '@/components/ui/vform';\nimport { Panel } from './MyPanel';\n",
+    );
+  });
+
+  test("fix leaves a user's relative imports alone in installed (recorded) files too", async () => {
+    // add's transform already normalised the casing of every shipped import, so
+    // re-running it here could only rename imports the user added.
+    const input = "import type { Field } from '@buildpad/types';\nimport { Helper } from './MyHelper';\n";
+    const route = "import { apiRequest } from '@buildpad/services';\nimport { Util } from './RouteUtil';\n";
+    await project({
+      'components/ui/input.tsx': input,
+      'components/ui/MyHelper.tsx': 'export const Helper = 1;\n',
+      'app/api/thing/route.ts': route,
+      'app/api/thing/RouteUtil.ts': 'export const Util = 1;\n',
+    });
+
+    await fix({ cwd, yes: true });
+
+    expect(await fs.readFile(path.join(src, 'components/ui/input.tsx'), 'utf8')).toBe(
+      "import type { Field } from '@/lib/buildpad/types';\nimport { Helper } from './MyHelper';\n",
+    );
+    expect(await fs.readFile(path.join(src, 'app/api/thing/route.ts'), 'utf8')).toBe(
+      "import { apiRequest } from '@/lib/buildpad/services';\nimport { Util } from './RouteUtil';\n",
     );
   });
 

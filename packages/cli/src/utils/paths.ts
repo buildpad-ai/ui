@@ -23,30 +23,6 @@ export function componentFilePath(cwd: string, config: Pick<Config, 'srcDir' | '
   return path.join(sourceRoot(cwd, config), target).replace(/\.tsx?$/, config.tsx ? '.tsx' : '.jsx');
 }
 
-/** Where `add`/`upgrade` write a recorded target, given the kind of entry that owns it. */
-function installedFilePath(cwd: string, config: Pick<Config, 'srcDir' | 'tsx'>, kind: 'component' | 'lib', target: string): string {
-  return kind === 'component' ? componentFilePath(cwd, config, target) : path.join(sourceRoot(cwd, config), target);
-}
-
-/**
- * Every file buildpad.json records as installed: absolute path on disk → the
- * registry target it was installed from (what the transformer was given).
- */
-export function recordedInstalledFiles(
-  cwd: string,
-  config: Pick<Config, 'srcDir' | 'tsx' | 'components' | 'lib'>,
-): Map<string, { target: string; kind: 'component' | 'lib' }> {
-  const files = new Map<string, { target: string; kind: 'component' | 'lib' }>();
-  for (const [kind, records] of [['component', config.components], ['lib', config.lib]] as const) {
-    for (const record of Object.values(records ?? {})) {
-      for (const f of record.files ?? []) {
-        files.set(path.normalize(installedFilePath(cwd, config, kind, f.target)), { target: f.target, kind });
-      }
-    }
-  }
-  return files;
-}
-
 /** The directories `add` installed into before buildpad.json recorded per-file targets. */
 const LEGACY_ROOTS = ['components', 'lib/buildpad'];
 
