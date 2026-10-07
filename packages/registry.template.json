@@ -697,7 +697,7 @@
     },
     "api-routes": {
       "name": "api-routes",
-      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout, all under app/[lang]",
+      "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout (wrapped in CollectionsRelationalProvider, so it installs collection-form), all under app/[lang]",
       "files": [
         {
           "source": "cli/templates/api/auth-login-route.ts",
@@ -797,6 +797,9 @@
         "i18n",
         "design-system",
         "hooks"
+      ],
+      "registryDependencies": [
+        "collection-form"
       ]
     },
     "content-routes": {

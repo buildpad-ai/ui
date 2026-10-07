@@ -839,6 +839,38 @@ async function generateComponentsIndex(
 }
 
 /**
+ * Components a lib module needs installed alongside it: its own
+ * `registryDependencies` plus those of every lib module it pulls in
+ * (internalDependencies, recursively) that is not installed yet.
+ *
+ * copyLibModule installs a lib's internalDependencies itself, but
+ * registryDependencies name COMPONENTS (e.g. api-routes' authenticated layout
+ * wraps pages in collection-form's CollectionsRelationalProvider), which only
+ * the component loop below installs. Without this, `add external-oauth` on a
+ * project without api-routes would write a layout importing a component it
+ * never installs.
+ */
+export function libComponentDependencies(
+  name: string,
+  registry: Pick<Registry, 'lib'>,
+  installedLib: readonly string[],
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const visit = (lib: string, direct: boolean) => {
+    if (seen.has(lib)) return;
+    seen.add(lib);
+    const mod = registry.lib[lib];
+    if (!mod) return;
+    if (!direct && installedLib.includes(lib)) return;
+    for (const dep of mod.registryDependencies ?? []) if (!out.includes(dep)) out.push(dep);
+    for (const dep of mod.internalDependencies ?? []) visit(dep, false);
+  };
+  visit(name, true);
+  return out;
+}
+
+/**
  * Main add command
  */
 export async function add(
@@ -875,9 +907,22 @@ export async function add(
   const registry = await getRegistry();
 
   // If --with-api flag is set, add api-routes and supabase-auth lib modules
+  // Components the API lib modules need (api-routes' authenticated layout
+  // wraps pages in collection-form's CollectionsRelationalProvider). Computed
+  // before they are installed, from the modules this run installs; queued
+  // into the component loop below.
+  const apiComponentDeps: string[] = [];
+
   if (withApi || all) {
     console.log(chalk.bold('\n🔌 Installing API routes and Supabase auth...\n'));
     const spinner = ora('Processing lib modules...').start();
+
+    for (const libName of ['supabase-auth', 'i18n', 'api-routes', 'external-oauth']) {
+      if (!registry.lib[libName] || config.installedLib.includes(libName)) continue;
+      for (const dep of libComponentDependencies(libName, registry, config.installedLib)) {
+        if (!apiComponentDeps.includes(dep)) apiComponentDeps.push(dep);
+      }
+    }
 
     // Install supabase-auth first (dependency of api-routes). Its own
     // dependency, i18n, is pulled in by copyLibModule's recursion.
@@ -934,8 +979,9 @@ export async function add(
         libModulesToInstall.push(name);
         // Route modules can require components (e.g. users-routes →
         // users-management, files-routes → file-manager) — queue them so a
-        // single `add <module>-routes` installs the whole feature.
-        for (const depName of registry.lib[name].registryDependencies ?? []) {
+        // single `add <module>-routes` installs the whole feature. So can a
+        // lib module it pulls in (external-oauth → api-routes → collection-form).
+        for (const depName of libComponentDependencies(name, registry, config.installedLib)) {
           const depComponent = registry.components.find(c => c.name === depName);
           if (depComponent && !componentsToAdd.some(c => c.name === depComponent.name)) {
             componentsToAdd.push(depComponent);
@@ -965,28 +1011,38 @@ export async function add(
       choices,
     });
 
-    if (!selectedCategory) {
+    if (!selectedCategory && apiComponentDeps.length === 0) {
       console.log(chalk.yellow('\n✓ No category selected\n'));
       return;
     }
 
-    const categoryComponents = registry.components.filter(
-      c => c.category === selectedCategory
-    );
+    if (selectedCategory) {
+      const categoryComponents = registry.components.filter(
+        c => c.category === selectedCategory
+      );
 
-    const { selected } = await prompts({
-      type: 'multiselect',
-      name: 'selected',
-      message: 'Select components to add',
-      choices: categoryComponents.map(c => ({
-        title: `${c.title} - ${c.description}`,
-        value: c.name,
-        selected: false,
-      })),
-      hint: '- Space to select. Return to submit',
-    });
+      const { selected } = await prompts({
+        type: 'multiselect',
+        name: 'selected',
+        message: 'Select components to add',
+        choices: categoryComponents.map(c => ({
+          title: `${c.title} - ${c.description}`,
+          value: c.name,
+          selected: false,
+        })),
+        hint: '- Space to select. Return to submit',
+      });
 
-    componentsToAdd = registry.components.filter(c => selected?.includes(c.name));
+      componentsToAdd = registry.components.filter(c => selected?.includes(c.name));
+    }
+  }
+
+  // What the API lib modules installed above need (see apiComponentDeps).
+  for (const depName of apiComponentDeps) {
+    const depComponent = registry.components.find(c => c.name === depName);
+    if (depComponent && !componentsToAdd.some(c => c.name === depComponent.name)) {
+      componentsToAdd.push(depComponent);
+    }
   }
 
   if (componentsToAdd.length === 0 && libModulesToInstall.length === 0) {

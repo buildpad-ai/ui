@@ -80,7 +80,7 @@ They read them from the **relational UI context** in `@buildpad/services`
 |---|---|
 | `CollectionForm` | `CollectionForm`, `CollectionList` (lazy), `FormRenderer: VForm` — for every field it renders |
 | `VForm` | `FormRenderer: VForm` |
-| `CollectionsRelationalProvider` (`ui-collections`) | All three — wrap a page that renders `<ListO2M>`/`<ListM2M>`/`<ListM2A>` or a plain `<VForm>` with relational fields on its own |
+| `CollectionsRelationalProvider` (`ui-collections`) | All three, loaded on demand — wrap a page that renders `<ListO2M>`/`<ListM2M>`/`<ListM2A>` or a plain `<VForm>` with relational fields on its own. The scaffolded authenticated and `/content` layouts already do. Its built-ins only fill slots no provider above chose |
 | `RelationalUIProvider` (`services`) | Your own components (nested providers merge) |
 | A component's `components` prop | Overrides for that one field |
 

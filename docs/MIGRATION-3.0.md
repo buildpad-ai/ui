@@ -20,6 +20,22 @@ The 3.0 sources import new lib files and new exports across entries.
 Upgrading only some entries leaves the others on 2.6 code that does not
 match.
 
+**Do not run `upgrade <name>` for the first 3.0 upgrade.** In this release,
+`upgrade <name>` upgrades only the named entry. It does not yet upgrade the
+stale lib modules and components that entry imports, and it does not install
+missing dependencies. The project then fails to compile. For example:
+
+- `upgrade list-o2m` (or `list-m2m`, `vform`, `collection-form`) writes code
+  that imports `@/lib/buildpad/services/relational-ui-context` and
+  `./list-m2a/relational-slots`. The 2.6 services lib and `list-m2a` do not
+  have these files (TS2307).
+- `upgrade content-routes` writes a layout that imports
+  `CollectionsRelationalProvider`, which a 2.6 `collection-form` does not
+  export (TS2614).
+
+Run the plain `upgrade` shown above. If you already ran `upgrade <name>`, run
+the plain `upgrade` now to repair the project.
+
 If you edited a copied file, `--three-way` merges your edits with the new
 version. When the merge conflicts, the CLI keeps your file and writes the new
 version next to it as `<file>.new`; merge the two by hand.
@@ -113,6 +129,10 @@ New files (written on upgrade, nothing to do):
   and missing-provider alert.
 - `lib/buildpad/i18n/namespaces/interfaces/relational-ui.ts` — the alert and
   loading strings (`interfaces.relationalUI`, English and Indonesian).
+- `components/ui/collections-relational-provider.tsx` (part of
+  `collection-form`) — `CollectionsRelationalProvider`, the pre-wired provider.
+  It loads CollectionForm, CollectionList and VForm on demand. It is also
+  re-exported from `collection-form`.
 
 What you get without changing anything:
 
@@ -120,8 +140,23 @@ What you get without changing anything:
   `CollectionForm` supplies `CollectionForm`, `CollectionList` and `VForm` to the
   fields it renders. That covers the generated `/content` pages,
   `DynamicForm` and `FormPreview`.
-- **`VForm`** supplies itself (`FormRenderer`), so `ListM2A`'s item form works
-  in any VForm.
+- **`VForm`** supplies only itself (`FormRenderer`), so `ListM2A`'s item form
+  works in any VForm. It does **not** supply `CollectionForm` or
+  `CollectionList`: see "What you must do" for O2M / M2M fields in a
+  standalone VForm.
+- **The scaffolded app layouts** wrap their pages in
+  `CollectionsRelationalProvider`: the authenticated route-group layout
+  (`app/[lang]/(authenticated)/layout.tsx`, from `api-routes`) and the
+  `/content` layout (`content-routes`). So a standalone relational field on
+  any authenticated page works with no setup after the upgrade. If you edited
+  the authenticated layout, the 3-way merge adds one import and one wrapper
+  element. Keep them.
+- **`api-routes` now depends on `collection-form`**, because its layout imports
+  the provider. `add --with-api`, `add api-routes` and `bootstrap` install it.
+  A 2.6 project that has `api-routes` but not `collection-form` fails to
+  compile after the upgrade (TS2307 on
+  `@/components/ui/collections-relational-provider`). Add the component:
+  `npx @buildpad/cli@3 add collection-form`.
 - `collection-form` now depends on `collection-list` (it loads the picker
   lazily from `./collection-list`). If your project has `collection-form` but
   not `collection-list`, the build fails on that import until you add it:
@@ -131,23 +166,28 @@ What you must do:
 
 - **A standalone `<ListO2M>`, `<ListM2M>` or `<ListM2A>`, or a plain `<VForm>`
   with relational fields** (outside any `CollectionForm`) now needs a provider.
-  Wrap the page — or your authenticated layout, if `collection-form` is
-  installed — in `CollectionsRelationalProvider`:
+  The scaffolded layouts above supply one. On a page outside them (for
+  example a page you added outside the `(authenticated)` route group), or in
+  an app you did not scaffold, wrap the page or layout in
+  `CollectionsRelationalProvider`:
 
   ```tsx
-  import { CollectionsRelationalProvider } from '@/components/ui/collection-form';
+  import { CollectionsRelationalProvider } from '@/components/ui/collections-relational-provider';
 
   <CollectionsRelationalProvider>{children}</CollectionsRelationalProvider>
   ```
 
-  The new `/content` layout template already does this. Without a provider the
-  field still lists, removes and reorders items, but shows an alert ("Related
-  items cannot be edited here") and hides create, select and edit.
+  Without a provider the field still lists, removes and reorders items, but
+  shows an alert ("Related items cannot be edited here") and hides the create,
+  select and edit actions that need a missing component. The alert appears
+  only for actions the user could take (enable flags and permissions).
 - **Custom components:** pass `components={{ CollectionForm, CollectionList }}`
   (or `FormRenderer` for `ListM2A`/`JunctionItemForm`) to one field, or wrap a
-  subtree in `RelationalUIProvider components={…}`. A `components` prop wins
-  over providers; nested providers merge; `CollectionForm`/`VForm` only fill
-  slots no provider above them chose.
+  subtree in `RelationalUIProvider components={…}`, or pass `components` to
+  `CollectionsRelationalProvider`. A `components` prop wins over providers;
+  nested providers merge. `CollectionForm`, `VForm` and a bare
+  `CollectionsRelationalProvider` only fill slots no provider above them
+  chose, so your app-level choice is kept inside the scaffolded layouts.
 - **Upgrade the whole set together.** A new `list-o2m.tsx` with a 2.6
   `collection-form.tsx` has no provider and shows the alert. A 2.6
   `list-o2m.tsx` with a new `collection-form.tsx` keeps working (it still
@@ -163,4 +203,4 @@ What you must do:
 Type changes (TypeScript only): `ListO2MProps`, `ListM2MProps`, `ListM2AProps`
 and `JunctionItemFormProps` gain an optional `components` prop;
 `CollectionsRelationalProvider` and `CollectionsRelationalProviderProps` are new
-exports of `collection-form`.
+exports of `collection-form` and `collections-relational-provider`.
