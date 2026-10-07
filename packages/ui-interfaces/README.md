@@ -362,10 +362,14 @@ select dialogs that render `CollectionForm`, `CollectionList` and `VForm`. This
 package does not import them (that would be a package cycle); it reads them
 from the relational UI context in `@buildpad/services/relational-ui-context`.
 
-- Inside a `CollectionForm` or a `VForm` nothing is needed: they supply the
-  context to every field they render.
-- Used on their own, wrap them in `CollectionsRelationalProvider`
-  (`@buildpad/ui-collections`):
+- Inside a `CollectionForm` nothing is needed: it supplies all three to every
+  field it renders.
+- A plain `VForm` supplies only itself (the `FormRenderer` that `ListM2A` and
+  `JunctionItemForm` use), not `CollectionForm` / `CollectionList`. So an
+  O2M / M2M field in a standalone `VForm`, or the M2A picker, still needs a
+  provider around the form.
+- Used on their own (or in a standalone `VForm`), wrap them in
+  `CollectionsRelationalProvider` (`@buildpad/ui-collections`):
 
 ```tsx
 import { CollectionsRelationalProvider } from '@buildpad/ui-collections';

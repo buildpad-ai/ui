@@ -10,7 +10,12 @@ export interface RelationalUITranslations {
     title: string;
     /**
      * "{components}" is the list of missing components, e.g.
-     * "CollectionForm, CollectionList".
+     * "CollectionForm, CollectionList" (the form-renderer slot is shown as
+     * "VForm").
+     *
+     * Only CollectionForm and CollectionsRelationalProvider supply every
+     * component; a VForm supplies only itself (the form renderer), so the
+     * message must not send a developer to VForm for the other two.
      */
     message: string;
   };
@@ -21,7 +26,7 @@ export const relationalUIDefaults: RelationalUITranslations = {
   missingProvider: {
     title: 'Related items cannot be edited here',
     message:
-      'Creating, selecting and editing related items needs {components}, which no relational provider supplies. Render this field inside CollectionForm or VForm, or wrap the page in CollectionsRelationalProvider.',
+      'Creating, selecting and editing related items needs {components}, which no relational provider supplies. Render this field inside a CollectionForm, wrap it (or the VForm around it) in CollectionsRelationalProvider, or pass them through its `components` prop.',
   },
 };
 
@@ -30,6 +35,6 @@ export const relationalUIId: RelationalUITranslations = {
   missingProvider: {
     title: 'Item terkait tidak dapat diubah di sini',
     message:
-      'Membuat, memilih, dan mengubah item terkait memerlukan {components}, yang tidak disediakan oleh penyedia relasi mana pun. Tampilkan kolom ini di dalam CollectionForm atau VForm, atau bungkus halaman dengan CollectionsRelationalProvider.',
+      'Membuat, memilih, dan mengubah item terkait memerlukan {components}, yang tidak disediakan oleh penyedia relasi mana pun. Tampilkan kolom ini di dalam CollectionForm, bungkus kolom ini (atau VForm di sekitarnya) dengan CollectionsRelationalProvider, atau berikan komponen tersebut melalui prop `components`.',
   },
 };

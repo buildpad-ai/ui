@@ -610,6 +610,23 @@ describe('ListM2M relational UI provider (cycle-break)', () => {
         expect(screen.getByTestId('m2m-missing-relational-ui')).toHaveAttribute('data-missing', 'CollectionForm');
     });
 
+    it('does not ask for a form when the user can neither create nor update', async () => {
+        mockUseRelationPermissionsM2M.mockReturnValue({
+            createAllowed: false,
+            selectAllowed: true,
+            updateAllowed: false,
+            deleteAllowed: true,
+        });
+        const Wrapper = withComponents({});
+        // Real permissions apply only outside mock mode (mock mode grants all).
+        render(
+            <Wrapper>
+                <ListM2M {...defaultProps} mockRelationInfo={undefined} layout="table" />
+            </Wrapper>,
+        );
+        expect(await screen.findByTestId('m2m-missing-relational-ui')).toHaveAttribute('data-missing', 'CollectionList');
+    });
+
     it('shows the row edit action when the form is supplied', async () => {
         const { container } = render(
             <TestWrapper>

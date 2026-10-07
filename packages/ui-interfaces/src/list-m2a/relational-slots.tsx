@@ -80,6 +80,16 @@ export function useRelationalSlots(overrides?: RelationalUIComponents): Relation
     );
 }
 
+/**
+ * What the alert calls each slot: the component a developer would supply.
+ * `FormRenderer` is the slot VForm fills, so it is named after VForm.
+ */
+const SLOT_LABELS: Record<RelationalUISlot, string> = {
+    CollectionForm: "CollectionForm",
+    CollectionList: "CollectionList",
+    FormRenderer: "VForm",
+};
+
 export interface MissingRelationalUIAlertProps {
     /** The slots no provider supplies */
     missing: readonly RelationalUISlot[];
@@ -98,7 +108,9 @@ export function MissingRelationalUIAlert({ missing, "data-testid": testId }: Mis
             data-testid={testId}
             data-missing={missing.join(" ")}
         >
-            {interpolate(t.missingProvider.message, { components: missing.join(", ") })}
+            {interpolate(t.missingProvider.message, {
+                components: missing.map((slot) => SLOT_LABELS[slot]).join(", "),
+            })}
         </Alert>
     );
 }

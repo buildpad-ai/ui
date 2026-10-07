@@ -125,8 +125,9 @@ export interface ListM2AProps {
     /**
      * The item picker (`CollectionList`) and the form renderer (`VForm`, used
      * by JunctionItemForm) the dialogs render. Defaults to the ones a
-     * `RelationalUIProvider` supplies (CollectionForm and VForm provide them
-     * automatically); a slot set here wins and is passed on to
+     * `RelationalUIProvider` supplies (CollectionForm and
+     * CollectionsRelationalProvider supply both; a plain VForm supplies only
+     * the form renderer); a slot set here wins and is passed on to
      * JunctionItemForm. Without a form renderer, create and edit are hidden;
      * without a list, "Add Existing" is hidden — and an alert says why.
      */
@@ -401,6 +402,13 @@ export const ListM2A: React.FC<ListM2AProps> = ({
         if (!coll) return false;
         return permUpdateAllowed[coll] ?? false;
     }, [isDemoMode, relationInfo, permUpdateAllowed, FormRenderer]);
+
+    // Whether this field would offer create / select / edit (props and
+    // permissions), before asking for the component each dialog renders. The
+    // missing-provider alert only names components for these actions.
+    const wouldCreate = enableCreate && creatableCollections.length > 0;
+    const wouldSelect = enableSelect && selectableCollections.length > 0;
+    const anyUpdateAllowed = isDemoMode || allowedCollections.some(c => permUpdateAllowed[c.collection]);
 
     // Helper: can user remove/unlink this item?
     const canDeleteItem = useCallback((item: M2AItem): boolean => {
@@ -809,8 +817,10 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     isEffectivelyDisabled
                         ? []
                         : missingRelationalUI({ CollectionList, FormRenderer }, [
-                              "FormRenderer",
-                              ...(enableSelect ? (["CollectionList"] as const) : []),
+                              // Only for the actions this field would otherwise
+                              // show (the same predicates as the buttons below).
+                              ...(wouldCreate || anyUpdateAllowed ? (["FormRenderer"] as const) : []),
+                              ...(wouldSelect ? (["CollectionList"] as const) : []),
                           ])
                 }
                 data-testid="m2a-missing-relational-ui"
@@ -844,7 +854,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                             </Text>
                         )}
 
-                        {!isEffectivelyDisabled && enableSelect && selectableCollections.length > 0 && CollectionList && (
+                        {!isEffectivelyDisabled && wouldSelect && CollectionList && (
                             <Menu shadow="md" width={200}>
                                 <Menu.Target>
                                     <Button
@@ -871,7 +881,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                             </Menu>
                         )}
 
-                        {!isEffectivelyDisabled && enableCreate && creatableCollections.length > 0 && FormRenderer && (
+                        {!isEffectivelyDisabled && wouldCreate && FormRenderer && (
                             <Menu shadow="md" width={200}>
                                 <Menu.Target>
                                     <Tooltip 

@@ -163,7 +163,8 @@ export interface ListO2MProps {
   /**
    * The edit form (`CollectionForm`) and item picker (`CollectionList`) the
    * dialogs render. Defaults to the ones a `RelationalUIProvider` supplies
-   * (CollectionForm and VForm provide them automatically); a slot set here
+   * (CollectionForm and CollectionsRelationalProvider supply both; a plain
+   * VForm supplies neither — only its own form renderer); a slot set here
    * wins. Without a form, create and edit are hidden; without a list,
    * "Add Existing" is hidden — and an alert says why.
    */
@@ -1137,30 +1138,24 @@ export const ListO2M: React.FC<ListO2MProps> = ({
   // ── Effective disabled state ────────────────────────────────────────────
   const isDisabled = disabled || readOnly;
 
-  // Compute whether create/select buttons should show. Each also needs the
-  // component its dialog renders (from the relational provider).
-  const showCreateBtn =
-    !isDisabled &&
-    enableCreate &&
-    createAllowed &&
-    !hasExistingItem &&
-    !isSingleton &&
-    !!CollectionForm;
-  const showSelectBtn =
-    !isDisabled &&
-    enableSelect &&
-    !hasExistingItem &&
-    !isSingleton &&
-    !!CollectionList;
+  // Whether this field would offer create / select (props, permissions and
+  // the unique / singleton guards), before asking for the component each
+  // dialog renders.
+  const wouldCreate =
+    !isDisabled && enableCreate && createAllowed && !hasExistingItem && !isSingleton;
+  const wouldSelect = !isDisabled && enableSelect && !hasExistingItem && !isSingleton;
+  // Each button also needs the component its dialog renders (from the
+  // relational provider).
+  const showCreateBtn = wouldCreate && !!CollectionForm;
+  const showSelectBtn = wouldSelect && !!CollectionList;
   // Editing a row opens the same form.
   const editAllowed = updateAllowed && !!CollectionForm;
-  // Components a provider should supply for what this field would offer.
-  const missingSlots = isDisabled
-    ? []
-    : missingRelationalUI({ CollectionForm, CollectionList }, [
-        ...(enableCreate || updateAllowed ? (["CollectionForm"] as const) : []),
-        ...(enableSelect ? (["CollectionList"] as const) : []),
-      ]);
+  // Components a provider should supply for the actions this field would
+  // otherwise show — never for actions the user could not take anyway.
+  const missingSlots = missingRelationalUI({ CollectionForm, CollectionList }, [
+    ...(wouldCreate || (!isDisabled && updateAllowed) ? (["CollectionForm"] as const) : []),
+    ...(wouldSelect ? (["CollectionList"] as const) : []),
+  ]);
 
   // ── Circular field exclusion (Priority #3) ──────────────────────────────
   const circularField = relationInfo?.reverseJunctionField?.field;

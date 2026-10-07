@@ -165,8 +165,9 @@ export interface ListM2MProps {
     /**
      * The edit form (`CollectionForm`) and item picker (`CollectionList`) the
      * drawer and select dialog render. Defaults to the ones a
-     * `RelationalUIProvider` supplies (CollectionForm and VForm provide them
-     * automatically); a slot set here wins. Without a form, create and edit
+     * `RelationalUIProvider` supplies (CollectionForm and
+     * CollectionsRelationalProvider supply both; a plain VForm supplies
+     * neither — only its own form renderer); a slot set here wins. Without a form, create and edit
      * are hidden; without a list, "Add Existing" is hidden — and an alert
      * says why.
      */
@@ -1394,12 +1395,14 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         );
     }
 
-    // Components a provider should supply for what this field would offer.
+    // Components a provider should supply for the actions this field would
+    // otherwise show (the same predicates as the buttons below) — never for
+    // actions the user could not take anyway.
     const missingSlots = isEffectivelyNonEditable
         ? []
         : missingRelationalUI({ CollectionForm, CollectionList }, [
-              ...(enableCreate || updateAllowed ? (["CollectionForm"] as const) : []),
-              ...(enableSelect ? (["CollectionList"] as const) : []),
+              ...((enableCreate && createAllowed) || updateAllowed ? (["CollectionForm"] as const) : []),
+              ...(enableSelect && selectAllowed ? (["CollectionList"] as const) : []),
           ]);
 
     // ── Render: Main component ──────────────────────────────────────

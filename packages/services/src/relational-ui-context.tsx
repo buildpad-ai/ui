@@ -9,13 +9,16 @@
  * package graph, so they cannot import them without an import cycle. Instead
  * they read them from this context:
  *
- * - `CollectionForm` and `VForm` supply it automatically, so every relational
- *   field rendered inside a CollectionForm (content pages, DynamicForm,
- *   FormPreview) or inside a VForm works with no setup.
+ * - `CollectionForm` supplies all three slots, so every relational field it
+ *   renders (content pages, DynamicForm, FormPreview) works with no setup.
+ * - `VForm` supplies only itself, as the `FormRenderer` slot (what ListM2A and
+ *   JunctionItemForm need). It does NOT supply CollectionForm or
+ *   CollectionList.
  * - Standalone use (a `<ListO2M>` on its own page, a plain `<VForm>` with
  *   relational fields) needs an app-level provider: wrap the page in
  *   `CollectionsRelationalProvider` (exported next to CollectionForm), or in a
- *   `RelationalUIProvider` with your own components.
+ *   `RelationalUIProvider` with your own components. The scaffolded app
+ *   layouts (authenticated pages and /content) already do this.
  * - Without a provider the interfaces show a translated alert and hide the
  *   actions that need a missing component; they never import a fallback.
  *

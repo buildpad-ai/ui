@@ -969,6 +969,49 @@ describe("ListO2M — relational UI provider (cycle-break)", () => {
     expect(screen.getByTestId("o2m-remove-p1")).toBeInTheDocument();
   });
 
+  it("inside a plain VForm (which supplies only the form renderer) the alert does not send the user to VForm", async () => {
+    // VForm provides { FormRenderer: VForm } and nothing else.
+    const StubRenderer = () => <div />;
+    setHookItems([{ id: "p1", name: "Existing post" }], 1);
+    render(
+      bare(
+        <RelationalUIProvider components={{ FormRenderer: StubRenderer }}>
+          <ListO2M {...BASE_PROPS} primaryKey="cat-1" />
+        </RelationalUIProvider>,
+      ),
+    );
+
+    const alert = await screen.findByTestId("o2m-missing-relational-ui");
+    expect(alert).toHaveAttribute("data-missing", "CollectionForm CollectionList");
+    expect(alert).toHaveTextContent("CollectionForm, CollectionList");
+    expect(alert).toHaveTextContent("CollectionsRelationalProvider");
+    expect(alert).not.toHaveTextContent(/inside (a )?CollectionForm or VForm/);
+    expect(screen.queryByTestId("o2m-create-btn")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("o2m-edit-p1")).not.toBeInTheDocument();
+  });
+
+  it("names only components for actions the user could take (no create/update permission → no form)", async () => {
+    (usePermissions as jest.Mock).mockReturnValue({
+      canPerform: (_c: string, action: string) => action !== "create" && action !== "update",
+      loading: false,
+    });
+    render(bare(<ListO2M {...BASE_PROPS} primaryKey="cat-1" />));
+
+    const alert = await screen.findByTestId("o2m-missing-relational-ui");
+    expect(alert).toHaveAttribute("data-missing", "CollectionList");
+    expect(alert).toHaveTextContent("needs CollectionList, which");
+  });
+
+  it("shows no alert when no action would be offered (selection off, no create/update permission)", async () => {
+    (usePermissions as jest.Mock).mockReturnValue({
+      canPerform: (_c: string, action: string) => action !== "create" && action !== "update",
+      loading: false,
+    });
+    render(bare(<ListO2M {...BASE_PROPS} primaryKey="cat-1" enableSelect={false} />));
+    await screen.findByTestId("list-o2m");
+    expect(screen.queryByTestId("o2m-missing-relational-ui")).not.toBeInTheDocument();
+  });
+
   it("a read-only field shows no alert (it offers no actions anyway)", async () => {
     render(bare(<ListO2M {...BASE_PROPS} primaryKey="cat-1" readOnly />));
     await screen.findByTestId("list-o2m");

@@ -49,8 +49,9 @@ export interface JunctionItemFormProps {
     translations?: DeepPartial<InterfacesTranslations['listM2A']>;
     /**
      * The form renderer (`FormRenderer`, i.e. VForm) the two sections render.
-     * Defaults to the one a `RelationalUIProvider` supplies (CollectionForm
-     * and VForm provide it automatically); a slot set here wins. Without it
+     * Defaults to the one a `RelationalUIProvider` supplies (CollectionForm,
+     * CollectionsRelationalProvider and VForm all supply it); a slot set here
+     * wins. Without it
      * the form shows an alert and no save action.
      */
     components?: RelationalUIComponents;

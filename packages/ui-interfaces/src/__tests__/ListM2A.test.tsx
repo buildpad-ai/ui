@@ -624,6 +624,37 @@ describe("ListM2A relational UI provider (cycle-break)", () => {
         expect(screen.queryByTestId("m2a-edit-j1")).not.toBeInTheDocument();
     });
 
+    it("the alert names the form-renderer slot after VForm, the component a developer supplies", async () => {
+        renderWith({ CollectionList: RELATIONAL_STUBS.CollectionList });
+        const alert = await screen.findByTestId("m2a-missing-relational-ui");
+        expect(alert).toHaveTextContent("needs VForm, which");
+        expect(alert).not.toHaveTextContent("FormRenderer");
+    });
+
+    it("does not ask for a form renderer when the user can neither create nor update", async () => {
+        (useRelationPermissionsM2A as jest.Mock).mockReturnValue({
+            createAllowed: { headings: false, paragraphs: false },
+            selectAllowed: true,
+            updateAllowed: { headings: false, paragraphs: false },
+            deleteAllowed: { headings: true, paragraphs: true },
+        });
+        renderWith(null);
+        const alert = await screen.findByTestId("m2a-missing-relational-ui");
+        expect(alert).toHaveAttribute("data-missing", "CollectionList");
+    });
+
+    it("shows no alert when no action would be offered", async () => {
+        (useRelationPermissionsM2A as jest.Mock).mockReturnValue({
+            createAllowed: { headings: false, paragraphs: false },
+            selectAllowed: false,
+            updateAllowed: { headings: false, paragraphs: false },
+            deleteAllowed: { headings: true, paragraphs: true },
+        });
+        renderWith(null);
+        await screen.findByTestId("list-m2a");
+        expect(screen.queryByTestId("m2a-missing-relational-ui")).not.toBeInTheDocument();
+    });
+
     it("with only a list: select is offered; create and edit (JunctionItemForm) are hidden", async () => {
         setItemsHook({ totalCount: 1, displayItems: [ITEM] });
         renderWith({ CollectionList: RELATIONAL_STUBS.CollectionList });
