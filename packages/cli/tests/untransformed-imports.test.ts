@@ -140,6 +140,10 @@ describe('validate / fix over a project', () => {
     await fs.remove(cwd);
   });
 
+  // validate and fix report paths with path.relative, which uses '\\' on Windows.
+  const posix = (p: string) => p.split(path.sep).join('/');
+  const logged = () => posix(vi.mocked(console.log).mock.calls.flat().join('\n'));
+
   const rec = (target: string) => ({ target, sourceSha256: 'x', sha256: 'y', ref: 'v1', state: 'clean' });
 
   async function project(files: Record<string, string>) {
@@ -182,7 +186,7 @@ describe('validate / fix over a project', () => {
 
     const result = await validate({ cwd, noExit: true });
 
-    const found = result!.errors.filter(e => e.code === 'UNTRANSFORMED_IMPORT').map(e => `${e.file}:${e.line}`);
+    const found = result!.errors.filter(e => e.code === 'UNTRANSFORMED_IMPORT').map(e => `${posix(e.file)}:${e.line}`);
     expect(found.sort()).toEqual([
       'src/app/api/thing/route.ts:1',
       'src/components/ui/a.tsx:1',
@@ -268,8 +272,7 @@ describe('validate / fix over a project', () => {
 
     await fix({ cwd: proj, yes: true });
     expect(await fs.readFile(victim, 'utf8')).toBe(leftover);
-    const logged = vi.mocked(console.log).mock.calls.flat().join('\n');
-    expect(logged).toContain("'../victim/x.ts'");
+    expect(logged()).toContain("'../victim/x.ts'");
   });
 
   test('validate and fix accept imports of the published packages in user code', async () => {
@@ -285,7 +288,7 @@ describe('validate / fix over a project', () => {
     expect(await fs.readFile(path.join(src, 'lib/mcp.ts'), 'utf8')).toBe(
       "import { createServer } from '@buildpad/mcp';\nimport type { Field } from '@/lib/buildpad/types';\n",
     );
-    expect(vi.mocked(console.log).mock.calls.flat().join('\n')).not.toContain('cannot rewrite');
+    expect(logged()).not.toContain('cannot rewrite');
   });
 
   test('fix reaches installed files outside components/ and lib/buildpad/, and reports what it cannot rewrite', async () => {
@@ -304,7 +307,6 @@ describe('validate / fix over a project', () => {
       "export const load = () => import('@/lib/buildpad/hooks');\n",
     );
     expect(await fs.readFile(path.join(src, 'middleware.ts'), 'utf8')).toBe("import '@buildpad/ui-table/nope';\n");
-    const logged = vi.mocked(console.log).mock.calls.flat().join('\n');
-    expect(logged).toContain("src/middleware.ts:1 cannot rewrite '@buildpad/ui-table/nope'");
+    expect(logged()).toContain("src/middleware.ts:1 cannot rewrite '@buildpad/ui-table/nope'");
   });
 });
