@@ -15,7 +15,8 @@
  * This file extracts every one of those tables (importing the utils runtime
  * where its values are exported, otherwise parsing the source with the
  * TypeScript AST so a reshaped table fails loudly instead of parsing as
- * empty), asserts the invariants that hold today, and pins every CURRENT
+ * empty, and running a non-exported helper's own declaration rather than
+ * copying it), asserts the invariants that hold today, and pins every CURRENT
  * divergence as an exact, commented expectation.
  *
  * A failing `divergence (x)` expectation is not necessarily a regression: it
@@ -379,6 +380,21 @@ function createExportResolver(
 /** Export names of a source module in the monorepo (path relative to packages/). */
 const sourceExportsOf = createExportResolver(readExports, resolveSourceRelative);
 
+/**
+ * Run top-level function declarations of a source file in isolation (the
+ * declarations alone, transpiled to JS). A function that comes to depend on
+ * anything else in its module fails here with a ReferenceError instead of
+ * being silently re-implemented by the test.
+ */
+function loadFunctions<T>(file: string, names: readonly string[]): T {
+  const sf = parseSource(file);
+  const text = names.map((n) => functionNamed(sf, n).getText(sf)).join('\n');
+  const js = ts.transpileModule(text, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText;
+  return new Function('exports', `${js}\nreturn { ${names.join(', ')} };`)({}) as T;
+}
+
 /** `const <name> = ['a', 'b'] as const` → ['a', 'b']. */
 function readStringArray(file: string, name: string): string[] {
   const sf = parseSource(file);
@@ -435,7 +451,6 @@ const minus = (a: Iterable<string>, b: Iterable<string>): string[] => {
   const drop = new Set(b);
   return sorted([...a].filter((x) => !drop.has(x)));
 };
-const camel = (id: string): string => id.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 
 // ---------------------------------------------------------------------------
 // The tables
@@ -910,10 +925,26 @@ describe('registry interface blocks', () => {
 });
 
 describe('ui-forms palette and i18n catalog keys', () => {
-  test('interfaceCatalog.label keys are the camelCased provisionable ids (en and id)', () => {
-    const expected = sorted(provisionableIds.map(camel));
-    expect(sorted(Object.keys(formsDefaults.interfaceCatalog.label))).toEqual(expected);
-    expect(sorted(Object.keys(formsId.interfaceCatalog.label))).toEqual(expected);
+  test("FieldPalette's own label lookup finds every provisionable interface, and only those, in both locales", () => {
+    // FieldPalette's derivation itself (catalogLabelKey + catalogInterfaceLabel),
+    // run from its source — not a copy — so a change there is checked here.
+    const palette = loadFunctions<{
+      catalogLabelKey: (value: string) => string;
+      catalogInterfaceLabel: (t: typeof formsDefaults, descriptor: (typeof PROVISIONABLE_INTERFACES)[number]) => string;
+    }>(F.palette, ['catalogLabelKey', 'catalogInterfaceLabel']);
+    for (const [locale, dict] of [['en', formsDefaults], ['id', formsId]] as const) {
+      const keys = Object.keys(dict.interfaceCatalog.label);
+      // A hit returns the dictionary entry; a miss silently falls back to the
+      // English descriptor label, which a marked dictionary tells apart.
+      const marked = {
+        ...dict,
+        interfaceCatalog: { ...dict.interfaceCatalog, label: Object.fromEntries(keys.map((k) => [k, `dict:${k}`])) },
+      } as typeof formsDefaults;
+      const fallbacks = PROVISIONABLE_INTERFACES.filter((p) => !palette.catalogInterfaceLabel(marked, p).startsWith('dict:'));
+      expect({ locale, fallbacks: fallbacks.map((p) => p.value) }).toEqual({ locale, fallbacks: [] });
+      // … and the dictionary carries no key FieldPalette never asks for.
+      expect({ locale, keys: sorted(keys) }).toEqual({ locale, keys: sorted(provisionableIds.map(palette.catalogLabelKey)) });
+    }
   });
 
   test('catalog group keys cover every provisionable group and exist in both locales', () => {
