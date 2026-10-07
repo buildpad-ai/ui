@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T12:44:39.263Z",
+  "generatedAt": "2026-10-07T13:29:09.131Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -218,7 +218,7 @@
         {
           "source": "utils/src/i18n/namespaces/interfaces.ts",
           "target": "lib/buildpad/i18n/namespaces/interfaces.ts",
-          "sourceSha256": "8e936f8dc7987477099fdc27595f1486d8f8e6679104cfd62d89aa54e4a41bdf"
+          "sourceSha256": "6c6b033aa854c713f48f845fb7f4be02b957adcbae3c6c1e39b3333025578ae8"
         },
         {
           "source": "utils/src/i18n/namespaces/collections.ts",
@@ -349,6 +349,11 @@
           "source": "utils/src/i18n/namespaces/interfaces/notice.ts",
           "target": "lib/buildpad/i18n/namespaces/interfaces/notice.ts",
           "sourceSha256": "f2980814592308195d093d5b657ccdde670130c0f6e62cb6b6c1abcbcdbb8377"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/interfaces/relational-ui.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/relational-ui.ts",
+          "sourceSha256": "aac8f86923242f0c63eb9c1fb214ebfa2d49cde3c53717a7d9e92edd9fbd6412"
         },
         {
           "source": "utils/src/i18n/namespaces/interfaces/rich-text-html.ts",
@@ -587,6 +592,11 @@
           "sourceSha256": "bbb2af38ca4bd487e955da6c3dcfc15c9f8273f8ee36ec4266a83c500bf46058"
         },
         {
+          "source": "services/src/relational-ui-context.tsx",
+          "target": "lib/buildpad/services/relational-ui-context.tsx",
+          "sourceSha256": "01d74b2a91028690d5403d798140c40f0da6862dd9aceac4e1ed8829dbe5231e"
+        },
+        {
           "source": "services/src/auth/index.ts",
           "target": "lib/buildpad/services/auth/index.ts",
           "sourceSha256": "471e76c182c57735db47df510e8ecc062b911f70883da190b8a7fa63a740abc0"
@@ -614,7 +624,7 @@
         {
           "source": "cli/templates/lib/services/index.ts",
           "target": "lib/buildpad/services/index.ts",
-          "sourceSha256": "65d7dc85ee119c57ecbbe042bfd0a16e1f71dae82981d0347823793eb711428d"
+          "sourceSha256": "17188557963b435d9264fbcd55a6cefe7d54181eca2c81808b241f0c6b90a19d"
         }
       ],
       "internalDependencies": [
@@ -2443,7 +2453,7 @@
         {
           "source": "ui-interfaces/src/list-m2m/ListM2M.tsx",
           "target": "components/ui/list-m2m.tsx",
-          "sourceSha256": "0977cf0571fee75aab1342e2533383b5b54b2363d296b1f2d2a8406c843d28f6"
+          "sourceSha256": "dd4912c8e147e13a383ae13c8780c51fc950a509bf629256154b5b0299b9ea53"
         },
         {
           "source": "ui-interfaces/src/list-m2m/ListM2MInterface.tsx",
@@ -2558,7 +2568,7 @@
         {
           "source": "ui-interfaces/src/list-o2m/ListO2M.tsx",
           "target": "components/ui/list-o2m.tsx",
-          "sourceSha256": "1c3f181af118b24f8e3e3a6134dad196a522be95c087076a3fc12b86e621c162"
+          "sourceSha256": "fcd685c9a56ccd7bfe3ba9cbb8c51dbb80541c97975bfc468c66dc1cfa6efb28"
         }
       ],
       "dependencies": [
@@ -2605,17 +2615,22 @@
         {
           "source": "ui-interfaces/src/list-m2a/ListM2A.tsx",
           "target": "components/ui/list-m2a.tsx",
-          "sourceSha256": "57fe8bc7e8deb29e8244ad1e5b566035e46ce0361f0dd0449965b72c1119f7d3"
+          "sourceSha256": "99007417b9445a0c780ba3c45e7ed5a71def8e02ba207be28bdfcf1f15fa9b2d"
         },
         {
           "source": "ui-interfaces/src/list-m2a/JunctionItemForm.tsx",
           "target": "components/ui/list-m2a/JunctionItemForm.tsx",
-          "sourceSha256": "47269beb8df7b4576387b1aba24e975f0c32a5ff53cf0f99ea04395888730fb9"
+          "sourceSha256": "8d2bb1a3181d07cf340883a0ef72d1ca9d0926fd6f5f8a7e53aa9c94e4181722"
         },
         {
           "source": "ui-interfaces/src/list-m2a/render-template.ts",
           "target": "components/ui/list-m2a/render-template.ts",
           "sourceSha256": "dc706acb1ab3e7299082fca712253f23ac9ec4083aecace8501fa344a62e605d"
+        },
+        {
+          "source": "ui-interfaces/src/list-m2a/relational-slots.tsx",
+          "target": "components/ui/list-m2a/relational-slots.tsx",
+          "sourceSha256": "4cb0f0948de171b1c62118a4d87f23380d737fc1ad3d2d9abfc5ad311892066d"
         }
       ],
       "dependencies": [
@@ -2992,7 +3007,7 @@
         {
           "source": "ui-form/src/VForm.tsx",
           "target": "components/ui/vform/VForm.tsx",
-          "sourceSha256": "4b705ee77272233c4c3f4f63d9be871386796f1fb52820e24c2312e81e9448cd"
+          "sourceSha256": "83a441a76f0d7516db241b3ce2b7a61932d4e7d2202465d7952483ac923b8386"
         },
         {
           "source": "ui-form/src/VForm.css",
@@ -3148,7 +3163,7 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "b25fe176d5f3e66326aeb4d52e623cf34bdbf6f90baae381939271c09cbdf60e"
+          "sourceSha256": "a03b0a6152e7980b5632cde9d8f3f601ba22be22b8b95179379055704987cffb"
         },
         {
           "source": "ui-collections/src/extras-storage.ts",
@@ -3167,7 +3182,8 @@
       ],
       "registryDependencies": [
         "vform",
-        "save-options"
+        "save-options",
+        "collection-list"
       ],
       "sourcePackage": "@buildpad/ui-collections",
       "version": "2.6.0",
@@ -3856,7 +3872,7 @@
         {
           "source": "ui-forms/src/FormPreview.tsx",
           "target": "components/ui/form-builder/form-preview.tsx",
-          "sourceSha256": "2a99b07959a2e49c3bdad51e9cf0f43c8b415abcd50c2df35b3d4aa888baf8f6"
+          "sourceSha256": "ced63c7d49cf05e91196e8b53122e88dcb3733050da0e8aaa73e943891dc3aa6"
         },
         {
           "source": "ui-forms/src/DynamicForm.tsx",

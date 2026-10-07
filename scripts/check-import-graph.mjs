@@ -38,36 +38,12 @@ const PACKAGES_DIR = join(ROOT, 'packages');
  * entry once the cycle is broken (the check fails until you do).
  */
 export const ALLOWED_CYCLE_EDGES = {
-  package: [
-    // ui-form ⇄ ui-interfaces ⇄ ui-collections: VForm renders interfaces
-    // (FormFieldInterface, FormGroupField), relational interfaces render
-    // CollectionForm/CollectionList and VForm (ListO2M/M2M/M2A,
-    // JunctionItemForm), CollectionForm renders VForm. Broken by the planned
-    // relational-slot context (cycle-break).
-    '@buildpad/ui-collections -> @buildpad/ui-form',
-    '@buildpad/ui-form -> @buildpad/ui-interfaces',
-    '@buildpad/ui-interfaces -> @buildpad/ui-collections',
-    '@buildpad/ui-interfaces -> @buildpad/ui-form',
-  ],
+  // ui-form ⇄ ui-interfaces ⇄ ui-collections was broken by the relational UI
+  // context (services/src/relational-ui-context.tsx): the relational
+  // interfaces read CollectionForm / CollectionList / VForm from it instead of
+  // importing them. Keep this list empty.
+  package: [],
   entry: [
-    // The same cycle at entry level: vform's FormFieldInterface looks up every
-    // relational interface in the components barrel; the list-* entries render
-    // CollectionForm (→ vform) and JunctionItemForm renders VForm. list-o2m,
-    // list-m2m, select-dropdown-m2o and collection-item-dropdown also reach
-    // list-m2a for render-template.ts, which has no imports of its own.
-    'collection-form -> vform',
-    'collection-item-dropdown -> list-m2a',
-    'list-m2a -> vform',
-    'list-m2m -> collection-form',
-    'list-m2m -> list-m2a',
-    'list-o2m -> collection-form',
-    'list-o2m -> list-m2a',
-    'select-dropdown-m2o -> list-m2a',
-    'vform -> collection-item-dropdown',
-    'vform -> list-m2a',
-    'vform -> list-m2m',
-    'vform -> list-o2m',
-    'vform -> select-dropdown-m2o',
     // services ships lib/module-access/enforce.ts, which imports
     // @/lib/supabase/server; supabase-auth's middleware imports lib/i18n, and
     // the i18n provider imports the services barrel. Undeclared on purpose

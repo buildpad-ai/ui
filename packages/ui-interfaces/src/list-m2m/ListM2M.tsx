@@ -88,8 +88,9 @@ import {
     type M2MDisplayItem,
     type M2MChangesItem,
 } from "@buildpad/hooks";
-import { CollectionList, CollectionForm } from "@buildpad/ui-collections";
+import { missingRelationalUI, type RelationalUIComponents } from "@buildpad/services/relational-ui-context";
 import { renderTemplate, resolveDisplayTemplate, splitJunctionTemplateFields, DEFAULT_RELATIONAL_FIELDS } from "../list-m2a/render-template";
+import { MissingRelationalUIAlert, useRelationalSlots } from "../list-m2a/relational-slots";
 import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
 import type { DeepPartial, PluralForms } from "@buildpad/utils";
 import { interpolate, type M2MTranslations } from "./translations";
@@ -161,6 +162,15 @@ export interface ListM2MProps {
      * @see M2MTranslations
      */
     translations?: DeepPartial<M2MTranslations>;
+    /**
+     * The edit form (`CollectionForm`) and item picker (`CollectionList`) the
+     * drawer and select dialog render. Defaults to the ones a
+     * `RelationalUIProvider` supplies (CollectionForm and VForm provide them
+     * automatically); a slot set here wins. Without a form, create and edit
+     * are hidden; without a list, "Add Existing" is hidden — and an alert
+     * says why.
+     */
+    components?: RelationalUIComponents;
     /**
      * Enable batch edit mode (table layout only).
      * Shows checkboxes for multi-select and a batch edit button.
@@ -602,11 +612,15 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     translations: translationOverrides,
     enableBatchEdit = false,
     versionId,
+    components,
 }) => {
     // ── i18n ────────────────────────────────────────────────────────
     // Precedence: `translations` prop > provider dictionary > English defaults.
     const t = useBuildpadTranslations((d) => d.interfaces.listM2M, translationOverrides);
     const { formatCount } = useBuildpadI18n();
+    // The drawer's form and the picker: `components` prop > relational
+    // provider, each wrapped in its own Suspense boundary (it may be lazy).
+    const { CollectionForm, CollectionList } = useRelationalSlots(components);
     // `itemCount` (PluralForms) is the source of truth for the item count; a
     // legacy prop override of the `item_count_one` / `item_count_other` pair
     // still wins so existing consumers keep their copy.
@@ -643,6 +657,8 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     const createAllowed = isMockMode || apiCreateAllowed;
     const selectAllowed = isMockMode || apiSelectAllowed;
     const updateAllowed = isMockMode || apiUpdateAllowed;
+    // Editing a row opens the drawer's form.
+    const editAllowed = updateAllowed && !!CollectionForm;
     const deleteAllowed = isMockMode || apiDeleteAllowed;
 
     // ── Staged change tracking ──────────────────────────────────────
@@ -977,12 +993,12 @@ export const ListM2M: React.FC<ListM2MProps> = ({
 
     const handleEditItem = useCallback(
         (item: M2MDisplayItem) => {
-            if (isEffectivelyNonEditable) return;
+            if (isEffectivelyNonEditable || !CollectionForm) return;
             setCurrentlyEditing(item);
             setIsCreatingNew(false);
             openEditDrawer();
         },
-        [openEditDrawer, isEffectivelyNonEditable],
+        [openEditDrawer, isEffectivelyNonEditable, CollectionForm],
     );
 
     // Fields the select modal must load for each candidate row, so a picked
@@ -1378,6 +1394,14 @@ export const ListM2M: React.FC<ListM2MProps> = ({
         );
     }
 
+    // Components a provider should supply for what this field would offer.
+    const missingSlots = isEffectivelyNonEditable
+        ? []
+        : missingRelationalUI({ CollectionForm, CollectionList }, [
+              ...(enableCreate || updateAllowed ? (["CollectionForm"] as const) : []),
+              ...(enableSelect ? (["CollectionList"] as const) : []),
+          ]);
+
     // ── Render: Main component ──────────────────────────────────────
     return (
         <Stack gap="sm">
@@ -1400,6 +1424,9 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                     {description}
                 </Text>
             )}
+
+            {/* No relational provider supplies a component the actions need */}
+            <MissingRelationalUIAlert missing={missingSlots} data-testid="m2m-missing-relational-ui" />
 
             <Paper p="md" withBorder>
                 {/* Header Actions */}
@@ -1464,7 +1491,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                                 </Tooltip>
                             )}
 
-                        {!isEffectivelyNonEditable && enableSelect && selectAllowed && (
+                        {!isEffectivelyNonEditable && enableSelect && selectAllowed && CollectionList && (
                             <Button
                                 variant="light"
                                 leftSection={<IconPlus size={16} />}
@@ -1475,7 +1502,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                             </Button>
                         )}
 
-                        {!isEffectivelyNonEditable && enableCreate && createAllowed && (
+                        {!isEffectivelyNonEditable && enableCreate && createAllowed && CollectionForm && (
                             <Button
                                 leftSection={<IconPlus size={16} />}
                                 onClick={handleCreateNew}
@@ -1570,7 +1597,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                                             isLast={index === visibleItems.length - 1}
                                             enableLink={enableLink}
                                             isEffectivelyNonEditable={isEffectivelyNonEditable}
-                                            updateAllowed={updateAllowed}
+                                            updateAllowed={editAllowed}
                                             deleteAllowed={deleteAllowed}
                                             t={t}
                                             onEdit={handleEditItem}
@@ -1609,7 +1636,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                                         isLast={index === visibleItems.length - 1}
                                         enableLink={enableLink}
                                         isEffectivelyNonEditable={isEffectivelyNonEditable}
-                                        updateAllowed={updateAllowed}
+                                        updateAllowed={editAllowed}
                                         deleteAllowed={deleteAllowed}
                                         t={t}
                                         formatDisplayValue={formatDisplayValue}
@@ -1674,7 +1701,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                 size="lg"
                 padding="md"
             >
-                {relationInfo && (
+                {relationInfo && CollectionForm && (
                     <Stack gap="md">
                         {/* Junction field section at top (if configured) */}
                         {!isCreatingNew &&
@@ -1739,7 +1766,7 @@ export const ListM2M: React.FC<ListM2MProps> = ({
                 title={t.select_items}
                 size="xl"
             >
-                {relationInfo && (
+                {relationInfo && CollectionList && (
                     <Box p="md">
                         <CollectionList
                             collection={relationInfo.relatedCollection.collection}

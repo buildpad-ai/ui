@@ -27,7 +27,7 @@ import {
   type O2MItem,
   type O2MRelationInfo,
 } from "@buildpad/hooks";
-import { CollectionForm, CollectionList } from "@buildpad/ui-collections";
+import { missingRelationalUI, type RelationalUIComponents } from "@buildpad/services/relational-ui-context";
 import { useBuildpadI18n, useBuildpadTranslations } from "@buildpad/services";
 import { interpolate, type DeepPartial, type InterfacesTranslations } from "@buildpad/utils";
 import {
@@ -44,6 +44,7 @@ import {
 } from "@tabler/icons-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renderTemplate, getByPath, DEFAULT_RELATIONAL_FIELDS, resolveDisplayTemplate, resolveRelationFields } from "../list-m2a/render-template";
+import { MissingRelationalUIAlert, useRelationalSlots } from "../list-m2a/relational-slots";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -159,6 +160,14 @@ export interface ListO2MProps {
   mockRelationInfo?: Partial<O2MRelationInfo>;
   /** Per-instance overrides of the dictionary strings (`interfaces.listO2M`) */
   translations?: DeepPartial<InterfacesTranslations['listO2M']>;
+  /**
+   * The edit form (`CollectionForm`) and item picker (`CollectionList`) the
+   * dialogs render. Defaults to the ones a `RelationalUIProvider` supplies
+   * (CollectionForm and VForm provide them automatically); a slot set here
+   * wins. Without a form, create and edit are hidden; without a list,
+   * "Add Existing" is hidden — and an alert says why.
+   */
+  components?: RelationalUIComponents;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -240,10 +249,14 @@ export const ListO2M: React.FC<ListO2MProps> = ({
   mockItems,
   mockRelationInfo,
   translations,
+  components,
 }) => {
   // Precedence: `translations` prop > provider dictionary > English defaults.
   const t = useBuildpadTranslations((d) => d.interfaces.listO2M, translations);
   const { formatCount } = useBuildpadI18n();
+  // The dialogs' form and picker: `components` prop > relational provider,
+  // each wrapped in its own Suspense boundary (it may be lazy).
+  const { CollectionForm, CollectionList } = useRelationalSlots(components);
 
   // `value` is accepted for interface parity with the other relational
   // components but is not read: this component is the source of truth for its
@@ -848,6 +861,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
 
   const handleEditItem = (item: O2MItem) => {
     if (!updateAllowed && !isDemoMode) return;
+    if (!CollectionForm) return;
     setCurrentlyEditing(item);
     setIsCreatingNew(false);
     openEditModal();
@@ -1123,18 +1137,30 @@ export const ListO2M: React.FC<ListO2MProps> = ({
   // ── Effective disabled state ────────────────────────────────────────────
   const isDisabled = disabled || readOnly;
 
-  // Compute whether create/select buttons should show
+  // Compute whether create/select buttons should show. Each also needs the
+  // component its dialog renders (from the relational provider).
   const showCreateBtn =
     !isDisabled &&
     enableCreate &&
     createAllowed &&
     !hasExistingItem &&
-    !isSingleton;
+    !isSingleton &&
+    !!CollectionForm;
   const showSelectBtn =
     !isDisabled &&
     enableSelect &&
     !hasExistingItem &&
-    !isSingleton;
+    !isSingleton &&
+    !!CollectionList;
+  // Editing a row opens the same form.
+  const editAllowed = updateAllowed && !!CollectionForm;
+  // Components a provider should supply for what this field would offer.
+  const missingSlots = isDisabled
+    ? []
+    : missingRelationalUI({ CollectionForm, CollectionList }, [
+        ...(enableCreate || updateAllowed ? (["CollectionForm"] as const) : []),
+        ...(enableSelect ? (["CollectionList"] as const) : []),
+      ]);
 
   // ── Circular field exclusion (Priority #3) ──────────────────────────────
   const circularField = relationInfo?.reverseJunctionField?.field;
@@ -1224,6 +1250,9 @@ export const ListO2M: React.FC<ListO2MProps> = ({
           {description}
         </Text>
       )}
+
+      {/* No relational provider supplies a component the actions need */}
+      <MissingRelationalUIAlert missing={missingSlots} data-testid="o2m-missing-relational-ui" />
 
       {/* Priority #5: Singleton guard */}
       {isSingleton && (
@@ -1492,7 +1521,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                         </Tooltip>
                       )}
 
-                      {!isDisabled && updateAllowed && (
+                      {!isDisabled && editAllowed && (
                         <Tooltip label={t.actions.edit}>
                           <ActionIcon
                             variant="subtle"
@@ -1553,10 +1582,10 @@ export const ListO2M: React.FC<ListO2MProps> = ({
                 p="sm"
                 withBorder
                 style={{
-                  cursor: isDisabled || !updateAllowed ? "default" : "pointer",
+                  cursor: isDisabled || !editAllowed ? "default" : "pointer",
                 }}
                 onClick={() =>
-                  !isDisabled && updateAllowed && handleEditItem(item)
+                  !isDisabled && editAllowed && handleEditItem(item)
                 }
                 data-testid={`o2m-item-${getPk(item)}`}
               >
@@ -1687,7 +1716,7 @@ export const ListO2M: React.FC<ListO2MProps> = ({
         title={isCreatingNew ? t.editModal.createTitle : t.editModal.editTitle}
         size="lg"
       >
-        {relationInfo && relationInfo.relatedCollection && (
+        {relationInfo && relationInfo.relatedCollection && CollectionForm && (
           <CollectionForm
             collection={relationInfo.relatedCollection.collection}
             id={editingPk}
@@ -1749,7 +1778,8 @@ export const ListO2M: React.FC<ListO2MProps> = ({
 
         {relationInfo &&
           relationInfo.relatedCollection &&
-          relationInfo.reverseJunctionField && (
+          relationInfo.reverseJunctionField &&
+          CollectionList && (
             <Box p="md">
               <CollectionList
                 collection={relationInfo.relatedCollection.collection}

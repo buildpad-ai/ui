@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { ListM2M } from '../list-m2m/ListM2M';
+import { RelationalUIProvider } from '@buildpad/services/relational-ui-context';
 
 // ListM2M consumes @buildpad/hooks directly (useRelationM2M / useRelationPermissionsM2M /
 // useRelationMultipleM2M / useFieldMetadata). Mock the whole module so tests are
@@ -115,7 +116,9 @@ jest.mock('@buildpad/hooks', () => {
 
 const mockCollectionListProps = jest.fn();
 
-jest.mock('@buildpad/ui-collections', () => ({
+// The drawer / select modal render the CollectionForm / CollectionList the
+// relational provider supplies; TestWrapper supplies these stubs.
+const RELATIONAL_STUBS = {
     CollectionForm: ({ onSuccess }: any) => (
         <div data-testid="collection-form">
             <button onClick={() => onSuccess?.({ id: 'new-tag-id', name: 'Brand new tag' })}>
@@ -140,12 +143,12 @@ jest.mock('@buildpad/ui-collections', () => ({
             </div>
         );
     },
-}));
+};
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
     <MantineProvider>
         <Notifications />
-        {children}
+        <RelationalUIProvider components={RELATIONAL_STUBS}>{children}</RelationalUIProvider>
     </MantineProvider>
 );
 
@@ -575,5 +578,50 @@ describe('ListM2M "Add Existing" picker requests an exact count', () => {
         expect(mockCollectionListProps).toHaveBeenCalledWith(
             expect.objectContaining({ exactCount: true }),
         );
+    });
+});
+
+describe('ListM2M relational UI provider (cycle-break)', () => {
+    const withComponents = (components: Record<string, unknown>) =>
+        function Wrapper({ children }: { children: React.ReactNode }) {
+            return (
+                <MantineProvider>
+                    <Notifications />
+                    <RelationalUIProvider components={components}>{children}</RelationalUIProvider>
+                </MantineProvider>
+            );
+        };
+
+    it('hides the row edit action when no provider supplies a CollectionForm', async () => {
+        const Wrapper = withComponents({ CollectionList: RELATIONAL_STUBS.CollectionList });
+        const { container } = render(
+            <Wrapper>
+                <ListM2M {...defaultProps} layout="table" />
+            </Wrapper>,
+        );
+
+        fireEvent.click(await screen.findByText('Add Existing'));
+        fireEvent.click(await screen.findByText('Add Selected'));
+        // The staged row's remove action shows it rendered; edit must not.
+        await waitFor(() => expect(container.querySelector('svg.tabler-icon-trash')).not.toBeNull());
+
+        expect(container.querySelector('svg.tabler-icon-edit')).toBeNull();
+        expect(screen.queryByText('Create New')).not.toBeInTheDocument();
+        expect(screen.getByTestId('m2m-missing-relational-ui')).toHaveAttribute('data-missing', 'CollectionForm');
+    });
+
+    it('shows the row edit action when the form is supplied', async () => {
+        const { container } = render(
+            <TestWrapper>
+                <ListM2M {...defaultProps} layout="table" />
+            </TestWrapper>,
+        );
+
+        fireEvent.click(await screen.findByText('Add Existing'));
+        fireEvent.click(await screen.findByText('Add Selected'));
+        await waitFor(() => expect(container.querySelector('svg.tabler-icon-trash')).not.toBeNull());
+
+        expect(container.querySelector('svg.tabler-icon-edit')).not.toBeNull();
+        expect(screen.queryByTestId('m2m-missing-relational-ui')).not.toBeInTheDocument();
     });
 });

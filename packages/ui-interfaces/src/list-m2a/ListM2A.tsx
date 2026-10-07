@@ -59,9 +59,10 @@ import {
     type M2AItem,
     type M2ARelationInfo,
 } from "@buildpad/hooks";
-import { CollectionList } from "@buildpad/ui-collections";
+import { missingRelationalUI, type RelationalUIComponents } from "@buildpad/services/relational-ui-context";
 import { renderTemplate, resolveDisplayTemplate } from "./render-template";
 import { JunctionItemForm } from "./JunctionItemForm";
+import { MissingRelationalUIAlert, useRelationalSlots } from "./relational-slots";
 
 /**
  * Props for the ListM2A component
@@ -121,6 +122,15 @@ export interface ListM2AProps {
     mockRelationInfo?: Partial<M2ARelationInfo>;
     /** Per-instance overrides of the dictionary strings (`interfaces.listM2A`) */
     translations?: DeepPartial<InterfacesTranslations['listM2A']>;
+    /**
+     * The item picker (`CollectionList`) and the form renderer (`VForm`, used
+     * by JunctionItemForm) the dialogs render. Defaults to the ones a
+     * `RelationalUIProvider` supplies (CollectionForm and VForm provide them
+     * automatically); a slot set here wins and is passed on to
+     * JunctionItemForm. Without a form renderer, create and edit are hidden;
+     * without a list, "Add Existing" is hidden — and an alert says why.
+     */
+    components?: RelationalUIComponents;
 }
 
 // ── DnD helper: Sortable table row ──
@@ -265,9 +275,13 @@ export const ListM2A: React.FC<ListM2AProps> = ({
     mockItems,
     mockRelationInfo,
     translations,
+    components,
 }) => {
     const t = useBuildpadTranslations((d) => d.interfaces.listM2A, translations);
     const { formatCount } = useBuildpadI18n();
+    // The picker and JunctionItemForm's form renderer: `components` prop >
+    // relational provider (the picker wrapped in its own Suspense boundary).
+    const { CollectionList, FormRenderer } = useRelationalSlots(components);
 
     // `readOnly` was previously destructured into an unused variable, so every
     // mutation affordance below was gated on `disabled` alone and a read-only
@@ -380,11 +394,13 @@ export const ListM2A: React.FC<ListM2AProps> = ({
 
     // Helper: can user edit this item's collection?
     const canEditItem = useCallback((item: M2AItem): boolean => {
+        // Editing opens JunctionItemForm, which renders the form renderer.
+        if (!FormRenderer) return false;
         if (isDemoMode) return true;
         const coll = (relationInfo ? item[relationInfo.collectionField.field] as string : null) || (item as Record<string, unknown>).collection as string;
         if (!coll) return false;
         return permUpdateAllowed[coll] ?? false;
-    }, [isDemoMode, relationInfo, permUpdateAllowed]);
+    }, [isDemoMode, relationInfo, permUpdateAllowed, FormRenderer]);
 
     // Helper: can user remove/unlink this item?
     const canDeleteItem = useCallback((item: M2AItem): boolean => {
@@ -787,6 +803,19 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                 <Text size="xs" c="dimmed">{description}</Text>
             )}
 
+            {/* No relational provider supplies a component the actions need */}
+            <MissingRelationalUIAlert
+                missing={
+                    isEffectivelyDisabled
+                        ? []
+                        : missingRelationalUI({ CollectionList, FormRenderer }, [
+                              "FormRenderer",
+                              ...(enableSelect ? (["CollectionList"] as const) : []),
+                          ])
+                }
+                data-testid="m2a-missing-relational-ui"
+            />
+
             <Paper p="md" withBorder pos="relative">
                 <LoadingOverlay visible={loading} />
 
@@ -815,7 +844,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                             </Text>
                         )}
 
-                        {!isEffectivelyDisabled && enableSelect && selectableCollections.length > 0 && (
+                        {!isEffectivelyDisabled && enableSelect && selectableCollections.length > 0 && CollectionList && (
                             <Menu shadow="md" width={200}>
                                 <Menu.Target>
                                     <Button
@@ -842,7 +871,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                             </Menu>
                         )}
 
-                        {!isEffectivelyDisabled && enableCreate && creatableCollections.length > 0 && (
+                        {!isEffectivelyDisabled && enableCreate && creatableCollections.length > 0 && FormRenderer && (
                             <Menu shadow="md" width={200}>
                                 <Menu.Target>
                                     <Tooltip 
@@ -1192,7 +1221,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                 }
                 size="lg"
             >
-                {selectedCollection && relationInfo && (
+                {selectedCollection && relationInfo && FormRenderer && (
                     <JunctionItemForm
                         relationInfo={relationInfo}
                         item={currentlyEditing}
@@ -1201,6 +1230,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                         parentPrimaryKey={primaryKey}
                         disabled={isEffectivelyDisabled}
                         translations={translations}
+                        components={components}
                         onCancel={() => {
                             closeEditModal();
                             setCurrentlyEditing(null);
@@ -1280,7 +1310,7 @@ export const ListM2A: React.FC<ListM2AProps> = ({
                     </Alert>
                 )}
 
-                {selectedCollection && (
+                {selectedCollection && CollectionList && (
                     <Box p="md">
                         <CollectionList
                             collection={selectedCollection}

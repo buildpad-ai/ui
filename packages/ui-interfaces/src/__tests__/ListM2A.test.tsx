@@ -40,14 +40,17 @@ jest.mock("@buildpad/hooks", () => ({
     useRelationPermissionsM2A: jest.fn(),
 }));
 
-// The select modal renders a full CollectionList; not under test here.
+// The select modal renders the CollectionList the relational provider
+// supplies; not under test here. JunctionItemForm (stubbed below) is only
+// rendered when a form renderer is available, so supply a stub for that too.
 const mockCollectionListProps = jest.fn();
-jest.mock("@buildpad/ui-collections", () => ({
+const RELATIONAL_STUBS = {
     CollectionList: (props: Record<string, unknown>) => {
         mockCollectionListProps(props);
         return null;
     },
-}));
+    FormRenderer: () => null,
+};
 
 // JunctionItemForm loads field definitions over the API and renders two VForm
 // sections. Stub it to a save button that fires onSave with the same shape the
@@ -81,6 +84,7 @@ import {
     useRelationPermissionsM2A,
 } from "@buildpad/hooks";
 import { ListM2A } from "../list-m2a/ListM2A";
+import { RelationalUIProvider } from "@buildpad/services/relational-ui-context";
 
 const RELATION_INFO = {
     junctionCollection: { collection: "pages_blocks" },
@@ -101,7 +105,11 @@ const RELATION_INFO = {
     relation: { field: "page_id", collection: "pages_blocks" },
 };
 
-const wrap = (ui: React.ReactNode) => <MantineProvider>{ui}</MantineProvider>;
+const wrap = (ui: React.ReactNode) => (
+    <MantineProvider>
+        <RelationalUIProvider components={RELATIONAL_STUBS}>{ui}</RelationalUIProvider>
+    </MantineProvider>
+);
 
 const flush = () =>
     act(async () => {
@@ -587,5 +595,58 @@ describe("ListM2A — Add Existing picker count mode", () => {
                 expect.objectContaining({ exactCount: true }),
             ),
         );
+    });
+});
+
+describe("ListM2A relational UI provider (cycle-break)", () => {
+    const ITEM = { id: "j1", collection: "headings", item: { id: "u1" }, sort: 1 };
+    const renderWith = (components: Record<string, unknown> | null, props: Record<string, unknown> = {}) =>
+        render(
+            <MantineProvider>
+                {components ? (
+                    <RelationalUIProvider components={components}>
+                        <ListM2A {...(BASE_PROPS as any)} layout="table" {...props} />
+                    </RelationalUIProvider>
+                ) : (
+                    <ListM2A {...(BASE_PROPS as any)} layout="table" {...props} />
+                )}
+            </MantineProvider>,
+        );
+
+    it("without a provider: shows the alert and hides create, select and edit", async () => {
+        setItemsHook({ totalCount: 1, displayItems: [ITEM] });
+        renderWith(null);
+
+        const alert = await screen.findByTestId("m2a-missing-relational-ui");
+        expect(alert).toHaveAttribute("data-missing", "CollectionList FormRenderer");
+        expect(screen.queryByTestId("m2a-select-btn")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("m2a-create-btn")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("m2a-edit-j1")).not.toBeInTheDocument();
+    });
+
+    it("with only a list: select is offered; create and edit (JunctionItemForm) are hidden", async () => {
+        setItemsHook({ totalCount: 1, displayItems: [ITEM] });
+        renderWith({ CollectionList: RELATIONAL_STUBS.CollectionList });
+
+        expect(await screen.findByTestId("m2a-select-btn")).toBeInTheDocument();
+        expect(screen.queryByTestId("m2a-create-btn")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("m2a-edit-j1")).not.toBeInTheDocument();
+        expect(screen.getByTestId("m2a-missing-relational-ui")).toHaveAttribute("data-missing", "FormRenderer");
+    });
+
+    it("with both: every action is offered and no alert is shown", async () => {
+        setItemsHook({ totalCount: 1, displayItems: [ITEM] });
+        renderWith(RELATIONAL_STUBS);
+
+        expect(await screen.findByTestId("m2a-select-btn")).toBeInTheDocument();
+        expect(screen.getByTestId("m2a-create-btn")).toBeInTheDocument();
+        expect(screen.getByTestId("m2a-edit-j1")).toBeInTheDocument();
+        expect(screen.queryByTestId("m2a-missing-relational-ui")).not.toBeInTheDocument();
+    });
+
+    it("the `components` prop supplies slots without any provider", async () => {
+        renderWith(null, { components: RELATIONAL_STUBS });
+        expect(await screen.findByTestId("m2a-select-btn")).toBeInTheDocument();
+        expect(screen.queryByTestId("m2a-missing-relational-ui")).not.toBeInTheDocument();
     });
 });

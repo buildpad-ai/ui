@@ -20,9 +20,10 @@ import {
     type DeepPartial,
     type InterfacesTranslations,
 } from "@buildpad/utils";
-import { VForm } from "@buildpad/ui-form";
+import type { RelationalUIComponents } from "@buildpad/services/relational-ui-context";
 import type { Field } from "@buildpad/types";
 import type { M2ARelationInfo, M2AItem } from "@buildpad/hooks";
+import { MissingRelationalUIAlert, useRelationalSlots } from "./relational-slots";
 
 /**
  * JunctionItemForm props
@@ -46,6 +47,13 @@ export interface JunctionItemFormProps {
     disabled?: boolean;
     /** Per-instance overrides of the dictionary strings (`interfaces.listM2A`) */
     translations?: DeepPartial<InterfacesTranslations['listM2A']>;
+    /**
+     * The form renderer (`FormRenderer`, i.e. VForm) the two sections render.
+     * Defaults to the one a `RelationalUIProvider` supplies (CollectionForm
+     * and VForm provide it automatically); a slot set here wins. Without it
+     * the form shows an alert and no save action.
+     */
+    components?: RelationalUIComponents;
 }
 
 /**
@@ -74,8 +82,11 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
     onCancel,
     disabled = false,
     translations,
+    components,
 }) => {
     const t = useBuildpadTranslations((d) => d.interfaces.listM2A, translations);
+    // `components` prop > relational provider, in its own Suspense boundary.
+    const { FormRenderer: VForm } = useRelationalSlots(components);
     // Read through a ref inside the field-loading effect so a dictionary change never re-fetches the fields.
     const tRef = useRef(t);
     tRef.current = t;
@@ -262,6 +273,19 @@ export const JunctionItemForm: React.FC<JunctionItemFormProps> = ({
             <Alert icon={<IconAlertCircle size={16} />} color="red" title={t.junctionForm.errors.title}>
                 {fieldsError}
             </Alert>
+        );
+    }
+
+    if (!VForm) {
+        return (
+            <Stack gap="md" data-testid="junction-item-form">
+                <MissingRelationalUIAlert missing={["FormRenderer"]} data-testid="junction-missing-relational-ui" />
+                <Group justify="flex-end">
+                    <Button variant="subtle" onClick={onCancel} leftSection={<IconX size={14} />}>
+                        {t.junctionForm.cancel}
+                    </Button>
+                </Group>
+            </Stack>
         );
     }
 

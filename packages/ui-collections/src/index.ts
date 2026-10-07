@@ -5,8 +5,12 @@
  * Built with Mantine v8 and using @buildpad/services for data fetching.
  */
 
-export { CollectionForm } from './CollectionForm';
-export type { CollectionFormProps, FormPermissionState } from './CollectionForm';
+export { CollectionForm, CollectionsRelationalProvider } from './CollectionForm';
+export type {
+  CollectionFormProps,
+  CollectionsRelationalProviderProps,
+  FormPermissionState,
+} from './CollectionForm';
 
 export {
   EXTRAS_COLUMN,

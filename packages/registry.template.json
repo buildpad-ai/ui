@@ -257,6 +257,10 @@
           "target": "lib/buildpad/i18n/namespaces/interfaces/notice.ts"
         },
         {
+          "source": "utils/src/i18n/namespaces/interfaces/relational-ui.ts",
+          "target": "lib/buildpad/i18n/namespaces/interfaces/relational-ui.ts"
+        },
+        {
           "source": "utils/src/i18n/namespaces/interfaces/rich-text-html.ts",
           "target": "lib/buildpad/i18n/namespaces/interfaces/rich-text-html.ts"
         },
@@ -442,6 +446,10 @@
         {
           "source": "services/src/buildpad-i18n-context.tsx",
           "target": "lib/buildpad/services/buildpad-i18n-context.tsx"
+        },
+        {
+          "source": "services/src/relational-ui-context.tsx",
+          "target": "lib/buildpad/services/relational-ui-context.tsx"
         },
         {
           "source": "services/src/auth/index.ts",
@@ -2190,6 +2198,10 @@
         {
           "source": "ui-interfaces/src/list-m2a/render-template.ts",
           "target": "components/ui/list-m2a/render-template.ts"
+        },
+        {
+          "source": "ui-interfaces/src/list-m2a/relational-slots.tsx",
+          "target": "components/ui/list-m2a/relational-slots.tsx"
         }
       ],
       "dependencies": [
@@ -2680,7 +2692,8 @@
       ],
       "registryDependencies": [
         "vform",
-        "save-options"
+        "save-options",
+        "collection-list"
       ]
     },
     {

@@ -52,6 +52,10 @@ import {
   type DeepPartial,
 } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
+import {
+  RelationalUIProvider,
+  type RelationalUIComponents,
+} from "@buildpad/services/relational-ui-context";
 import { IconAlertCircle, IconCheck, IconTrash, IconX } from "@tabler/icons-react";
 import React, {
   useCallback,
@@ -68,6 +72,13 @@ import {
   mergeExtras,
   missingExtrasColumnMessage,
 } from "./extras-storage";
+
+// The item picker the relational interfaces (ListO2M/M2M/M2A) open from inside
+// this form. Loaded on demand so a CollectionForm route does not bundle the
+// table, filter panel and list toolbar until a picker is opened.
+const LazyCollectionList = React.lazy(() =>
+  import("./CollectionList").then((m) => ({ default: m.CollectionList })),
+);
 
 export interface CollectionFormProps {
   /** Collection name */
@@ -1044,21 +1055,27 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             </Text>
           ) : (
             <>
-              <VForm
-                collection={collection}
-                fields={fields}
-                modelValue={formData}
-                initialValues={initialFormData}
-                onUpdate={handleFormUpdate}
-                primaryKey={primaryKey}
-                disabled={saving || !saveAllowed}
-                // NOT `loading={saving}`: VForm renders a skeleton while
-                // loading, which unmounts every field and remounts them when
-                // the save resolves — re-firing mount-time autofocus and
-                // scrolling the user back to that field, losing their place.
-                // `disabled` above already blocks input during the save.
-                showNoVisibleFields={false}
-              />
+              {/* Relational fields in this form (ListO2M/M2M/M2A) open their
+                  create / edit / select dialogs with these components. Built-in
+                  defaults: a provider above (e.g. CollectionsRelationalProvider
+                  with custom components) wins. */}
+              <RelationalUIProvider defaults={collectionsRelationalUI}>
+                <VForm
+                  collection={collection}
+                  fields={fields}
+                  modelValue={formData}
+                  initialValues={initialFormData}
+                  onUpdate={handleFormUpdate}
+                  primaryKey={primaryKey}
+                  disabled={saving || !saveAllowed}
+                  // NOT `loading={saving}`: VForm renders a skeleton while
+                  // loading, which unmounts every field and remounts them when
+                  // the save resolves — re-firing mount-time autofocus and
+                  // scrolling the user back to that field, losing their place.
+                  // `disabled` above already blocks input during the save.
+                  showNoVisibleFields={false}
+                />
+              </RelationalUIProvider>
               {/* Per-field validation errors */}
               {Object.keys(fieldErrors).length > 0 && (
                 <Stack gap={4} data-testid="form-field-errors">
@@ -1167,5 +1184,42 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     </Paper>
   );
 };
+
+/**
+ * The components relational interfaces need, as this package provides them:
+ * this form, a lazily loaded CollectionList picker and VForm.
+ */
+const collectionsRelationalUI: RelationalUIComponents = {
+  CollectionForm,
+  CollectionList: LazyCollectionList,
+  FormRenderer: VForm,
+};
+
+export interface CollectionsRelationalProviderProps {
+  /** Slots to use instead of the built-in ones (each one optional). */
+  components?: RelationalUIComponents;
+  children?: React.ReactNode;
+}
+
+/**
+ * Pre-wired relational UI provider: supplies CollectionForm, CollectionList
+ * and VForm to every relational interface below it. CollectionForm and VForm
+ * already do this for the fields they render; wrap a page (or the app) in this
+ * provider when it renders `<ListO2M>`, `<ListM2M>`, `<ListM2A>` or a plain
+ * `<VForm>` with relational fields on its own, so their create / edit / select
+ * dialogs work.
+ *
+ * @example
+ * <CollectionsRelationalProvider>
+ *   <ListO2M collection="categories" field="posts" primaryKey={id} />
+ * </CollectionsRelationalProvider>
+ */
+export function CollectionsRelationalProvider({ components, children }: CollectionsRelationalProviderProps) {
+  return (
+    <RelationalUIProvider components={collectionsRelationalUI}>
+      {components ? <RelationalUIProvider components={components}>{children}</RelationalUIProvider> : children}
+    </RelationalUIProvider>
+  );
+}
 
 export default CollectionForm;
