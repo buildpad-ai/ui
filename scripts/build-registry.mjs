@@ -37,7 +37,11 @@ const PACKAGES_DIR = join(ROOT, 'packages');
 
 // ─── Package name → folder name ─────────────────────────────────
 
-const PACKAGE_FOLDERS = {
+/**
+ * Kept in step with the CLI's install map (packages/cli/src/commands/import-map.ts)
+ * by packages/cli/tests/build-registry.test.ts. Exposed for that test.
+ */
+export const PACKAGE_FOLDERS = {
   '@buildpad/ui-interfaces': 'ui-interfaces',
   '@buildpad/ui-form': 'ui-form',
   '@buildpad/ui-table': 'ui-table',
@@ -240,8 +244,9 @@ function getLastChangedTag(fullPath) {
 /**
  * Infer which source package owns a registry file path.
  * Files coming from cli/templates/* are treated as CLI-owned.
+ * Exposed for testing.
  */
-function inferSourcePackage(source) {
+export function inferSourcePackage(source) {
   if (source.startsWith('ui-interfaces/')) return '@buildpad/ui-interfaces';
   if (source.startsWith('ui-form/'))        return '@buildpad/ui-form';
   if (source.startsWith('ui-table/'))       return '@buildpad/ui-table';

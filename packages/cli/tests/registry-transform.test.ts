@@ -9,14 +9,14 @@
  *   2. every '@/' and relative specifier resolves against the registry targets,
  *      the generated barrel and the init skeleton;
  *   3. every entry, installed alone, resolves within its own declared closure;
- *   4. the transformer, the registry and packages/*\/package.json agree on the
- *      set of @buildpad packages.
+ *   4. the transformer's package map, the registry and packages/*\/package.json
+ *      agree on the set of @buildpad packages.
  */
 
 import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getImportMappings } from '../src/commands/transformer.js';
+import { BUILDPAD_PACKAGES, NON_INSTALLABLE_PACKAGES } from '../src/commands/import-map.js';
 import {
   BARREL,
   PACKAGES_DIR,
@@ -210,12 +210,6 @@ describe('registry corpus: @buildpad package names agree', () => {
 
   /** Workspace packages the registry deliberately does not distribute. */
   const NOT_DISTRIBUTED = ['@buildpad/mcp'];
-  /**
-   * Distributed packages the transformer has no rewrite rule for. No shipped
-   * file imports them today; an import would ship unrewritten.
-   */
-  const UNMAPPED = ['@buildpad/ui-forms'];
-
   test('registry.packages = workspace packages minus the non-distributed ones', () => {
     expect([...registryPackages].sort()).toEqual(
       [...workspaceNames].filter(n => !NOT_DISTRIBUTED.includes(n)).sort(),
@@ -242,15 +236,17 @@ describe('registry corpus: @buildpad package names agree', () => {
     expect(problems).toEqual([]);
   });
 
-  test('the transformer maps every importable registry package', () => {
-    const mapped = new Set<string>();
-    for (const m of getImportMappings(config)) {
-      for (const hit of m.from.source.matchAll(/@buildpad\\\/([a-z-]+)/g)) mapped.add(`@buildpad/${hit[1]}`);
-    }
+  test('the transformer maps every importable registry package, from its own folder', () => {
     // @buildpad/cli owns templates; it is never imported by a shipped file.
     const importable = [...registryPackages].filter(n => n !== '@buildpad/cli');
-    expect([...mapped].sort()).toEqual(importable.filter(n => !UNMAPPED.includes(n)).sort());
-    expect(UNMAPPED.every(n => importable.includes(n))).toBe(true);
+    expect(Object.keys(BUILDPAD_PACKAGES).sort()).toEqual(importable.sort());
+    for (const [name, target] of Object.entries(BUILDPAD_PACKAGES)) {
+      expect(workspace.get(target.folder), name).toBe(name);
+    }
+    // Every workspace package is either mapped or explicitly never installed.
+    expect([...workspaceNames].filter(n => !(n in BUILDPAD_PACKAGES)).sort()).toEqual(
+      Object.keys(NON_INSTALLABLE_PACKAGES).sort(),
+    );
   });
 
   test('the changesets fixed group is exactly the workspace packages', () => {

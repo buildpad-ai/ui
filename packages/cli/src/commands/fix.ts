@@ -19,7 +19,7 @@ import prompts from 'prompts';
 import { execSync } from 'node:child_process';
 import { type Config, loadConfig } from './init.js';
 import { globFiles } from '../utils/glob.js';
-import { getImportMappings, transformImports, toKebabCase } from './transformer.js';
+import { rewriteBuildpadSpecifiers, transformImports, toKebabCase, UnmappedImportError } from './transformer.js';
 import { findUntransformedImports } from '../utils/import-specifiers.js';
 import { installedScriptPatterns, recordedInstalledFiles, sourceRoot } from '../utils/paths.js';
 
@@ -27,16 +27,6 @@ interface FixResult {
   fixed: number;
   skipped: number;
   errors: string[];
-}
-
-/**
- * Rewrite only the `@buildpad/*` specifiers (the transformer's package rules),
- * leaving every other import as written.
- */
-function rewriteBuildpadSpecifiersOnly(content: string, config: Config): string {
-  let result = content;
-  for (const mapping of getImportMappings(config)) result = result.replace(mapping.from, mapping.to);
-  return result;
 }
 
 /**
@@ -74,9 +64,11 @@ async function fixUntransformedImports(
       try {
         transformed = record
           ? transformImports(content, config, record.kind === 'component' ? record.target : undefined)
-          : rewriteBuildpadSpecifiersOnly(content, config);
+          : rewriteBuildpadSpecifiers(content, config);
       } catch (err) {
-        result.errors.push(`${rel}: ${(err as Error).message}`);
+        // The transform fails closed on a @buildpad/* import it has no target for.
+        if (!(err instanceof UnmappedImportError)) throw err;
+        result.errors.push(`${rel}:${err.line ?? '?'} cannot rewrite '${err.specifier}' (${err.reason}) — fix it by hand`);
         result.skipped++;
         continue;
       }

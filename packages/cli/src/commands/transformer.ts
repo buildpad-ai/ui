@@ -7,166 +7,73 @@
 
 import path from 'node:path';
 import { sha256 } from '../utils/checksum.js';
+import { isCommentLine, scanSpecifiers } from '../utils/import-specifiers.js';
+import { resolveBuildpadImport, toKebabCase, UnmappedImportError } from './import-map.js';
 import type { Config } from './init.js';
 
+export { BUILDPAD_PACKAGES, toKebabCase, UnmappedImportError } from './import-map.js';
+
 /**
- * Import replacement mapping
+ * Names in the `import type { … }` / `export type { … }` clause that ends right
+ * before a `from` at `fromIndex`, or undefined when the clause is not type-only.
  */
-interface ImportMapping {
-  from: RegExp;
-  to: string;
+function typeOnlyClauseNames(content: string, fromIndex: number): string[] | undefined {
+  const head = content.slice(Math.max(0, fromIndex - 4000), fromIndex);
+  const m = /(?:^|[^\w$.])(?:import|export)\s+type\s*\{([^{}]*)\}\s*$/.exec(head);
+  if (!m) return undefined;
+  return m[1]
+    .split(',')
+    .map(part => part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0].trim())
+    .filter(Boolean);
 }
 
 /**
- * Get import mappings based on config
+ * Rewrite every `@buildpad/*` module specifier to the consumer path the
+ * package map (import-map.ts) gives it, in every import form the scanner finds
+ * (utils/import-specifiers.ts): `from` (static, type-only, multi-line,
+ * re-exports), side-effect `import '…'`, `import()`, `require()` and
+ * `declare module`. Nothing else in the file changes.
+ *
+ * The output keeps what consumers' copies have always contained, because
+ * `upgrade` diffs them against a base re-transformed with this code:
+ *   - every rewritten specifier is single-quoted;
+ *   - `import( '…' )` becomes `import('…')`;
+ *   - matching is lexical, so comment lines (JSDoc usage examples) and strings
+ *     are rewritten too.
+ * A specifier with no target throws UnmappedImportError — except on a comment
+ * line, which is left as written.
  */
-export function getImportMappings(config: Config): ImportMapping[] {
-  const libAlias = config.aliases.lib;
-  const componentsAlias = config.aliases.components;
+export function rewriteBuildpadSpecifiers(content: string, config: Config): string {
+  const matches = scanSpecifiers(content).filter(m => m.specifier.startsWith('@buildpad/'));
+  if (matches.length === 0) return content;
+  let lines: string[] | undefined;
 
-  return [
-    // Types
-    {
-      from: /from ['"]@buildpad\/types['"]/g,
-      to: `from '${libAlias}/types'`,
-    },
-    {
-      from: /from ['"]@buildpad\/types\/([^'"]+)['"]/g,
-      to: `from '${libAlias}/types/$1'`,
-    },
-    // Services
-    {
-      from: /from ['"]@buildpad\/services['"]/g,
-      to: `from '${libAlias}/services'`,
-    },
-    {
-      from: /from ['"]@buildpad\/services\/([^'"]+)['"]/g,
-      to: `from '${libAlias}/services/$1'`,
-    },
-    // Hooks
-    {
-      from: /from ['"]@buildpad\/hooks['"]/g,
-      to: `from '${libAlias}/hooks'`,
-    },
-    {
-      from: /from ['"]@buildpad\/hooks\/([^'"]+)['"]/g,
-      to: `from '${libAlias}/hooks/$1'`,
-    },
-    // UI Interfaces (component to component imports)
-    {
-      from: /from ['"]@buildpad\/ui-interfaces['"]/g,
-      to: `from '${componentsAlias}'`,
-    },
-    {
-      from: /from ['"]@buildpad\/ui-interfaces\/([^'"]+)['"]/g,
-      to: `from '${componentsAlias}/$1'`,
-    },
-    // UI Collections (component to component imports)
-    {
-      from: /from ['"]@buildpad\/ui-collections['"]/g,
-      to: `from '${componentsAlias}'`,
-    },
-    {
-      from: /from ['"]@buildpad\/ui-collections\/([^'"]+)['"]/g,
-      to: `from '${componentsAlias}/$1'`,
-    },
-    // UI Files (file manager + detail components)
-    {
-      from: /from ['"]@buildpad\/ui-files['"]/g,
-      to: `from '${componentsAlias}/file-manager'`,
-    },
-    {
-      from: /from ['"]@buildpad\/ui-files\/([^'"]+)['"]/g,
-      to: `from '${componentsAlias}/file-manager/$1'`,
-    },
-    // UI Users (users/roles/policies administration components)
-    {
-      from: /from ['"]@buildpad\/ui-users['"]/g,
-      to: `from '${componentsAlias}/users-management'`,
-    },
-    {
-      from: /from ['"]@buildpad\/ui-users\/([^'"]+)['"]/g,
-      to: `from '${componentsAlias}/users-management/$1'`,
-    },
-    // Utils
-    {
-      from: /from ['"]@buildpad\/utils['"]/g,
-      to: `from '${libAlias}/utils'`,
-    },
-    // The i18n core ships as lib/buildpad/i18n/* (not under utils/), so its
-    // subpath must be mapped BEFORE the generic utils subpath rule below.
-    {
-      from: /from ['"]@buildpad\/utils\/i18n(\/[^'"]+)?['"]/g,
-      to: `from '${libAlias}/i18n$1'`,
-    },
-    {
-      from: /from ['"]@buildpad\/utils\/([^'"]+)['"]/g,
-      to: `from '${libAlias}/utils/$1'`,
-    },
-    // UI Form (VForm and related components)
-    {
-      from: /from ['"]@buildpad\/ui-form['"]/g,
-      to: `from '${componentsAlias}/vform'`,
-    },
-    {
-      from: /from ['"]@buildpad\/ui-form\/([^'"]+)['"]/g,
-      to: `from '${componentsAlias}/vform/$1'`,
-    },
-    // UI Table (VTable - type-import pattern MUST come before general pattern
-    // so type imports resolve to vtable-types while value imports resolve to vtable)
-    {
-      from: /import type \{([^}]+)\} from ['"]@buildpad\/ui-table['"]/g,
-      to: `import type {$1} from '${componentsAlias}/vtable-types'`,
-    },
-    {
-      from: /from ['"]@buildpad\/ui-table['"]/g,
-      to: `from '${componentsAlias}/vtable'`,
-    },
-    {
-      from: /from ['"]@buildpad\/ui-table\/([^'"]+)['"]/g,
-      to: `from '${componentsAlias}/$1'`,
-    },
-    // Import type statements
-    {
-      from: /import type \{([^}]+)\} from ['"]@buildpad\/types['"]/g,
-      to: `import type {$1} from '${libAlias}/types'`,
-    },
-    {
-      from: /import type \{([^}]+)\} from ['"]@buildpad\/hooks['"]/g,
-      to: `import type {$1} from '${libAlias}/hooks'`,
-    },
-    {
-      from: /import type \{([^}]+)\} from ['"]@buildpad\/services['"]/g,
-      to: `import type {$1} from '${libAlias}/services'`,
-    },
-    // Import type for utils
-    {
-      from: /import type \{([^}]+)\} from ['"]@buildpad\/utils['"]/g,
-      to: `import type {$1} from '${libAlias}/utils'`,
-    },
-    // Import type for ui-form
-    {
-      from: /import type \{([^}]+)\} from ['"]@buildpad\/ui-form['"]/g,
-      to: `import type {$1} from '${componentsAlias}/vform'`,
-    },
-    // Dynamic imports - import('@buildpad/services') etc.
-    {
-      from: /import\s*\(\s*['"]@buildpad\/services['"]\s*\)/g,
-      to: `import('${libAlias}/services')`,
-    },
-    {
-      from: /import\s*\(\s*['"]@buildpad\/hooks['"]\s*\)/g,
-      to: `import('${libAlias}/hooks')`,
-    },
-    {
-      from: /import\s*\(\s*['"]@buildpad\/types['"]\s*\)/g,
-      to: `import('${libAlias}/types')`,
-    },
-    {
-      from: /import\s*\(\s*['"]@buildpad\/utils['"]\s*\)/g,
-      to: `import('${libAlias}/utils')`,
-    },
-  ];
+  let out = '';
+  let last = 0;
+  for (const m of matches) {
+    if (m.start < last) continue;
+    let target: string;
+    try {
+      target = resolveBuildpadImport(
+        m.specifier,
+        config.aliases,
+        m.kind === 'from' ? typeOnlyClauseNames(content, m.start) : undefined
+      );
+    } catch (err) {
+      if (!(err instanceof UnmappedImportError)) throw err;
+      lines ??= content.split('\n');
+      if (isCommentLine(lines[m.line - 1] ?? '')) continue;
+      throw new UnmappedImportError(m.specifier, err.reason, m.line);
+    }
+    if (m.kind === 'dynamic') {
+      out += `${content.slice(last, m.start)}import('${target}')`;
+      last = m.end;
+    } else {
+      out += `${content.slice(last, m.literalStart)}'${target}'`;
+      last = m.literalEnd;
+    }
+  }
+  return out + content.slice(last);
 }
 
 /**
@@ -176,19 +83,11 @@ export function getImportMappings(config: Config): ImportMapping[] {
  * @param content - File content to transform
  * @param config - Buildpad config
  * @param targetPath - Optional target path for context-aware transformations
+ * @throws UnmappedImportError for a `@buildpad/*` import with no install target
  */
 export function transformImports(content: string, config: Config, targetPath?: string): string {
-  const mappings = getImportMappings(config);
-  let result = content;
-
-  for (const mapping of mappings) {
-    result = result.replace(mapping.from, mapping.to);
-  }
-
   // Normalize any PascalCase import paths to kebab-case (skips VForm folder)
-  result = normalizeImportPaths(result, targetPath);
-
-  return result;
+  return normalizeImportPaths(rewriteBuildpadSpecifiers(content, config), targetPath);
 }
 
 /** A registry file as its entry lists it. */
@@ -226,8 +125,28 @@ export type RegistryFileOwner =
  * unless the target cannot carry a comment (JSON, Markdown, …).
  *
  * @param version - release recorded in the origin header
+ * @throws UnmappedImportError naming the source file, for a `@buildpad/*`
+ *   import with no install target (fail closed: never ship it unrewritten)
  */
 export function transformRegistryFile(
+  content: string,
+  file: RegistryFile,
+  owner: RegistryFileOwner,
+  config: Config,
+  version: string
+): string {
+  try {
+    return transformRegistryFileUnchecked(content, file, owner, config, version);
+  } catch (err) {
+    // Name the shipped file, so the failure points at the source to fix.
+    if (err instanceof UnmappedImportError && !err.file) {
+      throw new UnmappedImportError(err.specifier, err.reason, err.line, file.source);
+    }
+    throw err;
+  }
+}
+
+function transformRegistryFileUnchecked(
   content: string,
   file: RegistryFile,
   owner: RegistryFileOwner,
@@ -252,16 +171,6 @@ export function transformRegistryFile(
     ? owner.name
     : `${owner.name}/${path.basename(file.source, path.extname(file.source))}`;
   return addOriginHeader(result, label, owner.sourcePackage ?? '@buildpad/cli', version);
-}
-
-/**
- * Convert PascalCase or camelCase to kebab-case
- */
-export function toKebabCase(str: string): string {
-  return str
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .replace(/[\s_]+/g, '-')
-    .toLowerCase();
 }
 
 /**

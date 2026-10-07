@@ -10,6 +10,7 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { BUILDPAD_PACKAGES } from '../src/commands/import-map.js';
 import {
   extractSemverFromTag,
   releaseTagSemver,
@@ -17,6 +18,8 @@ import {
   deriveLastChangedIn,
   collectUndeclaredImports,
   moduleSpecifiers,
+  PACKAGE_FOLDERS,
+  inferSourcePackage,
   // @ts-expect-error — pure ESM helper file lives outside the TS project
 } from '../../../scripts/build-registry.mjs';
 
@@ -245,5 +248,19 @@ describe('collectUndeclaredImports', () => {
   test('the committed registry has no undeclared imports', async () => {
     const registry = await fs.readJSON(REGISTRY_PATH);
     expect(collectUndeclaredImports(registry)).toEqual([]);
+  });
+});
+
+describe('package folders agree with the CLI install map', () => {
+  test('PACKAGE_FOLDERS = the install map plus @buildpad/cli (owner of templates)', () => {
+    const fromMap = Object.fromEntries(Object.entries(BUILDPAD_PACKAGES).map(([name, t]) => [name, t.folder]));
+    expect(PACKAGE_FOLDERS).toEqual({ ...fromMap, '@buildpad/cli': 'cli' });
+  });
+
+  test('inferSourcePackage attributes each folder to its package', () => {
+    for (const [name, folder] of Object.entries<string>(PACKAGE_FOLDERS)) {
+      expect(inferSourcePackage(`${folder}/src/x.ts`), folder).toBe(name);
+    }
+    expect(inferSourcePackage('cli/templates/app/layout.tsx')).toBe('@buildpad/cli');
   });
 });

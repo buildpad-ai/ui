@@ -14,10 +14,13 @@ import { describe, expect, test } from 'vitest';
 import path from 'node:path';
 import * as frozen from './fixtures/transformer-frozen.js';
 import * as current from '../src/commands/transformer.js';
+import { scanSpecifiers } from '../src/utils/import-specifiers.js';
 import {
   addPipeline,
+  libFiles,
   loadRegistry,
   makeConfig,
+  readSource,
   transformCorpus,
   type TransformFn,
 } from './helpers/registry-corpus.js';
@@ -86,7 +89,6 @@ const SYNTHETIC: Array<[label: string, input: string, targetPath?: string]> = [
   ['components', "import { Input } from '@buildpad/ui-interfaces';\nimport { Upload } from '@buildpad/ui-interfaces/upload';\nimport { List } from '@buildpad/ui-collections';\nimport { VForm } from '@buildpad/ui-form';\nimport { X } from '@buildpad/ui-form/types';\n"],
   ['feature packages', "import { FileManager } from '@buildpad/ui-files';\nimport { D } from '@buildpad/ui-files/detail';\nimport { UsersManager } from '@buildpad/ui-users';\nimport { R } from '@buildpad/ui-users/roles';\n"],
   ['ui-table value + type', "import { VTable } from '@buildpad/ui-table';\nimport type { Header, Sort } from '@buildpad/ui-table';\nimport type {\n  Item,\n} from \"@buildpad/ui-table\";\n"],
-  ['ui-table export type goes to vtable', "export type { Header } from '@buildpad/ui-table';\n"],
   ['type-only imports', "import type { A } from '@buildpad/types';\nimport type { B } from '@buildpad/hooks';\nimport type { C } from '@buildpad/services';\nimport type { D } from '@buildpad/utils';\nimport type { E } from '@buildpad/ui-form';\n"],
   ['multi-line import', "import {\n  a,\n  b,\n} from '@buildpad/services';\n"],
   ['export forms', "export { a } from '@buildpad/types';\nexport * from '@buildpad/services';\nexport * as ns from '@buildpad/hooks';\n"],
@@ -103,5 +105,65 @@ describe.each(Object.entries(ALIAS_CONFIGS))('synthetic inputs, %s', (_label, al
   const config = makeConfig({ aliases });
   test.each(SYNTHETIC)('%s', (_name, input, targetPath) => {
     expect(current.transformImports(input, config, targetPath)).toBe(frozen.transformImports(input, config, targetPath));
+  });
+});
+
+/**
+ * The refactor changed the output for a few specifier shapes on purpose —
+ * mappings that pointed at files the registry never installs, and import forms
+ * the old regexes left unrewritten. That is byte-safe only while no shipped
+ * file uses those shapes, so each count here must stay 0. (If one is needed,
+ * its consumers' three-way-merge bases change: ship it deliberately.)
+ */
+describe('shapes whose output changed have no hits in the registry corpus', () => {
+  const sources = new Set<string>();
+  for (const mod of Object.values(registry.lib)) for (const f of libFiles(mod)) sources.add(f.source);
+  for (const c of registry.components) for (const f of c.files) sources.add(f.source);
+  const hits = [...sources].flatMap(source => {
+    const content = readSource(source);
+    return scanSpecifiers(content)
+      .filter(m => m.specifier.startsWith('@buildpad/'))
+      .map(m => ({ ...m, source, before: content.slice(Math.max(0, m.start - 400), m.start) }));
+  });
+  const LEGACY_DYNAMIC = /^@buildpad\/(services|hooks|types|utils)$/;
+  const subOf = (spec: string, pkg: string) =>
+    spec.startsWith(`@buildpad/${pkg}/`) ? spec.slice(`@buildpad/${pkg}/`.length) : undefined;
+
+  const CHANGED: Record<string, (h: (typeof hits)[number]) => boolean> = {
+    'utils/<x> outside i18n (was lib/buildpad/utils/<x>, now the flat lib/buildpad/<x>)': h => {
+      const sub = subOf(h.specifier, 'utils');
+      return sub !== undefined && sub !== 'i18n' && !sub.startsWith('i18n/');
+    },
+    'ui-table/<x> (was components/ui/<x>, now the registry target or an error)': h => subOf(h.specifier, 'ui-table') !== undefined,
+    'export type { … } from ui-table (was vtable, now vtable-types)': h =>
+      h.specifier === '@buildpad/ui-table' && /export\s+type\s*\{[^{}]*\}\s*$/.test(h.before),
+    'import type { VTableProps | TableHeaderProps | TableRowProps } from ui-table (was vtable-types)': h =>
+      h.specifier === '@buildpad/ui-table' && /import\s+type\s*\{[^{}]*\b(VTableProps|TableHeaderProps|TableRowProps)\b[^{}]*\}\s*$/.test(h.before),
+    'ui-collections/<x> (now kebab-cased)': h => subOf(h.specifier, 'ui-collections') !== undefined,
+    'ui-files|ui-users/<x> that kebab-casing changes': h => {
+      const sub = subOf(h.specifier, 'ui-files') ?? subOf(h.specifier, 'ui-users');
+      return sub !== undefined && sub.split('/').some(seg => current.toKebabCase(seg) !== seg);
+    },
+    'ui-interfaces/<x>/<EntryFile> (was components/ui/<x>/<EntryFile>, now components/ui/<x>)': h => {
+      const [folder, file, ...rest] = (subOf(h.specifier, 'ui-interfaces') ?? '').split('/');
+      return file !== undefined && rest.length === 0 && file.toLowerCase() === folder.replace(/-/g, '');
+    },
+    '@buildpad/ui-forms (newly mapped)': h => h.specifier.startsWith('@buildpad/ui-forms'),
+    'side-effect / require / declare module forms (newly rewritten)': h =>
+      h.kind === 'side-effect' || h.kind === 'require' || h.kind === 'ambient',
+    'import() of anything but bare services|hooks|types|utils (newly rewritten)': h =>
+      h.kind === 'dynamic' && !LEGACY_DYNAMIC.test(h.specifier),
+    "`from` not followed by exactly one space (newly rewritten)": h =>
+      h.kind === 'from' && !/^from ['"]$/.test(readSource(h.source).slice(h.start, h.literalStart + 1)),
+    'packages with no install mapping (now an error)': h =>
+      !Object.keys(current.BUILDPAD_PACKAGES).some(p => h.specifier === p || h.specifier.startsWith(`${p}/`)),
+  };
+
+  test('the scan sees the corpus', () => {
+    expect(hits.length).toBeGreaterThan(400);
+  });
+
+  test.each(Object.keys(CHANGED))('%s', label => {
+    expect(hits.filter(CHANGED[label]).map(h => `${h.source}:${h.line} ${h.specifier}`)).toEqual([]);
   });
 });
