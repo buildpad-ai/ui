@@ -8,6 +8,11 @@
 
 import type { Field } from "@buildpad/types";
 import { isNewItem } from "./is-new-item";
+import {
+  interfaceAliasMap,
+  isPresentationInterface,
+  normalizeInterfaceId,
+} from "./interface-manifest";
 
 /**
  * Normalize DaaS rich-text toolbar items to match RichTextHTML expectations.
@@ -34,6 +39,11 @@ function omitKeys(
   return result;
 }
 
+/**
+ * Every id `getFieldInterface` returns as `type` — the rendered entries of
+ * `INTERFACE_MANIFEST` (interface-manifest.ts) — plus four deprecated
+ * literals it never returns.
+ */
 export type InterfaceType =
   | "input"
   | "input-code"
@@ -48,14 +58,18 @@ export type InterfaceType =
   | "select-icon"
   | "select-color"
   | "slider"
+  /** @deprecated Never returned: the `textarea` id resolves to `input-multiline`. */
   | "textarea"
+  /** @deprecated Never returned: numeric fields resolve to `input`. */
   | "number"
+  /** @deprecated Never returned: uuid fields resolve to `input`. */
   | "uuid"
   | "input-rich-text-html"
   | "input-rich-text-md"
   | "tags"
   | "presentation-divider"
   | "presentation-notice"
+  /** @deprecated Never returned: the `list-m2o` id resolves to `select-dropdown-m2o`. */
   | "list-m2o"
   | "select-dropdown-m2o"
   | "list-o2m"
@@ -96,15 +110,11 @@ export interface InterfaceConfig {
  * `json` column rendered as a JSON code editor instead of the tags input, and
  * `input-map` still did until this table covered it.
  *
- * One exported table because the same divergence is asserted in
- * `tests/interface-catalog.test.ts`. Two copies drift, and drift is how
- * `input-tags` went unhandled in the first place.
+ * Derived from the manifest's registry aliases (interface-manifest.ts), which
+ * `normalizeInterfaceId` resolves together with the legacy ids; kept as a
+ * table for the tests and code that read it.
  */
-export const REGISTRY_INTERFACE_ALIASES: Record<string, string> = {
-  "input-tags": "tags",
-  "input-map": "map",
-  "input-map-gl": "map",
-};
+export const REGISTRY_INTERFACE_ALIASES: Record<string, string> = interfaceAliasMap("registry");
 
 export function getFieldInterface(field: Field): InterfaceConfig {
   const { type, schema, meta } = field;
@@ -127,13 +137,15 @@ export function getFieldInterface(field: Field): InterfaceConfig {
 
 /**
  * Get interface config from explicit meta.interface value
- * Maps DaaS interface IDs to our component types
+ * Maps DaaS interface IDs to our component types. Registry and legacy alias
+ * ids (`input-tags`, `textarea`, `xtremax-workflow-button`, …) are resolved
+ * to their renderer id by the manifest first, so each case names one id.
  */
 function getExplicitInterface(
   interfaceId: string,
   options?: Record<string, unknown>,
 ): InterfaceConfig | null {
-  switch (REGISTRY_INTERFACE_ALIASES[interfaceId] ?? interfaceId) {
+  switch (normalizeInterfaceId(interfaceId)) {
     // Text inputs
     case "input":
       return {
@@ -174,7 +186,6 @@ function getExplicitInterface(
 
     // Multiline text / Textarea
     case "input-multiline":
-    case "textarea":
       return {
         type: "input-multiline",
         props: {
@@ -209,7 +220,6 @@ function getExplicitInterface(
 
     // Rich text HTML (WYSIWYG)
     case "input-rich-text-html":
-    case "wysiwyg":
       return {
         type: "input-rich-text-html",
         props: {
@@ -222,7 +232,6 @@ function getExplicitInterface(
 
     // Rich text Markdown
     case "input-rich-text-md":
-    case "markdown":
       return {
         type: "input-rich-text-md",
         props: {
@@ -393,7 +402,6 @@ function getExplicitInterface(
       };
 
     // Many-to-One relationship (select one related item)
-    case "list-m2o":
     case "select-dropdown-m2o":
       return {
         type: "select-dropdown-m2o",
@@ -580,13 +588,8 @@ function getExplicitInterface(
       };
 
     // Workflow Button (workflow state transitions)
-    // Support all xtremax workflow interface IDs
+    // The xtremax workflow interface ids are manifest aliases of this one
     case "workflow-button":
-    case "xtr-interface-workflow":
-    case "xtr-interface-workflow-old":
-    case "xtremax-workflow-button":
-    case "xtremax-workflow-button-v2":
-    case "xtremax-workflow-button-scheduled":
       return {
         type: "workflow-button",
         props: {
@@ -1227,16 +1230,11 @@ export function formatFieldValue(value: unknown, field: Field): string {
 
 /**
  * Check if a field is a presentation-only field (no data storage)
- * These fields are for visual layout only (dividers, notices, etc.)
+ * These fields are for visual layout only (dividers, notices, etc.): the
+ * manifest's presentation interfaces, `presentation-links` included.
  */
 export function isPresentationField(field: Field): boolean {
-  const interfaceType = field.meta?.interface;
-
-  return (
-    interfaceType === "presentation-divider" ||
-    interfaceType === "presentation-notice" ||
-    interfaceType === "presentation-links"
-  );
+  return isPresentationInterface(field.meta?.interface);
 }
 
 /**

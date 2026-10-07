@@ -67,6 +67,36 @@ export {
   type FieldReadOnlyOptions,
 } from '../field-interface-mapper';
 
+// Interface manifest — shipped as lib/buildpad/interface-manifest.ts: one entry
+// per interface id (aliases, component names, field types, flags, picker
+// descriptor, loading class) and its predicates
+export {
+  INTERFACE_MANIFEST,
+  DEFAULT_INTERFACE_FALLBACK_HEIGHT,
+  PRESENTATION_INTERFACE_PREFIX,
+  normalizeInterfaceId,
+  getInterfaceManifestEntry,
+  interfaceAliasMap,
+  interfaceIdsWithFlag,
+  interfaceHasFlag,
+  isPresentationInterface,
+  isRenderedPresentationInterface,
+  isPresentationLikeInterface,
+  isNonFlatRelationalInterface,
+  isSelfPersistingInterface,
+  isRelationListInterface,
+  type InterfaceManifestEntry,
+  type RenderedInterfaceEntry,
+  type UnrenderedInterfaceEntry,
+  type ManifestInterfaceId,
+  type InterfaceAliases,
+  type InterfaceFlags,
+  type InterfaceLoading,
+  type InterfaceRelation,
+  type InterfaceRelationInfo,
+  type ProvisionableDescriptor,
+} from '../interface-manifest';
+
 // Interface type definitions
 export type {
   InterfaceDefinition,
@@ -86,6 +116,7 @@ export type {
 } from '../interface-types';
 
 // Interface registry — shipped as lib/buildpad/interface-registry.ts
+// (deprecated: dormant, never read by VForm)
 export {
   InterfaceRegistry,
   interfaceRegistry,
@@ -93,6 +124,7 @@ export {
 } from '../interface-registry';
 
 // Define-interface helpers — shipped as lib/buildpad/define-interface.ts
+// (deprecated: dormant, never read by VForm)
 export {
   defineInterface,
   defineInterfaces,

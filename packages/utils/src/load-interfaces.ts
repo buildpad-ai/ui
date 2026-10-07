@@ -5,6 +5,8 @@
  * and populate the InterfaceRegistry.
  * 
  * @module @buildpad/utils/load-interfaces
+ *
+ * @deprecated Dormant: loads registry.json into the unused InterfaceRegistry (and is not shipped to consumer projects). Interface identity lives in `INTERFACE_MANIFEST` (`interface-manifest`). Kept so existing imports keep compiling.
  */
 
 import type { InterfaceMetadata, InterfaceGroup } from './interface-types';
@@ -12,6 +14,8 @@ import { interfaceRegistry, InterfaceRegistry } from './interface-registry';
 
 /**
  * Interface metadata as stored in registry.json component entry
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity.
  */
 export interface RegistryComponentInterface {
   id: string;
@@ -28,6 +32,8 @@ export interface RegistryComponentInterface {
 
 /**
  * Component entry from registry.json
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity.
  */
 export interface RegistryComponent {
   name: string;
@@ -43,6 +49,8 @@ export interface RegistryComponent {
 
 /**
  * Registry.json structure
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity.
  */
 export interface RegistryJson {
   $schema?: string;
@@ -58,6 +66,8 @@ export interface RegistryJson {
  * 
  * @param component - Registry component entry
  * @returns Interface metadata or null if not defined
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity.
  */
 export function extractInterfaceFromComponent(
   component: RegistryComponent
@@ -90,6 +100,8 @@ export function extractInterfaceFromComponent(
  * @param registryData - Parsed registry.json content
  * @param registry - Optional registry instance (defaults to global)
  * @returns Array of loaded interface metadata
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity.
  */
 export function loadInterfacesFromRegistry(
   registryData: RegistryJson,
@@ -116,6 +128,8 @@ export function loadInterfacesFromRegistry(
  * 
  * @param registryData - Parsed registry.json content
  * @returns Interface metadata grouped by category
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity.
  */
 export function getInterfacesForApi(registryData: RegistryJson): {
   interfaces: InterfaceMetadata[];
@@ -147,6 +161,7 @@ export function getInterfacesForApi(registryData: RegistryJson): {
     group: 'Groups',
     workflow: 'Workflow',
     other: 'Other',
+    system: 'System',
   };
 
   for (const intf of interfaces) {

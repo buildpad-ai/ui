@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T09:35:58.161Z",
+  "generatedAt": "2026-10-07T11:56:06.183Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -148,27 +148,27 @@
         {
           "source": "utils/src/field-interface-mapper.ts",
           "target": "lib/buildpad/field-interface-mapper.ts",
-          "sourceSha256": "069fe4145d3c8cb0097d938da7cbd04783ceb98f0a148ff24201ce62fbb3a127"
+          "sourceSha256": "02c9aca4d472576b0aa6fd7f92698a2ba5a511f762c827bd8d663541d45a210a"
         },
         {
           "source": "utils/src/conceal.ts",
           "target": "lib/buildpad/conceal.ts",
-          "sourceSha256": "eb4d27a961239e3530d43dcc04ccef61fb443342494e56c27d50174beaebfdc1"
+          "sourceSha256": "3ac4b98a57f942c2be9c843f6d758ba11c6b6b79127d9c47de4ddba610ead007"
         },
         {
           "source": "utils/src/interface-types.ts",
           "target": "lib/buildpad/interface-types.ts",
-          "sourceSha256": "1a6e914292ca576bc52219c1c53c2368a448ba2f95611a73a3d4fd5caa5508f9"
+          "sourceSha256": "d7bef2af56fbcd8237baa57a3257e8314606dee88b4b219b35ae20e43511e9bc"
         },
         {
           "source": "utils/src/define-interface.ts",
           "target": "lib/buildpad/define-interface.ts",
-          "sourceSha256": "19b1e22ab7764c79f8d64c5e40188d4d4d95d000c02474179d65e45f6f87830f"
+          "sourceSha256": "42ffe038982afb03315978ae8fc279a8405069c2e5693c32b54cb9ad9a4e9d80"
         },
         {
           "source": "utils/src/interface-registry.ts",
           "target": "lib/buildpad/interface-registry.ts",
-          "sourceSha256": "85303a48aceb704e67a9d2de14ce2c9cd8e2f65a51146dacbd9fcb0dd99b11a3"
+          "sourceSha256": "6b643e65c609af96040063fb8baee13a89a65fb7a17a37911100a4c3bfa62638"
         },
         {
           "source": "utils/src/is-new-item.ts",
@@ -188,7 +188,12 @@
         {
           "source": "utils/src/interface-catalog.ts",
           "target": "lib/buildpad/interface-catalog.ts",
-          "sourceSha256": "ec60890733f96d71e1265e8dead9a65d440d85df19fdd6d1764a7cabae135e55"
+          "sourceSha256": "10ad9964813babdc4169bfdb1e09b26d70ec0c8286eab38d0fdfe1d8025cb45b"
+        },
+        {
+          "source": "utils/src/interface-manifest.ts",
+          "target": "lib/buildpad/interface-manifest.ts",
+          "sourceSha256": "74b8072dbccc2a303325a7d2b393fef2fbd72463c5292ba532b01ef63979a6ec"
         },
         {
           "source": "utils/src/i18n/primitives.ts",
@@ -468,7 +473,7 @@
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "d5b26a8e32b54a4cfcf6004b660434f492ccc7fcab6bb0a5b0b6aea2708d8344"
+          "sourceSha256": "a6ae9623bbba530ffdd0d891e13a357d37c2327395c63f2a4bd402e8c39ada9e"
         },
         {
           "source": "cli/templates/lib/utils.ts",

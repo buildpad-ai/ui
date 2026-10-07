@@ -12,6 +12,7 @@ Complete guide to Buildpad UI Packages and distribution tools.
 | [COMPONENT_MAP.md](COMPONENT_MAP.md) | Quick component lookup table | AI agents & developers |
 | [DISTRIBUTION.md](DISTRIBUTION.md) | Complete distribution guide + Amplify hosting | DevOps/Teams |
 | [PUBLISHING.md](PUBLISHING.md) | npm publishing & release workflow | DevOps/Maintainers |
+| [MIGRATION-3.0.md](MIGRATION-3.0.md) | Upgrading a project from Buildpad 2.6 to 3.0 | Developers |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture diagrams | Technical users |
 | [TESTING.md](TESTING.md) | Playwright E2E testing guide | Developers |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Token-based theming architecture | Designers, Developers |

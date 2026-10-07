@@ -26,6 +26,12 @@
  * (and its comment) on purpose in the same change — that is the point. The
  * letters match the Phase 2 interface-manifest analysis.
  *
+ * Phase 1 moved the utils-side tables into one data module,
+ * utils/src/interface-manifest.ts, and re-derived them from it; the
+ * "pre-manifest snapshot" block pins each derived value to what it was
+ * before, and the "interface manifest" block checks the manifest against the
+ * tables that are still hand-kept (FormFieldInterface, the registry).
+ *
  * Tests only: nothing here changes runtime behaviour.
  */
 
@@ -55,6 +61,13 @@ import {
   REGISTRY_INTERFACE_ALIASES,
 } from '../../utils/src/field-interface-mapper';
 import { concealingInterface } from '../../utils/src/conceal';
+import {
+  INTERFACE_MANIFEST,
+  getInterfaceManifestEntry,
+  interfaceAliasMap,
+  interfaceIdsWithFlag,
+  type InterfaceManifestEntry,
+} from '../../utils/src/interface-manifest';
 import { CHOICE_INTERFACES, PROVISIONABLE_INTERFACES } from '../../utils/src/interface-catalog';
 import { dataTypeForFieldType, interfaceForFieldType } from '../../utils/src/field-spec-mapper';
 import { formsDefaults, formsId } from '../../utils/src/i18n/namespaces/forms';
@@ -519,12 +532,17 @@ const interfaceTypeUnion = readStringUnion(F.mapper, 'InterfaceType');
 const explicitSwitch = readSwitch(F.mapper, 'getExplicitInterface', returnedConfigType);
 const caseLabels = explicitSwitch.arms.flatMap((a) => a.labels);
 const returnedIds = sorted(explicitSwitch.arms.map((a) => a.returns));
+// utils — interface manifest
+const manifest: readonly InterfaceManifestEntry[] = INTERFACE_MANIFEST;
+const renderedEntries = manifest.filter((e) => e.renders);
+/** Every alias normalizeInterfaceId resolves (registry and legacy), alias → renderer id. */
+const manifestAliases = { ...interfaceAliasMap('registry'), ...interfaceAliasMap('legacy') };
 /** Every id `meta.interface` may hold and still resolve explicitly. */
-const acceptedIds = sorted([...caseLabels, ...Object.keys(REGISTRY_INTERFACE_ALIASES)]);
-const presentationIds = stringLiteralsIn(F.mapper, 'isPresentationField');
+const acceptedIds = sorted([...caseLabels, ...Object.keys(manifestAliases)]);
+const presentationIds = interfaceIdsWithFlag('presentation');
 
 // utils — the other runtime tables
-const concealingIds = readStringSet(F.conceal, 'CONCEALING_INTERFACES');
+const concealingIds = interfaceIdsWithFlag('concealing');
 const provisionableIds = PROVISIONABLE_INTERFACES.map((p) => p.value);
 const specInterfaceByType = readStringRecord(F.specMapper, 'INTERFACE_BY_TYPE');
 const fieldTypeUnion = readStringUnion(F.interfaceTypes, 'FieldType');
@@ -695,6 +713,9 @@ describe('inventory', () => {
   test('table sizes (adding an interface touches all of these — update them together)', () => {
     expect({
       interfaceTypeUnion: interfaceTypeUnion.length,
+      manifestEntries: manifest.length,
+      manifestRenderedEntries: renderedEntries.length,
+      manifestAliases: Object.keys(manifestAliases).length,
       registryInterfaceAliases: Object.keys(REGISTRY_INTERFACE_ALIASES).length,
       switchCaseLabels: caseLabels.length,
       switchReturnedIds: returnedIds.length,
@@ -713,8 +734,17 @@ describe('inventory', () => {
       paletteIcons: Object.keys(paletteIcons).length,
     }).toEqual({
       interfaceTypeUnion: 41,
+      // 37 renderer ids + `upload` and `presentation-links`, which no case resolves
+      manifestEntries: 39,
+      manifestRenderedEntries: 37,
+      // the 3 registry aliases + the 9 legacy ids that were inline case labels
+      manifestAliases: 12,
       registryInterfaceAliases: 3,
-      switchCaseLabels: 46,
+      // Was 46: the 9 legacy alias labels left the switch for the manifest
+      // (normalizeInterfaceId resolves them before it), so each case now names
+      // exactly one renderer id. Rendering is unchanged — see the pre-manifest
+      // snapshot below.
+      switchCaseLabels: 37,
       switchReturnedIds: 37,
       concealing: 2,
       provisionable: 20,
@@ -754,23 +784,17 @@ describe('utils: field-interface-mapper', () => {
     }
   });
 
-  test('inline aliases hardcoded as extra case labels', () => {
+  test('no inline aliases: the switch has one case label per renderer id', () => {
     const inline = Object.fromEntries(
       explicitSwitch.arms.flatMap((a) => a.labels.filter((l) => l !== a.returns).map((l) => [l, a.returns])),
     );
-    // Legacy / DaaS ids resolved by fall-through labels rather than by
-    // REGISTRY_INTERFACE_ALIASES — a second alias table inside the switch.
-    expect(inline).toEqual({
-      textarea: 'input-multiline',
-      wysiwyg: 'input-rich-text-html',
-      markdown: 'input-rich-text-md',
-      'list-m2o': 'select-dropdown-m2o',
-      'xtr-interface-workflow': 'workflow-button',
-      'xtr-interface-workflow-old': 'workflow-button',
-      'xtremax-workflow-button': 'workflow-button',
-      'xtremax-workflow-button-v2': 'workflow-button',
-      'xtremax-workflow-button-scheduled': 'workflow-button',
-    });
+    // Resolved (interface-manifest Phase 1) without a rendering change: the
+    // legacy ids that were fall-through labels — a second alias table inside
+    // the switch — are the manifest's `aliases.legacy`, resolved by
+    // normalizeInterfaceId with the registry aliases before the switch. They
+    // still render exactly as before (pre-manifest snapshot below).
+    expect(inline).toEqual({});
+    expect(interfaceAliasMap('legacy')).toEqual(PRE_MANIFEST.inlineSwitchAliases);
   });
 
   test('InterfaceType covers every resolved id', () => {
@@ -800,6 +824,76 @@ describe('utils: field-interface-mapper', () => {
   test('CONCEALING_INTERFACES are resolved ids, and concealingInterface() agrees', () => {
     expect(minus(concealingIds, returnedIds)).toEqual([]);
     for (const id of acceptedIds) expect([id, concealingInterface(id)]).toEqual([id, concealingIds.includes(id)]);
+  });
+});
+
+describe('utils: interface manifest vs the tables still kept by hand', () => {
+  test('rendered entries are exactly the switch cases, and each case returns its own id', () => {
+    expect(sorted(renderedEntries.map((e) => e.id))).toEqual(sorted(caseLabels));
+    expect(sorted(caseLabels)).toEqual(returnedIds);
+  });
+
+  test('unrendered entries are known ids that no case resolves', () => {
+    const unrendered = manifest.filter((e) => !e.renders).map((e) => e.id);
+    expect(sorted(unrendered)).toEqual(['presentation-links', 'upload']);
+    expect(unrendered.filter((id) => acceptedIds.includes(id))).toEqual([]);
+  });
+
+  test('InterfaceType is the rendered ids plus the deprecated type literals', () => {
+    const literals = renderedEntries.flatMap((e) => (e.renders ? (e.typeLiterals ?? []) : []));
+    expect(sorted(literals)).toEqual(['list-m2o', 'number', 'textarea', 'uuid']);
+    expect(sorted(interfaceTypeUnion)).toEqual(sorted([...renderedEntries.map((e) => e.id), ...literals]));
+  });
+
+  test('exportName is the component FormFieldInterface renders, for the id and each type literal', () => {
+    const mismatches = renderedEntries.flatMap((e) =>
+      e.renders
+        ? [e.id, ...(e.typeLiterals ?? [])]
+            .filter((id) => ffiExportFor(id) !== e.exportName)
+            .map((id) => ({ id, manifest: e.exportName, formFieldInterface: ffiExportFor(id) }))
+        : [],
+    );
+    expect(mismatches).toEqual([]);
+  });
+
+  test("the csvMultiValue flag is FormFieldInterface's MULTI_SELECT_INTERFACE_TYPES", () => {
+    expect(sorted(interfaceIdsWithFlag('csvMultiValue'))).toEqual(sorted(ffiMultiSelect));
+  });
+
+  test("registryComponent ships the entry's exportName, and its registry block describes the entry", () => {
+    const rows = manifest
+      .filter((e) => e.registryComponent !== null)
+      .map((e) => {
+        const component = componentByName.get(e.registryComponent ?? '') as TemplateComponent | undefined;
+        const block = component?.interface;
+        return {
+          id: e.id,
+          ships: e.exportName !== null && !!component && consumerExports(component.name).has(e.exportName),
+          blockNamesEntry: !!block && getInterfaceManifestEntry(block.id)?.id === e.id,
+          types: JSON.stringify(block?.types) === JSON.stringify(e.types),
+          group: block?.group === e.group,
+        };
+      });
+    expect(rows.filter((r) => !r.ships || !r.blockNamesEntry || !r.types || !r.group)).toEqual([]);
+    // Only presentation-links has no registry component.
+    expect(manifest.filter((e) => e.registryComponent === null).map((e) => e.id)).toEqual(['presentation-links']);
+  });
+
+  test('every registry interface id and alias names a manifest entry', () => {
+    const unknown = registryBlocks.flatMap((b) => [b.id, ...(b.aliases ?? [])]).filter((id) => !getInterfaceManifestEntry(id));
+    expect(unknown).toEqual([]);
+    // divergence (b), unchanged: input-map-gl is map-with-real-map's id, yet
+    // the manifest (like the mapper before it) makes it an alias of `map`.
+    const foreign = registryBlocks
+      .map((b) => ({ id: b.id, component: b.component, entry: getInterfaceManifestEntry(b.id)?.registryComponent }))
+      .filter((r) => r.component !== r.entry);
+    expect(foreign).toEqual([{ id: 'input-map-gl', component: 'map-with-real-map', entry: 'map' }]);
+  });
+
+  test('divergence (j), unchanged: relation-hook aliases are not resolved by the renderer', () => {
+    const hookAliases = manifest.flatMap((e) => e.relation?.hookAliases ?? []);
+    expect(hookAliases).toEqual(['one-to-many']);
+    expect(minus(hookAliases, acceptedIds)).toEqual(['one-to-many']);
   });
 });
 
@@ -922,9 +1016,11 @@ describe('registry interface blocks', () => {
     expect(minus(registryBlocks.flatMap((b) => b.types), fieldTypeUnion)).toEqual([]);
   });
 
-  test('registry groups outside the InterfaceGroup union', () => {
-    // system-permissions uses group "system", which utils' InterfaceGroup lacks.
-    expect(minus(registryBlocks.map((b) => b.group), interfaceGroupUnion)).toEqual(['system']);
+  test('registry groups are InterfaceGroup members', () => {
+    // Resolved (interface-manifest Phase 1, types only): system-permissions'
+    // group "system" was missing from utils' InterfaceGroup; the union gained
+    // it so the manifest can record the registry group of every interface.
+    expect(minus(registryBlocks.map((b) => b.group), interfaceGroupUnion)).toEqual([]);
   });
 
   test('divergence (b): registry entries that render a different component than they install', () => {
@@ -997,6 +1093,11 @@ describe('ui-forms palette and i18n catalog keys', () => {
       // … and the dictionary carries no key FieldPalette never asks for.
       expect({ locale, keys: sorted(keys) }).toEqual({ locale, keys: sorted(provisionableIds.map(palette.catalogLabelKey)) });
     }
+    // The manifest's labelKey is the key FieldPalette derives.
+    const keyMismatches = manifest
+      .flatMap((e) => (e.renders && e.provision ? [[e.id, e.provision.labelKey]] : []))
+      .filter(([id, key]) => palette.catalogLabelKey(id) !== key);
+    expect(keyMismatches).toEqual([]);
   });
 
   test('catalog group keys cover every provisionable group and exist in both locales', () => {

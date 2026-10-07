@@ -193,7 +193,19 @@ describe('InterfaceRegistry', () => {
 
     it('should include empty groups when requested', () => {
       const groups = registry.getGrouped(true);
-      expect(groups.length).toBe(7); // All 7 groups
+      // All 8 groups: InterfaceGroup gained the registry's 'system' group
+      // (system-permissions), which getGrouped() used to drop silently.
+      expect(groups.length).toBe(8);
+      expect(groups.map((g) => g.key)).toEqual([
+        'standard', 'selection', 'relational', 'presentation', 'group', 'workflow', 'other', 'system',
+      ]);
+    });
+
+    it('lists an interface of the system group under "System"', () => {
+      registry.register({ id: 'perm', name: 'Permissions', icon: 'Icon', types: ['alias'], group: 'system' });
+      const system = registry.getGrouped().find((g) => g.key === 'system');
+      expect(system?.name).toBe('System');
+      expect(system?.interfaces.map((i) => i.id)).toEqual(['perm']);
     });
   });
 
@@ -562,6 +574,27 @@ describe('getInterfacesForApi()', () => {
     const standardGroup = result.groups.find(g => g.key === 'standard');
 
     expect(standardGroup?.name).toBe('Text & Numbers');
+  });
+
+  it("names the registry's system group (system-permissions)", () => {
+    const withSystem: RegistryJson = {
+      ...mockRegistry,
+      components: [
+        {
+          name: 'system-permissions',
+          title: 'SystemPermissions',
+          description: 'Permissions',
+          category: 'admin',
+          files: [{ source: 'a', target: 'b' }],
+          dependencies: [],
+          internalDependencies: [],
+          interface: { id: 'system-permissions', name: 'Permissions', icon: 'Icon', types: ['alias'], group: 'system' },
+        },
+      ],
+    };
+    expect(getInterfacesForApi(withSystem).groups).toEqual([
+      expect.objectContaining({ key: 'system', name: 'System' }),
+    ]);
   });
 });
 

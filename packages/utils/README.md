@@ -42,6 +42,10 @@ const displayValue = formatFieldValue(value, field);
 
 ### Supported Interface Types
 
+The complete list is `INTERFACE_MANIFEST` (`src/interface-manifest.ts`), one
+entry per interface id with its aliases, component, compatible field types and
+flags. The common ones:
+
 | Interface | Description |
 |-----------|-------------|
 | `input` | Single-line text input |
@@ -59,7 +63,7 @@ const displayValue = formatFieldValue(value, field);
 | `tags` | Tag input with presets |
 | `presentation-divider` | Visual section divider |
 | `presentation-notice` | Notice/alert display |
-| `list-m2o` | Many-to-One relationship |
+| `select-dropdown-m2o` | Many-to-One relationship (legacy id `list-m2o`) |
 | `list-o2m` | One-to-Many relationship |
 | `list-m2m` | Many-to-Many relationship |
 | `list-m2a` | Many-to-Any relationship |
@@ -69,6 +73,31 @@ const displayValue = formatFieldValue(value, field);
 | `map` | Geometry/map input |
 | `collection-item-dropdown` | Collection item selector |
 | `workflow-button` | Workflow state transitions |
+
+### Interface Manifest
+
+`INTERFACE_MANIFEST` is the single source of interface identity. The tables
+that used to be kept by hand (`REGISTRY_INTERFACE_ALIASES`,
+`PROVISIONABLE_INTERFACES`, `CHOICE_INTERFACES`, `isPresentationField`, the
+concealing set) are derived from it, and small predicates answer the questions
+other packages used to answer with their own id lists:
+
+```tsx
+import {
+  normalizeInterfaceId,
+  getInterfaceManifestEntry,
+  isNonFlatRelationalInterface,
+  isRelationListInterface,
+} from '@buildpad/utils';
+
+normalizeInterfaceId('input-tags'); // 'tags' (registry and legacy aliases)
+getInterfaceManifestEntry('wysiwyg')?.exportName; // 'RichTextHTML'
+isNonFlatRelationalInterface('list-m2m'); // true: no flat column to fetch
+isRelationListInterface('one-to-many', 'o2m'); // true: what useRelationO2M accepts
+```
+
+`interface-registry`, `define-interface` and `load-interfaces` are deprecated:
+nothing populates that registry and VForm never reads it.
 
 ### Read-Only Detection
 

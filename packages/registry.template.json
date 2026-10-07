@@ -129,6 +129,10 @@
           "target": "lib/buildpad/interface-catalog.ts"
         },
         {
+          "source": "utils/src/interface-manifest.ts",
+          "target": "lib/buildpad/interface-manifest.ts"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts"
         },
