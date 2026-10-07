@@ -23,10 +23,10 @@
  *   pnpm registry:check
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
@@ -659,9 +659,23 @@ function checkRegistry() {
   console.log('✓ registry.json is in sync — all source changes are versioned.');
 }
 
+/**
+ * Whether this module is the script node was asked to run. Compares real
+ * paths: node resolves symlinks for import.meta.url but not for argv[1], so a
+ * URL comparison silently skipped main() — and exited 0 — when the checkout
+ * was reached through a symlink (e.g. macOS /tmp).
+ */
+function isMainModule() {
+  try {
+    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
 // Run only when invoked directly (e.g. `node scripts/build-registry.mjs`),
 // not when imported by tests for the helper exports.
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isMainModule()) {
   if (process.argv.includes('--check')) {
     checkRegistry();
   } else {

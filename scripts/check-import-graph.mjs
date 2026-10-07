@@ -25,9 +25,9 @@
  *   pnpm graph:check
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -385,4 +385,18 @@ function main() {
   );
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main();
+/**
+ * Whether this module is the script node was asked to run. Compares real
+ * paths: node resolves symlinks for import.meta.url but not for argv[1], so a
+ * URL comparison silently skipped main() — and exited 0 — when the checkout
+ * was reached through a symlink (e.g. macOS /tmp).
+ */
+function isMainModule() {
+  try {
+    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) main();
