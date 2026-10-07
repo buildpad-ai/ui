@@ -71,7 +71,7 @@ import { useRelationM2M } from '@/lib/buildpad/hooks';
 import type { M2MItem } from '@/lib/buildpad/types';
 ```
 
-Every import form is rewritten: static and type-only imports, `export … from`, side-effect imports, `import()`, `require()` and `declare module`. If a file imports a `@buildpad/*` path that the CLI cannot place in your project, `add` and `upgrade` stop with an error that names the file, the line and the import. They do not copy an import that would fail in your build. `buildpad validate` reports any `@buildpad/*` import left in the folders the CLI installs into, and `buildpad fix` rewrites them.
+Every import form is rewritten: static and type-only imports, `export … from`, side-effect imports, `import()`, `require()` and `declare module`. If a file imports a `@buildpad/*` path that the CLI cannot place in your project, `add` and `upgrade` stop with an error that names the file, the line and the import. They do not copy an import that would fail in your build. `buildpad validate` reports any `@buildpad/*` import left in the folders the CLI installs into, and `buildpad fix` rewrites them. Both leave imports of the published `@buildpad/cli` and `@buildpad/mcp` packages alone.
 
 ## Versioning & Upgrades
 
