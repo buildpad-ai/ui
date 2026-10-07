@@ -111,8 +111,8 @@ export interface InterfaceConfig {
  * `input-map` still did until this table covered it.
  *
  * Derived from the manifest's registry aliases (interface-manifest.ts), which
- * `normalizeInterfaceId` resolves together with the legacy ids; kept as a
- * table for the tests and code that read it.
+ * `normalizeInterfaceId` resolves together with the legacy ids. The mapper
+ * copies it once at load, so changing this object at runtime has no effect.
  */
 export const REGISTRY_INTERFACE_ALIASES: Record<string, string> = interfaceAliasMap("registry");
 
@@ -122,7 +122,7 @@ export function getFieldInterface(field: Field): InterfaceConfig {
 
   // Priority 1: Check for explicit interface in meta (from daas_fields table)
   if (meta?.interface) {
-    const explicitInterface = getExplicitInterface(
+    const explicitInterface = resolveExplicitInterface(
       meta.interface,
       meta?.options ?? undefined,
     );
@@ -135,17 +135,45 @@ export function getFieldInterface(field: Field): InterfaceConfig {
   return getTypeBasedInterface(type, schema, dataType);
 }
 
+/** Registry alias → renderer id, fixed at load (see REGISTRY_INTERFACE_ALIASES). */
+const RENDERER_ID_BY_REGISTRY_ALIAS: ReadonlyMap<string, string> = new Map(
+  Object.entries(REGISTRY_INTERFACE_ALIASES),
+);
+
+/**
+ * Resolve an explicit meta.interface value to an interface config.
+ *
+ * The switch first sees the id with only the registry aliases resolved —
+ * the value it switched on before the manifest — so a `case` a project added
+ * for a legacy id (`textarea`, an `xtremax-workflow-button-…` variant) is
+ * still reached. An id that no case names gets one more try as its manifest
+ * renderer id (`normalizeInterfaceId`), which is how the legacy aliases reach
+ * their renderer's case.
+ */
+function resolveExplicitInterface(
+  interfaceId: string,
+  options?: Record<string, unknown>,
+): InterfaceConfig | null {
+  const switchId = RENDERER_ID_BY_REGISTRY_ALIAS.get(interfaceId) ?? interfaceId;
+  const rendererId = normalizeInterfaceId(interfaceId);
+  return (
+    getExplicitInterface(switchId, options) ??
+    (rendererId === switchId ? null : getExplicitInterface(rendererId, options))
+  );
+}
+
 /**
  * Get interface config from explicit meta.interface value
- * Maps DaaS interface IDs to our component types. Registry and legacy alias
- * ids (`input-tags`, `textarea`, `xtremax-workflow-button`, …) are resolved
- * to their renderer id by the manifest first, so each case names one id.
+ * Maps DaaS interface IDs to our component types. Callers go through
+ * resolveExplicitInterface, which resolves registry and legacy alias ids
+ * (`input-tags`, `textarea`, `xtremax-workflow-button`, …), so each case
+ * names one renderer id.
  */
 function getExplicitInterface(
   interfaceId: string,
   options?: Record<string, unknown>,
 ): InterfaceConfig | null {
-  switch (normalizeInterfaceId(interfaceId)) {
+  switch (interfaceId) {
     // Text inputs
     case "input":
       return {

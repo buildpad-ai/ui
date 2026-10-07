@@ -34,18 +34,30 @@ hand are derived from it under their old names, with their old values.
 
 What changes in your copied files:
 
-- **`lib/buildpad/field-interface-mapper.ts`**: `getExplicitInterface` calls
-  `normalizeInterfaceId()` before its `switch`. The legacy ids that were extra
+- **`lib/buildpad/field-interface-mapper.ts`**: the legacy ids that were extra
   `case` labels (`textarea`, `wysiwyg`, `markdown`, `list-m2o` and the five
   `xtr-…`/`xtremax-…` workflow ids) are manifest aliases now, so their labels
-  are gone from the switch. They render exactly as before.
-  - If you added `case` labels of your own, they keep working.
-  - If your edits sit next to a removed label, the 3-way merge may conflict:
-    keep your cases and drop the alias labels.
+  are gone from the switch. They render exactly as before. A new
+  `resolveExplicitInterface` calls the switch (`getExplicitInterface`) twice
+  at most:
+  1. with the registry aliases resolved (`input-tags` → `tags`), which is the
+     value the switch saw in 2.6;
+  2. if no case matched, with the manifest renderer id
+     (`normalizeInterfaceId()`: `textarea` → `input-multiline`).
+  - If you added `case` labels of your own, they keep working. This includes
+    a case for one of the legacy ids above, or for an id of your own such as
+    an `xtremax-workflow-button-…` variant: step 1 reaches it before the
+    manifest alias applies.
+  - A case labelled with a registry alias (`input-tags`, `input-map`,
+    `input-map-gl`) is not reached, as in 2.6. Put that logic in the case of
+    the renderer id (`tags`, `map`).
+  - If your edits sit next to a removed label, the 3-way merge may conflict.
+    Keep your cases. You can keep or drop the removed alias labels: either
+    way the id renders the same.
   - `REGISTRY_INTERFACE_ALIASES` is still exported with the same entries, but
-    it is derived from the manifest and the mapper no longer reads it.
-    Changing the object at runtime has no effect any more; add a `case`
-    instead.
+    it is derived from the manifest and the mapper copies it once when the
+    module loads. Changing the object at runtime has no effect any more; add
+    a `case` instead.
 - **`lib/buildpad/conceal.ts`, `lib/buildpad/interface-catalog.ts`**: the
   concealing set, `CHOICE_INTERFACES` and `PROVISIONABLE_INTERFACES` are
   derived from the manifest. `ProvisionableInterfaceGroup` is defined in the
@@ -70,7 +82,7 @@ Type changes (TypeScript only):
 - `InterfaceType` keeps all its members. `textarea`, `number`, `uuid` and
   `list-m2o` are marked `@deprecated`: `getFieldInterface` never returns them.
 
-Deprecated (still exported, no behaviour change):
+Deprecated (still exported):
 
 - `interface-registry.ts` (`InterfaceRegistry`, `interfaceRegistry`,
   `getInterfaceRegistry`), `define-interface.ts` (`defineInterface`,
@@ -78,3 +90,7 @@ Deprecated (still exported, no behaviour change):
   `InterfaceOptions`) and `load-interfaces.ts`. Nothing populates that
   registry and VForm never reads it. Use `INTERFACE_MANIFEST` for interface
   identity. These modules will be removed in a later major release.
+- One small change comes with the new `'system'` group:
+  `InterfaceRegistry.getGrouped(true)` now returns 8 groups instead of 7,
+  and includes interfaces registered in the `system` group, which it used
+  to drop. `getInterfacesForApi` names that group `"System"`.

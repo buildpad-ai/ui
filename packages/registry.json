@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T12:08:17.925Z",
+  "generatedAt": "2026-10-07T12:38:24.708Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -148,7 +148,7 @@
         {
           "source": "utils/src/field-interface-mapper.ts",
           "target": "lib/buildpad/field-interface-mapper.ts",
-          "sourceSha256": "02c9aca4d472576b0aa6fd7f92698a2ba5a511f762c827bd8d663541d45a210a"
+          "sourceSha256": "b4b276fedc6af7d86f9bafb8756293cbf22677d17361045abbf6f2d379f6c60f"
         },
         {
           "source": "utils/src/conceal.ts",
