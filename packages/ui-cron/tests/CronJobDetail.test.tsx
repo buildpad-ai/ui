@@ -382,6 +382,38 @@ describe('CronJobDetail', () => {
       expect(updateJobMock).toHaveBeenCalledTimes(1);
     });
 
+    it('keeps what was typed while the save was in flight, as an edit that is not saved yet', async () => {
+      const request = deferred<CronJobRecord>();
+      updateJobMock.mockImplementation(() => request.promise);
+      renderDetail();
+      await loaded();
+
+      fireEvent.change(field.description(), { target: { value: 'Sent with the save' } });
+      fireEvent.click(button('Save'));
+      expect(updateJobMock).toHaveBeenCalledWith(report.id, { description: 'Sent with the save' });
+      // The request is slow, and the inputs stay open
+      fireEvent.change(field.code(), { target: { value: '// typed after the click' } });
+
+      await act(async () => {
+        request.resolve({ ...report, description: 'Sent with the save' });
+      });
+      await waitFor(() => expect(button('Save')).not.toHaveAttribute('data-loading'));
+      expect(field.description()).toHaveValue('Sent with the save');
+      expect(field.code()).toHaveValue('// typed after the click');
+      expect(unsavedBadge()).toBeInTheDocument();
+
+      // The next Save sends that edit, and only that
+      updateJobMock.mockImplementation(async (_id: string, patch: Partial<CronJobRecord>) => ({
+        ...report,
+        description: 'Sent with the save',
+        ...patch,
+      }));
+      fireEvent.click(button('Save'));
+      await waitFor(() =>
+        expect(updateJobMock).toHaveBeenLastCalledWith(report.id, { code: '// typed after the click' }),
+      );
+    });
+
     it('a failed save is an Error notification with the server\'s sentence, and the edits stay', async () => {
       updateJobMock.mockRejectedValueOnce(
         new DaaSRequestError('Cron job code is invalid: Unexpected token', { kind: 'invalid', status: 400 }),
@@ -690,6 +722,70 @@ describe('CronJobDetail', () => {
         request.resolve({ id: 'new-job-id', name: 'Hourly ping' });
       });
       await waitFor(() => expect(create).not.toHaveAttribute('data-loading'));
+    });
+
+    it('edits the job it created when the host does not navigate: a second Save updates it, and nothing is created twice', async () => {
+      updateJobMock.mockImplementation(async (id: string, patch: Partial<CronJobRecord>) => ({
+        id,
+        name: 'Hourly ping',
+        description: null,
+        schedule: '0 9 * * 1-5',
+        timezone: 'UTC',
+        code: DEFAULT_CRON_CODE,
+        status: 'inactive',
+        timeout_ms: 10000,
+        memory_limit_mb: 64,
+        ...patch,
+      }));
+      // No onCreated: the id stays "new"
+      renderDetail({ id: 'new' });
+      fireEvent.change(field.name(), { target: { value: 'Hourly ping' } });
+      fireEvent.click(button('Create'));
+
+      // The editor is the stored job's now: its title, its status, its actions
+      expect(await screen.findByRole('heading', { name: 'Edit Cron Job' })).toBeInTheDocument();
+      expect(screen.getByTestId('cron-job-detail-breadcrumb-current')).toHaveTextContent('Hourly ping');
+      expect(screen.getByTestId('cron-job-detail-status-badge')).toHaveTextContent('Inactive');
+      expect(queryButton('Create')).not.toBeInTheDocument();
+      expect(button('Save')).toBeDisabled();
+      expect(button('Run Now')).toBeEnabled();
+      expect(screen.getByRole('tab', { name: 'History' })).toBeInTheDocument();
+      // Shown from the create's own answer, without a load for it
+      expect(getJobMock).not.toHaveBeenCalled();
+
+      fireEvent.change(field.name(), { target: { value: 'Hourly ping v2' } });
+      fireEvent.click(button('Save'));
+      await waitFor(() => expect(updateJobMock).toHaveBeenCalledWith('new-job-id', { name: 'Hourly ping v2' }));
+      expect(createJobMock).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(field.name()).toHaveValue('Hourly ping v2'));
+    });
+
+    it('does not load the created job a second time when the host then navigates to it', async () => {
+      stored['new-job-id'] = { ...sweep, id: 'new-job-id', name: 'Hourly ping' };
+      const { update } = renderDetail({ id: 'new' });
+      fireEvent.change(field.name(), { target: { value: 'Hourly ping' } });
+      fireEvent.click(button('Create'));
+      await screen.findByRole('heading', { name: 'Edit Cron Job' });
+
+      // As the reference admin UI does: onCreated navigates to the new job
+      update({ id: 'new-job-id' });
+      await waitFor(() => expect(getJobMock).toHaveBeenCalledWith('new-job-id'));
+      await loaded('Hourly ping');
+      expect(getJobMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a new job opened after one was created here starts empty again', async () => {
+      const { update } = renderDetail({ id: 'new' });
+      fireEvent.change(field.name(), { target: { value: 'Hourly ping' } });
+      fireEvent.click(button('Create'));
+      await screen.findByRole('heading', { name: 'Edit Cron Job' });
+
+      update({ id: sweep.id });
+      await loaded('Cache sweep');
+      update({ id: 'new' });
+      expect(await screen.findByRole('heading', { name: 'New Cron Job' })).toBeInTheDocument();
+      expect(field.name()).toHaveValue('');
+      expect(button('Create')).toBeEnabled();
     });
 
     it('opens the created job when the host hands its id back', async () => {

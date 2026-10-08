@@ -211,11 +211,13 @@ export default function CronJobDetailPage({
 }
 ```
 
-<Callout type="warning">
-**Navigate after a create.** The editor does not change its own `id`. After a
-successful create it still holds `id="new"`, and a second Save would create a
-second job. `onCreated` receives the stored job with its new id. Navigate
-there to `/cron/${job.id}` (as the generated page does) or to the list.
+<Callout type="info">
+**Navigate after a create.** The editor does not navigate. After a successful
+create it goes on as the editor of the stored job: a further Save updates that
+job, and does not create a second one. The URL still says `/cron/new`, though,
+and a reload would open an empty form. `onCreated` receives the stored job
+with its new id. Navigate there to `/cron/${job.id}` (as the generated page
+does) or to the list.
 </Callout>
 
 After a save of an existing job the editor stays open and shows the job as it

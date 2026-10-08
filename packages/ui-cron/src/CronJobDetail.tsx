@@ -37,6 +37,7 @@ import { useBuildpadTranslations } from '@buildpad/services';
 import { CRON_JOBS_COLLECTION, type CronJobRecord, type CronJobStatus } from '@buildpad/types';
 import {
   CRON_FORM_DEFAULTS,
+  CRON_JOB_FORM_FIELDS,
   CRON_NUMBER_INPUTS,
   CRON_TIMEZONE_OPTIONS,
   DEFAULT_CRON_CODE,
@@ -89,7 +90,9 @@ export interface CronJobDetailProps {
   /**
    * Called after a successful create with the stored job, which carries its
    * new id. The host navigates: the reference admin UI opens the new job's
-   * editor (`/cron/<id>`). The component itself goes nowhere.
+   * editor (`/cron/<id>`). The component itself goes nowhere — it becomes the
+   * editor of the job it created, so a further Save updates that job whether
+   * or not the host has navigated yet.
    */
   onCreated?: (job: CronJobRecord) => void;
   /** Called after a successful save of an existing job, with the job as it is stored now. */
@@ -157,6 +160,10 @@ export interface CronJobDetailProps {
  * - Save sends only the fields that changed (`changedCronJobFields`) and is
  *   disabled while there is nothing to save. The reference sent the whole
  *   form, and with it the status the form was loaded with.
+ * - After a create the editor is the stored job's: a second Save updates it.
+ *   Nothing is created twice when the host is slow to navigate, or does not.
+ * - What is typed while a save is in flight is kept as an unsaved edit; the
+ *   reference replaced it with the saved values.
  * - An emptied description is saved as none.
  * - A stored timezone that is not one of the options is shown, and kept, as
  *   it is stored (`cronTimezoneOptions`). The reference showed "UTC+0".
@@ -196,7 +203,13 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
   historyPageSize = 50,
   translations,
 }) => {
-  const isNew = id === 'new' || id === '+';
+  const newRoute = id === 'new' || id === '+';
+  // The job this editor created while `id` still says "new". From then on it
+  // edits that job: a second Save must update it, not create it once more,
+  // whether or not the host has navigated to the job's own route yet.
+  const [created, setCreated] = useState<CronJobRecord | null>(null);
+  const isNew = newRoute && !created;
+  const jobId = created ? created.id : id;
   const { getJob, createJob, updateJob, runJob } = useCronJobs();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({ collections: [collection] });
   const t = useBuildpadTranslations((d) => d.cron, translations);
@@ -212,12 +225,12 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
   const newForm = useMemo<CronJobForm>(() => ({ ...CRON_FORM_DEFAULTS, code: defaultCode }), [defaultCode]);
 
   const [record, setRecord] = useState<CronJobRecord | null>(null);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(!newRoute);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
 
   // The job as loaded (or last saved), to tell what was edited
-  const [initial, setInitial] = useState<CronJobForm>(isNew ? newForm : BLANK_FORM);
-  const [form, setForm] = useState<CronJobForm>(isNew ? newForm : BLANK_FORM);
+  const [initial, setInitial] = useState<CronJobForm>(newRoute ? newForm : BLANK_FORM);
+  const [form, setForm] = useState<CronJobForm>(newRoute ? newForm : BLANK_FORM);
   const edits = useMemo(() => changedCronJobFields(initial, form), [initial, form]);
   const hasEdits = Object.keys(edits).length > 0;
 
@@ -254,10 +267,14 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
 
   const requestRef = useRef(0);
 
+  // Keyed on the `id` it is given, not on the job a create adopted: the load
+  // runs when the host opens another job (or a new one), and not a second
+  // time for the job that was just created here.
   const load = useCallback(async () => {
     const request = ++requestRef.current;
     setFailure(null);
-    if (isNew) {
+    setCreated(null);
+    if (newRoute) {
       setRecord(null);
       setInitial(newForm);
       setForm(newForm);
@@ -289,22 +306,34 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
     } finally {
       if (request === requestRef.current) setLoading(false);
     }
-  }, [getJob, id, isNew, newForm, t, common]);
+  }, [getJob, id, newRoute, newForm, t, common]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  /** Shows the job as it is stored now: what a write answered, over what was known. */
-  const showStored = useCallback((stored: CronJobRecord, known: CronJobRecord | null): CronJobRecord => {
-    // The answer carries the columns the caller may read; the others stay as known
-    const merged = { ...known, ...stored };
-    const filled = cronJobToForm(merged);
-    setRecord(merged);
-    setInitial(filled);
-    setForm(filled);
-    return merged;
-  }, []);
+  /**
+   * Shows the job as it is stored now: what a write answered, over what was
+   * known. `sent` is the form as it was when the request left: a field edited
+   * since then (the request takes a while, and the inputs stay open) keeps
+   * what was typed, as an edit that is not saved yet.
+   */
+  const showStored = useCallback(
+    (stored: CronJobRecord, known: CronJobRecord | null, sent: CronJobForm): CronJobRecord => {
+      // The answer carries the columns the caller may read; the others stay as known
+      const merged = { ...known, ...stored };
+      const filled = cronJobToForm(merged);
+      setRecord(merged);
+      setInitial(filled);
+      setForm((current) => {
+        if (current === sent) return filled;
+        const typedSince = CRON_JOB_FORM_FIELDS.filter((field) => current[field] !== sent[field]);
+        return typedSince.reduce<CronJobForm>((next, field) => ({ ...next, [field]: current[field] }), filled);
+      });
+      return merged;
+    },
+    [],
+  );
 
   const handleSave = useCallback(async () => {
     if (savingRef.current || viewOnly) return;
@@ -323,21 +352,23 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
     setSaving(true);
     try {
       if (isNew) {
-        const created = await createJob(cronJobInputFromForm(form));
+        const stored = await createJob(cronJobInputFromForm(form));
         notifications.show({
           title: common.success,
           message: t.jobDetail.notifications.created,
           color: 'green',
           icon: <IconCheck size={16} />,
         });
-        // What is on screen is what is stored now; where to go next is the host's to say
-        setInitial(form);
-        onCreated?.(created);
+        // What is on screen is the stored job from here on, so the next Save
+        // updates it; where to go next is the host's to say
+        setCreated(stored);
+        showStored(stored, null, form);
+        onCreated?.(stored);
       } else {
         // Only the fields edited since the form was filled from the server: the
         // rest may have changed elsewhere (the status above all), and the form's
         // copy of them is only as fresh as its load.
-        const saved = await updateJob(id, changedCronJobFields(initial, form));
+        const saved = await updateJob(jobId, changedCronJobFields(initial, form));
         notifications.show({
           title: common.success,
           message: t.jobDetail.notifications.saved,
@@ -345,7 +376,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
           icon: <IconCheck size={16} />,
         });
         // Not inside the optional call: without `onSaved` its argument is never evaluated
-        const now = showStored(saved, record);
+        const now = showStored(saved, record, form);
         onSaved?.(now);
       }
     } catch (err) {
@@ -359,7 +390,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
       savingRef.current = false;
       setSaving(false);
     }
-  }, [viewOnly, form, initial, withheld, isNew, id, record, createJob, updateJob, showStored, onCreated, onSaved, t, common]);
+  }, [viewOnly, form, initial, withheld, isNew, jobId, record, createJob, updateJob, showStored, onCreated, onSaved, t, common]);
 
   const handleSetStatus = useCallback(
     async (status: CronJobStatus) => {
@@ -369,9 +400,9 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
       const active = status === 'active';
       try {
         const saved = await updateJob(record.id, { status });
-        // The form has no unsaved edit here (the button waits for them), so
-        // filling it from the stored job loses nothing
-        showStored(saved, record);
+        // The form has no unsaved edit when the button is clicked (it waits
+        // for them); one typed while the request runs is kept
+        showStored(saved, record, form);
         notifications.show({
           title: active ? t.notificationTitles.activated : t.notificationTitles.deactivated,
           message: active ? t.jobDetail.notifications.activated : t.jobDetail.notifications.deactivated,
@@ -391,7 +422,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
         setSwitching(false);
       }
     },
-    [record, updateJob, showStored, t, common],
+    [record, form, updateJob, showStored, t, common],
   );
 
   const handleRunNow = useCallback(async () => {
