@@ -273,9 +273,17 @@ describe('registry corpus: @buildpad package names agree', () => {
 
   /** Workspace packages the registry deliberately does not distribute. */
   const NOT_DISTRIBUTED = ['@buildpad/mcp'];
+  /**
+   * Workspace packages whose registry entry and install mapping have not
+   * landed yet: the components come first, the registry component and the CLI
+   * templates after them. Delete a name here in the change that registers it
+   * — the two tests below then hold it to the same rules as every other
+   * package, and the last test in this block fails if a name is left behind.
+   */
+  const NOT_YET_REGISTERED = ['@buildpad/ui-cron'];
   test('registry.packages = workspace packages minus the non-distributed ones', () => {
     expect([...registryPackages].sort()).toEqual(
-      [...workspaceNames].filter(n => !NOT_DISTRIBUTED.includes(n)).sort(),
+      [...workspaceNames].filter(n => !NOT_DISTRIBUTED.includes(n) && !NOT_YET_REGISTERED.includes(n)).sort(),
     );
   });
 
@@ -307,13 +315,21 @@ describe('registry corpus: @buildpad package names agree', () => {
       expect(workspace.get(target.folder), name).toBe(name);
     }
     // Every workspace package is either mapped or explicitly never installed.
-    expect([...workspaceNames].filter(n => !(n in BUILDPAD_PACKAGES)).sort()).toEqual(
-      Object.keys(NON_INSTALLABLE_PACKAGES).sort(),
-    );
+    expect(
+      [...workspaceNames].filter(n => !(n in BUILDPAD_PACKAGES) && !NOT_YET_REGISTERED.includes(n)).sort(),
+    ).toEqual(Object.keys(NON_INSTALLABLE_PACKAGES).sort());
   });
 
   test('the changesets fixed group is exactly the workspace packages', () => {
     const changesets = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, '.changeset/config.json'), 'utf8'));
     expect([...changesets.fixed[0]].sort()).toEqual([...workspaceNames].sort());
+  });
+
+  test('a package listed as not yet registered is a workspace package that is still unregistered', () => {
+    for (const name of NOT_YET_REGISTERED) {
+      expect(workspaceNames.has(name), `${name} is not a workspace package`).toBe(true);
+      // Registered since: take it off the list, so the tests above cover it again
+      expect(registryPackages.has(name) || name in BUILDPAD_PACKAGES, `${name} is registered now`).toBe(false);
+    }
   });
 });
