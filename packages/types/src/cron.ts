@@ -115,7 +115,11 @@ export interface CronJobRecord {
   last_run_at?: string | null;
   last_run_status?: CronRunStatus | null;
 
-  /** Next scheduled run; `null` for a job that has none (an inactive job on the engine) */
+  /**
+   * Next scheduled run. Meaningful for an `active` job only: both backends
+   * leave the last computed time on a job that is deactivated, and an
+   * inactive job never fires.
+   */
   next_run_at?: string | null;
 
   created_at?: string | null;

@@ -400,27 +400,35 @@ function isPositiveInteger(value: unknown): boolean {
  * integers. Whether the schedule is a valid expression and the code compiles
  * is the server's to say — both backends refuse either with a sentence of
  * their own, and that is the error to show.
+ *
+ * `withheld` names the fields the form was not given (`withheldCronJobFields`).
+ * They are not checked: the form holds a neutral value for them, not the
+ * stored one, and a save does not send them — a job whose code the caller
+ * cannot read must still be renamable.
  */
 export function findCronJobFormProblem(
   form: Pick<CronJobForm, 'name' | 'schedule' | 'code' | 'timeout_ms' | 'memory_limit_mb'>,
+  withheld: readonly CronJobFormField[] = [],
 ): CronJobFormProblem | null {
-  if (!form.name.trim()) {
+  const checked = (field: CronJobFormProblem['field']) => !withheld.includes(field);
+
+  if (checked('name') && !form.name.trim()) {
     return { field: 'name', code: 'nameRequired', error: 'Name is required' };
   }
-  if (!form.schedule.trim()) {
+  if (checked('schedule') && !form.schedule.trim()) {
     return { field: 'schedule', code: 'scheduleRequired', error: 'Schedule expression is required' };
   }
-  if (!form.code.trim()) {
+  if (checked('code') && !form.code.trim()) {
     return { field: 'code', code: 'codeRequired', error: 'Code is required' };
   }
-  if (!isPositiveInteger(form.timeout_ms)) {
+  if (checked('timeout_ms') && !isPositiveInteger(form.timeout_ms)) {
     return {
       field: 'timeout_ms',
       code: 'timeoutNotWholeNumber',
       error: 'Timeout must be a whole number of milliseconds, 1 or more',
     };
   }
-  if (!isPositiveInteger(form.memory_limit_mb)) {
+  if (checked('memory_limit_mb') && !isPositiveInteger(form.memory_limit_mb)) {
     return {
       field: 'memory_limit_mb',
       code: 'memoryLimitNotWholeNumber',

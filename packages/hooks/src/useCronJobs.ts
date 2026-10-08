@@ -169,10 +169,11 @@ export function useCronJobs() {
    * them from a form). Resolves to the stored job as the caller's grant
    * allows it to be read. Activate and Deactivate are `{ status }`.
    *
-   * `description: null` clears the description. It is sent as `''`, which
-   * both backends store on every route that takes a description: the
-   * workflow hooks clear one the same way, because the engine does not read
-   * a `null` as a change there.
+   * `description: null` clears the description. It is sent as `''`, the one
+   * value both backends store on every route that takes a description (the
+   * workflow hooks clear one the same way, where the engine does not read a
+   * `null` as a change). The job then holds an empty description, which
+   * reads back as none.
    */
   const updateJob = useCallback(
     (id: string, data: CronJobPatch): Promise<CronJobRecord> =>
@@ -231,8 +232,10 @@ export function useCronJobs() {
    *     is not the run's success: a run whose code threw, or that timed out,
    *     resolves the same way, and its outcome is that row's `status`.
    *
-   * A rejection means no run was started: the job is gone (`notFound`) or
-   * the caller may not run it (`forbidden`).
+   * A rejection carries no outcome. The job is gone (`notFound`), the caller
+   * may not run it (`forbidden`), or the request failed — and a request that
+   * was cut off on the way (a proxy or fetch timeout shorter than the run)
+   * says nothing about the run, which goes on without it.
    */
   const runJob = useCallback(
     (id: string): Promise<CronRunResult> =>

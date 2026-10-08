@@ -563,6 +563,22 @@ describe('findCronJobFormProblem', () => {
     });
   });
 
+  // Both backends drop a column the caller's grant withholds; the form then holds '' for it
+  it('does not check a field the form was not given', () => {
+    const { code: _code, schedule: _schedule, ...partial } = STORED;
+    const form = cronJobToForm(partial);
+    const withheld = withheldCronJobFields(partial);
+
+    expect(findCronJobFormProblem(form)?.code).toBe('scheduleRequired');
+    expect(findCronJobFormProblem(form, withheld)).toBeNull();
+    // The fields it was given are still checked
+    expect(findCronJobFormProblem({ ...form, name: ' ' }, withheld)?.code).toBe('nameRequired');
+    expect(findCronJobFormProblem({ ...form, timeout_ms: 1.5 }, withheld)?.code).toBe('timeoutNotWholeNumber');
+    expect(findCronJobFormProblem({ ...form, timeout_ms: 1.5 }, [...withheld, 'timeout_ms'])).toBeNull();
+    expect(findCronJobFormProblem({ ...form, memory_limit_mb: 0 }, [...withheld, 'memory_limit_mb'])).toBeNull();
+    expect(findCronJobFormProblem({ ...form, name: '' }, [...withheld, 'name'])).toBeNull();
+  });
+
   it('passes what the normalisers return for a decimal', () => {
     expect(
       findCronJobFormProblem({
