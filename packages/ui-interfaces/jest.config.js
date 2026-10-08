@@ -38,6 +38,12 @@ const config = {
     [`/node_modules/(${esmPackages.join('|')})/.+\\.js$`]: 'ts-jest',
   },
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
+  // Jest's 5s default is a real-time budget shared with everything else on the
+  // machine. These suites mount Mantine trees in jsdom across 47 parallel
+  // workers, so a busy host inflated the slowest of them from 7.6s to 69s and
+  // four suites failed on the stopwatch alone (see setup.ts for the keystroke
+  // pacing that caused most of it). A real hang still fails, just later.
+  testTimeout: 20000,
   // Any *.test.ts(x) under src, not only __tests__/: a narrower pattern let
   // nine colocated test files sit unrun (and rot) for months.
   testMatch: ['<rootDir>/src/**/*.test.ts', '<rootDir>/src/**/*.test.tsx'],
