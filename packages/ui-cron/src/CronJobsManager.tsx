@@ -179,7 +179,11 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
 
   // No write control until the permissions are known: a reader must not be
   // shown New Cron Job and a full row menu for the length of that request.
-  const permsKnown = !permsLoading;
+  // Known once is known: a later refresh answers from what was known until
+  // its own answer is in, so the controls do not blink.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
   const createAllowed = permsKnown && (isAdmin || canPerform(collection, 'create'));
   const updateAllowed = permsKnown && (isAdmin || canPerform(collection, 'update'));
   const deleteAllowed = permsKnown && (isAdmin || canPerform(collection, 'delete'));

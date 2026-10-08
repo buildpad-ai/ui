@@ -563,6 +563,23 @@ describe('CronJobsManager', () => {
       expect(await screen.findByTestId('cron-jobs-manager-add-btn')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Actions for Nightly report' })).toBeInTheDocument();
     });
+
+    it('a later refresh of the permissions does not take the controls away meanwhile', async () => {
+      const view = renderManager({ onJobClick: vi.fn(), onCreateJob: vi.fn() });
+      await rowOf('Nightly report');
+      expect(screen.getByTestId('cron-jobs-manager-add-btn')).toBeInTheDocument();
+
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      view.rerender(
+        <MantineProvider>
+          <BuildpadI18nProvider locale="en" timeZone="UTC" datesProvider={false}>
+            <CronJobsManager urlParams={false} onJobClick={vi.fn()} onCreateJob={vi.fn()} />
+          </BuildpadI18nProvider>
+        </MantineProvider>,
+      );
+      expect(screen.getByTestId('cron-jobs-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Actions for Nightly report' })).toBeInTheDocument();
+    });
   });
 
   describe('a list without rows says why', () => {

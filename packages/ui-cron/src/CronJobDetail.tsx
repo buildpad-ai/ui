@@ -223,7 +223,12 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
   // Nothing that writes is offered until the permissions are known: a user
   // without the right must not be shown Save, Run Now or an open form for the
   // length of that request, and nobody is called a reader before it is answered.
-  const permsKnown = !permsLoading;
+  // Known once is known: a later refresh (a renewed token, another scope)
+  // answers from what was known until its own answer is in, so the form does
+  // not close under a user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
   const createAllowed = permsKnown && (isAdmin || canPerform(collection, 'create'));
   const updateAllowed = permsKnown && (isAdmin || canPerform(collection, 'update'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
@@ -557,7 +562,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
 
   return (
     <Box pos="relative" data-testid="cron-job-detail">
-      <LoadingOverlay visible={loading || permsLoading} />
+      <LoadingOverlay visible={loading || !permsKnown} />
 
       <Stack gap="md">
         <Breadcrumbs>

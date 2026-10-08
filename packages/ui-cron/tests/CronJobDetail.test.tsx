@@ -1234,6 +1234,21 @@ describe('CronJobDetail', () => {
       expect(getJobMock).toHaveBeenCalledTimes(1);
     });
 
+    it('a later refresh of the permissions does not close the form under the user', async () => {
+      const { update } = renderDetail();
+      await loaded();
+      fireEvent.change(field.description(), { target: { value: 'still typing' } });
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      update({});
+      expect(field.description()).not.toHaveAttribute('readonly');
+      expect(field.description()).toHaveValue('still typing');
+      expect(button('Save')).toBeEnabled();
+      expect(button('Deactivate')).toBeInTheDocument();
+      expect(document.querySelector('.mantine-LoadingOverlay-root')).not.toBeInTheDocument();
+    });
+
     it('a new job is neither opened nor refused while permissions load', async () => {
       usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
       const { update } = renderDetail({ id: 'new' });
