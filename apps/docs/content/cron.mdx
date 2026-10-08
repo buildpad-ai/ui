@@ -497,6 +497,10 @@ grant on `daas_cron_history` opens nothing.
 
 - The gates come from `usePermissions().canPerform(collection, action)`.
   Administrators pass every gate.
+- While the permissions are loading, no write control is drawn and the editor
+  takes no edit. The controls appear when the answer is in, so a user without
+  a right does not see its button first. Reading does not wait: the list and
+  the job load at once.
 - A row menu with no allowed action is not drawn.
 - The gates only hide controls. The API enforces the same collection, so a
   hidden button is not the protection.
@@ -522,7 +526,8 @@ The routes it calls:
 - `GET`, `POST` `/api/cron`; `GET`, `PATCH`, `DELETE` `/api/cron/[id]`
 - `POST` `/api/cron/[id]/run` and `/api/cron/[id]/clone`
 - `GET` `/api/cron/history` and `/api/cron/[id]/history`
-- `GET` `/api/permissions/me` (the gates)
+- `GET` `/api/permissions/me` and, for a user who is not an administrator,
+  `/api/permissions/daas_cron_jobs` (the gates)
 
 What a job's code can call through `services` differs per backend. The code a
 new job starts with runs unchanged on both.

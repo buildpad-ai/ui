@@ -132,6 +132,9 @@ export interface CronJobsManagerProps {
  *   only.
  * - The row menu is not drawn for a user with no action in it; the reference
  *   drew a trigger that opened an empty menu.
+ * - New Cron Job and the row menus are drawn once the permissions are known,
+ *   as the reference did; they do not flash for a user who has none of them.
+ *   (ui-workflows is optimistic while they load.)
  * - Next Run is shown for an active job only: both backends leave the last
  *   computed time on a job that is deactivated, and an inactive job never
  *   fires.
@@ -174,9 +177,12 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatCount, formatDate } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(collection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(collection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(collection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown New Cron Job and a full row menu for the length of that request.
+  const permsKnown = !permsLoading;
+  const createAllowed = permsKnown && (isAdmin || canPerform(collection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(collection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(collection, 'delete'));
 
   // -- Tabs -------------------------------------------------------------------
 

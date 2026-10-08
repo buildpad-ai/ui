@@ -1137,12 +1137,60 @@ describe('CronJobDetail', () => {
       expect(onBack).toHaveBeenCalledTimes(1);
     });
 
-    it('stays optimistic while permissions load', async () => {
-      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
-      renderDetail();
+    it('offers nothing that writes while permissions load, and calls nobody a reader before they are known', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      const { update } = renderDetail();
       await loaded();
-      expect(button('Save')).toBeInTheDocument();
+
+      for (const name of ['Save', 'Run Now', 'Activate', 'Deactivate']) {
+        expect(queryButton(name)).not.toBeInTheDocument();
+      }
+      expect(field.name()).toHaveAttribute('readonly');
+      expect(field.code()).toHaveAttribute('readonly');
+      expect(screen.queryByTestId('cron-job-detail-read-only-notice')).not.toBeInTheDocument();
+      expect(document.querySelector('.mantine-LoadingOverlay-root')).toBeInTheDocument();
+
+      grant([], true);
+      update({});
+      expect(await screen.findByRole('button', { name: 'Save' })).toBeInTheDocument();
+      expect(button('Run Now')).toBeInTheDocument();
       expect(field.name()).not.toHaveAttribute('readonly');
+      await waitFor(() => expect(document.querySelector('.mantine-LoadingOverlay-root')).not.toBeInTheDocument());
+      // The job was loaded once: the permissions arriving do not fetch it again
+      expect(getJobMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a new job is neither opened nor refused while permissions load', async () => {
+      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
+      const { update } = renderDetail({ id: 'new' });
+
+      // Not refused yet: this user may turn out to be allowed
+      expect(screen.queryByTestId('cron-job-detail-access-denied')).not.toBeInTheDocument();
+      // Not opened yet either: no Create, and the form takes no edit
+      expect(queryButton('Create')).not.toBeInTheDocument();
+      expect(field.name()).toHaveAttribute('readonly');
+      expect(document.querySelector('.mantine-LoadingOverlay-root')).toBeInTheDocument();
+
+      // A user who may not create is refused, without ever having had the form
+      grant(['read', 'update']);
+      update({ id: 'new' });
+      expect(await screen.findByTestId('cron-job-detail-access-denied')).toBeInTheDocument();
+      expect(createJobMock).not.toHaveBeenCalled();
+    });
+
+    it('a new job opens for a user who may create once permissions are known', async () => {
+      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
+      const { update } = renderDetail({ id: 'new' });
+      expect(queryButton('Create')).not.toBeInTheDocument();
+
+      grant(['read', 'create']);
+      update({ id: 'new' });
+      expect(await screen.findByRole('button', { name: 'Create' })).toBeEnabled();
+      expect(field.name()).not.toHaveAttribute('readonly');
+      // Still the new job's defaults: the wait reset nothing
+      expect(field.schedule()).toHaveValue('0 9 * * 1-5');
+      expect(field.code()).toHaveValue(DEFAULT_CRON_CODE);
     });
   });
 

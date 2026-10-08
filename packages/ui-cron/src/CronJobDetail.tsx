@@ -160,6 +160,10 @@ export interface CronJobDetailProps {
  * - Save sends only the fields that changed (`changedCronJobFields`) and is
  *   disabled while there is nothing to save. The reference sent the whole
  *   form, and with it the status the form was loaded with.
+ * - While the permissions are loading nothing that writes is offered: the
+ *   form is covered and takes no edit, and no button is drawn. A new job's
+ *   form is neither opened to a user who may not create nor refused to one
+ *   who may before the answer is in. (ui-workflows is optimistic there.)
  * - After a create the editor is the stored job's: a second Save updates it.
  *   Nothing is created twice when the host is slow to navigate, or does not.
  * - What is typed while a save is in flight is kept as an unsaved edit; the
@@ -215,8 +219,12 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
   const t = useBuildpadTranslations((d) => d.cron, translations);
   const common = useBuildpadTranslations((d) => d.common);
 
-  const createAllowed = permsLoading || isAdmin || canPerform(collection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(collection, 'update');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save, Run Now or an open form for the
+  // length of that request, and nobody is called a reader before it is answered.
+  const permsKnown = !permsLoading;
+  const createAllowed = permsKnown && (isAdmin || canPerform(collection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(collection, 'update'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
   const viewOnly = readOnly || !saveAllowed;
   // Run Now, Activate and Deactivate are writes on a stored job
@@ -471,7 +479,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
   );
 
   // Nothing to edit: say which of the three it is, and offer the way out
-  const refusedCreate = isNew && !createAllowed;
+  const refusedCreate = isNew && permsKnown && !createAllowed;
   if (failure || refusedCreate) {
     let state: React.ReactNode;
     if (refusedCreate || failure?.kind === 'accessDenied') {
@@ -538,7 +546,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
 
   return (
     <Box pos="relative" data-testid="cron-job-detail">
-      <LoadingOverlay visible={loading} />
+      <LoadingOverlay visible={loading || permsLoading} />
 
       <Stack gap="md">
         <Breadcrumbs>
@@ -617,7 +625,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
           </Group>
         </Group>
 
-        {viewOnly && !loading && (
+        {viewOnly && !loading && permsKnown && (
           <Text size="sm" c="dimmed" role="note" data-testid="cron-job-detail-read-only-notice">
             {t.jobDetail.readOnlyNotice}
           </Text>

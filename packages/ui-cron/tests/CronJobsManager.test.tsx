@@ -539,10 +539,29 @@ describe('CronJobsManager', () => {
       expect(screen.queryByTestId('cron-jobs-manager-add-btn')).not.toBeInTheDocument();
     });
 
-    it('stays optimistic while permissions load', async () => {
-      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
-      renderManager({ onCreateJob: vi.fn() });
+    it('draws no write control while permissions load, and the allowed ones once they are known', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      const onJobClick = vi.fn();
+      const view = renderManager({ onJobClick, onCreateJob: vi.fn() });
+      const row = await rowOf('Nightly report');
+
+      expect(screen.queryByTestId('cron-jobs-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Actions for/ })).not.toBeInTheDocument();
+      // Reading does not wait: the rows are there and open
+      fireEvent.click(within(row).getByRole('button', { name: 'Open cron job Nightly report' }));
+      expect(onJobClick).toHaveBeenCalledWith(report);
+
+      grant([], true);
+      view.rerender(
+        <MantineProvider>
+          <BuildpadI18nProvider locale="en" timeZone="UTC" datesProvider={false}>
+            <CronJobsManager urlParams={false} onJobClick={onJobClick} onCreateJob={vi.fn()} />
+          </BuildpadI18nProvider>
+        </MantineProvider>,
+      );
       expect(await screen.findByTestId('cron-jobs-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Actions for Nightly report' })).toBeInTheDocument();
     });
   });
 
