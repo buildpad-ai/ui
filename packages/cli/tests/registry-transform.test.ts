@@ -280,7 +280,7 @@ describe('registry corpus: @buildpad package names agree', () => {
    * — the two tests below then hold it to the same rules as every other
    * package, and the last test in this block fails if a name is left behind.
    */
-  const NOT_YET_REGISTERED = ['@buildpad/ui-cron'];
+  const NOT_YET_REGISTERED: string[] = [];
   test('registry.packages = workspace packages minus the non-distributed ones', () => {
     expect([...registryPackages].sort()).toEqual(
       [...workspaceNames].filter(n => !NOT_DISTRIBUTED.includes(n) && !NOT_YET_REGISTERED.includes(n)).sort(),
