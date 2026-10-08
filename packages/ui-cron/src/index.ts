@@ -12,9 +12,9 @@
  *
  * The list chrome (`CronSearchInput`, `CronListFooter`, `CronListEmptyState`,
  * `CronRowActionsMenu`, `CronDeleteConfirmModal`, `CronPageState`,
- * `CronRichText`, `useCronList`) and the built-in code editor
- * (`CronCodeEditor`) are private to the package: shared by its surfaces and
- * not exported.
+ * `CronRichText`, `useCronList`), the editor's whole-number input
+ * (`CronIntegerInput`) and the built-in code editor (`CronCodeEditor`) are
+ * private to the package: shared by its surfaces and not exported.
  */
 
 // List surface

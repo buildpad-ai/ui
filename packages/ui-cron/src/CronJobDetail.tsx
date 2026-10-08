@@ -12,7 +12,6 @@ import {
   Grid,
   Group,
   LoadingOverlay,
-  NumberInput,
   Paper,
   Select,
   Stack,
@@ -57,6 +56,7 @@ import {
   type DeepPartial,
 } from '@buildpad/utils';
 import { CronCodeEditor, type CronCodeEditorProps } from './CronCodeEditor';
+import { CronIntegerInput } from './CronIntegerInput';
 import { CronJobStatusBadge } from './CronJobStatusBadge';
 import { CronPageState } from './CronPageState';
 import { CronRichText } from './CronRichText';
@@ -162,7 +162,9 @@ export interface CronJobDetailProps {
  *   it is stored (`cronTimezoneOptions`). The reference showed "UTC+0".
  * - Picking the option that is already selected keeps it; the reference
  *   cleared the Select and fell back to UTC / Inactive.
- * - Timeout and Memory Limit take whole numbers only.
+ * - Timeout and Memory Limit take whole numbers only, and an emptied one
+ *   falls back to its default when the field loses focus, not at the
+ *   keystroke that emptied it.
  * - Run Now reads its answer: a job that was already running was not started
  *   again, and the notification says so. The history is loaded when the
  *   request is answered — which is when the run has ended — not 1.5 seconds
@@ -342,7 +344,9 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
           color: 'green',
           icon: <IconCheck size={16} />,
         });
-        onSaved?.(showStored(saved, record));
+        // Not inside the optional call: without `onSaved` its argument is never evaluated
+        const now = showStored(saved, record);
+        onSaved?.(now);
       }
     } catch (err) {
       notifications.show({
@@ -714,28 +718,24 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
                       data-testid="cron-job-detail-timezone"
                     />
 
-                    <NumberInput
+                    <CronIntegerInput
                       label={t.jobDetail.fields.timeout}
                       description={t.jobDetail.fields.timeoutDescription}
                       value={form.timeout_ms}
-                      onChange={(value) =>
-                        setForm((prev) => ({ ...prev, timeout_ms: normalizeCronTimeoutMs(value) }))
-                      }
-                      allowDecimal={false}
+                      onChange={(timeout_ms) => setForm((prev) => ({ ...prev, timeout_ms }))}
+                      normalize={normalizeCronTimeoutMs}
                       min={timeoutMin}
                       step={CRON_NUMBER_INPUTS.timeout_ms.step}
                       readOnly={locked('timeout_ms')}
                       data-testid="cron-job-detail-timeout"
                     />
 
-                    <NumberInput
+                    <CronIntegerInput
                       label={t.jobDetail.fields.memoryLimit}
                       description={t.jobDetail.fields.memoryLimitDescription}
                       value={form.memory_limit_mb}
-                      onChange={(value) =>
-                        setForm((prev) => ({ ...prev, memory_limit_mb: normalizeCronMemoryLimitMb(value) }))
-                      }
-                      allowDecimal={false}
+                      onChange={(memory_limit_mb) => setForm((prev) => ({ ...prev, memory_limit_mb }))}
+                      normalize={normalizeCronMemoryLimitMb}
                       min={memoryMin}
                       max={memoryMax}
                       step={CRON_NUMBER_INPUTS.memory_limit_mb.step}
