@@ -176,7 +176,7 @@ semver habit, where a bug fix would be `patch`.
 Two facts make the bump type a labelling decision rather than a functional
 one, so getting it wrong is cheap to correct but easy to let drift:
 
-- All 14 packages ship in lockstep (a single `fixed` group in
+- All 15 packages ship in lockstep (a single `fixed` group in
   `.changeset/config.json`), so every release moves every package to the same
   version. Changesets takes the **maximum** bump across all pending
   changesets — one `minor` in the queue makes the whole release a minor.
