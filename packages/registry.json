@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T08:40:05.650Z",
+  "generatedAt": "2026-10-08T15:32:58.636Z",
   "version": "3.0.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -213,6 +213,11 @@
           "sourceSha256": "9f00a6b9cfcbfa4927e7caa9442c3b81c31e4f5ea8145e49c6b60c68af9aa1fa"
         },
         {
+          "source": "utils/src/cron.ts",
+          "target": "lib/buildpad/cron.ts",
+          "sourceSha256": "bf5a8d20a4adacef342808e08460661f01a001330fc113c1a3ebc0d4e77a879b"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts",
           "sourceSha256": "ed12f01cfca2ffe0f9b7fdd5987617cf776c9425c444e4edfc553ff647db2afd"
@@ -256,6 +261,11 @@
           "source": "utils/src/i18n/namespaces/workflows.ts",
           "target": "lib/buildpad/i18n/namespaces/workflows.ts",
           "sourceSha256": "4461b63423ff1b430af4aff07386bb8e22704b4fe580c0da41719aa0c6b68e69"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/cron.ts",
+          "target": "lib/buildpad/i18n/namespaces/cron.ts",
+          "sourceSha256": "ab51cdc521a0d883dc9d6d6cdf176d12fd1b7c88b03090972c3947d24f9d9d99"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -455,12 +465,12 @@
         {
           "source": "utils/src/i18n/types.ts",
           "target": "lib/buildpad/i18n/types.ts",
-          "sourceSha256": "eb71916377a0dc1fdeed371ad1b176374170afe4bd51b60240243099caf1d535"
+          "sourceSha256": "88af8d32b48aad2443e0c17fca79ff03eedd2af843b45328f1de6d04d4be6e6c"
         },
         {
           "source": "utils/src/i18n/defaults.ts",
           "target": "lib/buildpad/i18n/defaults.ts",
-          "sourceSha256": "7340d129f972f16cc45e81c339cbeda8be47fc10627a780aa1ff4e34a81d6652"
+          "sourceSha256": "ccf40eaf26a7f6d8df73e7ce364243a41db2dd31622199fe9d1e0e75343cd2db"
         },
         {
           "source": "utils/src/i18n/merge.ts",
@@ -485,7 +495,7 @@
         {
           "source": "utils/src/i18n/locales/id.ts",
           "target": "lib/buildpad/i18n/locales/id.ts",
-          "sourceSha256": "ce435d70db578730e9454b8a531e8bfc82a0486c3b3628b2e7d4b599fb24c69b"
+          "sourceSha256": "277358e036036a04118da30bac37b56b1231645f0f09ef6aaae46a547398d050"
         },
         {
           "source": "utils/src/i18n/locales/index.ts",
@@ -495,12 +505,12 @@
         {
           "source": "utils/src/i18n/index.ts",
           "target": "lib/buildpad/i18n/index.ts",
-          "sourceSha256": "d1a8ea3b3e596a54c05a99fdd5dc7da6133c5098566621d84b227de972aa5dc3"
+          "sourceSha256": "54af8e2cc7d45f8a8bfee1be4c443ad4911101b822262cfd0e38636b86928f1b"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "d3342ab918b1fd25fb73b178c54f6f54029665f4e1ccf8fe405e756a358cb42f"
+          "sourceSha256": "3c95943caa79524a296faadf461fc10d44158f3b5699446acf813b82a5543b6c"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -565,9 +575,14 @@
           "sourceSha256": "330fe73b3cfc645f53e6db8a12741a23daf98127e62077ac709b707edf8aa41a"
         },
         {
+          "source": "types/src/cron.ts",
+          "target": "lib/buildpad/types/cron.ts",
+          "sourceSha256": "db75ead9b01b0ed3c46c42f0851d3a43b7e1fe1adfec41f07f177df6acc63654"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts",
-          "sourceSha256": "714b4d34fafe2b60b5f1f915d7801e8c1460d86179e4d54354cfcfe746e06677"
+          "sourceSha256": "350c9819e7aa9e3ec53d21bec6eebcd4b6f1115fe51b69ebbf5ca29a133d1f25"
         }
       ],
       "sourcePackage": "@buildpad/types",
@@ -856,6 +871,16 @@
           "sourceSha256": "83cd7c79827953a4e3a58ad16c9abcb8e55fa6a826a8162dc4b446609eb68d7d"
         },
         {
+          "source": "hooks/src/useCronJobs.ts",
+          "target": "lib/buildpad/hooks/useCronJobs.ts",
+          "sourceSha256": "c2695c1a8b47903ddcefaa14a7b192a63307afbb7c5e08adaced849a78a0049a"
+        },
+        {
+          "source": "hooks/src/useCronRuns.ts",
+          "target": "lib/buildpad/hooks/useCronRuns.ts",
+          "sourceSha256": "bb61aae802dd5001e64cd4a95d38bad8467d3d3bcd4a3b6c77239562c9750ab4"
+        },
+        {
           "source": "hooks/src/useUrlListParams.ts",
           "target": "lib/buildpad/hooks/useUrlListParams.ts",
           "sourceSha256": "5b5e69610ac34b7c5fc2d6cf27c6d16419e962754fe2bbafe75e22ec4f5d4ed8"
@@ -868,7 +893,7 @@
         {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "6bc796ac99d22e82487b9fcfa72ddbb10c84aa3ff6613a679f451a9daca9ce60"
+          "sourceSha256": "fa230a06ca4f6f3a18aaaa7478d0ec9def182dbcf97ae1999ef69915a7adcdb1"
         }
       ],
       "internalDependencies": [
