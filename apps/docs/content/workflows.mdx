@@ -106,8 +106,13 @@ buildpad add workflow-management
 ### Install the diagram library
 
 The diagram is drawn with [React Flow](https://reactflow.dev)
-(`@xyflow/react`, MIT). `buildpad add` offers to install it, pinned to
-`^12.9.3`. If you declined, install it yourself:
+(`@xyflow/react`, MIT). In a terminal, `buildpad add` offers to install it,
+pinned to `^12.9.3`, before it validates the app.
+
+Without a terminal (CI, a script, a coding agent) `buildpad add` does not
+install anything it cannot ask about: it prints the command below and its
+validation then fails on the missing module. In that case install the library
+first, then add the module:
 
 ```bash copy
 pnpm add "@xyflow/react@^12.9.3"
