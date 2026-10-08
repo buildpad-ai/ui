@@ -1,5 +1,59 @@
 # @buildpad/services
 
+## 3.0.0
+
+### Major Changes
+
+- 443b901: The relational missing-provider alert (`interfaces.relationalUI.missingProvider.message`, en + id) no longer tells developers to render the field inside a VForm: a plain VForm supplies only itself (the form renderer), not CollectionForm / CollectionList. It now points to CollectionForm, `CollectionsRelationalProvider` (around the field or the VForm) or the `components` prop, and names the form-renderer slot "VForm". `ListO2M`, `ListM2M` and `ListM2A` only report components for actions the field would otherwise offer (enable flags, create / select / update permissions, unique and singleton guards), so users without those permissions no longer see the alert. Docs and JSDoc now say what a VForm supplies.
+- 60ae923: Break the ui-form → ui-interfaces → ui-collections → ui-form package cycle with a relational UI context.
+
+  - New lib file `lib/buildpad/services/relational-ui-context.tsx` (`@buildpad/services/relational-ui-context`): `RelationalUIProvider`, `useRelationalUI`, `mergeRelationalUI`, `missingRelationalUI` and structural slot types for `CollectionForm`, `CollectionList` and `FormRenderer` (VForm). Nested providers merge; `defaults` only fill slots nothing above supplies. Also re-exported from the services barrel.
+  - `ListO2M`, `ListM2M`, `ListM2A` and `JunctionItemForm` no longer import `@buildpad/ui-collections` / `@buildpad/ui-form`. They take those components from a new optional `components` prop, then the relational provider, and render each in its own Suspense boundary (new `components/ui/list-m2a/relational-slots.tsx`). With no provider they render a translated alert (`interfaces.relationalUI`, en + id) and hide the create / select / edit actions whose dialog component is missing; listing, removing and reordering still work.
+  - `CollectionForm` supplies `{ CollectionForm, CollectionList (React.lazy), FormRenderer: VForm }` to the fields it renders; `VForm` supplies `{ FormRenderer: VForm }`. Both only fill slots a provider above did not choose. `collection-form` now declares `collection-list` as a registry dependency.
+  - New `CollectionsRelationalProvider` (exported from `collection-form`) for standalone relational interfaces and standalone `VForm`s with relational fields. The CLI's `/content` layout template and `FormPreview`'s offline VForm use it.
+  - Standalone `<ListO2M>` / `<ListM2M>` / `<ListM2A>` and plain `<VForm>`s with relational fields must now be wrapped in a provider (or given `components`) to create, select or edit related items. See docs/MIGRATION-3.0.md.
+  - Monorepo: `@buildpad/ui-interfaces` drops its peer/dev dependencies on `@buildpad/ui-collections` and `@buildpad/ui-form`; the root build is utils first, then `pnpm -r build`; `packages/ui-collections/dist` is no longer committed; `pnpm graph:check` allows no package cycle.
+
+### Minor Changes
+
+- eddcba0: Permission filters fail closed.
+
+  `filter-to-query` translated DaaS permission filters into Supabase queries by dropping whatever it could not express: an unknown operator, a relational path such as `{ owner: { id: { _eq: "$CURRENT_USER" } } }`, an `_in` whose value was not an array (every `_in: "$CURRENT_ROLES"`), or a dynamic variable it did not resolve. The query then ran without that restriction and returned every row — and static-token users run through the service-role client, so RLS did not catch it.
+
+  Any filter the translator cannot enforce faithfully now throws `UnsupportedPermissionFilterError` (a 403 `PermissionError`). `getPermissionFilters` turns that into its deny-all filter; `applyFilterToQuery` throws it to the caller. Values inside `.or()` and `in.(…)` strings are quoted and escaped, closing a PostgREST filter-string injection.
+
+  `$CURRENT_ROLES`, `$CURRENT_POLICIES` and `$NOW` are now resolved; `$CURRENT_USER.<field>`, `$NOW(<offset>)` and `$FOLLOW` deny.
+
+  Behaviour changes to check against your permissions:
+
+  - A filter that "worked" because part of it was silently dropped now denies.
+  - `_contains` / `_ncontains` are substring matches, as the permission editor describes them. They were translated to array containment, which errors on text columns. `_nicontains`, `_istarts_with`, `_nistarts_with`, `_iends_with`, `_niends_with` and `_regex` are new.
+  - `_empty` / `_nempty` match NULL or `''` (previously NULL only).
+  - `_null` / `_nnull` require a boolean; `_eq: null` throws (use `_null`); an empty `_or: []` denies.
+  - `$CURRENT_ROLE` for a user with no role denies (it resolved to `null`).
+
+- b4030ca: More fail-closed fixes in `auth/enforcer` and `auth/session`, found while adding tests for them.
+
+  - Only an explicit `true` grants: `check_permission` results and `admin_access` values such as `'false'`, `1` or `{}` used to count as granted/admin (in `enforcePermission`, `getUserPermissions`, `getPermissionFilters` and `isAdmin()`, which also returned the raw value).
+  - `getUserPermissions` and `getPermissionFilters` ignored errors from the admin and policy lookups.
+  - `getPermissionFilters` returned `undefined` — read by callers as "no filter", full access — for a permission row without a `permissions` key; any malformed row now denies.
+  - `getAccessibleFields` passed a non-array RPC result through, so a bare `'*'` string granted every field.
+  - An empty `Bearer ` token is rejected before any lookup.
+  - The deny-all filter is now `id IS NULL AND id IS NOT NULL`. The old `id = '__DENY_ALL__'` made PostgREST answer 400 instead of an empty result on uuid and integer `id` columns.
+
+  Known gap, not changed here: `daas_users.status` is only checked for static tokens, so a suspended user keeps a cookie/JWT session until it expires.
+
+### Patch Changes
+
+- Updated dependencies [9544e24]
+- Updated dependencies [443b901]
+- Updated dependencies [60ae923]
+- Updated dependencies [3fd3c13]
+- Updated dependencies [5147727]
+- Updated dependencies [42ab7ff]
+  - @buildpad/utils@3.0.0
+  - @buildpad/types@3.0.0
+
 ## 2.6.0
 
 ### Patch Changes

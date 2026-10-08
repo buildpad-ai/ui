@@ -1,5 +1,87 @@
 # @buildpad/ui-interfaces
 
+## 3.0.0
+
+### Major Changes
+
+- 37df067: `collection-form`, `collection-list`, `list-m2a`'s `JunctionItemForm` and the relation hooks read interface ids through the interface manifest's predicates instead of their own id lists. Each accepts exactly the ids it accepted before:
+
+  - `CollectionForm` and `CollectionList`: their two copies of `NON_FLAT_RELATIONAL_SPECIALS` + `NON_FLAT_RELATIONAL_INTERFACES` became one utils helper, `isNonFlatRelationalField()` (an m2a/m2m/o2m special, or the list-o2m/list-m2m/list-m2a interfaces); the two `selfPersistingInterfaces` sets became `isSelfPersistingInterface()` (files); the alias-field presentation check became `isRenderedPresentationInterface()` (presentation-divider, presentation-notice).
+  - `JunctionItemForm` keeps any `presentation-*` alias field through `isPresentationLikeInterface()`.
+  - `useRelationO2M`, `useRelationM2M` and `useRelationM2A` check the field through `isRelationListInterface()` (`one-to-many` is still accepted by `useRelationO2M`).
+
+  These files import the predicates from the utils barrel (`@/lib/buildpad/utils`), so they need the 3.0 utils lib, which the 3.0 `buildpad upgrade` brings along with them.
+
+  The `hooks` lib module now declares `utils` in its `internalDependencies` (registry metadata only; no file moves). Its sources import `@buildpad/utils` directly, and until now `utils` was reachable only through `services`. Installing `hooks` behaves the same, because `services` already pulled `utils` in.
+
+- 443b901: The relational missing-provider alert (`interfaces.relationalUI.missingProvider.message`, en + id) no longer tells developers to render the field inside a VForm: a plain VForm supplies only itself (the form renderer), not CollectionForm / CollectionList. It now points to CollectionForm, `CollectionsRelationalProvider` (around the field or the VForm) or the `components` prop, and names the form-renderer slot "VForm". `ListO2M`, `ListM2M` and `ListM2A` only report components for actions the field would otherwise offer (enable flags, create / select / update permissions, unique and singleton guards), so users without those permissions no longer see the alert. Docs and JSDoc now say what a VForm supplies.
+- 60ae923: Break the ui-form → ui-interfaces → ui-collections → ui-form package cycle with a relational UI context.
+
+  - New lib file `lib/buildpad/services/relational-ui-context.tsx` (`@buildpad/services/relational-ui-context`): `RelationalUIProvider`, `useRelationalUI`, `mergeRelationalUI`, `missingRelationalUI` and structural slot types for `CollectionForm`, `CollectionList` and `FormRenderer` (VForm). Nested providers merge; `defaults` only fill slots nothing above supplies. Also re-exported from the services barrel.
+  - `ListO2M`, `ListM2M`, `ListM2A` and `JunctionItemForm` no longer import `@buildpad/ui-collections` / `@buildpad/ui-form`. They take those components from a new optional `components` prop, then the relational provider, and render each in its own Suspense boundary (new `components/ui/list-m2a/relational-slots.tsx`). With no provider they render a translated alert (`interfaces.relationalUI`, en + id) and hide the create / select / edit actions whose dialog component is missing; listing, removing and reordering still work.
+  - `CollectionForm` supplies `{ CollectionForm, CollectionList (React.lazy), FormRenderer: VForm }` to the fields it renders; `VForm` supplies `{ FormRenderer: VForm }`. Both only fill slots a provider above did not choose. `collection-form` now declares `collection-list` as a registry dependency.
+  - New `CollectionsRelationalProvider` (exported from `collection-form`) for standalone relational interfaces and standalone `VForm`s with relational fields. The CLI's `/content` layout template and `FormPreview`'s offline VForm use it.
+  - Standalone `<ListO2M>` / `<ListM2M>` / `<ListM2A>` and plain `<VForm>`s with relational fields must now be wrapped in a provider (or given `components`) to create, select or edit related items. See docs/MIGRATION-3.0.md.
+  - Monorepo: `@buildpad/ui-interfaces` drops its peer/dev dependencies on `@buildpad/ui-collections` and `@buildpad/ui-form`; the root build is utils first, then `pnpm -r build`; `packages/ui-collections/dist` is no longer committed; `pnpm graph:check` allows no package cycle.
+
+- 5147727: VForm loads heavy interface components on demand and no longer imports the components barrel.
+
+  - New `vform` file `components/ui/vform/components/interface-components.tsx`: `EAGER_INTERFACE_COMPONENTS` (the light controls, imported statically, each from its own file) and `LAZY_INTERFACE_COMPONENTS` (`RichTextHTML`, `RichTextMarkdown`, `InputBlockEditor`, `SelectIcon`, `Map`, `AutocompleteAPI`, `CollectionItemDropdown`, `File`, `FileImage`, `Files`, `ListO2M`, `ListM2M`, `ListM2A`, each behind `React.lazy(() => import(…))`). A form bundles only the eager table; before, `FormFieldInterface` imported `@/components/ui` and with it every installed component.
+  - `FormFieldInterface` reads the interface manifest instead of its own tables: the component name comes from the new `getRenderedInterfaceEntry(type)` (an entry id or a deprecated type literal), the csv normalisation from the `csvMultiValue` flag. While a lazy component loads, the field shows a skeleton of the manifest's `fallbackHeight` in its own Suspense boundary. A `client-only` component (the block editor) is not rendered until the page has hydrated; VForm now loads `input-block-editor.tsx` directly, not the `next/dynamic` wrapper.
+  - A component the tables do not name is looked up on demand in the components barrel, as before: `SystemPermissions` (which `vform` does not install) and a project's own interfaces (`my-widget` → `MyWidget`) keep rendering, and an unknown one still shows the "Interface component not found" alert. A failed component load is reported by the field's error boundary.
+  - `FormGroupField` imports the three group interfaces from their own files.
+  - `@buildpad/utils` exports `getRenderedInterfaceEntry` (also from the consumer utils barrel).
+  - Monorepo: `@buildpad/ui-interfaces` gains the subpath exports `./input-hash`, `./select-dropdown-m2o`, `./select-multiple-dropdown` and `./select-multiple-checkbox-tree`, so each interface can be imported by the path its registry component installs under.
+
+  How stored records render does not change: every interface id resolves to the same component with the same props. Tests that render a lazy interface through VForm must now wait for it (`findBy…`). Upgrade the whole project (`buildpad upgrade`) with the 3.0 CLI; see docs/MIGRATION-3.0.md.
+
+### Minor Changes
+
+- bf82134: Sanitize stored block-editor content before rendering it.
+
+  `InputBlockEditor` passed a stored value straight to EditorJS, which assigns paragraph, header, quote, list, checklist and table strings to `innerHTML` without sanitizing them — its sanitizer only runs on save and paste. A value saved with `<img src=x onerror=…>` in a paragraph therefore ran script for whoever opened the item, read-only views included.
+
+  Every string in a block's data now goes through DOMPurify, limited to the inline markup the editor's own tools produce (bold, italic, underline, inline code, links, marks, line breaks). `javascript:` links and event handlers are removed. Code blocks are left alone: they render as plain text, and markup is their content.
+
+  The component gains a `dompurify` dependency; `buildpad add input-block-editor` and `buildpad fix` install it.
+
+- dbbf3e1: Dependency security upgrades.
+
+  `pnpm audit --prod` reported 125 advisories (3 critical, 58 high); it now reports none apart from one documented exception.
+
+  - The CLI installs `@tiptap/*` ^3.31.4 (was ^3.13.0), `axios` ^1.20.0 (was ^1.6.0), `@mapbox/mapbox-gl-draw` ^1.5.2 and `dompurify` ^3.4.16 for the components that use them.
+  - `@buildpad/mcp` moves to `@modelcontextprotocol/sdk` 1.x (was 0.5).
+  - `maplibre-gl` stays on 5.x: its critical attribution XSS (GHSA-jrc7-96c5-q579) is fixed only in v6, which needs bundler worker setup in every app. Until then the map interface sanitizes basemap `attribution` with DOMPurify, the only way untrusted HTML reaches maplibre. `buildpad add map-with-real-map` now installs `dompurify`.
+
+- cdb8c96: Fix three interface bugs the revived test suites caught.
+
+  - **Tags**: pressing Enter split the typed tag on the letters E, n, t, e and r ("lowercase tag" became `low`, `cas`, `ag`). Mantine builds a regex character class from `splitChars`, and `'Enter'` was listed there as if it were a key name. Only `,` splits now; Enter still commits the tag.
+  - **Color**: a color could not be typed into the hex field of a controlled form. The field was bound to `value`, which only changes on a complete, valid hex, so every keystroke was discarded. The field now keeps its own draft, re-syncs when `value` changes, and drops an unfinished draft on blur.
+  - **Toggle**: with `showStateLabels`, the description and error text rendered twice.
+
+- fdef931: The workflow button works as a form field again.
+
+  - **Item id**: `VForm` hands every interface the record's key as `primaryKey`, but `WorkflowButton` read only `itemId`. Inside a form the button therefore got no id, treated every existing item as new, and showed the placeholder with no current state and no transitions. It now accepts `primaryKey` as well; `itemId` wins when both are given. Only the `workflow-button` component changes — `vform` is untouched.
+  - **Failed transitions**: a transition the server refused (or that failed) was only logged to the console, so the button went back to the old state without a word. `useWorkflow().executeTransition` still rejects, and now also puts the failure in `errorMessage`, which the button shows. The next transition or refetch clears it. With the built-in fetch client the text is the HTTP status line (`HTTP error! status: 403`); the response body is not read yet.
+  - **Instance lookup**: `useWorkflow` looked the instance up by `item_id` alone, so item 5 of one collection could show the workflow of item 5 of another. The lookup now filters by `collection` too. Lookups by `translationId` are unchanged.
+
+### Patch Changes
+
+- Updated dependencies [37df067]
+- Updated dependencies [9544e24]
+- Updated dependencies [78f5d65]
+- Updated dependencies [eddcba0]
+- Updated dependencies [443b901]
+- Updated dependencies [60ae923]
+- Updated dependencies [b4030ca]
+- Updated dependencies [3fd3c13]
+- Updated dependencies [5147727]
+- Updated dependencies [42ab7ff]
+  - @buildpad/hooks@3.0.0
+  - @buildpad/utils@3.0.0
+  - @buildpad/services@3.0.0
+  - @buildpad/types@3.0.0
+
 ## 2.6.0
 
 ### Minor Changes

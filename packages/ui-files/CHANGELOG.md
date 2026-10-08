@@ -1,5 +1,29 @@
 # @buildpad/ui-files
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies [bf82134]
+- Updated dependencies [dbbf3e1]
+- Updated dependencies [37df067]
+- Updated dependencies [9544e24]
+- Updated dependencies [78f5d65]
+- Updated dependencies [eddcba0]
+- Updated dependencies [443b901]
+- Updated dependencies [60ae923]
+- Updated dependencies [b4030ca]
+- Updated dependencies [cdb8c96]
+- Updated dependencies [3fd3c13]
+- Updated dependencies [5147727]
+- Updated dependencies [fdef931]
+- Updated dependencies [42ab7ff]
+  - @buildpad/ui-interfaces@3.0.0
+  - @buildpad/hooks@3.0.0
+  - @buildpad/utils@3.0.0
+  - @buildpad/services@3.0.0
+  - @buildpad/types@3.0.0
+
 ## 2.6.0
 
 ### Patch Changes

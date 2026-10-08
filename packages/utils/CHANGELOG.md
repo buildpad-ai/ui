@@ -1,5 +1,83 @@
 # @buildpad/utils
 
+## 3.0.0
+
+### Major Changes
+
+- 9544e24: Add the interface manifest, `lib/buildpad/interface-manifest.ts`: one data table of field-interface identity, with an entry per interface id (aliases, registry component, component export name, compatible field types, group, behaviour flags, form-builder picker descriptor, loading class). The interface tables that were kept by hand are derived from it, under their old names and with their old values. How stored records render does not change.
+
+  - `getFieldInterface` resolves the legacy alias ids (`textarea`, `wysiwyg`, the xtremax workflow ids, …) through `normalizeInterfaceId()`; they are no longer extra `case` labels. The switch first sees the id with only the registry aliases resolved (as in 2.6), so a `case` a project added for a legacy id or its own variant is still reached; only an id no case names falls back to its manifest renderer id. `REGISTRY_INTERFACE_ALIASES`, the concealing set, `CHOICE_INTERFACES`, `PROVISIONABLE_INTERFACES` and `isPresentationField` are derived from the manifest.
+  - The utils barrel exports the manifest and its helpers (`INTERFACE_MANIFEST`, `normalizeInterfaceId`, `getInterfaceManifestEntry`, `interfaceHasFlag`, `isPresentationInterface`, `isNonFlatRelationalInterface`, `isSelfPersistingInterface`, `isRelationListInterface`, …), and the field-level `isNonFlatRelationalField(field)` (an m2a/m2m/o2m special or a list-o2m/m2m/m2a interface).
+  - `InterfaceGroup` gains `'system'`, the registry group of `system-permissions` (a `Record<InterfaceGroup, …>` needs a `system` key). The `InterfaceType` literals the mapper never returns (`textarea`, `number`, `uuid`, `list-m2o`) are marked `@deprecated` and kept.
+  - `interface-registry`, `define-interface` and `load-interfaces` are deprecated: nothing populates that registry and VForm never reads it. They stay exported. With the new `'system'` group, `InterfaceRegistry.getGrouped(true)` returns 8 groups (it used to drop `system` interfaces) and `getInterfacesForApi` names that group "System".
+
+  Upgrade with the 3.0 CLI, which upgrades an entry's dependencies with it; see docs/MIGRATION-3.0.md.
+
+- 443b901: The relational missing-provider alert (`interfaces.relationalUI.missingProvider.message`, en + id) no longer tells developers to render the field inside a VForm: a plain VForm supplies only itself (the form renderer), not CollectionForm / CollectionList. It now points to CollectionForm, `CollectionsRelationalProvider` (around the field or the VForm) or the `components` prop, and names the form-renderer slot "VForm". `ListO2M`, `ListM2M` and `ListM2A` only report components for actions the field would otherwise offer (enable flags, create / select / update permissions, unique and singleton guards), so users without those permissions no longer see the alert. Docs and JSDoc now say what a VForm supplies.
+- 60ae923: Break the ui-form → ui-interfaces → ui-collections → ui-form package cycle with a relational UI context.
+
+  - New lib file `lib/buildpad/services/relational-ui-context.tsx` (`@buildpad/services/relational-ui-context`): `RelationalUIProvider`, `useRelationalUI`, `mergeRelationalUI`, `missingRelationalUI` and structural slot types for `CollectionForm`, `CollectionList` and `FormRenderer` (VForm). Nested providers merge; `defaults` only fill slots nothing above supplies. Also re-exported from the services barrel.
+  - `ListO2M`, `ListM2M`, `ListM2A` and `JunctionItemForm` no longer import `@buildpad/ui-collections` / `@buildpad/ui-form`. They take those components from a new optional `components` prop, then the relational provider, and render each in its own Suspense boundary (new `components/ui/list-m2a/relational-slots.tsx`). With no provider they render a translated alert (`interfaces.relationalUI`, en + id) and hide the create / select / edit actions whose dialog component is missing; listing, removing and reordering still work.
+  - `CollectionForm` supplies `{ CollectionForm, CollectionList (React.lazy), FormRenderer: VForm }` to the fields it renders; `VForm` supplies `{ FormRenderer: VForm }`. Both only fill slots a provider above did not choose. `collection-form` now declares `collection-list` as a registry dependency.
+  - New `CollectionsRelationalProvider` (exported from `collection-form`) for standalone relational interfaces and standalone `VForm`s with relational fields. The CLI's `/content` layout template and `FormPreview`'s offline VForm use it.
+  - Standalone `<ListO2M>` / `<ListM2M>` / `<ListM2A>` and plain `<VForm>`s with relational fields must now be wrapped in a provider (or given `components`) to create, select or edit related items. See docs/MIGRATION-3.0.md.
+  - Monorepo: `@buildpad/ui-interfaces` drops its peer/dev dependencies on `@buildpad/ui-collections` and `@buildpad/ui-form`; the root build is utils first, then `pnpm -r build`; `packages/ui-collections/dist` is no longer committed; `pnpm graph:check` allows no package cycle.
+
+- 5147727: VForm loads heavy interface components on demand and no longer imports the components barrel.
+
+  - New `vform` file `components/ui/vform/components/interface-components.tsx`: `EAGER_INTERFACE_COMPONENTS` (the light controls, imported statically, each from its own file) and `LAZY_INTERFACE_COMPONENTS` (`RichTextHTML`, `RichTextMarkdown`, `InputBlockEditor`, `SelectIcon`, `Map`, `AutocompleteAPI`, `CollectionItemDropdown`, `File`, `FileImage`, `Files`, `ListO2M`, `ListM2M`, `ListM2A`, each behind `React.lazy(() => import(…))`). A form bundles only the eager table; before, `FormFieldInterface` imported `@/components/ui` and with it every installed component.
+  - `FormFieldInterface` reads the interface manifest instead of its own tables: the component name comes from the new `getRenderedInterfaceEntry(type)` (an entry id or a deprecated type literal), the csv normalisation from the `csvMultiValue` flag. While a lazy component loads, the field shows a skeleton of the manifest's `fallbackHeight` in its own Suspense boundary. A `client-only` component (the block editor) is not rendered until the page has hydrated; VForm now loads `input-block-editor.tsx` directly, not the `next/dynamic` wrapper.
+  - A component the tables do not name is looked up on demand in the components barrel, as before: `SystemPermissions` (which `vform` does not install) and a project's own interfaces (`my-widget` → `MyWidget`) keep rendering, and an unknown one still shows the "Interface component not found" alert. A failed component load is reported by the field's error boundary.
+  - `FormGroupField` imports the three group interfaces from their own files.
+  - `@buildpad/utils` exports `getRenderedInterfaceEntry` (also from the consumer utils barrel).
+  - Monorepo: `@buildpad/ui-interfaces` gains the subpath exports `./input-hash`, `./select-dropdown-m2o`, `./select-multiple-dropdown` and `./select-multiple-checkbox-tree`, so each interface can be imported by the path its registry component installs under.
+
+  How stored records render does not change: every interface id resolves to the same component with the same props. Tests that render a lazy interface through VForm must now wait for it (`findBy…`). Upgrade the whole project (`buildpad upgrade`) with the 3.0 CLI; see docs/MIGRATION-3.0.md.
+
+### Minor Changes
+
+- 3fd3c13: New Workflows module: the `@buildpad/ui-workflows` package, the `workflow-management` registry component and the `workflows-routes` lib module. `buildpad add workflows-routes` installs the whole feature.
+
+  - **Definitions** (`WorkflowsManager`, `WorkflowDetail`): the list with search, paging and permission-gated create, edit and delete; the editor with the name, the description and the state machine drawn as a diagram. States and commands are edited in dialogs (`WorkflowStateModal`, `WorkflowCommandModal`: target state, policies, module access keys kept as stored, actions with JSON parameters) or on the canvas (drag a state, draw a connection, move an edge, delete with the menu or the keyboard). `WorkflowDiagram` is exported on its own for a read-only diagram on another page.
+  - **Assignments** (`WorkflowAssignmentsManager`, `WorkflowAssignmentDetail`): which workflow the items of which collection get, with an optional filter rule edited as JSON.
+  - **Instances** (`WorkflowInstancesManager`, `WorkflowInstanceDetail`): read-only list and detail with the current state, the diagram and the whole transition history.
+  - A command is also added from a state's menu (Add Command), so the editor can be worked with the keyboard: a connection can only be drawn with a pointer. An action's Parameters must be a JSON object; the Go engine refuses a definition that stores anything else there.
+  - A definition answered without `workflow_json` (the caller's read grant withholds the field) shows a notice in place of the diagram. It is not drawn as an empty machine and the document is never sent, so a save cannot replace the stored one.
+  - Navigation is by callback props (`onWorkflowClick`, `onCreateWorkflow`, `onAssignmentClick`, `onCreateAssignment`, `onInstanceClick`, `onBack`, `onSaved`). A detail component keeps `id="new"` after a create, so the page must navigate in `onSaved`; the installed pages do.
+  - Permissions are checked on the collections the API enforces: `daas_wf_definition`, `daas_wf_assignment`, `daas_wf_instance` and `daas_wf_history`. Not-found, access-denied and load-error states are drawn as such, never as an empty list.
+  - Both backends are supported through the `useWorkflowDefinitions`, `useWorkflowAssignments` and `useWorkflowInstances` hooks.
+  - Strings come from the `workflows` namespace (English and Indonesian); every component takes a `translations` override.
+
+  **New npm dependency: `@xyflow/react`** (React Flow 12, MIT) draws the diagram. `add` and `upgrade` install it pinned to `^12.9.3`, and `fix` knows it. `WorkflowDiagram` imports `@xyflow/react/dist/style.css` itself. React Flow shows an attribution on the canvas; `hideAttribution` removes it, which its authors ask organisations to pair with supporting the project.
+
+  **Registry and CLI**
+
+  - `workflow-management` (category `workflow`, not part of `add --all`): 22 files under `components/ui/workflow-management/`; depends on the `types`, `hooks`, `services` and `utils` lib modules and on the `vtable` component.
+  - `workflows-routes`: six pages under `app/[lang]/(authenticated)/` (`/workflows`, `/workflows/[id]`, `/workflow-assignments`, `/workflow-assignments/[id]`, `/workflow-instances`, `/workflow-instances/[id]`) and three sidebar entries in a new Automation section. The app dictionary gains `app.nav.workflows`, `app.nav.workflowAssignments`, `app.nav.workflowInstances` and `app.nav.automation`; an existing app gets them from `buildpad upgrade i18n`, and the sidebar shows the English labels until then.
+  - `@buildpad/ui-workflows` imports are rewritten to `@/components/ui/workflow-management` (subpaths kebab-cased).
+  - `buildpad add` installs a component's missing npm dependencies before it validates the project. It validated first, and validation exits on a type error, so adding a component whose npm package the app did not have yet (here `@xyflow/react`) ended with `TS2307: Cannot find module` and exit code 1, without installing the package or printing the install command. Modules whose dependencies `bootstrap` already installs were not affected.
+  - `@buildpad/mcp` embeds the same registry, so `list_components`, `list_lib_modules` and `copy_component` serve both entries.
+
+  **Utils additions the editor uses** (`@buildpad/utils`): the diagram gestures as functions from one document to the next (`removeWorkflowState`, `removeWorkflowCommand`, `moveWorkflowState`, `reconnectWorkflowCommand`), `findWorkflowConnectionProblem` (no command out of an end state, back to its own state, or to something that is no state), the end-state check of `findWorkflowStateProblem` (an end state cannot be given to a state that has commands), and `splitRichText` for strings that carry `<tag>…</tag>` markers.
+
+  Storybook: `pnpm storybook:workflows` (port 6013), built with the others by `pnpm build:storybook`. Docs: the Workflows Module Recipe page.
+
+- 42ab7ff: Data layer for a Workflows admin module: types, data hooks, editor logic and translations. No components yet.
+
+  - **Types** (`@buildpad/types`, `workflow.ts`): `WorkflowDefinitionRecord`, `WorkflowAssignmentRecord`, `WorkflowInstanceRecord`, `WorkflowHistoryRecord`, the `workflow_json` document (`WorkflowJson`, `WorkflowJsonState`, `WorkflowJsonCommand` with `module_access_keys`, `sourceHandle` and `targetHandle`, `WorkflowJsonAction`), the create and update bodies, and `WorkflowListResult<T>`. The four collection names are constants (`WORKFLOW_COLLECTIONS`: `daas_wf_definition`, `daas_wf_assignment`, `daas_wf_instance`, `daas_wf_history`); gate on these, they are the names the API enforces. The older, narrower `WorkflowAssignment`, `WorkflowState` and `WorkflowInstance` types of `@buildpad/hooks`, and the workflow button's own types, are unchanged.
+  - **Hooks** (`@buildpad/hooks`): `useWorkflowDefinitions` (list, load every page for a picker, get, create, update, delete), `useWorkflowAssignments` (list, get, create, update, delete) and `useWorkflowInstances` (list, get, full transition history). They work against both backends: list counts are read from `count`/`totalCount`/`totalPages` and from `meta.filter_count`/`meta.total_pages`, `data: null` is an empty page, and `page` and `limit` are always sent.
+  - `WorkflowDefinitionRecord.workflow_json` is optional: both backends drop a field the caller's grant withholds, and the hooks do not put an empty machine in its place. `updateDefinition` sends a cleared description as an empty string, which both backends store (the Go engine ignores a `null` there).
+  - **Typed errors** (`@buildpad/hooks`): every method of these hooks rejects with a `DaaSRequestError` whose `kind` is `notFound`, `forbidden`, `mfaRequired`, `unauthenticated`, `invalid` or `failure`, with the status, the backend's error code, and the readable message from `parseDaaSError`. A failed load is never an empty list, and a get never resolves without a record. `toDaaSRequestError`, `readDaaSListResponse`, `buildDaaSListQuery`, `readDaaSRecord` and `useDaaSRequest` are exported for other data hooks.
+  - **Editor logic** (`@buildpad/utils`): `buildWorkflowCommand` and `buildWorkflowState` build what a dialog saves on top of the stored object, so keys the form has no field for (a command's `module_access_keys`) and the stored key order survive; `findWorkflowCommandProblem`, `findWorkflowStateProblem` and `findWorkflowDefinitionProblem` return what refuses a save, with a code to translate; `applyWorkflowStateSave` and `applyWorkflowCommandSave` apply a dialog's result to the document; `normalizeWorkflowJson` gives every command its `actions` and `policies` arrays; `isWorkflowFilterRule` and `parseWorkflowFilterRule` accept only an object of conditions (or none) as an assignment's filter rule. `clampPage` and `pageAfterRemoval` keep a paged list off a page that no longer exists after a delete.
+  - **Translations** (`@buildpad/utils`): a `workflows` namespace with English defaults and the Indonesian catalog.
+
+  `buildpad add hooks`, `add types` and `add utils` (and `upgrade`) install the new files.
+
+### Patch Changes
+
+- Updated dependencies [42ab7ff]
+  - @buildpad/types@3.0.0
+
 ## 2.6.0
 
 ### Minor Changes

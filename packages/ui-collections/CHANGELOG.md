@@ -1,5 +1,45 @@
 # @buildpad/ui-collections
 
+## 3.0.0
+
+### Major Changes
+
+- 037ea05: `CollectionsRelationalProvider` moves to its own module, `components/ui/collections-relational-provider.tsx` (a new file of the `collection-form` entry; still re-exported from `collection-form` and the package barrel). It now loads CollectionForm, CollectionList and VForm on demand (React.lazy), so a layout can wrap every page in it without bundling the form system. Its built-ins are passed as `defaults`: a bare provider nested under an app-level `RelationalUIProvider` / `CollectionsRelationalProvider` keeps the app's components instead of overriding them; its `components` prop still wins.
+- 37df067: `collection-form`, `collection-list`, `list-m2a`'s `JunctionItemForm` and the relation hooks read interface ids through the interface manifest's predicates instead of their own id lists. Each accepts exactly the ids it accepted before:
+
+  - `CollectionForm` and `CollectionList`: their two copies of `NON_FLAT_RELATIONAL_SPECIALS` + `NON_FLAT_RELATIONAL_INTERFACES` became one utils helper, `isNonFlatRelationalField()` (an m2a/m2m/o2m special, or the list-o2m/list-m2m/list-m2a interfaces); the two `selfPersistingInterfaces` sets became `isSelfPersistingInterface()` (files); the alias-field presentation check became `isRenderedPresentationInterface()` (presentation-divider, presentation-notice).
+  - `JunctionItemForm` keeps any `presentation-*` alias field through `isPresentationLikeInterface()`.
+  - `useRelationO2M`, `useRelationM2M` and `useRelationM2A` check the field through `isRelationListInterface()` (`one-to-many` is still accepted by `useRelationO2M`).
+
+  These files import the predicates from the utils barrel (`@/lib/buildpad/utils`), so they need the 3.0 utils lib, which the 3.0 `buildpad upgrade` brings along with them.
+
+  The `hooks` lib module now declares `utils` in its `internalDependencies` (registry metadata only; no file moves). Its sources import `@buildpad/utils` directly, and until now `utils` was reachable only through `services`. Installing `hooks` behaves the same, because `services` already pulled `utils` in.
+
+- 60ae923: Break the ui-form → ui-interfaces → ui-collections → ui-form package cycle with a relational UI context.
+
+  - New lib file `lib/buildpad/services/relational-ui-context.tsx` (`@buildpad/services/relational-ui-context`): `RelationalUIProvider`, `useRelationalUI`, `mergeRelationalUI`, `missingRelationalUI` and structural slot types for `CollectionForm`, `CollectionList` and `FormRenderer` (VForm). Nested providers merge; `defaults` only fill slots nothing above supplies. Also re-exported from the services barrel.
+  - `ListO2M`, `ListM2M`, `ListM2A` and `JunctionItemForm` no longer import `@buildpad/ui-collections` / `@buildpad/ui-form`. They take those components from a new optional `components` prop, then the relational provider, and render each in its own Suspense boundary (new `components/ui/list-m2a/relational-slots.tsx`). With no provider they render a translated alert (`interfaces.relationalUI`, en + id) and hide the create / select / edit actions whose dialog component is missing; listing, removing and reordering still work.
+  - `CollectionForm` supplies `{ CollectionForm, CollectionList (React.lazy), FormRenderer: VForm }` to the fields it renders; `VForm` supplies `{ FormRenderer: VForm }`. Both only fill slots a provider above did not choose. `collection-form` now declares `collection-list` as a registry dependency.
+  - New `CollectionsRelationalProvider` (exported from `collection-form`) for standalone relational interfaces and standalone `VForm`s with relational fields. The CLI's `/content` layout template and `FormPreview`'s offline VForm use it.
+  - Standalone `<ListO2M>` / `<ListM2M>` / `<ListM2A>` and plain `<VForm>`s with relational fields must now be wrapped in a provider (or given `components`) to create, select or edit related items. See docs/MIGRATION-3.0.md.
+  - Monorepo: `@buildpad/ui-interfaces` drops its peer/dev dependencies on `@buildpad/ui-collections` and `@buildpad/ui-form`; the root build is utils first, then `pnpm -r build`; `packages/ui-collections/dist` is no longer committed; `pnpm graph:check` allows no package cycle.
+
+### Patch Changes
+
+- Updated dependencies [9544e24]
+- Updated dependencies [eddcba0]
+- Updated dependencies [443b901]
+- Updated dependencies [60ae923]
+- Updated dependencies [b4030ca]
+- Updated dependencies [3fd3c13]
+- Updated dependencies [5147727]
+- Updated dependencies [42ab7ff]
+  - @buildpad/utils@3.0.0
+  - @buildpad/services@3.0.0
+  - @buildpad/ui-form@3.0.0
+  - @buildpad/types@3.0.0
+  - @buildpad/ui-table@3.0.0
+
 ## 2.6.0
 
 ### Patch Changes
