@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T15:32:58.636Z",
+  "generatedAt": "2026-10-08T15:36:01.206Z",
   "version": "3.0.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -215,7 +215,7 @@
         {
           "source": "utils/src/cron.ts",
           "target": "lib/buildpad/cron.ts",
-          "sourceSha256": "bf5a8d20a4adacef342808e08460661f01a001330fc113c1a3ebc0d4e77a879b"
+          "sourceSha256": "b89b5ddd8b228a5b4b644bb9c07dcf8b1518621b35c0fd3fac9ff15b0cf36229"
         },
         {
           "source": "utils/src/i18n/primitives.ts",
@@ -577,7 +577,7 @@
         {
           "source": "types/src/cron.ts",
           "target": "lib/buildpad/types/cron.ts",
-          "sourceSha256": "db75ead9b01b0ed3c46c42f0851d3a43b7e1fe1adfec41f07f177df6acc63654"
+          "sourceSha256": "42e2f79409e084f2b272cfb816a4b400ca8c74de0f474c31f68ae2673e5079b0"
         },
         {
           "source": "cli/templates/lib/types/index.ts",
@@ -873,7 +873,7 @@
         {
           "source": "hooks/src/useCronJobs.ts",
           "target": "lib/buildpad/hooks/useCronJobs.ts",
-          "sourceSha256": "c2695c1a8b47903ddcefaa14a7b192a63307afbb7c5e08adaced849a78a0049a"
+          "sourceSha256": "3302152756b22c91276ecf19cb3afd17dd4fef56d5bad2333d2719bc163887ea"
         },
         {
           "source": "hooks/src/useCronRuns.ts",
