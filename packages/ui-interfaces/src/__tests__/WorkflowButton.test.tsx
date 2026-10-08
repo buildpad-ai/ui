@@ -210,7 +210,150 @@ describe('WorkflowButton', () => {
     });
   });
 
+  // A form never passes `itemId`: FormFieldInterface hands every interface the
+  // record's key as `primaryKey`. The button used to ignore it, so inside a
+  // form an existing item looked new — no state, no transitions.
+  describe('Item id from a form container', () => {
+    /** The `filter` of the instance lookup the button made, if it made one. */
+    const instanceFilter = (): Record<string, unknown> | undefined => {
+      const call = mockFetch.mock.calls.find((c) => String(c[0]).includes('/api/items/daas_wf_instance'));
+      if (!call) return undefined;
+      const query = new URLSearchParams(String(call[0]).split('?')[1]);
+      return JSON.parse(query.get('filter') as string);
+    };
+
+    beforeEach(() => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/api/items/daas_wf_instance')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ data: [mockWorkflowInstance] }),
+          });
+        }
+        if (url.includes('/api/users/me')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockUserResponse,
+          });
+        }
+        if (url.includes('/api/access')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockAccessResponse,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: [] }),
+        });
+      });
+    });
+
+    it('shows the state and transitions of the item named by primaryKey', async () => {
+      renderWithProvider(
+        <WorkflowButton primaryKey="article-123" collection="articles" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Draft/i })).toBeInTheDocument();
+      });
+      expect(instanceFilter()).toMatchObject({ item_id: 'article-123' });
+
+      fireEvent.click(screen.getByRole('button', { name: /Draft/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Submit')).toBeInTheDocument();
+      });
+    });
+
+    it('prefers itemId when both are given', async () => {
+      renderWithProvider(
+        <WorkflowButton itemId="article-123" primaryKey="other-456" collection="articles" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Draft/i })).toBeInTheDocument();
+      });
+      expect(instanceFilter()).toMatchObject({ item_id: 'article-123' });
+    });
+
+    it('still treats the "+" primaryKey of a create form as a new item', () => {
+      renderWithProvider(
+        <WorkflowButton primaryKey="+" collection="articles" placeholder="No workflow" />
+      );
+
+      expect(screen.getByText('No workflow')).toBeInTheDocument();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Transition Execution', () => {
+    it('shows why a transition failed and keeps the current state', async () => {
+      const onChangeMock = jest.fn();
+      const onTransitionMock = jest.fn();
+      // The button logs the rejection; keep the expected error out of the output.
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+        if (url.includes('/api/items/daas_wf_instance')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ data: [mockWorkflowInstance] }),
+          });
+        }
+        if (url.includes('/api/users/me')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockUserResponse,
+          });
+        }
+        if (url.includes('/api/access')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockAccessResponse,
+          });
+        }
+        if (url.includes('/api/workflow/transition') && options?.method === 'POST') {
+          return Promise.resolve({ ok: false, status: 403 });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: [] }),
+        });
+      });
+
+      renderWithProvider(
+        <WorkflowButton
+          itemId="article-123"
+          collection="articles"
+          onChange={onChangeMock}
+          onTransition={onTransitionMock}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Draft/i })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Draft/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Submit')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Submit'));
+
+      await waitFor(() => {
+        expect(screen.getByText('HTTP error! status: 403')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: /Draft/i })).toBeInTheDocument();
+      expect(onChangeMock).not.toHaveBeenCalled();
+      expect(onTransitionMock).not.toHaveBeenCalled();
+
+      consoleError.mockRestore();
+    });
+
     it('executes transition on command selection', async () => {
       const onChangeMock = jest.fn();
       const onTransitionMock = jest.fn();

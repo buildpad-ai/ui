@@ -23,6 +23,9 @@ export interface ProbeRecord {
     ariaLabel: unknown;
     /** The E2E hook the container passed (e.g. "field-password"). */
     dataTestId: unknown;
+    /** The record's key, under the one name the container passes it by. */
+    primaryKey: unknown;
+    collection: unknown;
     disabled: unknown;
     readOnly: unknown;
     required: unknown;
@@ -56,6 +59,8 @@ export function makeInterfacesMock() {
             value,
             ariaLabel: rest['aria-label'],
             dataTestId: rest['data-testid'],
+            primaryKey: rest.primaryKey,
+            collection: rest.collection,
             disabled,
             readOnly,
             required,
