@@ -24,6 +24,21 @@ const BASE_PATH = '/api/cron';
 
 const NOT_FOUND = 'Cron job not found';
 
+// The three sentences the Next.js service throws that its routes hand on as
+// a 500, each matched whole. A 500 that merely begins like one of them is
+// something else — PostgreSQL's own "permission denied for table …" is a
+// broken deployment, not a caller without a grant, and a compile error can
+// end in "… not found" — and stays the failure it is.
+//
+//   Item not found            Item not found: daas_cron_jobs/<id>
+//   Cron job <id> not found   (Run Now)
+//   Permission denied: update on daas_cron_jobs
+//   Cron job code is invalid: <the compiler's sentence>
+const SENTENCE_GONE = /^Item not found(?:: \S+)?$/;
+const SENTENCE_RUN_GONE = /^Cron job \S+ not found$/;
+const SENTENCE_ROW_REFUSED = /^Permission denied: [a-z]+ on \S+$/;
+const SENTENCE_CODE_INVALID = /^Cron job code is invalid: /;
+
 /** A failure with another `kind`, everything else kept. */
 function as(kind: DaaSRequestError['kind'], err: DaaSRequestError): DaaSRequestError {
   return new DaaSRequestError(err.message, { kind, status: err.status, code: err.code });
@@ -52,11 +67,10 @@ function readCronRefusal(err: unknown): DaaSRequestError {
   const failure = missingWhenIdIsMalformed(toDaaSRequestError(err));
   if (failure.status !== 500) return failure;
 
-  if (/^item not found\b/i.test(failure.message) || /^cron job\b.*\bnot found$/i.test(failure.message)) {
-    return as('notFound', failure);
-  }
-  if (/^permission denied\b/i.test(failure.message)) return as('forbidden', failure);
-  if (/^cron job code is invalid\b/i.test(failure.message)) return as('invalid', failure);
+  const sentence = failure.message.trim();
+  if (SENTENCE_GONE.test(sentence) || SENTENCE_RUN_GONE.test(sentence)) return as('notFound', failure);
+  if (SENTENCE_ROW_REFUSED.test(sentence)) return as('forbidden', failure);
+  if (SENTENCE_CODE_INVALID.test(sentence)) return as('invalid', failure);
   return failure;
 }
 

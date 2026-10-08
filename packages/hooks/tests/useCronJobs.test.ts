@@ -682,6 +682,39 @@ describe('useCronJobs.updateJob', () => {
     });
   });
 
+  it.each([
+    // PostgreSQL's own refusal: the deployment is broken, the caller is not short of a grant
+    ['a database role without rights', 'permission denied for table daas_cron_jobs'],
+    // A compile error that happens to end the way the "job is gone" sentence does
+    ['a compile error ending in "not found"', 'Cron job code is invalid: module "x" not found'],
+    ['a sentence that only begins like "Item not found"', 'Item not found in cache, and the database is unreachable'],
+  ])('does not read %s as a missing job or as a refusal', async (_what, message) => {
+    apiRequestMock.mockRejectedValue(apiError(500, envelope(message, 'INTERNAL_SERVER_ERROR')));
+    const { result } = renderHook(() => useCronJobs());
+
+    let thrown: unknown;
+    await act(async () => {
+      thrown = await result.current.getJob(JOB_ID).catch((err: unknown) => err);
+    });
+    expect(thrown).toMatchObject({ status: 500, message });
+    expect((thrown as { kind: string }).kind).not.toBe('notFound');
+    expect((thrown as { kind: string }).kind).not.toBe('forbidden');
+  });
+
+  it('reads the service\'s "Item not found: <collection>/<id>" as a missing job', async () => {
+    apiRequestMock.mockRejectedValueOnce(
+      apiError(500, envelope(`Item not found: daas_cron_jobs/${JOB_ID}`, 'INTERNAL_SERVER_ERROR')),
+    );
+    const { result } = renderHook(() => useCronJobs());
+
+    await act(async () => {
+      await expect(result.current.updateJob(JOB_ID, { name: 'x' })).rejects.toMatchObject({
+        kind: 'notFound',
+        status: 500,
+      });
+    });
+  });
+
   it('leaves any other 500 a failure', async () => {
     apiRequestMock.mockRejectedValueOnce(
       apiError(500, envelope('invalid input syntax for type integer: "1500.5"', 'INTERNAL_SERVER_ERROR')),
