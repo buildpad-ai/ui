@@ -376,6 +376,26 @@ describe('WorkflowDetail', () => {
       expect(screen.getByTestId('workflow-detail-stat-commands')).toHaveTextContent('3');
     });
 
+    // Drawing a connection needs a pointer; this is the editor's keyboard path
+    it("adds a command from a state's menu: the dialog asks for the target", async () => {
+      renderDetail();
+      await loaded();
+
+      fireEvent.click(screen.getByLabelText('Actions for state Draft'));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Add Command' }));
+
+      const target = (await screen.findByTestId('workflow-command-target')) as HTMLInputElement;
+      expect(target.value).toBe('');
+      fireEvent.change(screen.getByTestId('workflow-command-name'), { target: { value: 'Publish now' } });
+      fireEvent.click(target);
+      fireEvent.click(await screen.findByRole('option', { name: 'Published (End State)', hidden: true }));
+      fireEvent.click(screen.getByTestId('workflow-command-save-btn'));
+
+      await waitFor(() => expect(within(card('Draft')).getByText('Publish now')).toBeInTheDocument());
+      expect(within(card('Draft')).getByText('→ Published')).toBeInTheDocument();
+      expect(screen.getByTestId('workflow-detail-stat-commands')).toHaveTextContent('4');
+    });
+
     it('offers every policy to the Command dialog, read page after page, once per editor', async () => {
       const page = (n: number, total: number) => ({
         policies: Array.from({ length: n }, (_, i) => ({ id: `p-${total}-${i}`, name: `Policy ${total}-${i}` })),

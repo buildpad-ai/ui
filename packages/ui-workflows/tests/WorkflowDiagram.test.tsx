@@ -129,6 +129,28 @@ describe('WorkflowDiagram', () => {
       expect(onEditState).toHaveBeenCalledWith(reviewWorkflowJson.states[1]);
     });
 
+    // A connection can only be dragged with a pointer; the menu is the way
+    // to add a command from the keyboard
+    it("a command is added from its state's menu, with no target yet", async () => {
+      const { onAddCommand } = renderDiagram();
+      fireEvent.click(screen.getByLabelText('Actions for state Review'));
+      const item = (await screen.findByText('Add Command')).closest('button');
+      expect(item).toHaveAttribute('role', 'menuitem');
+      fireEvent.click(item as HTMLElement);
+      expect(onAddCommand).toHaveBeenCalledTimes(1);
+      expect(onAddCommand).toHaveBeenCalledWith('Review');
+    });
+
+    // By text, not by role: while the dropdown is being placed a role query
+    // sees no menu item at all, and "not there" would pass for the wrong reason
+    it("an end state's menu offers no Add Command: it has no outgoing commands", async () => {
+      renderDiagram();
+      fireEvent.click(screen.getByLabelText('Actions for state Published'));
+      expect(await screen.findByText('Edit State')).toBeInTheDocument();
+      expect(screen.getByText('Delete State')).toBeInTheDocument();
+      expect(screen.queryByText('Add Command')).not.toBeInTheDocument();
+    });
+
     it('a click on a command edits it', () => {
       const { onEditCommand } = renderDiagram();
       // By text, not by role: jsdom measures nothing, so React Flow keeps its

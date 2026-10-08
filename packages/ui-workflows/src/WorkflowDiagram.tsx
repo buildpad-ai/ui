@@ -128,6 +128,7 @@ interface DiagramContextValue {
   translations?: DeepPartial<WorkflowsTranslations>;
   onEditState: (state: WorkflowJsonState) => void;
   onDeleteState: (stateName: string) => void;
+  onAddCommand: (stateName: string) => void;
   onEditCommand: (stateName: string, command: WorkflowJsonCommand) => void;
   onDeleteCommand: (stateName: string, commandName: string) => void;
 }
@@ -250,6 +251,13 @@ function WorkflowStateNode({ data, selected, isConnectable }: NodeProps<StateNod
               <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => diagram?.onEditState(state)}>
                 {t.diagram.editState}
               </Menu.Item>
+              {/* The way to add a command without a pointer: a connection can
+                  only be dragged. An end state has no outgoing commands. */}
+              {!state.isEndState && (
+                <Menu.Item leftSection={<IconPlus size={14} />} onClick={() => diagram?.onAddCommand(state.name)}>
+                  {t.commandModal.addCommand}
+                </Menu.Item>
+              )}
               <Menu.Divider />
               <Menu.Item
                 leftSection={<IconTrash size={14} />}
@@ -387,10 +395,12 @@ export interface WorkflowDiagramProps {
   onAddState?: () => void;
   /**
    * Called when a connection is drawn from one state to another, with the
-   * handles it was drawn between. Not called for a connection the workflow
-   * cannot have (out of an end state, or back to the same state).
+   * handles it was drawn between, and by a state's "Add Command" menu item,
+   * with the state alone (the Command dialog asks for the target). Not called
+   * for a connection the workflow cannot have (out of an end state, or back
+   * to the same state); an end state's menu has no such item.
    */
-  onAddCommand?: (fromState: string, toState: string, sourceHandle?: string, targetHandle?: string) => void;
+  onAddCommand?: (fromState: string, toState?: string, sourceHandle?: string, targetHandle?: string) => void;
   /**
    * Draw the machine without any way to change it: no drag, no connect, no
    * menus, no delete, no "+" button. Selecting, panning and zooming still
@@ -419,7 +429,7 @@ export interface WorkflowDiagramProps {
  * same three things): a state is dragged by its grip; a state is edited from
  * its menu — a click on a card only selects it; a click on a command, on its
  * row or on its arrow, edits the command. A command is added by dragging from
- * one state's dot to another state.
+ * one state's dot to another state, or from the state's menu.
  *
  * The canvas is a view of `workflowJson`. A gesture never changes the canvas
  * on its own: it is turned into the next document (the functions of
@@ -495,11 +505,12 @@ export const WorkflowDiagram: React.FC<WorkflowDiagramProps> = ({
       translations,
       onEditState: (state) => onEditState?.(state),
       onDeleteState: (stateName) => change(removeWorkflowState(documentRef.current, stateName)),
+      onAddCommand: (stateName) => onAddCommand?.(stateName),
       onEditCommand: (stateName, command) => onEditCommand?.(stateName, command),
       onDeleteCommand: (stateName, commandName) =>
         change(removeWorkflowCommand(documentRef.current, stateName, commandName)),
     }),
-    [readOnly, translations, onEditState, onEditCommand, change],
+    [readOnly, translations, onEditState, onAddCommand, onEditCommand, change],
   );
 
   // A connection drawn from one state to another opens Add Command

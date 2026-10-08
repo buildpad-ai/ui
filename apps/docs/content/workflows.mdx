@@ -337,7 +337,7 @@ Use it on its own to show a workflow on another page.
 | `onEditState(state)` | — | A state's Edit State menu item |
 | `onEditCommand(stateName, command)` | — | A click on a command, on its row or on its arrow |
 | `onAddState()` | — | The "+" button, and the button of the empty canvas |
-| `onAddCommand(fromState, toState, sourceHandle?, targetHandle?)` | — | A connection drawn from one state to another |
+| `onAddCommand(fromState, toState?, sourceHandle?, targetHandle?)` | — | A connection drawn from one state to another, or a state's Add Command menu item (then with `fromState` only) |
 | `readOnly` | `false` | No drag, no connect, no menus, no delete. Select, pan and zoom still work |
 | `height` | `600` | Height of the canvas |
 | `hideAttribution` | `false` | Hide React Flow's attribution |
@@ -376,6 +376,9 @@ editor around `WorkflowDiagram`.
   or on its arrow.
 - A command is added by dragging from a blue dot of one state to another
   state. The Command dialog opens with the target filled in.
+- A command is also added from the state's menu (Add Command). The Command
+  dialog then asks for the target. This is the way to add a command with the
+  keyboard: a connection can only be drawn with a pointer.
 - An arrow can be moved to another state.
 - Backspace or Delete removes the selected state or command from the
   document. The last state cannot be deleted.
