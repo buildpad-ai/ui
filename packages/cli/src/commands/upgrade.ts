@@ -25,7 +25,8 @@
  *                                  "overwrite"  – replace with upstream
  *                                  "new-file"   – write new version as <file>.new
  *                                  "three-way"  – attempt diff3 merge; on conflict write .new
- *                                  "prompt"     – ask the user (default for TTY)
+ *                                  "prompt"     – ask the user (default for TTY;
+ *                                                 without a terminal it acts as "new-file")
  *
  * Per-file behaviour (§4 of the versioning redesign):
  *
@@ -743,10 +744,24 @@ export async function upgrade(options: UpgradeOptions) {
     dryRun = false,
     cwd,
   } = options;
-  const strategy = resolveStrategy(options);
+  let strategy = resolveStrategy(options);
 
   if (dryRun) {
     console.log(chalk.yellow('\n🔍 Dry Run Mode — no files will be modified\n'));
+  }
+
+  // "prompt" asks about each locally-modified file. With no terminal on stdin
+  // (CI, a pipe) the question is never answered: the process ended at the
+  // first one with exit code 0, files already written and the manifest not
+  // saved. Take the prompt's own default instead, which loses nothing.
+  if (strategy === 'prompt' && !process.stdin.isTTY) {
+    strategy = 'new-file';
+    if (!dryRun) {
+      console.log(chalk.dim(
+        '\nNo terminal to ask on: a locally-modified file keeps your version and gets the new one as <file>.new ' +
+        '(--strategy=new-file). Pass --strategy to choose.'
+      ));
+    }
   }
 
   // Load config

@@ -127,7 +127,10 @@ export interface EnsureExternalDepsOptions {
   deps: Iterable<string>;
   /**
    * true  → install without prompting (non-interactive flows: bootstrap, --yes)
-   * undefined → confirm interactively (default)
+   * false → never install; print the command
+   * undefined → confirm interactively (default). Without a terminal to ask on
+   *   (CI, a pipe, the MCP server) nothing is installed and the command is
+   *   printed instead.
    */
   autoInstall?: boolean;
   /** List what would be installed without touching anything. */
@@ -166,13 +169,23 @@ export async function ensureExternalDeps(
 
   let autoInstall = options.autoInstall ?? false;
   if (options.autoInstall === undefined) {
+    // With no terminal on stdin the question can never be answered: the
+    // prompt stays pending, Node runs out of work and the process ends right
+    // there with exit code 0 — before the caller's summary, and without ever
+    // saying how to install the packages. Do not ask.
+    if (!process.stdin.isTTY) {
+      console.log(chalk.dim('\nNot installed: there is no terminal to confirm on. Install with:'));
+      console.log(chalk.cyan(`  ${installCmd}\n`));
+      return { missing, installed: false };
+    }
     const answer = await prompts({
       type: 'confirm',
       name: 'autoInstall',
       message: 'Install missing dependencies automatically?',
       initial: true,
     });
-    autoInstall = answer.autoInstall;
+    // A cancelled prompt (Ctrl+C, Esc) answers nothing: that is a no.
+    autoInstall = answer.autoInstall === true;
   }
 
   if (!autoInstall) {

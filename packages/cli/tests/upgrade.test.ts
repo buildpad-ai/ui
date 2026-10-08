@@ -128,6 +128,10 @@ vi.mock('../src/resolver.js', () => ({
   bundledTemplateExists: vi.fn(async () => true),
 }));
 
+// The per-file question the "prompt" strategy asks. Tests set the answer.
+const promptsMock = vi.hoisted(() => vi.fn(async (): Promise<Record<string, unknown>> => ({})));
+vi.mock('prompts', () => ({ default: promptsMock }));
+
 // Now import the SUT — must come after vi.mock
 const { upgrade } = await import('../src/commands/upgrade.js');
 
@@ -139,10 +143,18 @@ beforeEach(async () => {
   tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), 'buildpad-upgrade-'));
 });
 
+const stdinIsTTY = process.stdin.isTTY;
+
+/** Run the rest of the test as if stdin were (not) a terminal. */
+function setTerminal(isTTY: boolean) {
+  Object.defineProperty(process.stdin, 'isTTY', { value: isTTY, configurable: true });
+}
+
 afterEach(async () => {
   await fs.remove(tmpdir);
   baseFetches.length = 0;
   baseByRef.clear();
+  Object.defineProperty(process.stdin, 'isTTY', { value: stdinIsTTY, configurable: true });
   vi.clearAllMocks();
 });
 
@@ -290,6 +302,52 @@ describe('upgrade --strategy=three-way', () => {
     // Original kept, .new created (the recorded ref is unreachable in the mock)
     expect(await fs.readFile(targetAbs, 'utf8')).toContain('customisation');
     expect(await fs.pathExists(targetAbs + '.new')).toBe(true);
+  });
+});
+
+describe('upgrade — the default "prompt" strategy', () => {
+  const MODIFIED = 'export const my = "customisation";\n';
+  const modifiedConsumer = () =>
+    setupConsumer({ installedVersion: '1.0.0', fileBody: MODIFIED, recordedSha: 'different-hash-than-modified' });
+
+  test('without a terminal it does not ask: the edited file is kept and the new one written as .new', async () => {
+    // CI or a pipe. Asking left the prompt pending for ever: the process
+    // ended at the question with exit code 0 and the manifest unsaved.
+    setTerminal(false);
+    const { targetAbs } = await modifiedConsumer();
+
+    await upgrade({ components: ['demo'], cwd: tmpdir });
+
+    expect(promptsMock).not.toHaveBeenCalled();
+    expect(await fs.readFile(targetAbs, 'utf8')).toBe(MODIFIED);
+    expect(await fs.readFile(targetAbs + '.new', 'utf8')).toContain('Demo v2');
+    // The run finished and saved the manifest: the file is still to do.
+    const manifest = await readManifest();
+    expect(manifest.components.demo.release).toBe('2.0.0');
+    expect(manifest.components.demo.files[0]).toMatchObject({ state: 'pending', sourceSha256: OLD_UPSTREAM_SHA });
+  });
+
+  test('without a terminal an explicit --strategy is still honoured', async () => {
+    setTerminal(false);
+    const { targetAbs } = await modifiedConsumer();
+
+    await upgrade({ components: ['demo'], cwd: tmpdir, strategy: 'overwrite' });
+
+    expect(await fs.readFile(targetAbs, 'utf8')).toContain('Demo v2');
+    expect(await fs.pathExists(targetAbs + '.new')).toBe(false);
+  });
+
+  test('on a terminal it asks, and does what the answer says', async () => {
+    setTerminal(true);
+    const { targetAbs } = await modifiedConsumer();
+    promptsMock.mockResolvedValue({ action: 'skip' });
+
+    await upgrade({ components: ['demo'], cwd: tmpdir });
+
+    expect(promptsMock).toHaveBeenCalledTimes(1);
+    expect(await fs.readFile(targetAbs, 'utf8')).toBe(MODIFIED);
+    expect(await fs.pathExists(targetAbs + '.new')).toBe(false);
+    expect((await readManifest()).components.demo.files[0].state).toBe('pending');
   });
 });
 

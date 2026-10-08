@@ -112,6 +112,8 @@ buildpad upgrade --all --strategy=new-file
 
 ### Re-syncing with `--force`
 
+**Without a terminal** (CI, a pipe, the MCP server) `upgrade` asks nothing. A locally-modified file keeps your version and the new one is written as `<file>.new`, as with `--strategy=new-file`; pass `--strategy` to choose. Missing npm packages are listed with the command that installs them, but are not installed; pass `--yes` to install them (it also overwrites modified files).
+
 `upgrade` skips any component whose installed version already matches the registry. Pass `--force` to re-sync anyway — it bypasses the version check but still honours `--strategy`, so locally-modified files are merged, not clobbered:
 
 ```bash copy

@@ -314,6 +314,8 @@ scoped to the design-system module. Pass `--no-deps` to upgrade only what you
 selected; the project may then not compile until the dependencies are upgraded
 too. Naming a component the project does not have installs it.
 
+**Without a terminal** (CI, a pipe, the MCP server) `upgrade` asks nothing. A locally-modified file keeps your version and the new one is written as `<file>.new`, as with `--strategy=new-file`; pass `--strategy` to choose. Missing npm packages are listed with the command that installs them, but are not installed; pass `--yes` to install them (it also overwrites modified files).
+
 `upgrade` handles **lib modules** (not just components). The `design-system` module —
 scaffolded by `init` and tracked in `buildpad.json` — is refreshed with `--design`, or
 automatically when you run a bare `buildpad upgrade` and its files changed upstream. Because design-token
