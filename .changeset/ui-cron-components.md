@@ -2,7 +2,7 @@
 "@buildpad/ui-cron": minor
 ---
 
-New package `@buildpad/ui-cron`: the components of a Cron Jobs admin module, on the cron data layer (`useCronJobs`, `useCronRuns`, the `cron` namespace). The registry component and the installed pages are not part of this change.
+New package `@buildpad/ui-cron`: the components of a Cron Jobs admin module, on the cron data layer (`useCronJobs`, `useCronRuns`, the `cron` namespace). The registry component and the installed pages have an entry of their own (`cron-management`, `cron-routes`).
 
 - **Jobs list** (`CronJobsManager`): a Jobs tab with search, refresh, the table (name and description, schedule, timezone, status, last run and its outcome, next run for an active job), a row menu (Edit, Run Now, Activate or Deactivate, Clone, Delete) and paging with a page-size selector; a History tab with the runs of every job. The search, the page and the open tab are kept in the URL (`urlParams`, `urlParamPrefix`).
 - **Job editor** (`CronJobDetail`, `id` = `new` or a job id): the code beside the settings (name, description, schedule, timezone, timeout, memory limit, and status for a stored job), Run Now, Activate or Deactivate and Save in the header, and the job's own run history on a second tab. Save sends only the fields that changed and is disabled until something has.
