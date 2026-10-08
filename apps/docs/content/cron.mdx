@@ -16,8 +16,8 @@ output.
 The module gives you two screens:
 
 - **`CronJobsManager`** — the `/cron` page. A **Jobs** tab lists the jobs:
-  search, refresh, pagination, and a row menu with Edit, Run Now, Activate or
-  Deactivate, Clone and Delete. A **History** tab lists the runs of every job.
+  search by name, schedule or description, refresh, pagination, and a row
+  menu with Edit, Run Now, Activate or Deactivate, Clone and Delete. A **History** tab lists the runs of every job.
 - **`CronJobDetail`** — the `/cron/[id]` editor: the job's code beside its
   settings (name, description, schedule, timezone, timeout, memory limit, and
   status for a stored job), with Run Now, Activate or Deactivate and Save in
@@ -34,7 +34,7 @@ time, the duration, the error, and the console output line by line.
 | `CronJobDetail` | `@buildpad/ui-cron` | Job editor: code, settings, header actions, and the history of the job |
 | `CronRunsTable` | `@buildpad/ui-cron` | The run history on its own: the runs of every job, or of one (`jobId`). It owns its load, its Refresh button and its pager |
 | `CronRunLogModal` | `@buildpad/ui-cron` | The run log dialog of one run |
-| `CronJobStatusBadge` / `CronRunStatusBadge` / `CronTriggerBadge` | `@buildpad/ui-cron` | Active or Inactive; Success, Error, Timeout or Running; Schedule, Manual or Extension |
+| `CronJobStatusBadge` / `CronRunStatusBadge` / `CronTriggerBadge` | `@buildpad/ui-cron` | A job's status (Active or Inactive); a run's outcome (Success, Error, Timeout or Running); what started a run (schedule, manual or extension) |
 | `CronCodeEditorProps` | `@buildpad/ui-cron` | The contract of the editor's `renderCodeEditor` slot (a type) |
 | `VTable` | `@buildpad/ui-table` | The table both lists render |
 | `InputCode` | `@buildpad/ui-interfaces` | The built-in code editor: a monospace textarea with line numbers, no highlighting |
