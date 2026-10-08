@@ -457,6 +457,59 @@ describe('WorkflowDetail', () => {
       expect(edits.workflow_json.states[0].commands[0].module_access_keys).toEqual(['content:submit']);
     });
 
+    // The gate of a command is `policies` OR `module_access_keys`, and the
+    // dialogs have no field for the keys. A command gated by keys alone that
+    // loses them anywhere between the dialogs and the request is saved open
+    // to every signed-in user.
+    it('a command gated only by module access keys keeps its gate through every edit that reaches the save', async () => {
+      const keyGated: WorkflowJson = {
+        ...reviewWorkflowJson,
+        states: reviewWorkflowJson.states.map((state) =>
+          state.name === 'Draft'
+            ? { ...state, commands: [{ ...state.commands[0], policies: [], module_access_keys: ['content:submit'] }] }
+            : state,
+        ),
+      };
+      mocks.getDefinition.mockResolvedValue({ ...mockWorkflow, workflow_json: asStored(keyGated) });
+      renderDetail();
+      await loaded();
+
+      // 1. The command itself, in its dialog: renamed
+      fireEvent.click(within(card('Draft')).getByText('Submit'));
+      fireEvent.change(await screen.findByTestId('workflow-command-name'), { target: { value: 'Send' } });
+      fireEvent.click(screen.getByTestId('workflow-command-save-btn'));
+      await waitFor(() => expect(within(card('Draft')).getByText('Send')).toBeInTheDocument());
+
+      // One dialog has to be gone before the next opens: its title is "Edit State" too
+      const renameState = async (from: string, to: string) => {
+        fireEvent.click(screen.getByLabelText(`Actions for state ${from}`));
+        fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit State' }));
+        fireEvent.change(await screen.findByTestId('workflow-state-name'), { target: { value: to } });
+        fireEvent.click(screen.getByTestId('workflow-state-save-btn'));
+        await waitFor(() => expect(card(to)).toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByTestId('workflow-state-save-btn')).not.toBeInTheDocument());
+      };
+
+      // 2. The state that owns it: renamed
+      await renameState('Draft', 'New');
+
+      // 3. The state it leads to: renamed, so its next_state is rewritten
+      await renameState('Review', 'Check');
+      await waitFor(() => expect(within(card('New')).getByText('→ Check')).toBeInTheDocument());
+
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.updateDefinition).toHaveBeenCalledTimes(1));
+      const [, edits] = mocks.updateDefinition.mock.calls[0];
+      const sent = edits.workflow_json.states.find((state: { name: string }) => state.name === 'New').commands;
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({
+        name: 'Send',
+        next_state: 'Check',
+        policies: [],
+        module_access_keys: ['content:submit'],
+      });
+    });
+
     it('a cleared description is sent as null', async () => {
       renderDetail();
       await loaded();
