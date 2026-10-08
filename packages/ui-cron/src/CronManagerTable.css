@@ -1,0 +1,26 @@
+/* Card chrome for the cron lists (the jobs list and the run history) — the same card ui-users' list
+   managers and CollectionList draw, so the search toolbar sits inside the
+   bordered surface that holds the table instead of floating above it. */
+.bp-cron-manager-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--mantine-color-body);
+  border: var(--ds-table-border, 1px solid var(--mantine-color-default-border));
+  border-radius: var(--mantine-radius-md);
+  box-shadow: var(--mantine-shadow-sm, 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1));
+  overflow: hidden;
+}
+
+/* The composed VTable already carries its own card border — drop it here
+   so the two borders don't double up. */
+.bp-cron-manager-card .v-table {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.bp-cron-manager-toolbar {
+  padding: 8px 12px;
+  border-bottom: var(--ds-table-border, 1px solid var(--mantine-color-default-border));
+  background: var(--mantine-color-body);
+}
