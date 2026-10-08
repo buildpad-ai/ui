@@ -35,6 +35,10 @@ export type { WorkflowCommandModalProps } from './WorkflowCommandModal';
 export { WorkflowAssignmentsManager } from './WorkflowAssignmentsManager';
 export type { WorkflowAssignmentsManagerProps } from './WorkflowAssignmentsManager';
 
+// Instances surfaces (read-only)
+export { WorkflowInstancesManager } from './WorkflowInstancesManager';
+export type { WorkflowInstancesManagerProps } from './WorkflowInstancesManager';
+
 // Policy options of the Command dialog
 export { loadAllWorkflowPolicyOptions } from './workflowPolicies';
 export type { WorkflowPolicyOption, WorkflowPolicyPage } from './workflowPolicies';
