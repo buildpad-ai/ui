@@ -139,13 +139,17 @@ export function useWorkflowDefinitions() {
    * Update a definition (pass only the keys to change). Resolves to nothing:
    * one backend answers the stored row and the other only the id, so read the
    * definition again with `getDefinition` when the stored form is needed.
+   *
+   * `description: null` clears the description. It is sent as `''`: the
+   * engine reads a `null` there as a key that was not sent, answers 200 and
+   * keeps the stored text, while both backends store an empty string.
    */
   const updateDefinition = useCallback(
     (id: string, data: WorkflowDefinitionUpdate): Promise<void> =>
       run(async () => {
         await apiRequest(`${BASE_PATH}/${encodeURIComponent(id)}`, {
           method: 'PATCH',
-          body: JSON.stringify(data),
+          body: JSON.stringify(data.description === null ? { ...data, description: '' } : data),
         });
       }),
     [run],

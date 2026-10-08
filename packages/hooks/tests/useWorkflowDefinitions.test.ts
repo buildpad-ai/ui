@@ -460,6 +460,34 @@ describe('useWorkflowDefinitions writes', () => {
     expect(out).toBeUndefined();
   });
 
+  // The engine binds `description` to a pointer: a JSON null is "not sent",
+  // the request answers 200 and the stored text stays. '' clears it on both.
+  it('updateDefinition clears a description with an empty string, which both backends store', async () => {
+    apiRequestMock.mockResolvedValueOnce({ data: 'd1' });
+    const { result } = renderHook(() => useWorkflowDefinitions());
+
+    await act(async () => {
+      await result.current.updateDefinition('d1', { description: null });
+    });
+
+    expect(lastRequest()).toEqual({ method: 'PATCH', body: { description: '' } });
+  });
+
+  it('updateDefinition sends a description it is given, and none when the key is absent', async () => {
+    apiRequestMock.mockResolvedValue({ data: 'd1' });
+    const { result } = renderHook(() => useWorkflowDefinitions());
+
+    await act(async () => {
+      await result.current.updateDefinition('d1', { description: 'Two reviewers' });
+    });
+    expect(lastRequest().body).toEqual({ description: 'Two reviewers' });
+
+    await act(async () => {
+      await result.current.updateDefinition('d1', { name: 'Flow' });
+    });
+    expect(lastRequest().body).toEqual({ name: 'Flow' });
+  });
+
   it('updateDefinition rejects a field the grant withholds as forbidden', async () => {
     apiRequestMock.mockRejectedValueOnce(
       apiError(403, { error: 'Permission denied: Cannot update restricted fields', forbidden_fields: ['workflow_json'] }),
