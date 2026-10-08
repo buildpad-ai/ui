@@ -76,6 +76,8 @@ export const DEPENDENCY_VERSIONS: Record<string, string> = {
   // Map
   'maplibre-gl': '^5.17.0',
   '@mapbox/mapbox-gl-draw': '^1.5.2',
+  // State diagram (workflow-management; the range @buildpad/ui-workflows is developed against)
+  '@xyflow/react': '^12.9.3',
   // Misc (aligned with the init template / services)
   '@tabler/icons-react': '^3.0.0',
   '@supabase/ssr': '^0.5',
