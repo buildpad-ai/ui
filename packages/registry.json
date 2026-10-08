@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T16:21:15.702Z",
+  "generatedAt": "2026-10-08T16:25:31.443Z",
   "version": "3.0.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -3179,7 +3179,7 @@
         {
           "source": "ui-form/src/components/FormFieldInterface.tsx",
           "target": "components/ui/vform/components/FormFieldInterface.tsx",
-          "sourceSha256": "8d55666e7cc9662473277c18a15c58dd90403ff604c0cc331270d07e250c0ce8"
+          "sourceSha256": "795dc91be48821c1d938dc2223d3c979246a3efeee491134dcf1fc6cf26fa702"
         },
         {
           "source": "ui-form/src/components/interface-components.tsx",
@@ -3645,12 +3645,12 @@
         {
           "source": "ui-interfaces/src/workflow-button/use-workflow.ts",
           "target": "components/ui/workflow-button/use-workflow.ts",
-          "sourceSha256": "317e8012aa89c97273a9d9839227adc22ec0303cafe38879266ecf00214c5551"
+          "sourceSha256": "da4346d9f2dfd267045f5f6775e0df62aa85bf4cecaa0418faf34ef1a4abb883"
         },
         {
           "source": "ui-interfaces/src/workflow-button/types.ts",
           "target": "components/ui/workflow-button/types.ts",
-          "sourceSha256": "2e7580ed2ee0e1119949adb89decbee78beed67a2aefb42db67eb77d094d8602"
+          "sourceSha256": "f0a74bcb11c075dbe84f3fe7a7e5600d0336e4b7a869a619e5fe9ba37d769141"
         },
         {
           "source": "ui-interfaces/src/workflow-button/index.ts",
