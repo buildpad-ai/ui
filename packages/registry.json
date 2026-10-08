@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T16:57:48.738Z",
+  "generatedAt": "2026-10-08T17:01:48.124Z",
   "version": "3.0.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -4258,12 +4258,12 @@
         {
           "source": "ui-cron/src/CronJobsManager.tsx",
           "target": "components/ui/cron-management/cron-jobs-manager.tsx",
-          "sourceSha256": "ba19a3f906817290202cb3b190f6a609fe541f968c32e2a91ad355a7efc89de3"
+          "sourceSha256": "1291650c1c3bb853a4abbfe7a729d50b54500c30e6c0c8ff38232ac149c6a07e"
         },
         {
           "source": "ui-cron/src/CronJobDetail.tsx",
           "target": "components/ui/cron-management/cron-job-detail.tsx",
-          "sourceSha256": "c41f00b8c5528db61a757a7de0a2b331fc7b47a0b9010dc4d6928434c460b9f8"
+          "sourceSha256": "e925a2bcb85027c939146aa711145a270fe7cd4656a0b73be4d52c404e4b1e93"
         },
         {
           "source": "ui-cron/src/CronCodeEditor.tsx",
