@@ -139,14 +139,45 @@ describe('cron namespace', () => {
     expect(formatCount('id', 3, cronId.count.logLines)).toBe('3 baris log');
   });
 
+  it("the footer's noun follows the total: one job, many jobs", () => {
+    /** The footer line, as CronListFooter composes it. */
+    const showing = (
+      locale: string,
+      catalog: typeof cronDefaults,
+      table: 'jobsManager' | 'runsTable',
+      shown: number,
+      totalCount: number,
+    ) =>
+      interpolate(catalog.listFooter.showing, {
+        shown,
+        totalCount,
+        itemsLabel: formatCount(locale, totalCount, catalog[table].itemsLabel),
+      });
+
+    expect(showing('en', cronDefaults, 'jobsManager', 1, 1)).toBe('Showing 1 of 1 job');
+    expect(showing('en', cronDefaults, 'runsTable', 1, 1)).toBe('Showing 1 of 1 run');
+    // The noun is the total's, not the shown rows': one row of 26 is still "jobs"
+    expect(showing('en', cronDefaults, 'jobsManager', 1, 26)).toBe('Showing 1 of 26 jobs');
+    expect(showing('en', cronDefaults, 'runsTable', 2, 2)).toBe('Showing 2 of 2 runs');
+    // Indonesian nouns have one form for every number
+    expect(cronId.jobsManager.itemsLabel).toEqual({ other: 'tugas' });
+    expect(cronId.runsTable.itemsLabel).toEqual({ other: 'eksekusi' });
+    expect(showing('id', cronId, 'jobsManager', 1, 1)).toBe('Menampilkan 1 dari 1 tugas');
+    expect(showing('id', cronId, 'runsTable', 50, 120)).toBe('Menampilkan 50 dari 120 eksekusi');
+    // A noun, not a count: it carries no {count} of its own
+    for (const forms of [cronDefaults.jobsManager.itemsLabel, cronDefaults.runsTable.itemsLabel]) {
+      expect(Object.values(forms).some((form) => hasPlaceholders(form))).toBe(false);
+    }
+  });
+
   it('fills the placeholders of its templates', () => {
     const t = cronDefaults;
-    expect(interpolate(t.listFooter.showing, { shown: 25, totalCount: 26, itemsLabel: t.jobsManager.itemsLabel })).toBe(
-      'Showing 25 of 26 jobs',
-    );
-    expect(interpolate(t.listFooter.showing, { shown: 50, totalCount: 120, itemsLabel: t.runsTable.itemsLabel })).toBe(
-      'Showing 50 of 120 runs',
-    );
+    expect(
+      interpolate(t.listFooter.showing, { shown: 25, totalCount: 26, itemsLabel: formatCount('en', 26, t.jobsManager.itemsLabel) }),
+    ).toBe('Showing 25 of 26 jobs');
+    expect(
+      interpolate(t.listFooter.showing, { shown: 50, totalCount: 120, itemsLabel: formatCount('en', 120, t.runsTable.itemsLabel) }),
+    ).toBe('Showing 50 of 120 runs');
     expect(interpolate(t.durationMs, { duration: '1,240' })).toBe('1,240 ms');
     expect(interpolate(t.logModal.titleWithJob, { job: 'nightly-report' })).toBe('Run logs — nightly-report');
     expect(interpolate(t.rowActions.jobAriaLabel, { name: 'nightly-report' })).toBe('Actions for nightly-report');

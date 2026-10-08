@@ -70,7 +70,7 @@ describe('CronListFooter', () => {
   const props = {
     shown: 25,
     totalCount: 26,
-    itemsLabel: 'jobs',
+    itemsLabel: { one: 'job', other: 'jobs' },
     page: 1,
     totalPages: 2,
     onPageChange: vi.fn(),
@@ -92,6 +92,22 @@ describe('CronListFooter', () => {
     expect(screen.getByText('Showing 3 of 3 jobs')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '2' })).not.toBeInTheDocument();
     expect(screen.getByTestId('size')).toHaveValue('25 / page');
+  });
+
+  it('names one row in the singular: the noun follows the total', () => {
+    ui(<CronListFooter {...props} shown={1} totalCount={1} totalPages={1} />);
+    expect(screen.getByText('Showing 1 of 1 job')).toBeInTheDocument();
+    expect(screen.queryByText('Showing 1 of 1 jobs')).not.toBeInTheDocument();
+  });
+
+  it('keeps the plural for the one row of a last page', () => {
+    ui(<CronListFooter {...props} shown={1} totalCount={26} page={2} />);
+    expect(screen.getByText('Showing 1 of 26 jobs')).toBeInTheDocument();
+  });
+
+  it('uses the one form a noun has in a language without plurals', () => {
+    ui(<CronListFooter {...props} shown={1} totalCount={1} totalPages={1} itemsLabel={{ other: 'tugas' }} />);
+    expect(screen.getByText('Showing 1 of 1 tugas')).toBeInTheDocument();
   });
 
   it('changes the page size', async () => {

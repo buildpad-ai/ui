@@ -98,7 +98,10 @@ export interface CronTranslations {
     jobAriaLabel: string;
   };
   listFooter: {
-    /** "Showing {shown} of {totalCount} {itemsLabel}" — `itemsLabel` is the table's plural noun */
+    /**
+     * "Showing {shown} of {totalCount} {itemsLabel}" — `itemsLabel` is the
+     * table's noun in the form `totalCount` takes ("1 job", "26 jobs")
+     */
     showing: string;
     /** "{n} / page" — page-size option label */
     perPage: string;
@@ -117,8 +120,11 @@ export interface CronTranslations {
       history: string;
     };
     searchPlaceholder: string;
-    /** Plural noun for the footer's "Showing N of M {itemsLabel}" */
-    itemsLabel: string;
+    /**
+     * The noun of the footer's "Showing N of M {itemsLabel}", one form per
+     * plural category of M: "Showing 1 of 1 job", "Showing 25 of 26 jobs"
+     */
+    itemsLabel: PluralForms;
     columns: {
       name: string;
       schedule: string;
@@ -164,8 +170,11 @@ export interface CronTranslations {
   };
   /** The run history table — of every job (the list's History tab) and of one job (the editor's) */
   runsTable: {
-    /** Plural noun for the footer's "Showing N of M {itemsLabel}" */
-    itemsLabel: string;
+    /**
+     * The noun of the footer's "Showing N of M {itemsLabel}", one form per
+     * plural category of M: "Showing 1 of 1 job", "Showing 25 of 26 jobs"
+     */
+    itemsLabel: PluralForms;
     columns: {
       job: string;
       triggered: string;
@@ -341,7 +350,7 @@ export const cronDefaults: CronTranslations = {
       history: 'History',
     },
     searchPlaceholder: 'Search by name, schedule, or description...',
-    itemsLabel: 'jobs',
+    itemsLabel: { one: 'job', other: 'jobs' },
     columns: {
       name: 'Name',
       schedule: 'Schedule',
@@ -377,7 +386,7 @@ export const cronDefaults: CronTranslations = {
     },
   },
   runsTable: {
-    itemsLabel: 'runs',
+    itemsLabel: { one: 'run', other: 'runs' },
     columns: {
       job: 'Job',
       triggered: 'Triggered',
@@ -536,7 +545,7 @@ export const cronId: CronTranslations = {
       history: 'Riwayat',
     },
     searchPlaceholder: 'Cari berdasarkan nama, jadwal, atau deskripsi...',
-    itemsLabel: 'tugas',
+    itemsLabel: { other: 'tugas' },
     columns: {
       name: 'Nama',
       schedule: 'Jadwal',
@@ -572,7 +581,7 @@ export const cronId: CronTranslations = {
     },
   },
   runsTable: {
-    itemsLabel: 'eksekusi',
+    itemsLabel: { other: 'eksekusi' },
     columns: {
       job: 'Tugas',
       triggered: 'Dipicu',

@@ -2,15 +2,18 @@
 
 import React from 'react';
 import { Group, Pagination, Select, Text } from '@mantine/core';
-import { useBuildpadTranslations } from '@buildpad/services';
-import { interpolate, type DeepPartial, type CronTranslations } from '@buildpad/utils';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type CronTranslations, type PluralForms } from '@buildpad/utils';
 
 export interface CronListFooterProps {
   /** Rows on the current page. */
   shown: number;
   totalCount: number;
-  /** Plural noun for the "Showing N of M {label}" line (e.g. "jobs"). */
-  itemsLabel: string;
+  /**
+   * The noun of the "Showing N of M {label}" line, one form per plural
+   * category of M (`{ one: 'job', other: 'jobs' }`): one job is not "1 jobs".
+   */
+  itemsLabel: PluralForms;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -46,8 +49,14 @@ export const CronListFooter: React.FC<CronListFooterProps> = ({
   translations,
 }) => {
   const t = useBuildpadTranslations((d) => d.cron, translations);
+  const { formatCount } = useBuildpadI18n();
 
   if (totalCount <= 0) return null;
+
+  // The noun follows the total, as the number beside it does: "1 of 1 job",
+  // "1 of 26 jobs". `formatCount` picks the form the locale's plural rules
+  // give that number (Indonesian has one form for every number).
+  const noun = formatCount(totalCount, itemsLabel);
 
   return (
     <Group
@@ -58,7 +67,7 @@ export const CronListFooter: React.FC<CronListFooterProps> = ({
     >
       <Group gap="sm">
         <Text size="xs" c="dimmed">
-          {interpolate(t.listFooter.showing, { shown, totalCount, itemsLabel })}
+          {interpolate(t.listFooter.showing, { shown, totalCount, itemsLabel: noun })}
         </Text>
         <Select
           size="xs"
