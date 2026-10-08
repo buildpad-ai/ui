@@ -337,7 +337,7 @@ describe('WorkflowDetail', () => {
     it('a deleted command is an edit, and the statistics follow', async () => {
       renderDetail();
       await loaded();
-      fireEvent.click(screen.getByLabelText('Delete command Reject'));
+      fireEvent.click(await screen.findByLabelText('Delete command Reject'));
       expect(screen.getByTestId('workflow-detail-stat-commands')).toHaveTextContent('2');
       expect(screen.getByTestId('workflow-detail-unsaved-badge')).toBeInTheDocument();
     });
@@ -441,7 +441,7 @@ describe('WorkflowDetail', () => {
     it('an edited machine is sent as the whole document', async () => {
       renderDetail();
       await loaded();
-      fireEvent.click(screen.getByLabelText('Delete command Reject'));
+      fireEvent.click(await screen.findByLabelText('Delete command Reject'));
       fireEvent.click(saveButton());
 
       await waitFor(() => expect(mocks.updateDefinition).toHaveBeenCalledTimes(1));
