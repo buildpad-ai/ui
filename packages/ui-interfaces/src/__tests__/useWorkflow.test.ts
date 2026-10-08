@@ -1,5 +1,7 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
+import { setGlobalDaaSConfig } from '@buildpad/services';
 import { useWorkflow } from '../workflow-button';
+import { createDefaultApiClient } from '../workflow-button/use-workflow';
 import type { WorkflowInstance } from '../workflow-button';
 
 // Mock fetch globally
@@ -496,6 +498,195 @@ describe('useWorkflow', () => {
       });
 
       expect(result.current.transitionCount).toBe(initialCount + 1);
+    });
+  });
+
+  // Who is offered a gated command. The server decides again on the
+  // transition; these are about the menu not offering what it would refuse,
+  // and not hiding what it would allow.
+  describe('Gated commands', () => {
+    const gatedInstance: WorkflowInstance = {
+      ...mockWorkflowInstance,
+      current_state: 'Review',
+      workflow: {
+        id: 1,
+        name: 'Purchase approval',
+        workflow_json: JSON.stringify({
+          initial_state: 'Draft',
+          states: [
+            {
+              name: 'Review',
+              isEndState: false,
+              commands: [
+                { name: 'Comment', next_state: 'Review', policies: [] },
+                { name: 'Approve', next_state: 'Approved', policies: [], module_access_keys: ['workflow:approve'] },
+                { name: 'Escalate', next_state: 'Finance', policies: ['policy-manager'] },
+                { name: 'Override', next_state: 'Approved', policies: ['policy-director'], module_access_keys: ['purchase:override'] },
+              ],
+            },
+          ],
+        }),
+      },
+    };
+
+    /** Answers the routes the hook reads; `access` is what the user holds. */
+    function serve(access: { isAdmin?: boolean; moduleAccess?: Record<string, boolean>; policies?: string[]; policiesRoute?: boolean; permissionsRoute?: boolean }) {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/api/items/daas_wf_instance')) {
+          return Promise.resolve({ ok: true, json: async () => ({ data: [gatedInstance] }) });
+        }
+        if (url.includes('/api/permissions/me')) {
+          return access.permissionsRoute === false
+            ? Promise.resolve({ ok: false, status: 500 })
+            : Promise.resolve({ ok: true, json: async () => ({ data: {}, isAdmin: access.isAdmin ?? false, moduleAccess: access.moduleAccess ?? {} }) });
+        }
+        if (url.includes('/api/policies/me')) {
+          return access.policiesRoute === false
+            ? Promise.resolve({ ok: false, status: 404 })
+            : Promise.resolve({ ok: true, json: async () => ({ data: (access.policies ?? []).map((id) => ({ id, name: id })) }) });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ data: [] }) });
+      });
+    }
+
+    async function commandsFor(access: Parameters<typeof serve>[0]) {
+      serve(access);
+      const { result } = renderHook(() => useWorkflow({ itemId: 'article-123', collection: 'articles' }));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      await waitFor(() => expect(result.current.commands.length).toBeGreaterThan(0));
+      return result.current.commands.map((command) => command.command);
+    }
+
+    it('offers a user with no grants only the open command', async () => {
+      expect(await commandsFor({})).toEqual(['Comment']);
+    });
+
+    it('offers a command gated by a module access key to a holder of that key', async () => {
+      expect(await commandsFor({ moduleAccess: { 'workflow:approve': true } })).toEqual(['Comment', 'Approve']);
+    });
+
+    it('does not take a key that is present but false as a grant', async () => {
+      expect(await commandsFor({ moduleAccess: { 'workflow:approve': false } })).toEqual(['Comment']);
+    });
+
+    it('offers a policy-gated command to a holder of the policy, read from /api/policies/me', async () => {
+      expect(await commandsFor({ policies: ['policy-manager'] })).toEqual(['Comment', 'Escalate']);
+      expect(mockFetch.mock.calls.some((call) => String(call[0]).includes('/api/policies/me'))).toBe(true);
+    });
+
+    it('treats the two lists of one command as alternatives', async () => {
+      expect(await commandsFor({ moduleAccess: { 'purchase:override': true } })).toEqual(['Comment', 'Override']);
+      expect(await commandsFor({ policies: ['policy-director'] })).toEqual(['Comment', 'Override']);
+    });
+
+    it('offers an administrator every command, whatever their own grants', async () => {
+      expect(await commandsFor({ isAdmin: true })).toEqual(['Comment', 'Approve', 'Escalate', 'Override']);
+      // An administrator's policies are never asked for.
+      expect(mockFetch.mock.calls.some((call) => String(call[0]).includes('/api/policies/me'))).toBe(false);
+    });
+
+    it('offers no gated command when the access lookup fails', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      expect(await commandsFor({ permissionsRoute: false, moduleAccess: { 'workflow:approve': true } })).toEqual(['Comment']);
+    });
+
+    it('falls back to the earlier policy lookup on a backend without /api/policies/me', async () => {
+      serve({ policiesRoute: false });
+      const base = mockFetch.getMockImplementation()!;
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/api/auth/user')) return Promise.resolve({ ok: true, json: async () => ({ user: { policies: ['access-1'] } }) });
+        if (url.includes('/api/access')) return Promise.resolve({ ok: true, json: async () => ({ data: [{ policy: 'policy-manager' }] }) });
+        return base(url);
+      });
+
+      const { result } = renderHook(() => useWorkflow({ itemId: 'article-123', collection: 'articles' }));
+      await waitFor(() => expect(result.current.commands.length).toBe(2));
+
+      expect(result.current.commands.map((command) => command.command)).toEqual(['Comment', 'Escalate']);
+    });
+
+    it('asks for no access at all when the state has only open commands', async () => {
+      mockFetch.mockImplementation((url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () => ({ data: url.includes('/api/items/daas_wf_instance') ? [{ ...mockWorkflowInstance, current_state: 'Review' }] : [] }),
+        }),
+      );
+
+      const { result } = renderHook(() => useWorkflow({ itemId: 'article-123', collection: 'articles' }));
+      await waitFor(() => expect(result.current.commands.length).toBe(1));
+
+      const asked = mockFetch.mock.calls.map((call) => String(call[0]));
+      expect(asked.some((url) => url.includes('/api/permissions/me') || url.includes('/api/policies/me'))).toBe(false);
+    });
+  });
+
+  // The default client sends requests where the other data hooks send them.
+  describe('Default API client', () => {
+    const ok = (data: unknown) => Promise.resolve({ ok: true, json: async () => data });
+
+    afterEach(() => {
+      setGlobalDaaSConfig(null);
+    });
+
+    it('stays same-origin when no DaaS URL is configured', async () => {
+      mockFetch.mockImplementation(() => ok({ data: [] }));
+
+      await createDefaultApiClient().get('/api/items/daas_wf_instance');
+
+      expect(mockFetch.mock.calls[0][0]).toBe('/api/items/daas_wf_instance');
+    });
+
+    it('calls the configured DaaS origin with the session token and the scope header', async () => {
+      mockFetch.mockImplementation(() => ok({ message: 'ok' }));
+      const client = createDefaultApiClient(undefined, () => ({
+        url: 'https://daas.example.com/',
+        getToken: async () => 'jwt-1',
+        getHeaders: async () => ({ 'X-Resource-Uri': '/tenant:1' }),
+      }));
+
+      await client.post('/api/workflow/transition', { workflowInstanceId: 'i-1', commandName: 'Submit' });
+
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://daas.example.com/api/workflow/transition');
+      expect(init.method).toBe('POST');
+      expect(init.credentials).toBe('include');
+      expect(init.headers).toMatchObject({ Authorization: 'Bearer jwt-1', 'X-Resource-Uri': '/tenant:1' });
+    });
+
+    it('uses the globally configured DaaS when the hook has no provider', async () => {
+      setGlobalDaaSConfig({ url: 'https://daas.example.com', token: 'static-token' });
+      mockFetch.mockImplementation(() => ok({ data: [] }));
+
+      await createDefaultApiClient().get('/api/items/daas_wf_instance', { params: { fields: 'id' } });
+
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://daas.example.com/api/items/daas_wf_instance?fields=id');
+      expect(init.headers).toMatchObject({ Authorization: 'Bearer static-token' });
+    });
+
+    it("reports the server's reason for a refusal instead of the bare status", async () => {
+      mockFetch.mockImplementation(() =>
+        Promise.resolve({ ok: false, status: 403, json: async () => ({ message: 'You are not authorized to perform this transition' }) }),
+      );
+
+      await expect(createDefaultApiClient().post('/api/workflow/transition', {})).rejects.toThrow(
+        'You are not authorized to perform this transition',
+      );
+    });
+
+    it('reads the reason from either error envelope', async () => {
+      mockFetch.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 400, json: async () => ({ error: 'Command "X" not found in state "Draft"' }) }));
+      await expect(createDefaultApiClient().post('/api/workflow/transition', {})).rejects.toThrow('Command "X" not found in state "Draft"');
+
+      mockFetch.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 403, json: async () => ({ errors: [{ message: 'Forbidden' }] }) }));
+      await expect(createDefaultApiClient().get('/api/items/daas_wf_instance')).rejects.toThrow('Forbidden');
+    });
+
+    it('falls back to the status when the body says nothing', async () => {
+      mockFetch.mockImplementation(() => Promise.resolve({ ok: false, status: 502, json: async () => { throw new Error('not json'); } }));
+
+      await expect(createDefaultApiClient().get('/api/items/daas_wf_instance')).rejects.toThrow('HTTP error! status: 502');
     });
   });
 });

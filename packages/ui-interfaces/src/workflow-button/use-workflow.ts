@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useBuildpadTranslations } from '@buildpad/services';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  buildApiUrl,
+  getApiHeadersAsync,
+  useBuildpadTranslations,
+  useDaaSContextOptional,
+  type DaaSConfig,
+} from '@buildpad/services';
 import { defaultTranslations, interpolate, isNewItem } from '@buildpad/utils';
 import type {
   UseWorkflowOptions,
@@ -13,16 +19,90 @@ import type {
 type WorkflowApiClient = NonNullable<UseWorkflowOptions['apiClient']>;
 
 /**
+ * What the current user may do with gated commands: whether they are an
+ * administrator, the policies they hold and the module access keys granted to
+ * them. Resolved only when the current state has a gated command.
+ */
+interface WorkflowAccess {
+  isAdmin: boolean;
+  policyIds: Set<string>;
+  moduleAccess: Record<string, boolean>;
+}
+
+const NO_ACCESS: WorkflowAccess = { isAdmin: false, policyIds: new Set(), moduleAccess: {} };
+
+/**
+ * Whether the user may run a command, by the rule the server applies on
+ * POST /api/workflow/transition: a command with neither list is open; otherwise
+ * an administrator passes, and anyone else needs one of its policies OR one of
+ * its module access keys. The server decides again on the transition itself —
+ * this only keeps the menu from offering what would be refused.
+ */
+export function canRunWorkflowCommand(command: WorkflowCommand, access: WorkflowAccess): boolean {
+  const policies = command.policies ?? [];
+  const keys = command.module_access_keys ?? [];
+  if (policies.length === 0 && keys.length === 0) return true;
+  if (access.isAdmin) return true;
+  return (
+    policies.some((policyId) => access.policyIds.has(policyId)) ||
+    keys.some((key) => access.moduleAccess[key] === true)
+  );
+}
+
+/** The sentence a DaaS error body carries, whichever envelope the backend used. */
+async function readErrorMessage(response: Response): Promise<string | undefined> {
+  try {
+    const body = (await response.json()) as {
+      message?: unknown;
+      error?: unknown;
+      errors?: { message?: unknown }[];
+    } | null;
+    const message = body?.message ?? body?.error ?? body?.errors?.[0]?.message;
+    return typeof message === 'string' && message.length > 0 ? message : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Default API client on `fetch`. Not a hook, so the HTTP error message (a GET
  * failure reaches the user through `errorMessage`) is handed in; it defaults
  * to the English dictionary entry `interfaces.workflowButton.error.http`.
+ *
+ * Requests go where every other Buildpad data hook sends them: to the DaaS
+ * origin, with the session token and the scope header, when a DaaS URL is
+ * configured (a `DaaSProvider`, `setGlobalDaaSConfig`, or
+ * `NEXT_PUBLIC_BUILDPAD_DAAS_URL`). The paths used to be fetched relative to
+ * the page instead, which only worked inside the Studio or behind a proxy
+ * route for each one — and an app scaffolded by the CLI has no proxy for
+ * `/api/workflow/transition`, so every transition answered 404. Without a
+ * configured URL the paths stay relative, as before.
+ *
+ * `getDaasConfig` is read per request rather than captured, so a provider
+ * whose `config` object changes identity between renders does not give the
+ * hook a new client (and with it a refetch) each time.
  */
 export function createDefaultApiClient(
   httpErrorMessage: string = defaultTranslations.interfaces.workflowButton.error.http,
+  getDaasConfig: () => DaaSConfig | null = () => null,
 ): WorkflowApiClient {
-  const httpError = (status: number) => new Error(interpolate(httpErrorMessage, { status }));
+  const failure = async (response: Response) =>
+    new Error((await readErrorMessage(response)) ?? interpolate(httpErrorMessage, { status: response.status }));
+
+  const target = async (path: string): Promise<{ url: string; headers: Record<string, string> }> => {
+    const config = getDaasConfig();
+    let url: string;
+    try {
+      url = buildApiUrl(path, config);
+    } catch {
+      // No DaaS URL anywhere: same-origin, as the Studio serves these routes.
+      return { url: path, headers: { 'Content-Type': 'application/json' } };
+    }
+    return { url, headers: await getApiHeadersAsync(config) };
+  };
+
   return {
-    get: async (url, config) => {
+    get: async (path, config) => {
       const params = new URLSearchParams();
       if (config?.params) {
         Object.entries(config.params).forEach(([key, value]) => {
@@ -32,23 +112,20 @@ export function createDefaultApiClient(
         });
       }
       const queryString = params.toString();
-      const fullUrl = queryString ? `${url}?${queryString}` : url;
-      const response = await fetch(fullUrl, {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) throw httpError(response.status);
+      const { url, headers } = await target(queryString ? `${path}?${queryString}` : path);
+      const response = await fetch(url, { method: 'GET', credentials: 'include', headers });
+      if (!response.ok) throw await failure(response);
       return { data: await response.json() };
     },
-    post: async (url, data) => {
+    post: async (path, data) => {
+      const { url, headers } = await target(path);
       const response = await fetch(url, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw httpError(response.status);
+      if (!response.ok) throw await failure(response);
       return { data: await response.json() };
     },
   };
@@ -62,7 +139,7 @@ export function createDefaultApiClient(
  *
  * Features:
  * - Automatic workflow instance fetching
- * - Policy-based command filtering
+ * - Command filtering by policy and by module access key (administrators see every command)
  * - Transition execution with automatic state refresh
  * - Support for versioned content and translations
  *
@@ -96,10 +173,16 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
   } = options;
 
   const t = useBuildpadTranslations((d) => d.interfaces.workflowButton, translations);
+  // The provider's config is read through a ref at request time: its identity
+  // is not stable across renders (see createDefaultApiClient).
+  const daasConfig = useDaaSContextOptional()?.config ?? null;
+  const daasConfigRef = useRef(daasConfig);
+  daasConfigRef.current = daasConfig;
+
   // The default client is memoised on the (stable) dictionary string so it
   // keeps one identity across renders, as the module-level constant did.
   const apiClient = useMemo(
-    () => apiClientOption ?? createDefaultApiClient(t.error.http),
+    () => apiClientOption ?? createDefaultApiClient(t.error.http, () => daasConfigRef.current),
     [apiClientOption, t.error.http],
   );
 
@@ -110,12 +193,31 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Fetch user policies - supports both /api/users/me and /api/auth/user endpoints
+  // Fetch the policies the current user holds.
+  //
+  // GET /api/policies/me is the route that answers this: the policies that
+  // reach the user directly, through a role, or publicly, at the active scope.
+  // The earlier lookup read a `policies` list off /api/auth/user or
+  // /api/users/me — neither returns one — so it always came back empty and a
+  // policy-gated command was hidden from the very users it was granted to.
+  // That lookup is kept as the fallback for a backend without the route.
   const fetchUserPolicies = useCallback(async (): Promise<{ policy: string }[]> => {
     try {
-      // Try /api/auth/user first (main-nextjs format)
+      try {
+        const response = await apiClient.get('/api/policies/me');
+        const rows = response.data?.data;
+        if (Array.isArray(rows)) {
+          return rows
+            .map((row: unknown) => (typeof row === 'string' ? row : (row as { id?: unknown } | null)?.id))
+            .filter((id): id is string | number => typeof id === 'string' || typeof id === 'number')
+            .map((id) => ({ policy: String(id) }));
+        }
+      } catch {
+        // No such route on this backend: fall through to the earlier lookup.
+      }
+
       let policyIds: string[] = [];
-      
+
       try {
         const response = await apiClient.get('/api/auth/user');
         // Handle { user: { ... } } format from main-nextjs
@@ -156,6 +258,40 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
       return [];
     }
   }, [apiClient]);
+
+  // What the current user may do with gated commands. GET /api/permissions/me
+  // carries both facts the server's gate uses that are not policies: whether
+  // the user is an administrator and their OR-merged module access keys. It
+  // is narrowed to one collection because only those two fields are read.
+  // Every failure resolves to "no access": a gated command is something the
+  // user is presumed not to have.
+  const fetchAccess = useCallback(
+    async (needsPolicies: boolean): Promise<WorkflowAccess> => {
+      let isAdmin = false;
+      let moduleAccess: Record<string, boolean> = {};
+      try {
+        const response = await apiClient.get('/api/permissions/me', {
+          params: { collection: 'daas_wf_instance' },
+        });
+        const body = response.data as unknown as {
+          isAdmin?: unknown;
+          moduleAccess?: Record<string, boolean> | null;
+        } | null;
+        isAdmin = body?.isAdmin === true;
+        moduleAccess = body?.moduleAccess ?? {};
+      } catch (error) {
+        console.error('Error fetching workflow access:', error);
+      }
+
+      const policyIds =
+        !isAdmin && needsPolicies
+          ? new Set((await fetchUserPolicies()).map((policy) => policy.policy))
+          : new Set<string>();
+
+      return { isAdmin, moduleAccess, policyIds };
+    },
+    [apiClient, fetchUserPolicies],
+  );
 
   // Fetch workflow instance
   const fetchWorkflowInstance = useCallback(
@@ -247,10 +383,6 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
               ? JSON.parse(workflowDef.workflow_json)
               : workflowDef.workflow_json;
 
-          // Fetch user policies
-          const policies = await fetchUserPolicies();
-          const policyIds = new Set(policies.map((policy) => policy.policy));
-
           // Store workflow instance
           setWorkflowInstanceId(instance.id);
           setWorkflowInstance(instance);
@@ -272,20 +404,29 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
             const currentStateConfig = workflowJson.states[instance.current_state];
             if (currentStateConfig?.transitions) {
               workflowCommands = currentStateConfig.transitions.map(
-                (t: { name: string; to: string; policies?: string[] }) => ({
+                (t: { name: string; to: string; policies?: string[]; module_access_keys?: string[] }) => ({
                   name: t.name,
                   next_state: t.to,
                   policies: t.policies || [],
+                  module_access_keys: t.module_access_keys || [],
                 })
               );
             }
           }
 
-          // Filter commands based on user policies
-          const filteredCommands = workflowCommands.filter((command) => {
-            if (!command.policies || command.policies.length === 0) return true;
-            return command.policies?.some((policyId) => policyIds.has(policyId));
-          });
+          // Keep the commands this user may run. Access is only looked up
+          // when the state has a gated command, and policies only when one of
+          // them names a policy.
+          const gatedCommands = workflowCommands.filter(
+            (command) => !canRunWorkflowCommand(command, NO_ACCESS),
+          );
+          const access =
+            gatedCommands.length > 0
+              ? await fetchAccess(gatedCommands.some((command) => (command.policies ?? []).length > 0))
+              : NO_ACCESS;
+          const filteredCommands = workflowCommands.filter((command) =>
+            canRunWorkflowCommand(command, access),
+          );
 
           // Populate the command options
           setCommands(
@@ -315,7 +456,7 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
         setLoading(false);
       }
     },
-    [itemId, collection, fetchUserPolicies, initialVersionKey, initialTranslationId, apiClient, t]
+    [itemId, collection, fetchAccess, initialVersionKey, initialTranslationId, apiClient, t]
   );
 
   // Execute a workflow transition
