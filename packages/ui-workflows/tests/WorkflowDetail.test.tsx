@@ -59,7 +59,12 @@ function grant(actions: string[], isAdmin = false) {
 const nameInput = () => screen.getByTestId('workflow-detail-name') as HTMLInputElement;
 const descriptionInput = () => screen.getByTestId('workflow-detail-description') as HTMLTextAreaElement;
 const saveButton = () => screen.getByTestId('workflow-detail-save-btn');
-const loaded = () => waitFor(() => expect(nameInput().value).toBe('Article review'));
+const loaded = async () => {
+  await waitFor(() => expect(nameInput().value).toBe('Article review'));
+  // The diagram draws its cards a render after the form has its values; a test
+  // that reads a card straight after `loaded()` must not get ahead of it
+  await waitFor(() => expect(screen.queryAllByTestId('workflow-diagram-state').length).toBeGreaterThan(0));
+};
 
 /** The card of the state named `name` on the diagram. */
 function card(name: string): HTMLElement {
