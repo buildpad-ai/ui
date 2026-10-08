@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T17:01:48.124Z",
+  "generatedAt": "2026-10-08T18:30:29.851Z",
   "version": "3.0.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -269,7 +269,7 @@
         {
           "source": "utils/src/i18n/namespaces/cron.ts",
           "target": "lib/buildpad/i18n/namespaces/cron.ts",
-          "sourceSha256": "bada444001f8104b1684bf5807019925ca5cd8f43841bafa0a9e55ae440833bb"
+          "sourceSha256": "04b4fee0ec14fabe0c70ef7186a8ca0382ee306a0b7684ca09416362b215fa12"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -4258,7 +4258,7 @@
         {
           "source": "ui-cron/src/CronJobsManager.tsx",
           "target": "components/ui/cron-management/cron-jobs-manager.tsx",
-          "sourceSha256": "1291650c1c3bb853a4abbfe7a729d50b54500c30e6c0c8ff38232ac149c6a07e"
+          "sourceSha256": "82c8555cc6451fec1215cd3bb382c1130fbd740ea980a02cdb6a70d795bd570c"
         },
         {
           "source": "ui-cron/src/CronJobDetail.tsx",
@@ -4278,7 +4278,7 @@
         {
           "source": "ui-cron/src/CronRunsTable.tsx",
           "target": "components/ui/cron-management/cron-runs-table.tsx",
-          "sourceSha256": "921ec2892aa9c76d80bb2d36d51adcbe4a077bb4a4fd32ddaf62771028f925c2"
+          "sourceSha256": "f0267fb00de1832b6d1c087bc131707e868b425698213957d6abb4845ea1cec0"
         },
         {
           "source": "ui-cron/src/CronRunLogModal.tsx",
@@ -4306,14 +4306,19 @@
           "sourceSha256": "6fdd9a38f052cfdba09384eaf51e40c446cce5e0fb685faacf80ae46561636ae"
         },
         {
+          "source": "ui-cron/src/cronTableColumns.ts",
+          "target": "components/ui/cron-management/cron-table-columns.ts",
+          "sourceSha256": "22fd84e230660019d590490149b48381a9d734580114e3f3cc523dbde154d7c9"
+        },
+        {
           "source": "ui-cron/src/CronManagerTable.css",
           "target": "components/ui/cron-management/cron-manager-table.css",
-          "sourceSha256": "ac55ccb9f07a755bbef87dbabbb149549332c609abc3136b8658a8fdc05ce2df"
+          "sourceSha256": "d713ab487889cc2237421cca74c3c28cad4094b7cac86fb0a28e2f8299afec8a"
         },
         {
           "source": "ui-cron/src/useCronList.ts",
           "target": "components/ui/cron-management/use-cron-list.ts",
-          "sourceSha256": "6609649c7c3864886b434376a9d65b47d9b724b47772ccb94fe6add2f4c9d904"
+          "sourceSha256": "ab49f85c4b005e187aebfea49721f4d1e84f25629bc0509253e56854d24907b8"
         },
         {
           "source": "ui-cron/src/CronPageState.tsx",
@@ -4333,7 +4338,7 @@
         {
           "source": "ui-cron/src/CronListFooter.tsx",
           "target": "components/ui/cron-management/cron-list-footer.tsx",
-          "sourceSha256": "8aec9816ad2bafffb013138f33853796399545d1fd00028dee7261f8186d2fa9"
+          "sourceSha256": "12c8ec66ec7e6a2fa9e426301277a313f73316bb0706b54e44c0fd2eace9a77f"
         },
         {
           "source": "ui-cron/src/CronListEmptyState.tsx",
