@@ -232,6 +232,7 @@ export {
   type FilesTranslations,
   type UsersTranslations,
   type WorkflowsTranslations,
+  type CronTranslations,
   type FormsTranslations,
   type HooksTranslations,
   type DateTimeTranslations,

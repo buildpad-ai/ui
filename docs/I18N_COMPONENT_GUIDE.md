@@ -15,6 +15,7 @@ packages/utils/src/i18n/
 │   ├── files.ts                  ui-files
 │   ├── users.ts                  ui-users
 │   ├── workflows.ts              ui-workflows
+│   ├── cron.ts                   cron jobs module (its components come with ui-cron)
 │   ├── forms.ts                  ui-forms (builder chrome only)
 │   ├── interfaces.ts             composer — one sub-namespace per interface folder
 │   └── interfaces/<folder>.ts    ui-interfaces: list-m2m.ts → interfaces.listM2M, upload.ts → interfaces.upload, …
