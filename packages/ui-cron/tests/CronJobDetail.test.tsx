@@ -1139,11 +1139,11 @@ describe('CronJobDetail', () => {
     });
 
     it('codeHelp replaces what the notice above the editor says', async () => {
-      renderDetail({ codeHelp: <span>This backend gives a job services.items.</span> });
+      renderDetail({ codeHelp: <span>On this backend a job can call services.fetch.</span> });
       await loaded();
       const help = screen.getByTestId('cron-job-detail-code-help');
       expect(help).toHaveTextContent('Cron Code');
-      expect(help).toHaveTextContent('This backend gives a job services.items.');
+      expect(help).toHaveTextContent('On this backend a job can call services.fetch.');
       expect(help).not.toHaveTextContent('runs in a sandbox');
     });
   });

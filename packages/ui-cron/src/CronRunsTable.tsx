@@ -118,14 +118,15 @@ export const CronRunsTable: React.FC<CronRunsTableProps> = ({
       ...(showJobColumn
         ? [
             { text: '', value: 'icon', sortable: false, width: 40 },
-            { text: t.runsTable.columns.job, value: 'job', sortable: false },
+            { text: t.runsTable.columns.job, value: 'job', sortable: false, width: 240 },
           ]
         : []),
-      { text: t.runsTable.columns.triggered, value: 'triggered', sortable: false },
-      { text: t.runsTable.columns.durationMs, value: 'duration', sortable: false },
-      { text: t.runsTable.columns.status, value: 'status', sortable: false },
-      { text: t.runsTable.columns.triggeredBy, value: 'triggeredBy', sortable: false },
-      { text: t.runsTable.columns.logs, value: 'logs', sortable: false },
+      { text: t.runsTable.columns.triggered, value: 'triggered', sortable: false, width: 190 },
+      { text: t.runsTable.columns.durationMs, value: 'duration', sortable: false, width: 130 },
+      { text: t.runsTable.columns.status, value: 'status', sortable: false, width: 110 },
+      { text: t.runsTable.columns.triggeredBy, value: 'triggeredBy', sortable: false, width: 110 },
+      // The widest: an error is written here in place of the line count
+      { text: t.runsTable.columns.logs, value: 'logs', sortable: false, width: 320 },
     ],
     [t, showJobColumn],
   );

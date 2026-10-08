@@ -212,13 +212,14 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
   const headers = useMemo<HeaderRaw[]>(
     () => [
       { text: '', value: 'icon', sortable: false, width: 48 },
-      { text: t.jobsManager.columns.name, value: 'name', sortable: false },
-      { text: t.jobsManager.columns.schedule, value: 'schedule', sortable: false },
-      { text: t.jobsManager.columns.timezone, value: 'timezone', sortable: false },
-      { text: t.jobsManager.columns.status, value: 'status', sortable: false },
-      { text: t.jobsManager.columns.lastRun, value: 'lastRun', sortable: false },
-      { text: t.jobsManager.columns.lastStatus, value: 'lastStatus', sortable: false },
-      { text: t.jobsManager.columns.nextRun, value: 'nextRun', sortable: false },
+      // The name carries the description under it; the others hold one short value
+      { text: t.jobsManager.columns.name, value: 'name', sortable: false, width: 280 },
+      { text: t.jobsManager.columns.schedule, value: 'schedule', sortable: false, width: 150 },
+      { text: t.jobsManager.columns.timezone, value: 'timezone', sortable: false, width: 130 },
+      { text: t.jobsManager.columns.status, value: 'status', sortable: false, width: 110 },
+      { text: t.jobsManager.columns.lastRun, value: 'lastRun', sortable: false, width: 190 },
+      { text: t.jobsManager.columns.lastStatus, value: 'lastStatus', sortable: false, width: 120 },
+      { text: t.jobsManager.columns.nextRun, value: 'nextRun', sortable: false, width: 190 },
     ],
     [t],
   );

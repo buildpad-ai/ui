@@ -10,10 +10,13 @@ export const JOB_REPORT_ID = '3d0a5a52-6f0e-4d0b-9a8e-0c5b7a1f1001';
 export const JOB_SWEEP_ID = '3d0a5a52-6f0e-4d0b-9a8e-0c5b7a1f1002';
 export const JOB_SYNC_ID = '3d0a5a52-6f0e-4d0b-9a8e-0c5b7a1f1003';
 
-const REPORT_CODE = `const rows = await services.items('orders').readByQuery({ limit: 100 });
-console.log('Orders in the report:', rows.length);
+// Uses only what both backends give a job: `context`, `console` and a `return`
+const REPORT_CODE = `const orders = [12, 7, 23];
+const total = orders.reduce((sum, count) => sum + count, 0);
+console.log('Orders in the report:', total);
+if (orders.length < 5) console.warn('Two orders have no customer');
 
-return { sent: rows.length };
+return { sent: total, run: context.runId };
 `;
 
 /**

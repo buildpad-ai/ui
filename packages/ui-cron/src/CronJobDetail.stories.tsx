@@ -115,7 +115,7 @@ export const CustomCodeEditor: Story = {
     <Harness
       codeHelp={
         <>
-          This backend gives a job <Code>services.items</Code> and <Code>services.fetch</Code>.
+          On this backend a job can call <Code>services.fetch</Code> and read <Code>services.env</Code>.
         </>
       }
       renderCodeEditor={({ value, onChange, readOnly, minHeight, placeholder, id, ...aria }) => (
