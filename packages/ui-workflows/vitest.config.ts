@@ -38,10 +38,10 @@ export default defineConfig({
         'storybook-static/**',
         '*.config.ts',
       ],
-      // Floors just under the coverage measured when they were added
-      // (99.11 / 94.54 / 96.38 / 99.11, definitions surfaces only). A new
-      // surface has to arrive with its tests to stay above them.
-      thresholds: { statements: 97, branches: 92, functions: 94, lines: 97 },
+      // Floors just under the coverage measured when they were last set
+      // (99.09 / 94.64 / 97.41 / 99.09, with the assignments and instances
+      // surfaces). A new surface has to arrive with its tests to stay above them.
+      thresholds: { statements: 97, branches: 92, functions: 95, lines: 97 },
     },
   },
   resolve: {
