@@ -21,7 +21,9 @@
  * (the original promised "Click to edit", and a click only selects); the
  * strings for states the original pages never drew — a failed load, a missing
  * record, a refusal, a search without matches; and labels for controls that
- * were icons without a name.
+ * were icons without a name. `stateModal.validation.endStateHasCommands` is
+ * the refusal behind the End State switch's own description ("End states
+ * cannot have outgoing commands"), which the original never enforced.
  */
 import type { PluralForms } from '../primitives';
 
@@ -179,6 +181,8 @@ export interface WorkflowsTranslations {
     validation: {
       nameRequired: string;
       duplicateName: string;
+      /** Shown when End State is turned on for a state that has commands */
+      endStateHasCommands: string;
     };
   };
   commandModal: {
@@ -527,6 +531,8 @@ export const workflowsDefaults: WorkflowsTranslations = {
     validation: {
       nameRequired: 'State name is required',
       duplicateName: 'A state with this name already exists',
+      endStateHasCommands:
+        'This state has outgoing commands. Delete them before making it an end state.',
     },
   },
   commandModal: {
@@ -858,6 +864,8 @@ export const workflowsId: WorkflowsTranslations = {
     validation: {
       nameRequired: 'Nama status wajib diisi',
       duplicateName: 'Status dengan nama ini sudah ada',
+      endStateHasCommands:
+        'Status ini memiliki perintah keluar. Hapus perintah tersebut sebelum menjadikannya status akhir.',
     },
   },
   commandModal: {

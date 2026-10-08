@@ -13,10 +13,15 @@
  * free text: text that is not JSON must stop the save instead of leaving the
  * last parameters that did parse in its place.
  *
+ * So do the gestures of the state diagram (delete a state or a command, drop a
+ * state, move a command's edge): the canvas is a view of the document, and a
+ * gesture is a function from one document to the next.
+ *
  * Ported from buildpad-daas `lib/workflows/definition-editor.ts`,
- * `lib/utils/workflow-filter-rule.ts` and the save handlers of
- * `app/[lang]/workflows/[id]/page.tsx`. Nothing here touches the DOM, React or
- * the network.
+ * `lib/utils/workflow-filter-rule.ts`, the save handlers of
+ * `app/[lang]/workflows/[id]/page.tsx` and the handlers of
+ * `components/WorkflowDiagram.tsx`. Nothing here touches the DOM, React or the
+ * network.
  */
 import type {
   WorkflowActionParameters,
@@ -25,6 +30,7 @@ import type {
   WorkflowJsonAction,
   WorkflowJsonCommand,
   WorkflowJsonState,
+  WorkflowStatePosition,
 } from '@buildpad/types';
 
 // ============================================================================
@@ -299,15 +305,29 @@ export interface WorkflowStateCheck {
   name: string;
   /** Names of the other states of the workflow. */
   siblingNames: string[];
+  /** Whether the dialog's End State switch is on. Absent: the end-state rule is not checked. */
+  isEndState?: boolean;
+  /** Whether the stored state is an end state already; false or absent for a new state. */
+  wasEndState?: boolean;
+  /** Number of commands the stored state has; 0 or absent for a new state. */
+  commandCount?: number;
 }
 
 /** Why a state cannot be saved. */
 export interface WorkflowStateProblem {
-  code: 'nameRequired' | 'duplicateName';
+  code: 'nameRequired' | 'duplicateName' | 'endStateHasCommands';
   error: string;
 }
 
-/** What refuses a state save, or null when it can be saved. */
+/**
+ * What refuses a state save, or null when it can be saved.
+ *
+ * An end state has no outgoing commands, so a state that has commands cannot
+ * be turned into one: its commands would stay in the document, and the
+ * transition route would go on running them. A state that is stored as an end
+ * state with commands (a document written through the API) can still be saved
+ * as it is — refusing that would leave the user no way to rename it.
+ */
 export function findWorkflowStateProblem(form: WorkflowStateCheck): WorkflowStateProblem | null {
   const name = form.name.trim();
   if (!name) {
@@ -317,6 +337,13 @@ export function findWorkflowStateProblem(form: WorkflowStateCheck): WorkflowStat
   // Check for duplicate names (the state's own stored name is not a sibling)
   if (form.siblingNames.some((sibling) => sibling.toLowerCase() === name.toLowerCase())) {
     return { code: 'duplicateName', error: 'A state with this name already exists' };
+  }
+
+  if (form.isEndState && !form.wasEndState && (form.commandCount ?? 0) > 0) {
+    return {
+      code: 'endStateHasCommands',
+      error: 'This state has outgoing commands. Delete them before making it an end state.',
+    };
   }
 
   return null;
@@ -443,6 +470,225 @@ export function findWorkflowDefinitionProblem(draft: {
   }
 
   return null;
+}
+
+// ============================================================================
+// Diagram gestures
+// ============================================================================
+//
+// The state diagram is a view of the document. Every gesture on it that changes
+// the machine (a drag, a deletion, a connection moved to another state) is one
+// of these functions: the canvas hands the result to its `onChange` and draws
+// the document it gets back, so the canvas and the document cannot disagree.
+//
+// A function that refuses a gesture returns the document it was given, the
+// same object, so a caller can tell a refusal by identity and skip the change.
+
+/**
+ * The document after the state named `stateName` is deleted: the state goes,
+ * every command that led to it goes with it, and the initial state moves to
+ * the first remaining state when it was the one deleted.
+ *
+ * Refused (the same document is returned) for a name that is no state, and
+ * for the only state: a workflow cannot be saved without one.
+ */
+export function removeWorkflowState(workflowJson: WorkflowJson, stateName: string): WorkflowJson {
+  if (workflowJson.states.length <= 1) return workflowJson;
+  if (!workflowJson.states.some((s) => s.name === stateName)) return workflowJson;
+
+  const states = workflowJson.states
+    .filter((s) => s.name !== stateName)
+    .map((s) =>
+      s.commands.some((c) => c.next_state === stateName)
+        ? { ...s, commands: s.commands.filter((c) => c.next_state !== stateName) }
+        : s,
+    );
+
+  return {
+    ...workflowJson,
+    initial_state:
+      workflowJson.initial_state === stateName ? states[0]?.name || '' : workflowJson.initial_state,
+    states,
+  };
+}
+
+/**
+ * The document after the command `commandName` of the state `stateName` is
+ * deleted. Refused (the same document is returned) when there is no such
+ * command.
+ */
+export function removeWorkflowCommand(
+  workflowJson: WorkflowJson,
+  stateName: string,
+  commandName: string,
+): WorkflowJson {
+  const owner = workflowJson.states.find((s) => s.name === stateName);
+  if (!owner || !owner.commands.some((c) => c.name === commandName)) return workflowJson;
+
+  return {
+    ...workflowJson,
+    states: workflowJson.states.map((s) =>
+      s === owner ? { ...s, commands: s.commands.filter((c) => c.name !== commandName) } : s,
+    ),
+  };
+}
+
+/**
+ * The document after the state named `stateName` is dropped at `position`.
+ * The same document is returned when there is no such state or it already
+ * sits there, so a click that moved nothing does not read as an edit.
+ */
+export function moveWorkflowState(
+  workflowJson: WorkflowJson,
+  stateName: string,
+  position: WorkflowStatePosition,
+): WorkflowJson {
+  const state = workflowJson.states.find((s) => s.name === stateName);
+  if (!state) return workflowJson;
+  if (state.position && state.position.x === position.x && state.position.y === position.y) {
+    return workflowJson;
+  }
+
+  return {
+    ...workflowJson,
+    states: workflowJson.states.map((s) =>
+      s === state ? { ...s, position: { x: position.x, y: position.y } } : s,
+    ),
+  };
+}
+
+/** Why two states cannot be joined by a command. */
+export interface WorkflowConnectionProblem {
+  code: 'unknownState' | 'selfTransition' | 'endStateSource' | 'unknownCommand';
+  error: string;
+}
+
+/**
+ * What refuses a command from the state `source` to the state `target`, or
+ * null when it can be drawn.
+ *
+ * An end state terminates the instance, so it cannot start a command; a
+ * command cannot lead back to its own state (the Target State field does not
+ * offer it either); and both ends have to be states of the workflow.
+ */
+export function findWorkflowConnectionProblem(
+  workflowJson: WorkflowJson,
+  source: string | null | undefined,
+  target: string | null | undefined,
+): WorkflowConnectionProblem | null {
+  const from = workflowJson.states.find((s) => s.name === source);
+  const to = workflowJson.states.find((s) => s.name === target);
+  if (!from || !to) {
+    return { code: 'unknownState', error: 'A command has to join two states of the workflow' };
+  }
+  if (from === to) {
+    return { code: 'selfTransition', error: 'A command cannot lead back to its own state' };
+  }
+  if (from.isEndState) {
+    return { code: 'endStateSource', error: 'End states cannot have outgoing commands' };
+  }
+  return null;
+}
+
+/** One command of the document: the state that owns it and its name. */
+export interface WorkflowCommandRef {
+  state: string;
+  command: string;
+}
+
+/** Where a command's edge was dropped on the diagram. */
+export interface WorkflowConnection {
+  /** Name of the state the edge leaves */
+  source: string | null | undefined;
+  /** Name of the state the edge enters */
+  target: string | null | undefined;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+}
+
+/** What moving a command's edge did to the document. */
+export type WorkflowReconnectResult =
+  | {
+      ok: true;
+      workflowJson: WorkflowJson;
+      /** Where the command is now; its name changes when the new state had one of that name */
+      command: WorkflowCommandRef;
+    }
+  | { ok: false; problem: WorkflowConnectionProblem };
+
+/**
+ * The document after the edge of the command `ref` is dropped on `connection`.
+ *
+ * The command is named by the state that owns it and its own name — never by
+ * an id that has to be taken apart again, which goes wrong as soon as a name
+ * contains the separator. An end dropped on another target changes
+ * `next_state`; an end dropped on another source moves the command to that
+ * state, where it gets a `_1`, `_2`, … suffix when the name is taken. The
+ * handles of the connection are stored either way, and every other key of the
+ * command (its actions, its policies, its `module_access_keys`) is kept.
+ *
+ * Refused for a command that does not exist, an end dropped on nothing or on
+ * the command's own state, and a source moved onto an end state.
+ */
+export function reconnectWorkflowCommand(
+  workflowJson: WorkflowJson,
+  ref: WorkflowCommandRef,
+  connection: WorkflowConnection,
+): WorkflowReconnectResult {
+  const owner = workflowJson.states.find((s) => s.name === ref.state);
+  const stored = owner?.commands.find((c) => c.name === ref.command);
+  if (!owner || !stored) {
+    return { ok: false, problem: { code: 'unknownCommand', error: 'The command no longer exists' } };
+  }
+
+  const problem = findWorkflowConnectionProblem(workflowJson, connection.source, connection.target);
+  // A command that already leaves an end state (a document written through
+  // the API) may still be pointed at another target: that adds no command.
+  if (problem && !(problem.code === 'endStateSource' && connection.source === owner.name)) {
+    return { ok: false, problem };
+  }
+
+  const source = connection.source as string;
+  const moved: WorkflowJsonCommand = {
+    ...stored,
+    next_state: connection.target as string,
+    sourceHandle: connection.sourceHandle || undefined,
+    targetHandle: connection.targetHandle || undefined,
+  };
+
+  if (source === owner.name) {
+    return {
+      ok: true,
+      command: { state: owner.name, command: stored.name },
+      workflowJson: {
+        ...workflowJson,
+        states: workflowJson.states.map((s) =>
+          s === owner ? { ...s, commands: s.commands.map((c) => (c === stored ? moved : c)) } : s,
+        ),
+      },
+    };
+  }
+
+  // The command moves to another state; keep its name unique there
+  const destination = workflowJson.states.find((s) => s.name === source) as WorkflowJsonState;
+  const taken = new Set(destination.commands.map((c) => c.name.toLowerCase()));
+  let name = stored.name;
+  for (let counter = 1; taken.has(name.toLowerCase()); counter += 1) {
+    name = `${stored.name}_${counter}`;
+  }
+
+  return {
+    ok: true,
+    command: { state: destination.name, command: name },
+    workflowJson: {
+      ...workflowJson,
+      states: workflowJson.states.map((s) => {
+        if (s === owner) return { ...s, commands: s.commands.filter((c) => c !== stored) };
+        if (s === destination) return { ...s, commands: [...s.commands, { ...moved, name }] };
+        return s;
+      }),
+    },
+  };
 }
 
 // ============================================================================

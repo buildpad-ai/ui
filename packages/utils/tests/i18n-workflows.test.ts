@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { defaultTranslations, formatCount, hasPlaceholders, id, interpolate } from '../src/i18n';
 import { workflowsDefaults, workflowsId } from '../src/i18n/namespaces/workflows';
+import { findWorkflowStateProblem } from '../src/workflow';
 
 /** Every string of a catalog, by dotted path. Plural forms count as strings. */
 function strings(value: unknown, path = ''): Array<[string, string]> {
@@ -42,6 +43,10 @@ describe('workflows namespace', () => {
     expect(t.workflowDetail.notifications.created).toBe('Workflow created successfully');
     expect(t.workflowDetail.validation.noStates).toBe('Please add at least one state to the workflow');
     expect(t.stateModal.fields.endStateDescription).toBe('End states cannot have outgoing commands');
+    // The refusal the description promises; same sentence as findWorkflowStateProblem's
+    expect(t.stateModal.validation.endStateHasCommands).toBe(
+      findWorkflowStateProblem({ name: 'Done', siblingNames: [], isEndState: true, commandCount: 1 })?.error,
+    );
     expect(t.commandModal.validation.duplicateName).toBe('A command with this name already exists in this state');
     expect(t.assignmentsManager.emptyState.pristine).toBe(
       'No workflow assignments found. Create your first assignment to link a workflow with a collection.',

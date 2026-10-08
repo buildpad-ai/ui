@@ -4,7 +4,8 @@
  * The first half is the buildpad-daas suite for `lib/workflows/definition-editor.ts`
  * and `lib/utils/workflow-filter-rule.ts`, ported with the functions. The rest
  * covers what this package adds: reading a stored document, the state checks,
- * applying a dialog's result, and the Filter Rule text.
+ * applying a dialog's result, the Filter Rule text, and the gestures of the
+ * state diagram as functions from one document to the next.
  */
 import { describe, it, expect } from 'vitest';
 import type { WorkflowJson, WorkflowJsonCommand, WorkflowJsonState } from '@buildpad/types';
@@ -14,14 +15,19 @@ import {
   buildWorkflowCommand,
   buildWorkflowState,
   findWorkflowCommandProblem,
+  findWorkflowConnectionProblem,
   findWorkflowDefinitionProblem,
   findWorkflowParameterErrors,
   findWorkflowStateProblem,
   isWorkflowFilterRule,
+  moveWorkflowState,
   normalizeWorkflowJson,
   parseWorkflowActionParameters,
   parseWorkflowFilterRule,
+  reconnectWorkflowCommand,
   removeIndexed,
+  removeWorkflowCommand,
+  removeWorkflowState,
   type WorkflowCommandCheck,
   type WorkflowCommandForm,
   type WorkflowStateForm,
@@ -492,6 +498,57 @@ describe('findWorkflowStateProblem', () => {
   });
 });
 
+describe('findWorkflowStateProblem: the end-state rule', () => {
+  const refusal = {
+    code: 'endStateHasCommands',
+    error: 'This state has outgoing commands. Delete them before making it an end state.',
+  };
+
+  it('refuses turning End State on for a state that has commands', () => {
+    expect(
+      findWorkflowStateProblem({
+        name: 'Review',
+        siblingNames: ['Draft'],
+        isEndState: true,
+        wasEndState: false,
+        commandCount: 2,
+      }),
+    ).toEqual(refusal);
+  });
+
+  it('lets a state without commands become an end state', () => {
+    expect(
+      findWorkflowStateProblem({ name: 'Done', siblingNames: [], isEndState: true, wasEndState: false, commandCount: 0 }),
+    ).toBeNull();
+    // A new state has no commands to count
+    expect(findWorkflowStateProblem({ name: 'Done', siblingNames: [], isEndState: true })).toBeNull();
+  });
+
+  it('lets a state that has commands be saved while End State stays off', () => {
+    expect(
+      findWorkflowStateProblem({ name: 'Review', siblingNames: [], isEndState: false, commandCount: 2 }),
+    ).toBeNull();
+  });
+
+  it('still saves a state stored as an end state with commands, so it can be renamed', () => {
+    expect(
+      findWorkflowStateProblem({
+        name: 'Archived',
+        siblingNames: [],
+        isEndState: true,
+        wasEndState: true,
+        commandCount: 1,
+      }),
+    ).toBeNull();
+  });
+
+  it('reports the name first', () => {
+    expect(
+      findWorkflowStateProblem({ name: '', siblingNames: [], isEndState: true, commandCount: 2 })?.code,
+    ).toBe('nameRequired');
+  });
+});
+
 describe('findWorkflowDefinitionProblem', () => {
   const machine: WorkflowJson = {
     initial_state: 'Draft',
@@ -631,5 +688,268 @@ describe('applyWorkflowCommandSave', () => {
     const saved = applyWorkflowCommandSave(machine, 'Missing', submit, null);
     expect(saved).toEqual(machine);
     expect(JSON.stringify(machine)).toBe(before);
+  });
+});
+
+// ============================================================================
+// Diagram gestures
+// ============================================================================
+
+/** Draft → Review → Published (end), with a way back from Review. */
+function reviewFlow(): WorkflowJson {
+  return {
+    initial_state: 'Draft',
+    states: [
+      {
+        name: 'Draft',
+        isEndState: false,
+        position: { x: 100, y: 100 },
+        commands: [
+          {
+            name: 'Submit',
+            next_state: 'Review',
+            actions: [{ name: 'Notify', event_name: 'xtr.send.notification', parameters: { subject: 'Hi' } }],
+            policies: ['policy-editor'],
+            module_access_keys: ['content:submit'],
+            sourceHandle: 'right-1',
+            targetHandle: 'left-1',
+          },
+        ],
+      },
+      {
+        name: 'Review',
+        isEndState: false,
+        commands: [
+          { name: 'Approve', next_state: 'Published', actions: [], policies: [] },
+          { name: 'Reject', next_state: 'Draft', actions: [], policies: [] },
+        ],
+      },
+      { name: 'Published', isEndState: true, commands: [] },
+    ],
+  };
+}
+
+describe('removeWorkflowState', () => {
+  it('removes the state and every command that led to it', () => {
+    const next = removeWorkflowState(reviewFlow(), 'Published');
+    expect(next.states.map((s) => s.name)).toEqual(['Draft', 'Review']);
+    expect(next.states[1].commands.map((c) => c.name)).toEqual(['Reject']);
+    expect(next.initial_state).toBe('Draft');
+  });
+
+  it('moves the initial state to the first remaining state when it is the one removed', () => {
+    const next = removeWorkflowState(reviewFlow(), 'Draft');
+    expect(next.initial_state).toBe('Review');
+    expect(next.states[0].commands.map((c) => c.name)).toEqual(['Approve']);
+  });
+
+  it('refuses to remove the only state', () => {
+    const single: WorkflowJson = {
+      initial_state: 'Draft',
+      states: [{ name: 'Draft', isEndState: false, commands: [] }],
+    };
+    expect(removeWorkflowState(single, 'Draft')).toBe(single);
+  });
+
+  it('returns the same document for a name that is no state', () => {
+    const flow = reviewFlow();
+    expect(removeWorkflowState(flow, 'Nowhere')).toBe(flow);
+  });
+
+  it('keeps unknown document keys and does not mutate its input', () => {
+    const flow = { ...reviewFlow(), version: 3 } as WorkflowJson;
+    const before = JSON.stringify(flow);
+    expect(removeWorkflowState(flow, 'Published')).toMatchObject({ version: 3 });
+    expect(JSON.stringify(flow)).toBe(before);
+  });
+});
+
+describe('removeWorkflowCommand', () => {
+  it('removes one command of one state', () => {
+    const next = removeWorkflowCommand(reviewFlow(), 'Review', 'Reject');
+    expect(next.states[1].commands.map((c) => c.name)).toEqual(['Approve']);
+    expect(next.states[0].commands).toHaveLength(1);
+  });
+
+  it('returns the same document when there is no such command', () => {
+    const flow = reviewFlow();
+    expect(removeWorkflowCommand(flow, 'Review', 'Submit')).toBe(flow);
+    expect(removeWorkflowCommand(flow, 'Nowhere', 'Submit')).toBe(flow);
+  });
+});
+
+describe('moveWorkflowState', () => {
+  it('stores the position a state was dropped at', () => {
+    const next = moveWorkflowState(reviewFlow(), 'Review', { x: 420, y: 80 });
+    expect(next.states[1].position).toEqual({ x: 420, y: 80 });
+  });
+
+  it('keeps the stored key order of a positioned state', () => {
+    const flow = asStored(reviewFlow());
+    const next = moveWorkflowState(flow, 'Draft', { x: 5, y: 6 });
+    expect(Object.keys(next.states[0])).toEqual(Object.keys(flow.states[0]));
+  });
+
+  it('returns the same document for a drop that moved nothing', () => {
+    const flow = reviewFlow();
+    expect(moveWorkflowState(flow, 'Draft', { x: 100, y: 100 })).toBe(flow);
+    expect(moveWorkflowState(flow, 'Nowhere', { x: 1, y: 1 })).toBe(flow);
+  });
+});
+
+describe('findWorkflowConnectionProblem', () => {
+  it('lets a state lead to another state', () => {
+    expect(findWorkflowConnectionProblem(reviewFlow(), 'Draft', 'Published')).toBeNull();
+  });
+
+  it('refuses a command out of an end state', () => {
+    expect(findWorkflowConnectionProblem(reviewFlow(), 'Published', 'Draft')).toEqual({
+      code: 'endStateSource',
+      error: 'End states cannot have outgoing commands',
+    });
+  });
+
+  it('refuses a command back to its own state', () => {
+    expect(findWorkflowConnectionProblem(reviewFlow(), 'Draft', 'Draft')?.code).toBe('selfTransition');
+  });
+
+  it('refuses an end that is no state', () => {
+    expect(findWorkflowConnectionProblem(reviewFlow(), 'Draft', null)?.code).toBe('unknownState');
+    expect(findWorkflowConnectionProblem(reviewFlow(), undefined, 'Draft')?.code).toBe('unknownState');
+    expect(findWorkflowConnectionProblem(reviewFlow(), 'Draft', 'Nowhere')?.code).toBe('unknownState');
+  });
+});
+
+describe('reconnectWorkflowCommand', () => {
+  it('points the command at another target and stores the new handles', () => {
+    const result = reconnectWorkflowCommand(
+      reviewFlow(),
+      { state: 'Draft', command: 'Submit' },
+      { source: 'Draft', target: 'Published', sourceHandle: 'bottom-2', targetHandle: 'top-2' },
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.command).toEqual({ state: 'Draft', command: 'Submit' });
+    expect(result.workflowJson.states[0].commands[0]).toMatchObject({
+      name: 'Submit',
+      next_state: 'Published',
+      sourceHandle: 'bottom-2',
+      targetHandle: 'top-2',
+    });
+  });
+
+  it('keeps the keys of the command it has no part in: actions, policies, module_access_keys', () => {
+    const result = reconnectWorkflowCommand(
+      reviewFlow(),
+      { state: 'Draft', command: 'Submit' },
+      { source: 'Draft', target: 'Published' },
+    );
+    if (!result.ok) throw new Error('refused');
+    const command = result.workflowJson.states[0].commands[0];
+    expect(command.module_access_keys).toEqual(['content:submit']);
+    expect(command.policies).toEqual(['policy-editor']);
+    expect(command.actions).toHaveLength(1);
+  });
+
+  it('finds the command of states and commands whose names contain dashes', () => {
+    // An edge id of the form state-command-target cannot be taken apart again
+    // for these names: 'draft-a-Go-review-b' has no single reading.
+    const flow: WorkflowJson = {
+      initial_state: 'draft-a',
+      states: [
+        {
+          name: 'draft-a',
+          isEndState: false,
+          commands: [{ name: 'Go-review', next_state: 'review-b', actions: [], policies: [] }],
+        },
+        { name: 'review-b', isEndState: false, commands: [] },
+        { name: 'done-c', isEndState: true, commands: [] },
+      ],
+    };
+    const result = reconnectWorkflowCommand(
+      flow,
+      { state: 'draft-a', command: 'Go-review' },
+      { source: 'draft-a', target: 'done-c' },
+    );
+    if (!result.ok) throw new Error('refused');
+    expect(result.workflowJson.states[0].commands[0].next_state).toBe('done-c');
+  });
+
+  it('moves the command to the state its source end was dropped on', () => {
+    const result = reconnectWorkflowCommand(
+      reviewFlow(),
+      { state: 'Draft', command: 'Submit' },
+      { source: 'Review', target: 'Published', sourceHandle: 'top-1', targetHandle: 'top-3' },
+    );
+    if (!result.ok) throw new Error('refused');
+    expect(result.command).toEqual({ state: 'Review', command: 'Submit' });
+    expect(result.workflowJson.states[0].commands).toEqual([]);
+    expect(result.workflowJson.states[1].commands.map((c) => c.name)).toEqual(['Approve', 'Reject', 'Submit']);
+    expect(result.workflowJson.states[1].commands[2]).toMatchObject({
+      next_state: 'Published',
+      module_access_keys: ['content:submit'],
+      sourceHandle: 'top-1',
+    });
+  });
+
+  it('renames a moved command whose name is taken in its new state', () => {
+    const flow = reviewFlow();
+    flow.states[0].commands.push({ name: 'approve', next_state: 'Review', actions: [], policies: [] });
+    const result = reconnectWorkflowCommand(
+      flow,
+      { state: 'Draft', command: 'approve' },
+      { source: 'Review', target: 'Draft' },
+    );
+    if (!result.ok) throw new Error('refused');
+    expect(result.command).toEqual({ state: 'Review', command: 'approve_1' });
+    expect(result.workflowJson.states[1].commands.map((c) => c.name)).toEqual(['Approve', 'Reject', 'approve_1']);
+  });
+
+  it('refuses to move a command onto an end state', () => {
+    const flow = reviewFlow();
+    const result = reconnectWorkflowCommand(
+      flow,
+      { state: 'Draft', command: 'Submit' },
+      { source: 'Published', target: 'Review' },
+    );
+    expect(result).toEqual({
+      ok: false,
+      problem: { code: 'endStateSource', error: 'End states cannot have outgoing commands' },
+    });
+  });
+
+  it('lets a command that already leaves an end state take another target', () => {
+    const flow = reviewFlow();
+    flow.states[2].commands.push({ name: 'Reopen', next_state: 'Draft', actions: [], policies: [] });
+    const result = reconnectWorkflowCommand(
+      flow,
+      { state: 'Published', command: 'Reopen' },
+      { source: 'Published', target: 'Review' },
+    );
+    if (!result.ok) throw new Error('refused');
+    expect(result.workflowJson.states[2].commands[0].next_state).toBe('Review');
+  });
+
+  it('refuses an end dropped on nothing, on its own state, or for a command that is gone', () => {
+    const flow = reviewFlow();
+    const ref = { state: 'Draft', command: 'Submit' };
+    expect(reconnectWorkflowCommand(flow, ref, { source: 'Draft', target: null })).toMatchObject({
+      ok: false,
+      problem: { code: 'unknownState' },
+    });
+    expect(reconnectWorkflowCommand(flow, ref, { source: 'Draft', target: 'Draft' })).toMatchObject({
+      ok: false,
+      problem: { code: 'selfTransition' },
+    });
+    expect(
+      reconnectWorkflowCommand(flow, { state: 'Draft', command: 'Gone' }, { source: 'Draft', target: 'Review' }),
+    ).toMatchObject({ ok: false, problem: { code: 'unknownCommand' } });
+  });
+
+  it('does not mutate its input', () => {
+    const flow = reviewFlow();
+    const before = JSON.stringify(flow);
+    reconnectWorkflowCommand(flow, { state: 'Draft', command: 'Submit' }, { source: 'Review', target: 'Published' });
+    expect(JSON.stringify(flow)).toBe(before);
   });
 });
