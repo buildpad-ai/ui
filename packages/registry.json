@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-07T09:35:58.161Z",
+  "generatedAt": "2026-10-08T02:12:49.449Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -771,7 +771,7 @@
         {
           "source": "hooks/src/parseDaaSError.ts",
           "target": "lib/buildpad/hooks/parseDaaSError.ts",
-          "sourceSha256": "f4bfe3b435feff94c4ec2f0358eda62ffe9bccbc73e0701b9465744a49d7bdf5"
+          "sourceSha256": "dd9007f2e1d0b464ca6da3ce58fd54a56599aca1fb31dfa7689dbdceb618b8de"
         },
         {
           "source": "hooks/src/useUsers.ts",
@@ -815,7 +815,7 @@
       ],
       "sourcePackage": "@buildpad/hooks",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     "i18n": {
       "name": "i18n",
@@ -3461,17 +3461,17 @@
         {
           "source": "ui-interfaces/src/workflow-button/workflow-button.tsx",
           "target": "components/ui/workflow-button/workflow-button.tsx",
-          "sourceSha256": "d73a774e35388c067b6b19b2e744409cd6f6813b8f0a7b5d879510d288ae3c68"
+          "sourceSha256": "f3d42bb56aa298c90cc536f55f7b1f63d52821ab3ee2ce9b14893ea29540881e"
         },
         {
           "source": "ui-interfaces/src/workflow-button/use-workflow.ts",
           "target": "components/ui/workflow-button/use-workflow.ts",
-          "sourceSha256": "6fc69851699aca452b0d05de25390b76863e948b25e2b81293404c27ab7ff03f"
+          "sourceSha256": "317e8012aa89c97273a9d9839227adc22ec0303cafe38879266ecf00214c5551"
         },
         {
           "source": "ui-interfaces/src/workflow-button/types.ts",
           "target": "components/ui/workflow-button/types.ts",
-          "sourceSha256": "3be9fcf60a1642a39f87b2297031270d4a18427c176826a3500ac674a1ecb04e"
+          "sourceSha256": "2e7580ed2ee0e1119949adb89decbee78beed67a2aefb42db67eb77d094d8602"
         },
         {
           "source": "ui-interfaces/src/workflow-button/index.ts",
@@ -3503,7 +3503,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     {
       "name": "file-manager",
