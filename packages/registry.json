@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T04:09:17.996Z",
+  "generatedAt": "2026-10-08T04:53:42.629Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -200,7 +200,7 @@
         {
           "source": "utils/src/workflow.ts",
           "target": "lib/buildpad/workflow.ts",
-          "sourceSha256": "84f9baf198c0b98fab38bb74e2f4ecffb12bb4758b2e9f49d554a28e747ed9df"
+          "sourceSha256": "52ef91188433fc0bbe56a7d10a25c2b545fa542e3a042a215e14f735e0f7da59"
         },
         {
           "source": "utils/src/list-page.ts",
@@ -250,7 +250,7 @@
         {
           "source": "utils/src/i18n/namespaces/workflows.ts",
           "target": "lib/buildpad/i18n/namespaces/workflows.ts",
-          "sourceSha256": "5095f6fe4003b7bb56eb90f805d2fe53c1477774f6b10ac0f4c3fbb00bb7e734"
+          "sourceSha256": "4461b63423ff1b430af4aff07386bb8e22704b4fe580c0da41719aa0c6b68e69"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -490,7 +490,7 @@
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "0ec7d99c565970175c0558c0f6bc19b8b1dc9c199a4836c2b93748b308140889"
+          "sourceSha256": "470dc72344b961dbf914c7a41b73bd8bf4abc942ac81df8210be6cf25b86fa86"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -552,7 +552,7 @@
         {
           "source": "types/src/workflow.ts",
           "target": "lib/buildpad/types/workflow.ts",
-          "sourceSha256": "08eb43fe07d4225a4aef107e596fc307686ca32611e18d8080b1a5d3c008ea57"
+          "sourceSha256": "330fe73b3cfc645f53e6db8a12741a23daf98127e62077ac709b707edf8aa41a"
         },
         {
           "source": "cli/templates/lib/types/index.ts",
@@ -828,7 +828,7 @@
         {
           "source": "hooks/src/useWorkflowDefinitions.ts",
           "target": "lib/buildpad/hooks/useWorkflowDefinitions.ts",
-          "sourceSha256": "27f71bb8fd93a01f7d68af2ed14c8594546dcaa944427a11c3caa60fa7c748bc"
+          "sourceSha256": "164586812400ad5c612b00047fa949cb01f9ade22cc3337b82b179e77257e3d2"
         },
         {
           "source": "hooks/src/useWorkflowAssignments.ts",
@@ -4020,17 +4020,17 @@
         {
           "source": "ui-workflows/src/WorkflowsManager.tsx",
           "target": "components/ui/workflow-management/workflows-manager.tsx",
-          "sourceSha256": "a1e21fbfe16c7c620630b309fd4ad4020297936afbb0b0eb2a4003aa601db4cd"
+          "sourceSha256": "87b8e0a41c15ff9da625eeaa460f1a2e3df150af128abb25d5b766ef150c9450"
         },
         {
           "source": "ui-workflows/src/WorkflowDetail.tsx",
           "target": "components/ui/workflow-management/workflow-detail.tsx",
-          "sourceSha256": "b32089bb9290571b7bf1fc9eeb5a645754c4a7fe5da8910d11bf02ddf0e0b178"
+          "sourceSha256": "5a2c012cba51145ecee15f31db2d987961c2645d7c2586d7ecd191e6676b393a"
         },
         {
           "source": "ui-workflows/src/WorkflowDiagram.tsx",
           "target": "components/ui/workflow-management/workflow-diagram.tsx",
-          "sourceSha256": "7fd3a58fd4fc5c2437865d1d8addbd22cce0099ebc59d157fca8da0adbd324f9"
+          "sourceSha256": "c23c5bde9d0b8c39614d7cd2d63f1f2bde248652a5b3c6ddba0454c11dff227c"
         },
         {
           "source": "ui-workflows/src/workflowDiagramModel.ts",
@@ -4045,7 +4045,7 @@
         {
           "source": "ui-workflows/src/WorkflowCommandModal.tsx",
           "target": "components/ui/workflow-management/workflow-command-modal.tsx",
-          "sourceSha256": "cbdc165a5c53c7475ad36463ec5c5af8713ae91b316a5cce826ded0307f07107"
+          "sourceSha256": "4abce8766fb059ffdc8114e6883636b04ad2b090e8dca82199e50bc898cc5cd7"
         },
         {
           "source": "ui-workflows/src/workflowPolicies.ts",
@@ -4085,7 +4085,7 @@
         {
           "source": "ui-workflows/src/useWorkflowList.ts",
           "target": "components/ui/workflow-management/use-workflow-list.ts",
-          "sourceSha256": "0aafcdbe85331e4a9f0b895c079995642e06738a8424d8e821e4e009d54b777c"
+          "sourceSha256": "d1d765101c911f1fe1d2b881169beba929b93a3efe9c65bdfa63b9948d3af92c"
         },
         {
           "source": "ui-workflows/src/WorkflowPageState.tsx",
