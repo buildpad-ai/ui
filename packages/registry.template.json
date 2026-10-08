@@ -3579,7 +3579,7 @@
       "title": "CronManagement",
       "excludeFromAll": true,
       "description": "Cron jobs administration — the jobs list (search, row actions: edit, run now, activate or deactivate, clone, delete) with the run history of every job on a second tab, the job editor (code beside name, description, schedule, timezone, timeout, memory limit and status, with Run Now and Activate or Deactivate) with the job's own run history, the run log dialog, and the job status, run status and trigger badges. Composes the useCronJobs/useCronRuns hooks; the built-in code editor is InputCode, replaceable through the editor's renderCodeEditor slot.",
-      "category": "workflow",
+      "category": "admin",
       "files": [
         {
           "source": "ui-cron/src/CronJobsManager.tsx",
@@ -3734,7 +3734,7 @@
     {
       "name": "admin",
       "title": "Administration",
-      "description": "Users, roles, and policies administration components"
+      "description": "Administration modules: users, roles and policies, and cron jobs"
     }
   ]
 }
