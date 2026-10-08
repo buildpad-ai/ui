@@ -176,6 +176,32 @@ export {
 // Page arithmetic for paged lists
 export { clampPage, pageAfterRemoval } from './list-page';
 
+// Cron job editor + run log logic (pure)
+export {
+  parseCronLogLine,
+  displayCronTimezone,
+  cronTimezoneOptions,
+  normalizeCronTimeoutMs,
+  normalizeCronMemoryLimitMb,
+  cronJobToForm,
+  withheldCronJobFields,
+  cronJobInputFromForm,
+  changedCronJobFields,
+  findCronJobFormProblem,
+  DEFAULT_CRON_TIMEZONE,
+  CRON_TIMEZONE_OPTIONS,
+  DEFAULT_CRON_CODE,
+  CRON_JOB_FORM_FIELDS,
+  CRON_FORM_DEFAULTS,
+  CRON_NUMBER_INPUTS,
+  type CronLogLevel,
+  type CronLogLine,
+  type CronTimezoneOption,
+  type CronJobForm,
+  type CronJobFormField,
+  type CronJobFormProblem,
+} from './cron';
+
 // Component i18n core: dictionary shape, English defaults, bundled locales,
 // merge / interpolate / plural helpers. The React provider and hooks live in
 // @buildpad/services (re-exported by @buildpad/hooks).
