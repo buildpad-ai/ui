@@ -7,9 +7,10 @@
  * enforces it. Every `PluralForms` entry has `{count}` available; the
  * Indonesian catalog only needs `other` (one plural category).
  *
- * Generic chrome (Cancel, Edit, Delete, Save, Create, Refresh, Back, Error,
- * Success, "Loading...", "Unsaved changes") comes from the shared `common`
- * namespace and is not repeated here.
+ * Generic chrome (Cancel, Edit, Delete, Save, Create, Refresh, Back, Retry,
+ * Error, Success, "Loading...") comes from the shared `common` namespace and
+ * is not repeated here. The editor's "Unsaved Changes" badge is: the reference
+ * admin UI writes it in title case, `common.unsavedChanges` in sentence case.
  *
  * Rich text: `jobDetail.codeHelp.body` carries `<code>…</code>` markers that
  * the component maps to inline elements — keep the tags, translate the text
@@ -205,6 +206,8 @@ export interface CronTranslations {
     breadcrumbNew: string;
     titleNew: string;
     titleEdit: string;
+    /** The badge beside the title while the form holds edits that are not saved */
+    unsavedChanges: string;
     tabs: {
       settings: string;
       history: string;
@@ -408,6 +411,7 @@ export const cronDefaults: CronTranslations = {
     breadcrumbNew: 'New Cron Job',
     titleNew: 'New Cron Job',
     titleEdit: 'Edit Cron Job',
+    unsavedChanges: 'Unsaved Changes',
     tabs: {
       settings: 'Settings',
       history: 'History',
@@ -603,6 +607,7 @@ export const cronId: CronTranslations = {
     breadcrumbNew: 'Tugas Cron Baru',
     titleNew: 'Tugas Cron Baru',
     titleEdit: 'Ubah Tugas Cron',
+    unsavedChanges: 'Perubahan Belum Disimpan',
     tabs: {
       settings: 'Pengaturan',
       history: 'Riwayat',
