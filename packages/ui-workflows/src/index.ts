@@ -39,6 +39,9 @@ export type { WorkflowAssignmentsManagerProps } from './WorkflowAssignmentsManag
 export { WorkflowInstancesManager } from './WorkflowInstancesManager';
 export type { WorkflowInstancesManagerProps } from './WorkflowInstancesManager';
 
+export { WorkflowInstanceDetail } from './WorkflowInstanceDetail';
+export type { WorkflowInstanceDetailProps } from './WorkflowInstanceDetail';
+
 // Policy options of the Command dialog
 export { loadAllWorkflowPolicyOptions } from './workflowPolicies';
 export type { WorkflowPolicyOption, WorkflowPolicyPage } from './workflowPolicies';
