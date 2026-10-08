@@ -261,7 +261,7 @@ fi
 if ! $EXECUTE; then
   step "Plan (dry run — nothing has changed) — mode: ${MODE}"
   if [[ "$MODE" == "bump" ]]; then
-    echo "  1. pnpm version:packages       bump all 13 lockstep packages, write CHANGELOGs,"
+    echo "  1. pnpm version:packages       bump all 14 lockstep packages, write CHANGELOGs,"
     echo "                                 regenerate registry.json at the new version"
   else
     echo "  1. ${DIM}(skipped — already at ${CURRENT})${OFF}"
