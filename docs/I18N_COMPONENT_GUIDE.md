@@ -14,6 +14,7 @@ packages/utils/src/i18n/
 │   ├── collections.ts            ui-collections
 │   ├── files.ts                  ui-files
 │   ├── users.ts                  ui-users
+│   ├── workflows.ts              ui-workflows
 │   ├── forms.ts                  ui-forms (builder chrome only)
 │   ├── interfaces.ts             composer — one sub-namespace per interface folder
 │   └── interfaces/<folder>.ts    ui-interfaces: list-m2m.ts → interfaces.listM2M, upload.ts → interfaces.upload, …
