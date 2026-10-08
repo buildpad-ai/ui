@@ -12,7 +12,7 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 
-jest.mock('@buildpad/ui-interfaces', () => require('./helpers/leafProbe').makeInterfacesMock());
+jest.mock('../components/interface-components', () => require('./helpers/leafProbe').makeInterfacesMock());
 
 import { resetProbe, lastProps } from './helpers/leafProbe';
 import { FormFieldInterface } from '../components/FormFieldInterface';

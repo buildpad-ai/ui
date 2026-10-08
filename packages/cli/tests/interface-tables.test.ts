@@ -9,8 +9,10 @@
  *      (`input-tags`, `input-map`, `input-map-gl`);
  *   3. registry component names — what `buildpad add` installs (`tags`,
  *      `color`, `divider`, `map-with-real-map`);
- *   4. component export names — what FormFieldInterface looks up in the
- *      consumer's generated `components/ui/index.ts` (`Tags`, `Color`).
+ *   4. component export names — what FormFieldInterface looks up in vform's
+ *      `components/interface-components.tsx` (`Tags`, `Color`), and, for a
+ *      name that file lacks, in the consumer's generated
+ *      `components/ui/index.ts`.
  *
  * This file extracts every one of those tables (importing the utils runtime
  * where its values are exported, otherwise parsing the source with the
@@ -25,6 +27,15 @@
  * means a change fixed or worsened that divergence. Update the expectation
  * (and its comment) on purpose in the same change — that is the point. The
  * letters match the Phase 2 interface-manifest analysis.
+ *
+ * Phase 1 moved the utils-side tables into one data module,
+ * utils/src/interface-manifest.ts, and re-derived them from it; the
+ * "pre-manifest snapshot" block pins each derived value to what it was
+ * before, and the "interface manifest" block checks the manifest against the
+ * tables that are still hand-kept (the registry). The lazy-loading step made
+ * FormFieldInterface read the manifest too; what is left by hand there is
+ * vform's `interface-components.tsx` (a bundler only splits a literal
+ * `import()`), checked against the manifest and the consumer layout below.
  *
  * Tests only: nothing here changes runtime behaviour.
  */
@@ -51,9 +62,25 @@ import { transformImports } from '../src/commands/transformer.js';
 // utils runtime, imported straight from source (pure TS, no React).
 import {
   getFieldInterface,
+  isNonFlatRelationalField,
+  isPresentationField,
   REGISTRY_INTERFACE_ALIASES,
 } from '../../utils/src/field-interface-mapper';
 import { concealingInterface } from '../../utils/src/conceal';
+import {
+  INTERFACE_MANIFEST,
+  getInterfaceManifestEntry,
+  getRenderedInterfaceEntry,
+  interfaceAliasMap,
+  interfaceIdsWithFlag,
+  isNonFlatRelationalInterface,
+  isPresentationInterface,
+  isPresentationLikeInterface,
+  isRelationListInterface,
+  isRenderedPresentationInterface,
+  isSelfPersistingInterface,
+  type InterfaceManifestEntry,
+} from '../../utils/src/interface-manifest';
 import { CHOICE_INTERFACES, PROVISIONABLE_INTERFACES } from '../../utils/src/interface-catalog';
 import { dataTypeForFieldType, interfaceForFieldType } from '../../utils/src/field-spec-mapper';
 import { formsDefaults, formsId } from '../../utils/src/i18n/namespaces/forms';
@@ -162,11 +189,6 @@ function readSetLiteral(sf: ts.SourceFile, init: ts.Expression, name: string): s
 }
 
 /** `const <name> = new Set(['a', 'b'])` → ['a', 'b'] (exactly one declaration). */
-function readStringSet(file: string, name: string): string[] {
-  const sf = parseSource(file);
-  return readSetLiteral(sf, initializerOf(sf, name), name);
-}
-
 /** Every `const <name> = new Set([...])` in the file (for duplicated local copies). */
 function readAllStringSets(file: string, name: string): string[][] {
   const sf = parseSource(file);
@@ -400,17 +422,6 @@ function loadFunctions<T>(file: string, names: readonly string[]): T {
 }
 
 /** `const <name> = ['a', 'b'] as const` → ['a', 'b']. */
-function readStringArray(file: string, name: string): string[] {
-  const sf = parseSource(file);
-  const init = initializerOf(sf, name);
-  if (!ts.isArrayLiteralExpression(init)) throw new Error(`${file}: \`${name}\` is not an array literal`);
-  return init.elements.map((e) => {
-    const u = unwrap(e);
-    if (!ts.isStringLiteral(u)) throw new Error(`${file}: \`${name}\` has a non-string member ${u.getText()}`);
-    return u.text;
-  });
-}
-
 interface ImportedName {
   /** `default`, a named binding, or `*` (namespace import / `export *`). */
   name: string;
@@ -458,6 +469,84 @@ function importDeclsOf(file: string): ImportDecl[] {
   return out;
 }
 
+/** One entry of vform's interface-components tables: where the component comes from. */
+interface TableComponent {
+  /** Module specifier it is imported from. */
+  spec: string;
+  /** The name taken from that module. */
+  imported: string;
+}
+
+/**
+ * vform's two component tables, export name → import.
+ *
+ * `EAGER_INTERFACE_COMPONENTS` members are identifiers bound by a static
+ * `import { X } from '<spec>'` (or `{ X as Y }`); `LAZY_INTERFACE_COMPONENTS`
+ * members are `lazy(() => import('<spec>').then((m) => ({ default: m.X })))`.
+ * Any other shape throws.
+ */
+function readInterfaceComponentTables(file: string): Record<'eager' | 'lazy', Record<string, TableComponent>> {
+  const sf = parseSource(file);
+  const table = (name: string): ts.ObjectLiteralExpression => {
+    const init = unwrap(initializerOf(sf, name));
+    if (!ts.isObjectLiteralExpression(init)) throw new Error(`${file}: \`${name}\` is not an object literal`);
+    return init;
+  };
+
+  const bindings = new Map<string, TableComponent>();
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue;
+    const nb = stmt.importClause?.namedBindings;
+    if (!nb || !ts.isNamedImports(nb)) continue;
+    for (const el of nb.elements) {
+      bindings.set(el.name.text, { spec: stmt.moduleSpecifier.text, imported: (el.propertyName ?? el.name).text });
+    }
+  }
+
+  const eager: Record<string, TableComponent> = {};
+  for (const prop of table('EAGER_INTERFACE_COMPONENTS').properties) {
+    const local = ts.isShorthandPropertyAssignment(prop)
+      ? prop.name.text
+      : ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.initializer)
+        ? prop.initializer.text
+        : undefined;
+    const bound = local === undefined ? undefined : bindings.get(local);
+    if (!prop.name || !bound) throw new Error(`${file}: eager member ${prop.getText(sf)} is not a named import`);
+    eager[propertyKey(sf, prop.name)] = bound;
+  }
+
+  const lazy: Record<string, TableComponent> = {};
+  for (const prop of table('LAZY_INTERFACE_COMPONENTS').properties) {
+    if (!ts.isPropertyAssignment(prop)) throw new Error(`${file}: lazy member ${prop.getText(sf)} is not \`name: lazy(…)\``);
+    const key = propertyKey(sf, prop.name);
+    const call = unwrap(prop.initializer);
+    const imports = collectNodes(
+      call,
+      (n): n is ts.CallExpression => ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword,
+    );
+    const defaults = collectNodes(
+      call,
+      (n): n is ts.PropertyAssignment => ts.isPropertyAssignment(n) && propertyKey(sf, n.name) === 'default',
+    );
+    const arg = imports[0]?.arguments[0];
+    const picked = defaults[0]?.initializer;
+    if (
+      !ts.isCallExpression(call) ||
+      call.expression.getText(sf) !== 'lazy' ||
+      imports.length !== 1 ||
+      defaults.length !== 1 ||
+      !arg ||
+      !ts.isStringLiteral(arg) ||
+      !picked ||
+      !ts.isPropertyAccessExpression(picked)
+    ) {
+      throw new Error(`${file}: lazy member \`${key}\` is not lazy(() => import('…').then((m) => ({ default: m.X })))`);
+    }
+    lazy[key] = { spec: arg.text, imported: picked.name.text };
+  }
+  return { eager, lazy };
+}
+
 // ---------------------------------------------------------------------------
 // Small set helpers
 // ---------------------------------------------------------------------------
@@ -478,11 +567,12 @@ const F = {
   specMapper: 'utils/src/field-spec-mapper.ts',
   interfaceTypes: 'utils/src/interface-types.ts',
   ffi: 'ui-form/src/components/FormFieldInterface.tsx',
-  leafProbe: 'ui-form/src/__tests__/helpers/leafProbe.tsx',
+  interfaceComponents: 'ui-form/src/components/interface-components.tsx',
   uiInterfacesBarrel: 'ui-interfaces/src/index.ts',
   palette: 'ui-forms/src/FieldPalette.tsx',
   collectionForm: 'ui-collections/src/CollectionForm.tsx',
   collectionList: 'ui-collections/src/CollectionList.tsx',
+  junctionItemForm: 'ui-interfaces/src/list-m2a/JunctionItemForm.tsx',
   addCmd: 'cli/src/commands/add.ts',
   infoCmd: 'cli/src/commands/info.ts',
   mcpIndex: 'mcp-server/src/index.ts',
@@ -517,25 +607,35 @@ const interfaceTypeUnion = readStringUnion(F.mapper, 'InterfaceType');
 const explicitSwitch = readSwitch(F.mapper, 'getExplicitInterface', returnedConfigType);
 const caseLabels = explicitSwitch.arms.flatMap((a) => a.labels);
 const returnedIds = sorted(explicitSwitch.arms.map((a) => a.returns));
+// utils — interface manifest
+const manifest: readonly InterfaceManifestEntry[] = INTERFACE_MANIFEST;
+const renderedEntries = manifest.filter((e) => e.renders);
+/** Every alias normalizeInterfaceId resolves (registry and legacy), alias → renderer id. */
+const manifestAliases = { ...interfaceAliasMap('registry'), ...interfaceAliasMap('legacy') };
 /** Every id `meta.interface` may hold and still resolve explicitly. */
-const acceptedIds = sorted([...caseLabels, ...Object.keys(REGISTRY_INTERFACE_ALIASES)]);
-const presentationIds = stringLiteralsIn(F.mapper, 'isPresentationField');
+const acceptedIds = sorted([...caseLabels, ...Object.keys(manifestAliases)]);
+const presentationIds = interfaceIdsWithFlag('presentation');
 
 // utils — the other runtime tables
-const concealingIds = readStringSet(F.conceal, 'CONCEALING_INTERFACES');
+const concealingIds = interfaceIdsWithFlag('concealing');
 const provisionableIds = PROVISIONABLE_INTERFACES.map((p) => p.value);
 const specInterfaceByType = readStringRecord(F.specMapper, 'INTERFACE_BY_TYPE');
 const fieldTypeUnion = readStringUnion(F.interfaceTypes, 'FieldType');
 const interfaceGroupUnion = readStringUnion(F.interfaceTypes, 'InterfaceGroup');
 
-// vform — FormFieldInterface
-const ffiComponentMap = readStringRecord(F.ffi, 'interfaceComponentMap');
-const ffiRelationalMap = readStringRecord(F.ffi, 'relationalFullComponentMap');
-const ffiMultiSelect = readStringSet(F.ffi, 'MULTI_SELECT_INTERFACE_TYPES');
+// vform — FormFieldInterface and its component tables
+const vformTables = readInterfaceComponentTables(F.interfaceComponents);
+/** Every component the tables import, with the table it is in. */
+const vformTableRows = (['eager', 'lazy'] as const).flatMap((table) =>
+  Object.entries(vformTables[table]).map(([exportName, from]) => ({ exportName, table, ...from })),
+);
+/** Renderer ids VForm hands a csv column's string to as an array (manifest `csvMultiValue`). */
+const csvMultiValueIds = interfaceIdsWithFlag('csvMultiValue');
 const ffiDefaultSwitch = readSwitch(F.ffi, 'getDefaultInterfaceForType', returnedString);
-/** FormFieldInterface's lookup order: relational map, then the component map. */
-const ffiExportFor = (rendererId: string): string | undefined =>
-  ffiRelationalMap[rendererId] ?? ffiComponentMap[rendererId];
+/** The export name FormFieldInterface resolves a renderer id to (an entry id or a deprecated type literal). */
+const ffiExportFor = (rendererId: string): string | undefined => getRenderedInterfaceEntry(rendererId)?.exportName;
+/** Export names of every interface VForm renders. */
+const renderedExportNames = sorted(renderedEntries.flatMap((e) => (e.renders ? [e.exportName] : [])));
 const ffiDefaultFor = (type: string): string =>
   ffiDefaultSwitch.arms.find((a) => a.labels.includes(type))?.returns ?? ffiDefaultSwitch.defaultReturns ?? '';
 
@@ -693,6 +793,9 @@ describe('inventory', () => {
   test('table sizes (adding an interface touches all of these — update them together)', () => {
     expect({
       interfaceTypeUnion: interfaceTypeUnion.length,
+      manifestEntries: manifest.length,
+      manifestRenderedEntries: renderedEntries.length,
+      manifestAliases: Object.keys(manifestAliases).length,
       registryInterfaceAliases: Object.keys(REGISTRY_INTERFACE_ALIASES).length,
       switchCaseLabels: caseLabels.length,
       switchReturnedIds: returnedIds.length,
@@ -700,9 +803,9 @@ describe('inventory', () => {
       provisionable: provisionableIds.length,
       choice: CHOICE_INTERFACES.size,
       specInterfaceByType: Object.keys(specInterfaceByType).length,
-      ffiComponentMap: Object.keys(ffiComponentMap).length,
-      ffiRelationalMap: Object.keys(ffiRelationalMap).length,
-      ffiMultiSelect: ffiMultiSelect.length,
+      vformEagerComponents: Object.keys(vformTables.eager).length,
+      vformLazyComponents: Object.keys(vformTables.lazy).length,
+      csvMultiValue: csvMultiValueIds.length,
       registryInterfaceBlocks: registryBlocks.length,
       vformRegistryDependencies: vformDeps.length,
       addAliases: Object.keys(addAliases).length,
@@ -711,16 +814,27 @@ describe('inventory', () => {
       paletteIcons: Object.keys(paletteIcons).length,
     }).toEqual({
       interfaceTypeUnion: 41,
+      // 37 renderer ids + `upload` and `presentation-links`, which no case resolves
+      manifestEntries: 39,
+      manifestRenderedEntries: 37,
+      // the 3 registry aliases + the 9 legacy ids that were inline case labels
+      manifestAliases: 12,
       registryInterfaceAliases: 3,
-      switchCaseLabels: 46,
+      // Was 46: the 9 legacy alias labels left the switch for the manifest
+      // (normalizeInterfaceId resolves them before it), so each case now names
+      // exactly one renderer id. Rendering is unchanged — see the pre-manifest
+      // snapshot below.
+      switchCaseLabels: 37,
       switchReturnedIds: 37,
       concealing: 2,
       provisionable: 20,
       choice: 5,
       specInterfaceByType: 15,
-      ffiComponentMap: 36,
-      ffiRelationalMap: 5,
-      ffiMultiSelect: 3,
+      // 23 + 13 = the 37 rendered entries minus SystemPermissions, which vform
+      // does not install (divergence (h)) and so cannot import
+      vformEagerComponents: 23,
+      vformLazyComponents: 13,
+      csvMultiValue: 3,
       registryInterfaceBlocks: 39,
       vformRegistryDependencies: 37,
       addAliases: 37,
@@ -752,23 +866,17 @@ describe('utils: field-interface-mapper', () => {
     }
   });
 
-  test('inline aliases hardcoded as extra case labels', () => {
+  test('no inline aliases: the switch has one case label per renderer id', () => {
     const inline = Object.fromEntries(
       explicitSwitch.arms.flatMap((a) => a.labels.filter((l) => l !== a.returns).map((l) => [l, a.returns])),
     );
-    // Legacy / DaaS ids resolved by fall-through labels rather than by
-    // REGISTRY_INTERFACE_ALIASES — a second alias table inside the switch.
-    expect(inline).toEqual({
-      textarea: 'input-multiline',
-      wysiwyg: 'input-rich-text-html',
-      markdown: 'input-rich-text-md',
-      'list-m2o': 'select-dropdown-m2o',
-      'xtr-interface-workflow': 'workflow-button',
-      'xtr-interface-workflow-old': 'workflow-button',
-      'xtremax-workflow-button': 'workflow-button',
-      'xtremax-workflow-button-v2': 'workflow-button',
-      'xtremax-workflow-button-scheduled': 'workflow-button',
-    });
+    // Resolved (interface-manifest Phase 1) without a rendering change: the
+    // legacy ids that were fall-through labels — a second alias table inside
+    // the switch — are the manifest's `aliases.legacy`, resolved by
+    // normalizeInterfaceId with the registry aliases before the switch. They
+    // still render exactly as before (pre-manifest snapshot below).
+    expect(inline).toEqual({});
+    expect(interfaceAliasMap('legacy')).toEqual(PRE_MANIFEST.inlineSwitchAliases);
   });
 
   test('InterfaceType covers every resolved id', () => {
@@ -798,6 +906,104 @@ describe('utils: field-interface-mapper', () => {
   test('CONCEALING_INTERFACES are resolved ids, and concealingInterface() agrees', () => {
     expect(minus(concealingIds, returnedIds)).toEqual([]);
     for (const id of acceptedIds) expect([id, concealingInterface(id)]).toEqual([id, concealingIds.includes(id)]);
+  });
+});
+
+describe('utils: interface manifest vs the tables still kept by hand', () => {
+  test('rendered entries are exactly the switch cases, and each case returns its own id', () => {
+    expect(sorted(renderedEntries.map((e) => e.id))).toEqual(sorted(caseLabels));
+    expect(sorted(caseLabels)).toEqual(returnedIds);
+  });
+
+  test('unrendered entries are known ids that no case resolves', () => {
+    const unrendered = manifest.filter((e) => !e.renders).map((e) => e.id);
+    expect(sorted(unrendered)).toEqual(['presentation-links', 'upload']);
+    expect(unrendered.filter((id) => acceptedIds.includes(id))).toEqual([]);
+  });
+
+  test('InterfaceType is the rendered ids plus the deprecated type literals', () => {
+    const literals = renderedEntries.flatMap((e) => (e.renders ? (e.typeLiterals ?? []) : []));
+    expect(sorted(literals)).toEqual(['list-m2o', 'number', 'textarea', 'uuid']);
+    expect(sorted(interfaceTypeUnion)).toEqual(sorted([...renderedEntries.map((e) => e.id), ...literals]));
+  });
+
+  test('FormFieldInterface resolves an entry by its id and each type literal, not by an alias', () => {
+    const mismatches = renderedEntries.flatMap((e) =>
+      e.renders
+        ? [e.id, ...(e.typeLiterals ?? [])]
+            .filter((id) => ffiExportFor(id) !== e.exportName)
+            .map((id) => ({ id, manifest: e.exportName, formFieldInterface: ffiExportFor(id) }))
+        : [],
+    );
+    expect(mismatches).toEqual([]);
+    // getFieldInterface has resolved the aliases already, so an alias that
+    // reaches FormFieldInterface is not resolved a second time — except the
+    // two legacy aliases that are type literals too.
+    expect(sorted(Object.keys(manifestAliases).filter((alias) => ffiExportFor(alias)))).toEqual(['list-m2o', 'textarea']);
+  });
+
+  test("vform's component tables hold each rendered entry in the table its loading class names", () => {
+    const tableOf = (exportName: string) => vformTableRows.find((r) => r.exportName === exportName)?.table ?? 'barrel';
+    const misplaced = renderedEntries
+      .flatMap((e) =>
+        e.renders
+          ? [{ id: e.id, exportName: e.exportName, loading: e.loading, table: tableOf(e.exportName) }]
+          : [],
+      )
+      .filter((r) => r.table !== (r.loading === 'eager' ? 'eager' : 'lazy'));
+    // vform does not install system-permissions (divergence (h)), so its
+    // tables cannot import it: FormFieldInterface finds SystemPermissions in
+    // the components barrel when it is installed.
+    expect(misplaced).toEqual([
+      { id: 'system-permissions', exportName: 'SystemPermissions', loading: 'lazy', table: 'barrel' },
+    ]);
+    // Nothing else is in the tables, and no name is in both.
+    expect(minus(vformTableRows.map((r) => r.exportName), renderedExportNames)).toEqual([]);
+    expect(sorted(vformTableRows.map((r) => r.exportName))).toHaveLength(vformTableRows.length);
+  });
+
+  test('the csvMultiValue flag marks the three multi-select interfaces', () => {
+    expect(sorted(csvMultiValueIds)).toEqual([
+      'select-multiple-checkbox',
+      'select-multiple-checkbox-tree',
+      'select-multiple-dropdown',
+    ]);
+  });
+
+  test("registryComponent ships the entry's exportName, and its registry block describes the entry", () => {
+    const rows = manifest
+      .filter((e) => e.registryComponent !== null)
+      .map((e) => {
+        const component = componentByName.get(e.registryComponent ?? '') as TemplateComponent | undefined;
+        const block = component?.interface;
+        return {
+          id: e.id,
+          ships: e.exportName !== null && !!component && consumerExports(component.name).has(e.exportName),
+          blockNamesEntry: !!block && getInterfaceManifestEntry(block.id)?.id === e.id,
+          types: JSON.stringify(block?.types) === JSON.stringify(e.types),
+          group: block?.group === e.group,
+        };
+      });
+    expect(rows.filter((r) => !r.ships || !r.blockNamesEntry || !r.types || !r.group)).toEqual([]);
+    // Only presentation-links has no registry component.
+    expect(manifest.filter((e) => e.registryComponent === null).map((e) => e.id)).toEqual(['presentation-links']);
+  });
+
+  test('every registry interface id and alias names a manifest entry', () => {
+    const unknown = registryBlocks.flatMap((b) => [b.id, ...(b.aliases ?? [])]).filter((id) => !getInterfaceManifestEntry(id));
+    expect(unknown).toEqual([]);
+    // divergence (b), unchanged: input-map-gl is map-with-real-map's id, yet
+    // the manifest (like the mapper before it) makes it an alias of `map`.
+    const foreign = registryBlocks
+      .map((b) => ({ id: b.id, component: b.component, entry: getInterfaceManifestEntry(b.id)?.registryComponent }))
+      .filter((r) => r.component !== r.entry);
+    expect(foreign).toEqual([{ id: 'input-map-gl', component: 'map-with-real-map', entry: 'map' }]);
+  });
+
+  test('divergence (j), unchanged: relation-hook aliases are not resolved by the renderer', () => {
+    const hookAliases = manifest.flatMap((e) => e.relation?.hookAliases ?? []);
+    expect(hookAliases).toEqual(['one-to-many']);
+    expect(minus(hookAliases, acceptedIds)).toEqual(['one-to-many']);
   });
 });
 
@@ -842,41 +1048,67 @@ describe('utils: catalog, choices and field-spec defaults', () => {
   });
 });
 
-describe('vform: FormFieldInterface maps', () => {
-  test('the two maps cover exactly the InterfaceType union, without overlap', () => {
-    const ffiKeys = [...Object.keys(ffiComponentMap), ...Object.keys(ffiRelationalMap)];
-    expect(sorted(ffiKeys)).toHaveLength(ffiKeys.length);
-    expect(sorted(ffiKeys)).toEqual(sorted(interfaceTypeUnion));
+describe('vform: FormFieldInterface and its component tables', () => {
+  test('every InterfaceType literal names a rendered manifest entry', () => {
+    expect(sorted(interfaceTypeUnion).filter((id) => !ffiExportFor(id))).toEqual([]);
   });
 
   test('every id the mapper returns has an explicit component (the PascalCase fallback is never needed upstream)', () => {
     expect(returnedIds.filter((id) => !ffiExportFor(id))).toEqual([]);
   });
 
-  test('every mapped component is a ui-interfaces barrel export', () => {
-    const values = [...Object.values(ffiComponentMap), ...Object.values(ffiRelationalMap)];
-    expect(minus(values, uiInterfacesExports)).toEqual([]);
+  test('every rendered component is a ui-interfaces barrel export', () => {
+    expect(minus(renderedExportNames, uiInterfacesExports)).toEqual([]);
   });
 
-  test('every mapped component is exported by the consumer copy of some registry component', () => {
-    const values = sorted([...Object.values(ffiComponentMap), ...Object.values(ffiRelationalMap)]);
-    expect(values.filter((v) => componentsExporting(v).length === 0)).toEqual([]);
+  test('each table member is imported under its own name from a module of its own', () => {
+    // `Boolean` is the one renamed binding (it would shadow the global).
+    expect(vformTableRows.filter((r) => r.imported !== r.exportName)).toEqual([]);
+    expect(sorted(vformTableRows.map((r) => r.spec))).toHaveLength(vformTableRows.length);
+    // Never the barrel: that would put every installed component back in the form's bundle.
+    expect(vformTableRows.filter((r) => !r.spec.startsWith('@buildpad/ui-interfaces/'))).toEqual([]);
+  });
+
+  test('in an installed project each table import resolves to a file vform installs, which exports the name', () => {
+    const vform = registry.components.find((c) => c.name === 'vform');
+    const file = vform?.files.find((f) => f.source === F.interfaceComponents);
+    if (!file) throw new Error('vform does not ship interface-components.tsx');
+    const ownerOf = new Map(registry.components.flatMap((c) => c.files.map((f) => [f.target, c.name] as const)));
+
+    const rows = vformTableRows.map((r) => {
+      // The statement as written, through the real install transform.
+      const stmt = r.table === 'eager' ? `import { ${r.imported} } from '${r.spec}';` : `const m = import('${r.spec}');`;
+      const mapped = /['"]([^'"]+)['"]/.exec(transformImports(stmt, CONSUMER_CONFIG, file.target))?.[1] ?? '';
+      const target = mapped.startsWith('@/') ? shippedTarget(mapped.slice(2)) : undefined;
+      const owner = target ? ownerOf.get(target) : undefined;
+      return {
+        exportName: r.exportName,
+        mapped,
+        resolves: !!target,
+        exports: !!target && exportsOfTarget(target).values.has(r.imported),
+        installedByVform: !!owner && vformDeps.includes(owner),
+      };
+    });
+    expect(rows.filter((r) => !r.resolves || !r.exports || !r.installedByVform)).toEqual([]);
+    // The block editor is loaded as the editor itself, not through its
+    // next/dynamic wrapper (input-block-editor-wrapper): FormFieldInterface
+    // does the client-only gating.
+    expect(rows.find((r) => r.exportName === 'InputBlockEditor')?.mapped).toBe('@/components/ui/input-block-editor');
   });
 
   test('divergence (h): vform registryDependencies omit components FormFieldInterface can render', () => {
     expect(minus(vformDeps, template.components.map((c) => c.name))).toEqual([]);
-    const providers = sorted(
-      [...Object.values(ffiComponentMap), ...Object.values(ffiRelationalMap)].flatMap(componentsExporting),
-    );
-    // FormFieldInterface maps `system-permissions` → SystemPermissions, but a
-    // vform install never pulls that component in.
+    const providers = sorted(renderedExportNames.flatMap(componentsExporting));
+    // The manifest renders `system-permissions` as SystemPermissions, but a
+    // vform install never pulls that component in. FormFieldInterface looks
+    // it up in the components barrel instead of importing it.
     expect(minus(providers, vformDeps)).toEqual(['system-permissions']);
     // Registry interface components a vform install does not bring along.
     expect(minus(registryBlocks.map((b) => b.component), vformDeps)).toEqual(['map-with-real-map', 'system-permissions']);
   });
 
-  test('MULTI_SELECT_INTERFACE_TYPES are resolved ids', () => {
-    expect(minus(ffiMultiSelect, returnedIds)).toEqual([]);
+  test('the csvMultiValue interfaces are resolved ids', () => {
+    expect(minus(csvMultiValueIds, returnedIds)).toEqual([]);
   });
 
   test('divergence (i): csv-compatible interfaces that FormFieldInterface does not normalise', () => {
@@ -884,17 +1116,9 @@ describe('vform: FormFieldInterface maps', () => {
       .filter((b) => b.types.includes('csv'))
       .map((b) => renderedType(b.id, 'csv'));
     // Tags is declared csv-compatible (and is field-spec-mapper's csv default)
-    // but is not in MULTI_SELECT_INTERFACE_TYPES, so a csv string reaches it raw.
-    expect(minus(csvRenderers, ffiMultiSelect)).toEqual(['tags']);
+    // but does not carry the csvMultiValue flag, so a csv string reaches it raw.
+    expect(minus(csvRenderers, csvMultiValueIds)).toEqual(['tags']);
     expect(interfaceForFieldType('csv')).toBe('tags');
-  });
-
-  test('divergence (k): leafProbe hand-copies the export names', () => {
-    const probe = readStringArray(F.leafProbe, 'INTERFACE_COMPONENT_NAMES');
-    const mapped = [...Object.values(ffiComponentMap), ...Object.values(ffiRelationalMap)];
-    expect(minus(probe, mapped)).toEqual([]);
-    // The relational exports are missing from the probe list.
-    expect(minus(mapped, probe)).toEqual(['ListM2A', 'ListM2M', 'ListO2M', 'SelectDropdownM2O']);
   });
 });
 
@@ -920,9 +1144,11 @@ describe('registry interface blocks', () => {
     expect(minus(registryBlocks.flatMap((b) => b.types), fieldTypeUnion)).toEqual([]);
   });
 
-  test('registry groups outside the InterfaceGroup union', () => {
-    // system-permissions uses group "system", which utils' InterfaceGroup lacks.
-    expect(minus(registryBlocks.map((b) => b.group), interfaceGroupUnion)).toEqual(['system']);
+  test('registry groups are InterfaceGroup members', () => {
+    // Resolved (interface-manifest Phase 1, types only): system-permissions'
+    // group "system" was missing from utils' InterfaceGroup; the union gained
+    // it so the manifest can record the registry group of every interface.
+    expect(minus(registryBlocks.map((b) => b.group), interfaceGroupUnion)).toEqual([]);
   });
 
   test('divergence (b): registry entries that render a different component than they install', () => {
@@ -995,6 +1221,11 @@ describe('ui-forms palette and i18n catalog keys', () => {
       // … and the dictionary carries no key FieldPalette never asks for.
       expect({ locale, keys: sorted(keys) }).toEqual({ locale, keys: sorted(provisionableIds.map(palette.catalogLabelKey)) });
     }
+    // The manifest's labelKey is the key FieldPalette derives.
+    const keyMismatches = manifest
+      .flatMap((e) => (e.renders && e.provision ? [[e.id, e.provision.labelKey]] : []))
+      .filter(([id, key]) => palette.catalogLabelKey(id) !== key);
+    expect(keyMismatches).toEqual([]);
   });
 
   test('catalog group keys cover every provisionable group and exist in both locales', () => {
@@ -1005,36 +1236,385 @@ describe('ui-forms palette and i18n catalog keys', () => {
 });
 
 describe('ui-collections and hooks interface checks', () => {
-  test('NON_FLAT_RELATIONAL_INTERFACES copies are identical resolved ids', () => {
-    const form = readStringSet(F.collectionForm, 'NON_FLAT_RELATIONAL_INTERFACES');
-    const list = readStringSet(F.collectionList, 'NON_FLAT_RELATIONAL_INTERFACES');
-    expect(sorted(form)).toEqual(sorted(list));
-    expect(minus(form, returnedIds)).toEqual([]);
-  });
-
-  test('selfPersistingInterfaces copies are identical resolved ids', () => {
-    const copies = readAllStringSets(F.collectionForm, 'selfPersistingInterfaces');
-    expect(copies).toEqual([['files'], ['files']]);
-    expect(minus(copies.flat(), returnedIds)).toEqual([]);
+  // Resolved (interface-manifest Phase 1) without a behaviour change: the
+  // two NON_FLAT_RELATIONAL_INTERFACES copies, the two selfPersistingInterfaces
+  // copies and the raw id comparisons below became calls of manifest
+  // predicates; the pre-manifest snapshot pins what each call accepts.
+  test('no local copies of NON_FLAT_RELATIONAL_INTERFACES/_SPECIALS or selfPersistingInterfaces remain', () => {
+    for (const name of ['NON_FLAT_RELATIONAL_INTERFACES', 'NON_FLAT_RELATIONAL_SPECIALS']) {
+      expect(initializersOf(parseSource(F.collectionForm), name)).toEqual([]);
+      expect(initializersOf(parseSource(F.collectionList), name)).toEqual([]);
+    }
+    expect(readAllStringSets(F.collectionForm, 'selfPersistingInterfaces')).toEqual([]);
+    expect(minus(interfaceIdsWithFlag('nonFlatRelational'), returnedIds)).toEqual([]);
+    expect(minus(interfaceIdsWithFlag('selfPersisting'), returnedIds)).toEqual([]);
   });
 
   test('raw interface-id comparisons', () => {
     const literals = {
       collectionForm: sorted(interfaceComparisons(F.collectionForm)),
       collectionList: sorted(interfaceComparisons(F.collectionList)),
+      junctionItemForm: sorted(interfacePrefixChecks(F.junctionItemForm)),
       ...Object.fromEntries(F.hooks.map((f) => [path.basename(f, '.ts'), sorted(interfaceComparisons(f))])),
     };
     expect(literals).toEqual({
-      // inline presentation check: divider + notice only (isPresentationField also has presentation-links)
-      collectionForm: ['presentation-divider', 'presentation-notice'],
+      collectionForm: [],
+      // a cell-rendering special case, not an identity table (out of scope)
       collectionList: ['collection-item-dropdown'],
-      useRelationM2A: ['list-m2a'],
-      useRelationM2M: ['list-m2m'],
-      useRelationO2M: ['list-o2m', 'one-to-many'],
+      junctionItemForm: [],
+      useRelationM2A: [],
+      useRelationM2M: [],
+      useRelationO2M: [],
     });
-    // divergence (j): useRelationO2M accepts `one-to-many`, which the mapper
-    // does not resolve (such a field renders through the type fallback).
-    expect(minus(Object.values(literals).flat(), acceptedIds)).toEqual(['one-to-many']);
+  });
+
+  test('each check calls the manifest predicate that keeps its behaviour, on the same value, with the same polarity', () => {
+    expect({
+      collectionForm: predicateCalls(F.collectionForm),
+      collectionList: predicateCalls(F.collectionList),
+      junctionItemForm: predicateCalls(F.junctionItemForm),
+      ...Object.fromEntries(F.hooks.map((f) => [path.basename(f, '.ts'), predicateCalls(f)])),
+    }).toEqual({
+      // CollectionForm's alias-field check: divider + notice only, so the
+      // rendered presentation interfaces (isPresentationField also has links)
+      collectionForm: [
+        // fetch only flat fields: drop the non-flat relational ones
+        '!isNonFlatRelationalField(f)',
+        'isRenderedPresentationInterface(f.meta?.interface)',
+        // edit and create save paths: leave self-persisting fields out
+        'isSelfPersistingInterface(fieldDef?.meta?.interface)',
+        'isSelfPersistingInterface(fieldDef?.meta?.interface)',
+      ],
+      collectionList: ['isNonFlatRelationalField(f)'],
+      // any presentation-* id, known or not (it was a prefix test)
+      junctionItemForm: ['isPresentationLikeInterface(f.meta?.interface)', 'isPresentationLikeInterface(f.meta?.interface)'],
+      // each hook errors out when the field is NOT its list interface
+      useRelationM2A: ["!isRelationListInterface(fieldInterface, 'm2a')"],
+      useRelationM2M: ["!isRelationListInterface(currentField.meta?.interface, 'm2m')"],
+      useRelationO2M: ["!isRelationListInterface(currentField.meta?.interface, 'o2m')"],
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pre-manifest snapshot (interface-manifest, Phase 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * The value of every interface-id table that interface-manifest Phase 1
+ * re-derives from one data module, recorded from the source BEFORE that
+ * module existed (59fc8f3). A refactor must leave every live value equal to
+ * its literal here; only a deliberate behaviour change may edit one, and the
+ * 3.0 release has none (owner decision D6: no change to how stored records
+ * render).
+ */
+const PRE_MANIFEST = {
+  /** field-interface-mapper REGISTRY_INTERFACE_ALIASES, entries in declaration order. */
+  registryInterfaceAliases: [
+    ['input-tags', 'tags'],
+    ['input-map', 'map'],
+    ['input-map-gl', 'map'],
+  ],
+  /** getExplicitInterface's fall-through case labels that return another id. */
+  inlineSwitchAliases: {
+    textarea: 'input-multiline',
+    wysiwyg: 'input-rich-text-html',
+    markdown: 'input-rich-text-md',
+    'list-m2o': 'select-dropdown-m2o',
+    'xtr-interface-workflow': 'workflow-button',
+    'xtr-interface-workflow-old': 'workflow-button',
+    'xtremax-workflow-button': 'workflow-button',
+    'xtremax-workflow-button-v2': 'workflow-button',
+    'xtremax-workflow-button-scheduled': 'workflow-button',
+  },
+  /** Every `meta.interface` value getFieldInterface resolves explicitly (46 case labels + the 3 registry aliases). */
+  acceptedIds: [
+    'boolean', 'collection-item-dropdown', 'datetime', 'file', 'file-image', 'files', 'group-accordion',
+    'group-detail', 'group-raw', 'input', 'input-autocomplete-api', 'input-block-editor', 'input-code',
+    'input-hash', 'input-map', 'input-map-gl', 'input-multiline', 'input-rich-text-html', 'input-rich-text-md',
+    'input-tags', 'list-m2a', 'list-m2m', 'list-m2o', 'list-o2m', 'map', 'markdown', 'presentation-divider',
+    'presentation-notice', 'select-color', 'select-dropdown', 'select-dropdown-m2o', 'select-icon',
+    'select-multiple-checkbox', 'select-multiple-checkbox-tree', 'select-multiple-dropdown', 'select-radio',
+    'slider', 'system-permissions', 'system-token', 'tags', 'textarea', 'toggle', 'workflow-button', 'wysiwyg',
+    'xtr-interface-workflow', 'xtr-interface-workflow-old', 'xtremax-workflow-button',
+    'xtremax-workflow-button-scheduled', 'xtremax-workflow-button-v2',
+  ],
+  /** conceal.ts CONCEALING_INTERFACES (what concealingInterface() accepts). */
+  concealing: ['input-hash', 'system-token'],
+  /** interface-catalog CHOICE_INTERFACES, in insertion order. */
+  choice: ['select-dropdown', 'select-radio', 'select-multiple-checkbox', 'select-multiple-checkbox-tree', 'select-multiple-dropdown'],
+  /** interface-catalog PROVISIONABLE_INTERFACES, in picker order (types[0] is the provisioned column type). */
+  provisionable: [
+    { value: 'input', label: 'Text input', group: 'Text', types: ['string', 'text', 'integer', 'bigInteger', 'float', 'decimal'] },
+    { value: 'input-multiline', label: 'Multiline text', group: 'Text', types: ['string', 'text'] },
+    { value: 'input-code', label: 'Code / JSON', group: 'Text', types: ['string', 'text', 'json'] },
+    { value: 'input-hash', label: 'Hash (masked)', group: 'Text', types: ['hash'] },
+    { value: 'tags', label: 'Tags', group: 'Text', types: ['json', 'csv'] },
+    { value: 'input-rich-text-html', label: 'Rich text (WYSIWYG)', group: 'Rich content', types: ['text'] },
+    { value: 'input-rich-text-md', label: 'Rich text (Markdown)', group: 'Rich content', types: ['text'] },
+    { value: 'input-block-editor', label: 'Block editor', group: 'Rich content', types: ['json', 'text'] },
+    { value: 'select-dropdown', label: 'Dropdown (choices)', group: 'Selection', types: ['string', 'integer', 'bigInteger', 'float', 'decimal'] },
+    { value: 'select-radio', label: 'Radio (choices)', group: 'Selection', types: ['string', 'integer'] },
+    { value: 'select-multiple-checkbox', label: 'Checkboxes (multiple)', group: 'Selection', types: ['json', 'csv'] },
+    { value: 'select-multiple-checkbox-tree', label: 'Checkboxes (tree)', group: 'Selection', types: ['json', 'csv'] },
+    { value: 'select-multiple-dropdown', label: 'Multi-select dropdown', group: 'Selection', types: ['json', 'csv'] },
+    { value: 'select-icon', label: 'Icon picker', group: 'Selection', types: ['string'] },
+    { value: 'select-color', label: 'Color picker', group: 'Selection', types: ['string'] },
+    { value: 'boolean', label: 'Checkbox', group: 'Selection', types: ['boolean'] },
+    { value: 'toggle', label: 'Toggle', group: 'Selection', types: ['boolean'] },
+    { value: 'slider', label: 'Slider', group: 'Numeric & date', types: ['integer', 'bigInteger', 'float', 'decimal'] },
+    { value: 'datetime', label: 'Date / time picker', group: 'Numeric & date', types: ['dateTime', 'date', 'time', 'timestamp'] },
+    { value: 'map', label: 'Map (geometry)', group: 'Geospatial', types: ['geometry', 'json', 'text'] },
+  ],
+  /** field-interface-mapper isPresentationField. */
+  presentationField: ['presentation-divider', 'presentation-links', 'presentation-notice'],
+  /** CollectionForm's inline alias-field check (divider + notice only). */
+  collectionFormPresentation: ['presentation-divider', 'presentation-notice'],
+  /** JunctionItemForm keeps an alias field whose interface starts with this. */
+  junctionItemFormPresentationPrefix: 'presentation-',
+  /** NON_FLAT_RELATIONAL_INTERFACES (one copy each in CollectionForm and CollectionList). */
+  nonFlatRelational: ['list-m2a', 'list-m2m', 'list-o2m'],
+  /** NON_FLAT_RELATIONAL_SPECIALS (one copy each in CollectionForm and CollectionList), ORed with the interface check. */
+  nonFlatRelationalSpecials: ['m2a', 'm2m', 'o2m'],
+  /** CollectionForm selfPersistingInterfaces (two copies). */
+  selfPersisting: ['files'],
+  /** The ids each relation hook accepts as its own interface. */
+  relationHooks: {
+    useRelationM2A: ['list-m2a'],
+    useRelationM2M: ['list-m2m'],
+    useRelationO2M: ['list-o2m', 'one-to-many'],
+  },
+} as const;
+
+/** A field with only `meta.interface` set, for the field-level predicate. */
+const probeField = (id: unknown) => ({ field: 'probe', type: 'alias', meta: { interface: id } }) as unknown as Field;
+
+/**
+ * The manifest predicates the shipped checks call, by name, each as a test
+ * of an interface id (the field-level one is run on a field with only that
+ * interface; its `special` half is checked on its own below).
+ */
+const MANIFEST_PREDICATES = {
+  isPresentationInterface,
+  isRenderedPresentationInterface,
+  isPresentationLikeInterface,
+  isNonFlatRelationalInterface,
+  isNonFlatRelationalField: (id: unknown) => isNonFlatRelationalField(probeField(id)),
+  isSelfPersistingInterface,
+  isRelationListInterface,
+} as const;
+type ManifestPredicate = keyof typeof MANIFEST_PREDICATES;
+
+interface PredicateCall {
+  name: ManifestPredicate;
+  /** Source text of the first argument: what the predicate is applied to. */
+  subject: string;
+  /** Literal arguments after the first. */
+  args: string[];
+  /** Whether the call's result is negated (`!pred(…)`). */
+  negated: boolean;
+}
+
+/** Calls of manifest predicates in a file, in source order. */
+function manifestPredicateCalls(file: string): PredicateCall[] {
+  return collectNodes(parseSource(file), ts.isCallExpression)
+    .filter((c) => ts.isIdentifier(c.expression) && c.expression.text in MANIFEST_PREDICATES)
+    .map((c) => {
+      let outer: ts.Node = c;
+      while (ts.isParenthesizedExpression(outer.parent)) outer = outer.parent;
+      if (!c.arguments[0]) throw new Error(`${file}: predicate call without an argument ${c.getText()}`);
+      return {
+        name: (c.expression as ts.Identifier).text as ManifestPredicate,
+        subject: c.arguments[0].getText(),
+        args: c.arguments.slice(1).map((a) => {
+          if (!ts.isStringLiteral(a)) throw new Error(`${file}: non-literal predicate argument ${a.getText()}`);
+          return a.text;
+        }),
+        negated:
+          ts.isPrefixUnaryExpression(outer.parent) && outer.parent.operator === ts.SyntaxKind.ExclamationToken,
+      };
+    });
+}
+
+/** `[!]name(subject, 'arg'…)` for each manifest predicate call in a file, sorted (duplicates kept). */
+function predicateCalls(file: string): string[] {
+  return manifestPredicateCalls(file)
+    .map((c) => `${c.negated ? '!' : ''}${c.name}(${[c.subject, ...c.args.map((a) => `'${a}'`)].join(', ')})`)
+    .sort((a, b) => a.replace(/^!/, '').localeCompare(b.replace(/^!/, '')));
+}
+
+/**
+ * The probe ids each call of one of `names` in `file` accepts (one list per
+ * call, in source order), running the real predicate with the call's literal
+ * arguments.
+ */
+function acceptedByCalls(file: string, names: readonly ManifestPredicate[]): string[][] {
+  return manifestPredicateCalls(file)
+    .filter((c) => names.includes(c.name))
+    .map((c) => {
+      const predicate = MANIFEST_PREDICATES[c.name] as (id: unknown, ...rest: string[]) => boolean;
+      return PROBE_IDS.filter((id) => predicate(id, ...c.args));
+    });
+}
+
+/** The one list every call accepts (calls that disagree, or none, throw). */
+function acceptedByEveryCall(file: string, names: readonly ManifestPredicate[], calls: number): string[] {
+  const lists = acceptedByCalls(file, names);
+  if (lists.length !== calls) throw new Error(`${file}: expected ${calls} call(s) of ${names.join('/')}, found ${lists.length}`);
+  if (new Set(lists.map((l) => JSON.stringify(l))).size !== 1) throw new Error(`${file}: ${names.join('/')} calls disagree`);
+  return lists[0];
+}
+
+const PRESENTATION_PREDICATES: readonly ManifestPredicate[] = [
+  'isPresentationInterface',
+  'isRenderedPresentationInterface',
+  'isPresentationLikeInterface',
+];
+
+/** Prefix-check literals of `<…iface…>.startsWith('…')` calls in a file. */
+function interfacePrefixChecks(file: string): string[] {
+  return collectNodes(parseSource(file), ts.isCallExpression)
+    .filter((c) => ts.isPropertyAccessExpression(c.expression) && c.expression.name.text === 'startsWith')
+    .filter((c) => /iface|interface/i.test((c.expression as ts.PropertyAccessExpression).expression.getText()))
+    .map((c) => {
+      const arg = c.arguments[0];
+      if (!arg || !ts.isStringLiteral(arg)) throw new Error(`${file}: non-literal startsWith ${c.getText()}`);
+      return arg.text;
+    });
+}
+
+/**
+ * Ids probed for behaviour: every id the snapshot names, every registry id,
+ * every InterfaceType literal, and near misses nothing should accept (case
+ * and whitespace variants, unknown members of known families).
+ */
+const PROBE_IDS = sorted([
+  ...PRE_MANIFEST.acceptedIds,
+  ...PRE_MANIFEST.presentationField,
+  ...Object.values(PRE_MANIFEST.relationHooks).flat(),
+  ...registryBlocks.flatMap((b) => [b.id, ...(b.aliases ?? [])]),
+  ...interfaceTypeUnion,
+  'presentation-custom',
+  'list-custom',
+  'not-an-interface',
+  'Input',
+  'LIST-M2M',
+  ' list-m2m',
+  '',
+]);
+
+/**
+ * Whether getFieldInterface resolves `id` through its explicit switch rather
+ * than the type-based fallback. For an unknown field type the fallback is
+ * `input` without the field's options; every explicit case returns another id
+ * or, for `input`, spreads the options.
+ */
+function resolvesExplicitly(id: string): boolean {
+  const field = {
+    field: 'probe',
+    type: 'probe-type',
+    schema: null,
+    meta: { interface: id, options: { __probe: true } },
+  } as unknown as Field;
+  const config = getFieldInterface(field);
+  return config.type !== 'input' || config.props?.__probe === true;
+}
+
+/**
+ * The live value of every snapshotted table: exported values and runtime
+ * behaviour, and — for checks inside React components and hooks, which this
+ * suite does not render — the manifest predicate each check calls (found in
+ * the source with the TypeScript AST) run over the probe ids with the call's
+ * own arguments. Before the manifest these read the module-private literals.
+ */
+const live = {
+  acceptedIds: PROBE_IDS.filter(resolvesExplicitly),
+  concealing: PROBE_IDS.filter((id) => concealingInterface(id)),
+  presentationField: PROBE_IDS.filter((id) => isPresentationField({ field: 'probe', meta: { interface: id } } as unknown as Field)),
+  collectionFormPresentation: acceptedByEveryCall(F.collectionForm, PRESENTATION_PREDICATES, 1),
+  // Both of its field filters (related and junction collection) check this.
+  junctionItemFormPresentation: acceptedByEveryCall(F.junctionItemForm, PRESENTATION_PREDICATES, 2),
+  nonFlatRelational: {
+    collectionForm: acceptedByEveryCall(F.collectionForm, ['isNonFlatRelationalField'], 1),
+    collectionList: acceptedByEveryCall(F.collectionList, ['isNonFlatRelationalField'], 1),
+  },
+  // The `special` half of both checks: a field with no interface and one special.
+  nonFlatRelationalSpecials: ['m2a', 'm2m', 'o2m', 'm2o', 'files', 'group', 'alias', 'no-data', 'cast-json', 'M2M', ''].filter(
+    (special) => isNonFlatRelationalField({ field: 'probe', type: 'alias', meta: { special: [special] } } as unknown as Field),
+  ),
+  // One check per save path (edit, create).
+  selfPersisting: acceptedByCalls(F.collectionForm, ['isSelfPersistingInterface']),
+  relationHooks: Object.fromEntries(
+    F.hooks.map((f) => [path.basename(f, '.ts'), acceptedByEveryCall(f, ['isRelationListInterface'], 1)]),
+  ),
+};
+
+describe('pre-manifest snapshot: every derived table keeps its value', () => {
+  test('REGISTRY_INTERFACE_ALIASES (exported) keeps its entries and their order', () => {
+    expect(Object.entries(REGISTRY_INTERFACE_ALIASES)).toEqual(PRE_MANIFEST.registryInterfaceAliases);
+  });
+
+  test('getFieldInterface accepts exactly the same ids', () => {
+    expect(live.acceptedIds).toEqual(PRE_MANIFEST.acceptedIds);
+  });
+
+  test('every alias resolves to its target, with the same props for the same options', () => {
+    const aliases = { ...Object.fromEntries(PRE_MANIFEST.registryInterfaceAliases), ...PRE_MANIFEST.inlineSwitchAliases };
+    // Options every props builder reads somewhere, so a builder difference shows.
+    const options = { __probe: true, toolbar: ['bold', 'link'], font: 'serif', selectMode: 'modal', collection: 'c', type: 'date' };
+    const config = (id: string, type: string) =>
+      getFieldInterface({ field: 'probe', type, schema: null, meta: { interface: id, options } } as unknown as Field);
+    for (const [alias, target] of Object.entries(aliases)) {
+      for (const type of ['string', 'json', 'alias']) {
+        expect([alias, type, config(alias, type)]).toEqual([alias, type, config(target, type)]);
+      }
+    }
+    // Every other accepted id resolves to itself.
+    for (const id of PRE_MANIFEST.acceptedIds.filter((i) => !(i in aliases))) {
+      expect([id, renderedType(id, 'probe-type')]).toEqual([id, id]);
+    }
+  });
+
+  test('concealingInterface() accepts the same ids', () => {
+    expect(live.concealing).toEqual(PRE_MANIFEST.concealing);
+  });
+
+  test('CHOICE_INTERFACES (exported) keeps its members and their order', () => {
+    expect([...CHOICE_INTERFACES]).toEqual(PRE_MANIFEST.choice);
+  });
+
+  test('PROVISIONABLE_INTERFACES (exported) keeps every descriptor, in order', () => {
+    expect(PROVISIONABLE_INTERFACES).toEqual(PRE_MANIFEST.provisionable);
+  });
+
+  test('isPresentationField accepts the same ids', () => {
+    expect(live.presentationField).toEqual(PRE_MANIFEST.presentationField);
+  });
+
+  test("CollectionForm's alias-field presentation check accepts the same ids", () => {
+    expect(live.collectionFormPresentation).toEqual(PRE_MANIFEST.collectionFormPresentation);
+  });
+
+  test("JunctionItemForm's presentation check accepts every presentation-* id, known or not", () => {
+    const prefix = PRE_MANIFEST.junctionItemFormPresentationPrefix;
+    expect(live.junctionItemFormPresentation).toEqual(PROBE_IDS.filter((id) => id.startsWith(prefix)));
+    expect(live.junctionItemFormPresentation).toContain('presentation-custom');
+  });
+
+  test('NON_FLAT_RELATIONAL_INTERFACES: both ui-collections checks accept the same ids', () => {
+    expect(live.nonFlatRelational).toEqual({
+      collectionForm: PRE_MANIFEST.nonFlatRelational,
+      collectionList: PRE_MANIFEST.nonFlatRelational,
+    });
+    expect(live.nonFlatRelationalSpecials).toEqual(PRE_MANIFEST.nonFlatRelationalSpecials);
+  });
+
+  test("selfPersistingInterfaces: both of CollectionForm's save paths accept the same ids", () => {
+    expect(live.selfPersisting).toEqual([PRE_MANIFEST.selfPersisting, PRE_MANIFEST.selfPersisting]);
+  });
+
+  test('the relation hooks accept the same interface ids', () => {
+    expect(live.relationHooks).toEqual(PRE_MANIFEST.relationHooks);
   });
 });
 

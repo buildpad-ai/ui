@@ -12,6 +12,7 @@ Dynamic collection components for Buildpad projects. Includes CRUD forms, data t
 | `ContentNavigation` | Hierarchical sidebar navigation for collections |
 | `FilterPanel` | Field-type-aware filter builder for collection queries |
 | `SaveOptions` | Dropdown menu with save actions (save & stay, save & add new, etc.) |
+| `CollectionsRelationalProvider` | Supplies CollectionForm / CollectionList / VForm to relational interfaces used outside a CollectionForm |
 
 ## Architecture
 
@@ -114,6 +115,41 @@ function ProductList() {
   );
 }
 ```
+
+### CollectionsRelationalProvider
+
+Relational interfaces (`ListO2M`, `ListM2M`, `ListM2A`) render `CollectionForm`,
+`CollectionList` and `VForm` in their dialogs but cannot import them (that
+would be a package cycle); they read them from a relational UI context.
+`CollectionForm` provides it for every field it renders — a provider above it
+(e.g. this one with custom `components`) still wins. Wrap pages that render
+relational interfaces or a plain `VForm` with relational fields on their own:
+
+```tsx
+import { CollectionsRelationalProvider } from '@buildpad/ui-collections';
+
+<CollectionsRelationalProvider>
+  <ListM2M collection="articles" field="tags" primaryKey={id} />
+</CollectionsRelationalProvider>
+
+// Replace one built-in (the others stay):
+<CollectionsRelationalProvider components={{ CollectionList: MyPicker }}>…</CollectionsRelationalProvider>
+```
+
+The provider lives in its own module (`components/ui/collections-relational-provider`
+in a CLI project; also re-exported from `collection-form`) and loads all three
+components on demand (React.lazy), so a layout can wrap every page without
+bundling the form system into pages that never open a relational dialog. Each
+relational dialog renders them inside its own Suspense boundary.
+
+Its built-ins only fill slots no provider above chose: a bare
+`<CollectionsRelationalProvider>` nested under an app-level provider with custom
+components keeps those components. Its `components` prop, in contrast, wins over
+every provider above. A plain `VForm` supplies only itself (as the form
+renderer), so a standalone `VForm` with O2M / M2M fields needs this provider.
+
+The CLI scaffold already wraps its pages in this provider: the authenticated
+route-group layout (`api-routes`) and the `/content` layout (`content-routes`).
 
 ### ContentLayout
 

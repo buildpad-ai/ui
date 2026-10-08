@@ -1,5 +1,6 @@
 import { FieldsService, apiRequest } from "@buildpad/services";
 import type { Field } from "@buildpad/types";
+import { isRelationListInterface } from "@buildpad/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -108,9 +109,8 @@ export function useRelationO2M(collection: string, field: string) {
           return;
         }
 
-        // Check if this is an O2M interface
-        const interfaceType = currentField.meta?.interface;
-        if (interfaceType !== "list-o2m" && interfaceType !== "one-to-many") {
+        // Check if this is an O2M interface (list-o2m, or the legacy one-to-many)
+        if (!isRelationListInterface(currentField.meta?.interface, "o2m")) {
           setError(
             `Field "${field}" is not configured as a list-o2m interface`,
           );

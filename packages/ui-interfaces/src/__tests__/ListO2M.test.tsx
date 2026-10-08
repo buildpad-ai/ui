@@ -31,48 +31,47 @@ jest.mock("@buildpad/hooks", () => ({
   usePermissions: jest.fn(),
 }));
 
-// The edit/select modals render a full CollectionForm / CollectionList. Stub
-// them down to a single button that fires the callback under test.
+// The edit/select modals render the CollectionForm / CollectionList the
+// relational provider supplies. Supply stubs that are a single button firing
+// the callback under test.
 const mockCollectionListProps = jest.fn();
-jest.mock("@buildpad/ui-collections", () => {
-  const R = require("react");
-  return {
-    CollectionForm: ({ onSuccess, defaultValues, id, mode }: any) => {
-      (globalThis as any).__lastFormDefaults = defaultValues;
-      (globalThis as any).__lastFormId = id;
-      (globalThis as any).__lastFormMode = mode;
-      return R.createElement(
-        "button",
-        {
-          "data-testid": "mock-form-save",
-          onClick: () =>
-            onSuccess({
-              ...((globalThis as any).__formData ?? {}),
-              name: (globalThis as any).__formName ?? "New",
-              // The real CollectionForm merges a literal `id` into every
-              // onSuccess payload — echoing it here is what keeps this stub
-              // honest about the shape production actually emits.
-              id: id ?? (globalThis as any).__newId ?? "srv-new",
-            }),
-        },
-        "save",
-      );
-    },
-    CollectionList: (props: any) => {
-      mockCollectionListProps(props);
-      const { bulkActions } = props;
-      return R.createElement(
-        "button",
-        {
-          "data-testid": "mock-add-selected",
-          onClick: () => bulkActions[0].action((globalThis as any).__pickIds ?? ["p9"]),
-        },
-        "add selected",
-      );
-    },
-  };
-});
+const StubCollectionForm = ({ onSuccess, defaultValues, id, mode }: any) => {
+  (globalThis as any).__lastFormDefaults = defaultValues;
+  (globalThis as any).__lastFormId = id;
+  (globalThis as any).__lastFormMode = mode;
+  return (
+    <button
+      data-testid="mock-form-save"
+      onClick={() =>
+        onSuccess({
+          ...((globalThis as any).__formData ?? {}),
+          name: (globalThis as any).__formName ?? "New",
+          // The real CollectionForm merges a literal `id` into every
+          // onSuccess payload — echoing it here is what keeps this stub
+          // honest about the shape production actually emits.
+          id: id ?? (globalThis as any).__newId ?? "srv-new",
+        })
+      }
+    >
+      save
+    </button>
+  );
+};
+const StubCollectionList = (props: any) => {
+  mockCollectionListProps(props);
+  const { bulkActions } = props;
+  return (
+    <button
+      data-testid="mock-add-selected"
+      onClick={() => bulkActions[0].action((globalThis as any).__pickIds ?? ["p9"])}
+    >
+      add selected
+    </button>
+  );
+};
+const RELATIONAL_STUBS = { CollectionForm: StubCollectionForm, CollectionList: StubCollectionList };
 
+import { RelationalUIProvider } from "@buildpad/services/relational-ui-context";
 import { apiRequest } from "@buildpad/services";
 import { useRelationO2M, useRelationO2MItems, usePermissions } from "@buildpad/hooks";
 import { ListO2M } from "../list-o2m/ListO2M";
@@ -104,7 +103,11 @@ const SLUG_PK_RELATION_INFO = {
   },
 };
 
-const wrap = (ui: React.ReactNode) => <MantineProvider>{ui}</MantineProvider>;
+const wrap = (ui: React.ReactNode) => (
+  <MantineProvider>
+    <RelationalUIProvider components={RELATIONAL_STUBS}>{ui}</RelationalUIProvider>
+  </MantineProvider>
+);
 
 const BASE_PROPS = {
   collection: "categories",
@@ -946,5 +949,116 @@ describe("ListO2M — reorder arrows vs staged rows", () => {
     // p1 is the only real row, so it can move neither way.
     expect(screen.getByTestId("o2m-move-up-p1")).toBeDisabled();
     expect(screen.getByTestId("o2m-move-down-p1")).toBeDisabled();
+  });
+});
+
+describe("ListO2M — relational UI provider (cycle-break)", () => {
+  const bare = (ui: React.ReactNode) => <MantineProvider>{ui}</MantineProvider>;
+
+  it("without a provider: shows the translated alert and hides create, select and edit", async () => {
+    setHookItems([{ id: "p1", name: "Existing post" }], 1);
+    render(bare(<ListO2M {...BASE_PROPS} primaryKey="cat-1" />));
+
+    const alert = await screen.findByTestId("o2m-missing-relational-ui");
+    expect(alert).toHaveTextContent("Related items cannot be edited here");
+    expect(alert).toHaveTextContent("CollectionForm, CollectionList");
+    expect(screen.queryByTestId("o2m-create-btn")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("o2m-select-btn")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("o2m-edit-p1")).not.toBeInTheDocument();
+    // Removing a row needs no dialog, so it stays available.
+    expect(screen.getByTestId("o2m-remove-p1")).toBeInTheDocument();
+  });
+
+  it("inside a plain VForm (which supplies only the form renderer) the alert does not send the user to VForm", async () => {
+    // VForm provides { FormRenderer: VForm } and nothing else.
+    const StubRenderer = () => <div />;
+    setHookItems([{ id: "p1", name: "Existing post" }], 1);
+    render(
+      bare(
+        <RelationalUIProvider components={{ FormRenderer: StubRenderer }}>
+          <ListO2M {...BASE_PROPS} primaryKey="cat-1" />
+        </RelationalUIProvider>,
+      ),
+    );
+
+    const alert = await screen.findByTestId("o2m-missing-relational-ui");
+    expect(alert).toHaveAttribute("data-missing", "CollectionForm CollectionList");
+    expect(alert).toHaveTextContent("CollectionForm, CollectionList");
+    expect(alert).toHaveTextContent("CollectionsRelationalProvider");
+    expect(alert).not.toHaveTextContent(/inside (a )?CollectionForm or VForm/);
+    expect(screen.queryByTestId("o2m-create-btn")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("o2m-edit-p1")).not.toBeInTheDocument();
+  });
+
+  it("names only components for actions the user could take (no create/update permission → no form)", async () => {
+    (usePermissions as jest.Mock).mockReturnValue({
+      canPerform: (_c: string, action: string) => action !== "create" && action !== "update",
+      loading: false,
+    });
+    render(bare(<ListO2M {...BASE_PROPS} primaryKey="cat-1" />));
+
+    const alert = await screen.findByTestId("o2m-missing-relational-ui");
+    expect(alert).toHaveAttribute("data-missing", "CollectionList");
+    expect(alert).toHaveTextContent("needs CollectionList, which");
+  });
+
+  it("shows no alert when no action would be offered (selection off, no create/update permission)", async () => {
+    (usePermissions as jest.Mock).mockReturnValue({
+      canPerform: (_c: string, action: string) => action !== "create" && action !== "update",
+      loading: false,
+    });
+    render(bare(<ListO2M {...BASE_PROPS} primaryKey="cat-1" enableSelect={false} />));
+    await screen.findByTestId("list-o2m");
+    expect(screen.queryByTestId("o2m-missing-relational-ui")).not.toBeInTheDocument();
+  });
+
+  it("a read-only field shows no alert (it offers no actions anyway)", async () => {
+    render(bare(<ListO2M {...BASE_PROPS} primaryKey="cat-1" readOnly />));
+    await screen.findByTestId("list-o2m");
+    expect(screen.queryByTestId("o2m-missing-relational-ui")).not.toBeInTheDocument();
+  });
+
+  it("with only a list: select is offered, create/edit are hidden and the alert names the form", async () => {
+    setHookItems([{ id: "p1", name: "Existing post" }], 1);
+    render(
+      bare(
+        <RelationalUIProvider components={{ CollectionList: StubCollectionList }}>
+          <ListO2M {...BASE_PROPS} primaryKey="cat-1" />
+        </RelationalUIProvider>,
+      ),
+    );
+    expect(await screen.findByTestId("o2m-select-btn")).toBeInTheDocument();
+    expect(screen.queryByTestId("o2m-create-btn")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("o2m-edit-p1")).not.toBeInTheDocument();
+    expect(screen.getByTestId("o2m-missing-relational-ui")).toHaveAttribute("data-missing", "CollectionForm");
+  });
+
+  it("the `components` prop wins over the provider", async () => {
+    const OverrideList = () => <div data-testid="override-list" />;
+    render(wrap(<ListO2M {...BASE_PROPS} primaryKey="cat-1" components={{ CollectionList: OverrideList }} />));
+    fireEvent.click(await screen.findByTestId("o2m-select-btn"));
+    expect(await screen.findByTestId("override-list")).toBeInTheDocument();
+    expect(screen.queryByTestId("mock-add-selected")).not.toBeInTheDocument();
+    // The slot the prop leaves undefined still comes from the provider.
+    expect(screen.queryByTestId("o2m-missing-relational-ui")).not.toBeInTheDocument();
+  });
+
+  it("a lazy slot suspends inside its own dialog, not the whole field", async () => {
+    let resolve!: (m: { default: React.ComponentType<any> }) => void;
+    const LazyList = React.lazy(
+      () => new Promise<{ default: React.ComponentType<any> }>((r) => { resolve = r; }),
+    );
+    render(wrap(<ListO2M {...BASE_PROPS} primaryKey="cat-1" components={{ CollectionList: LazyList }} />));
+    fireEvent.click(await screen.findByTestId("o2m-select-btn"));
+
+    expect(await screen.findByTestId("relational-slot-loading")).toHaveTextContent("Loading…");
+    // The field itself is still rendered around the open dialog.
+    expect(screen.getByTestId("list-o2m")).toBeInTheDocument();
+
+    await act(async () => {
+      resolve({ default: () => <div data-testid="lazy-list-loaded" /> });
+    });
+    expect(await screen.findByTestId("lazy-list-loaded")).toBeInTheDocument();
+    expect(screen.queryByTestId("relational-slot-loading")).not.toBeInTheDocument();
   });
 });

@@ -43,6 +43,7 @@ import {
 } from './sources.js';
 import {
   buildUpgradeCommand,
+  dependenciesToBring,
   entryStatus,
   installedEntries,
   isAhead,
@@ -603,7 +604,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'get_upgrade_plan',
-        description: 'Dry-run upgrade plan: for each installed component and lib module shows the release delta, stale files, local-modification status per file (paths resolved the way the CLI writes them), and the recommended action. Naming a component also plans the outdated lib modules it depends on. Read-only — does not touch any consumer files.',
+        description: 'Dry-run upgrade plan: for each installed component and lib module shows the release delta, stale files, local-modification status per file (paths resolved the way the CLI writes them), and the recommended action. Naming an entry also plans the outdated components and lib modules it depends on, and lists the ones the project lacks (missingDependencies), which apply_upgrade installs. Read-only — does not touch any consumer files.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -635,9 +636,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               items: { type: 'string' },
               description: 'Component or lib-module names to upgrade (lowercase, e.g. "input", "utils"). Omit to upgrade every installed component and lib module.',
             },
+            includeDependencies: {
+              type: 'boolean',
+              description: 'Also upgrade the outdated components and lib modules the upgraded entries depend on, and install the ones the project lacks: their new code is imported by the upgraded entries. Defaults to true. Set false to touch only the named entries (the project may then not compile).',
+            },
             includeLibDependencies: {
               type: 'boolean',
-              description: 'When components are named, also upgrade the installed lib modules they depend on that are outdated. Defaults to true.',
+              description: 'Deprecated: the earlier name of includeDependencies.',
             },
             strategy: {
               type: 'string',
@@ -1255,11 +1260,11 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         const entries = installedEntries(config, registry);
         const statuses = entries.map(e => entryStatus(e, registry.version));
 
-        // Naming a component also plans the outdated lib modules it depends
-        // on: apply_upgrade upgrades those with it.
+        // Naming an entry also plans the outdated entries it depends on:
+        // apply_upgrade upgrades those with it.
         const requestedNames = (requested as string[] | undefined) ?? [];
         const selected = requestedNames.length > 0
-          ? new Set([...requestedNames, ...staleLibDependencies(requestedNames, statuses, registry)])
+          ? new Set([...requestedNames, ...dependenciesToBring(requestedNames, statuses, registry).stale.map(d => d.name)])
           : undefined;
 
         const plan: object[] = [];
@@ -1274,6 +1279,13 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
             staleLibDependencies: entry.kind === 'component'
               ? staleLibDependencies([entry.name], statuses, registry)
               : [],
+            ...(() => {
+              const deps = dependenciesToBring([entry.name], statuses, registry);
+              return {
+                staleComponentDependencies: deps.stale.filter(d => d.kind === 'component').map(d => d.name),
+                missingDependencies: deps.missing,
+              };
+            })(),
             files,
           });
         });
@@ -1299,20 +1311,27 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
         // getComponent also matches titles ("Input"); the CLI needs registry names.
         const named = input.components.map(n => getComponent(n)?.name ?? n);
 
-        const libDependencies = named.length > 0 && input.includeLibDependencies
-          ? staleLibDependencies(named, statuses, registry)
-          : [];
-        const names = [...named, ...libDependencies];
+        // What the named entries bring along. The MCP passes every name to
+        // the CLI itself, with --no-deps, so the names checked below are the
+        // names the CLI touches. With no names the CLI upgrades everything
+        // installed and installs what is missing by itself.
+        const brought = named.length > 0 && input.includeDependencies
+          ? dependenciesToBring(named, statuses, registry)
+          : { stale: [], missing: [] };
+        const libDependencies = brought.stale.filter(d => d.kind === 'lib').map(d => d.name);
+        const componentDependencies = brought.stale.filter(d => d.kind === 'component').map(d => d.name);
+        const dependencyNames = brought.stale.map(d => d.name);
+        const names = [...named, ...dependencyNames, ...brought.missing.map(d => d.name)];
 
         // Upgrading with this server's CLI release must not move anything
-        // backwards. Check every name the CLI will get, including the lib
+        // backwards. Check every name the CLI will get, including the
         // dependencies added above, not only the names the caller passed.
         const targeted = names.length > 0 ? new Set(names) : undefined;
         const ahead = statuses.filter(st => st.aheadOfRegistry && (!targeted || targeted.has(st.name)));
         const projectAhead = isAhead(config.release, MCP_VERSION);
         if (projectAhead || ahead.length > 0) {
-          const aheadLibDependencies = ahead.filter(st => libDependencies.includes(st.name));
-          const onlyLibDependenciesAhead = !projectAhead && aheadLibDependencies.length === ahead.length;
+          const aheadDependencies = ahead.filter(st => dependencyNames.includes(st.name));
+          const onlyDependenciesAhead = !projectAhead && aheadDependencies.length === ahead.length;
           return {
             isError: true,
             content: [{
@@ -1325,9 +1344,10 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
                 mcpVersion: MCP_VERSION,
                 aheadOfRegistry: ahead.map(st => ({ kind: st.kind, name: st.name, installedRelease: st.installedRelease })),
                 libDependencies,
+                componentDependencies,
                 hint: 'Update the MCP server (npx -y @buildpad/mcp@latest), or run the CLI that matches the project directly.' +
-                  (onlyLibDependenciesAhead
-                    ? ' To upgrade only the named entries and leave their lib dependencies alone, pass includeLibDependencies: false.'
+                  (onlyDependenciesAhead
+                    ? ' To upgrade only the named entries and leave their dependencies alone, pass includeDependencies: false.'
                     : ''),
               }, null, 2),
             }],
@@ -1339,6 +1359,7 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
           projectPath: input.projectPath,
           strategy: input.strategy,
           names,
+          noDeps: named.length > 0 || !input.includeDependencies,
         });
 
         // No shell: every argument reaches npx as one argv entry.
@@ -1364,6 +1385,8 @@ import { ${component!.title} } from '@/components/ui/${component!.name}';
               ...(result.signal ? { signal: result.signal } : {}),
               components: named.length > 0 ? named : 'all installed',
               libDependencies,
+              componentDependencies,
+              missingDependencies: brought.missing,
               strategy: input.strategy,
               cliVersion: MCP_VERSION,
               command: [command, ...cliArgs].join(' '),

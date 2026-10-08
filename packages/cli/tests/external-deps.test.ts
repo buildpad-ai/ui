@@ -6,7 +6,7 @@
  * never reach execSync).
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -18,7 +18,17 @@ import {
   ensureExternalDeps,
 } from '../src/utils/external-deps.js';
 
+// The confirmation prompt. Tests set what the user answers.
+const promptsMock = vi.hoisted(() => vi.fn(async (): Promise<Record<string, unknown>> => ({})));
+vi.mock('prompts', () => ({ default: promptsMock }));
+
 let tmpdir: string;
+const stdinIsTTY = process.stdin.isTTY;
+
+/** Run the rest of the test as if stdin were (not) a terminal. */
+function setTerminal(isTTY: boolean) {
+  Object.defineProperty(process.stdin, 'isTTY', { value: isTTY, configurable: true });
+}
 
 beforeEach(async () => {
   tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), 'buildpad-extdeps-'));
@@ -26,6 +36,10 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await fs.remove(tmpdir);
+  Object.defineProperty(process.stdin, 'isTTY', { value: stdinIsTTY, configurable: true });
+  promptsMock.mockReset();
+  promptsMock.mockImplementation(async () => ({}));
+  vi.restoreAllMocks();
 });
 
 describe('toInstallSpec', () => {
@@ -120,5 +134,73 @@ describe('ensureExternalDeps', () => {
     });
     expect(result.missing).toEqual(['marked']);
     expect(result.installed).toBe(false);
+    expect(promptsMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('ensureExternalDeps — confirming the install', () => {
+  /** Console output of one call, joined. */
+  async function run(options: { autoInstall?: boolean } = {}) {
+    await fs.writeJSON(path.join(tmpdir, 'package.json'), { dependencies: {} });
+    const lines: string[] = [];
+    vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      lines.push(args.join(' '));
+    });
+    const result = await ensureExternalDeps({ cwd: tmpdir, deps: ['marked', 'dompurify'], ...options });
+    return { result, out: lines.join('\n') };
+  }
+
+  test('without a terminal it does not ask: it names the packages, prints the command and returns', async () => {
+    // CI, `< /dev/null`, or the MCP server's spawnSync. Asking here left the
+    // prompt pending for ever: the process ended at the question with exit
+    // code 0, before the caller's summary.
+    setTerminal(false);
+
+    const { result, out } = await run();
+
+    expect(promptsMock).not.toHaveBeenCalled();
+    expect(result).toEqual({ missing: ['marked', 'dompurify'], installed: false });
+    expect(out).toContain('- marked');
+    expect(out).toContain('- dompurify');
+    expect(out).toContain('no terminal to confirm on');
+    expect(out).toContain(`npm install "marked@${DEPENDENCY_VERSIONS.marked}" "dompurify@${DEPENDENCY_VERSIONS.dompurify}"`);
+  });
+
+  test('without a terminal the command is the one for the project\'s package manager', async () => {
+    setTerminal(false);
+    await fs.writeFile(path.join(tmpdir, 'pnpm-lock.yaml'), '');
+
+    const { out } = await run();
+
+    expect(out).toContain('pnpm add "marked@');
+  });
+
+  test('on a terminal it asks, and a no prints the manual command', async () => {
+    setTerminal(true);
+    promptsMock.mockResolvedValue({ autoInstall: false });
+
+    const { result, out } = await run();
+
+    expect(promptsMock).toHaveBeenCalledTimes(1);
+    expect(promptsMock.mock.calls[0]).toEqual([expect.objectContaining({ type: 'confirm', name: 'autoInstall' })]);
+    expect(result.installed).toBe(false);
+    expect(out).toContain('Install manually with:');
+    expect(out).not.toContain('no terminal');
+  });
+
+  test('a cancelled prompt is a no', async () => {
+    setTerminal(true);
+    promptsMock.mockResolvedValue({}); // Ctrl+C / Esc: no answer at all
+
+    const { result, out } = await run();
+
+    expect(result.installed).toBe(false);
+    expect(out).toContain('Install manually with:');
+  });
+
+  test('an explicit autoInstall never asks, terminal or not', async () => {
+    setTerminal(true);
+    expect((await run({ autoInstall: false })).result.installed).toBe(false);
+    expect(promptsMock).not.toHaveBeenCalled();
   });
 });

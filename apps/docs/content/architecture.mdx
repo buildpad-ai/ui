@@ -67,6 +67,27 @@ types (base)
        └─ ui-users  (Users/Roles/Policies admin — users module)
 ```
 
+### Relational interfaces and the relational UI context
+
+The relational interfaces (`ListO2M`, `ListM2M`, `ListM2A` and its
+`JunctionItemForm`) open dialogs that need components from the tiers *above*
+them — `CollectionForm`, `CollectionList` and `VForm`. They do not import them
+(that was an import cycle: ui-form → ui-interfaces → ui-collections → ui-form).
+They read them from the **relational UI context** in `@buildpad/services`
+(`@buildpad/services/relational-ui-context`):
+
+| Who | Supplies |
+|---|---|
+| `CollectionForm` | `CollectionForm`, `CollectionList` (lazy), `FormRenderer: VForm` — for every field it renders |
+| `VForm` | `FormRenderer: VForm` |
+| `CollectionsRelationalProvider` (`ui-collections`) | All three, loaded on demand — wrap a page that renders `<ListO2M>`/`<ListM2M>`/`<ListM2A>` or a plain `<VForm>` with relational fields on its own. The scaffolded authenticated and `/content` layouts already do. Its built-ins only fill slots no provider above chose |
+| `RelationalUIProvider` (`services`) | Your own components (nested providers merge) |
+| A component's `components` prop | Overrides for that one field |
+
+Without a provider, a relational interface shows an alert and hides the create,
+select and edit actions that need the missing component. `pnpm graph:check`
+keeps the package graph free of cycles.
+
 ## Consumer Layer
 
 Projects consume Buildpad components via the CLI (Copy & Own model) or through AI agents via MCP. Components are copied as source code with imports transformed to local paths.

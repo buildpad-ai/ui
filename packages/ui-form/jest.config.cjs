@@ -6,6 +6,7 @@ const config = {
     '\\.(css|less|scss|sass)$': '<rootDir>/../ui-interfaces/src/__tests__/__mocks__/styleMock.js',
     '^@buildpad/types$': '<rootDir>/../types/src/index.ts',
     '^@buildpad/services$': '<rootDir>/../services/src/index.ts',
+    '^@buildpad/services/(.*)$': '<rootDir>/../services/src/$1',
     '^@buildpad/hooks$': '<rootDir>/../hooks/src/index.ts',
     '^@buildpad/utils$': '<rootDir>/../utils/src/index.ts',
   },

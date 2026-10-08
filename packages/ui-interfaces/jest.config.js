@@ -12,10 +12,11 @@ const config = {
     '\\.(css|less|scss|sass)$': '<rootDir>/src/__tests__/__mocks__/styleMock.js',
     '^@buildpad/types$': '<rootDir>/../types/src/index.ts',
     '^@buildpad/services$': '<rootDir>/../services/src/index.ts',
+    // Deep services modules (e.g. relational-ui-context) — the same files the
+    // barrel re-exports, so a context has ONE module instance.
+    '^@buildpad/services/(.*)$': '<rootDir>/../services/src/$1',
     '^@buildpad/hooks$': '<rootDir>/../hooks/src/index.ts',
     '^@buildpad/utils$': '<rootDir>/../utils/src/index.ts',
-    '^@buildpad/ui-form$': '<rootDir>/../ui-form/src/index.ts',
-    '^@buildpad/ui-table$': '<rootDir>/../ui-table/src/index.ts',
     // marked only publishes ESM/UMD; point Jest at the UMD (CJS) build.
     '^marked$': '<rootDir>/../../node_modules/marked/lib/marked.umd.js',
     // @mapbox/mapbox-gl-draw's "exports" entry is untranspiled ESM source;

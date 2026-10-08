@@ -19,6 +19,7 @@
  */
 
 import type { Field } from "@buildpad/types";
+import { interfaceIdsWithFlag } from "./interface-manifest";
 
 /**
  * What the UI renders for "a value exists but cannot be shown".
@@ -49,13 +50,14 @@ export function isConcealedField(field: Field): boolean {
 }
 
 /**
- * Interfaces that render a concealed value as a mask.
+ * Interfaces that render a concealed value as a mask (the manifest's
+ * `concealing` flag: input-hash, system-token).
  *
  * The gate matters: a secret field rendered by a plain text interface must show
  * an empty control, not a literal row of asterisks the user could submit as
  * their password.
  */
-const CONCEALING_INTERFACES = new Set(["input-hash", "system-token"]);
+const CONCEALING_INTERFACES: ReadonlySet<string> = new Set(interfaceIdsWithFlag("concealing"));
 
 export function concealingInterface(interfaceType?: string | null): boolean {
   return !!interfaceType && CONCEALING_INTERFACES.has(interfaceType);

@@ -10,7 +10,9 @@
 import React, { useMemo } from 'react';
 import { Box } from '@mantine/core';
 import type { Field } from '@buildpad/types';
-import { GroupDetail, GroupAccordion, GroupRaw } from '@buildpad/ui-interfaces';
+import { GroupAccordion } from '@buildpad/ui-interfaces/group-accordion';
+import { GroupDetail } from '@buildpad/ui-interfaces/group-detail';
+import { GroupRaw } from '@buildpad/ui-interfaces/group-raw';
 import { getFieldInterface, getFieldDisplayName } from '@buildpad/utils';
 import type { DeepPartial, FormTranslations } from '@buildpad/utils';
 import type { FormField as TFormField, ValidationError } from '../types';

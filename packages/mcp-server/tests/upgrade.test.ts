@@ -19,7 +19,10 @@ const { getAllComponents, getRegistry } = await import('../src/registry.js');
 const { hashTransformed } = await import('../src/versioning.js');
 const {
   buildUpgradeCommand,
+  dependenciesToBring,
+  dependencyClosure,
   diskPathOf,
+  entryNameOf,
   libDependencyClosure,
   readConsumerConfig,
   validateApplyUpgradeArgs,
@@ -42,6 +45,11 @@ const registry = getRegistry();
 const component = getAllComponents().find(c => c.internalDependencies.some(d => registry.lib[d]))!;
 const libName = component.internalDependencies.find(d => registry.lib[d])!;
 const libFiles = registry.lib[libName].files!;
+/**
+ * What `component` depends on besides `libName`. The fixture projects install
+ * only the two, so apply_upgrade installs the rest with them.
+ */
+const otherDependencies = dependencyClosure([component.name], registry).filter(d => d.name !== libName);
 
 let tmp: string;
 
@@ -152,6 +160,8 @@ describe('get_upgrade_plan', () => {
     expect(comp.recommendedAction).toBe('up-to-date');
     expect(comp.files.every((f: { status: string }) => f.status === 'pristine')).toBe(true);
     expect(comp.staleLibDependencies).toContain(libName);
+    expect(comp.staleComponentDependencies).toEqual([]);
+    expect(comp.missingDependencies).toEqual(otherDependencies);
 
     expect(lib.kind).toBe('lib');
     expect(lib.isOutdated).toBe(true);
@@ -272,16 +282,76 @@ describe('libDependencyClosure', () => {
   });
 });
 
+describe('dependencyClosure / dependenciesToBring', () => {
+  /** form → field, picker (components), helpers (lib); field → form; picker → icons; helpers → core; routes (lib) → form. */
+  const fixture = {
+    components: [
+      { name: 'form', internalDependencies: ['helpers'], registryDependencies: ['field', 'picker', 'not-in-registry'] },
+      { name: 'field', internalDependencies: ['helpers'], registryDependencies: ['form'] },
+      { name: 'picker', internalDependencies: ['icons'] },
+      { name: 'standalone', internalDependencies: [] },
+    ],
+    lib: {
+      helpers: { name: 'helpers', internalDependencies: ['core'] },
+      core: { name: 'core' },
+      icons: { name: 'icons' },
+      routes: { name: 'routes', registryDependencies: ['form'] },
+    },
+  } as unknown as typeof registry;
+  const status = (kind: 'component' | 'lib', name: string, isOutdated: boolean) =>
+    ({ kind, name, isOutdated }) as Parameters<typeof dependenciesToBring>[1][number];
+
+  test('a name is a lib module when the registry has one, otherwise a component', () => {
+    expect(entryNameOf('helpers', fixture)).toEqual({ kind: 'lib', name: 'helpers' });
+    expect(entryNameOf('form', fixture)).toEqual({ kind: 'component', name: 'form' });
+    expect(entryNameOf('nope', fixture)).toBeUndefined();
+  });
+
+  test('follows both kinds of dependency, through a cycle, without listing the names themselves', () => {
+    expect(dependencyClosure(['form'], fixture)).toEqual([
+      { kind: 'lib', name: 'helpers' },
+      { kind: 'component', name: 'field' },
+      { kind: 'component', name: 'picker' },
+      { kind: 'lib', name: 'core' },
+      { kind: 'lib', name: 'icons' },
+    ]);
+    expect(dependencyClosure(['routes'], fixture).map(d => d.name)).toEqual(['form', 'helpers', 'field', 'picker', 'core', 'icons']);
+    expect(dependencyClosure(['standalone'], fixture)).toEqual([]);
+    expect(dependencyClosure(['nope'], fixture)).toEqual([]);
+  });
+
+  test('splits the closure into outdated entries to upgrade and missing ones to install', () => {
+    const statuses = [
+      status('component', 'form', true),
+      status('component', 'field', true),
+      status('component', 'standalone', true),
+      status('lib', 'helpers', false),
+      status('lib', 'core', true),
+    ];
+    expect(dependenciesToBring(['form'], statuses, fixture)).toEqual({
+      // helpers is up to date; core, behind it, is not. standalone is outdated but unrelated.
+      stale: [{ kind: 'component', name: 'field' }, { kind: 'lib', name: 'core' }],
+      missing: [{ kind: 'component', name: 'picker' }, { kind: 'lib', name: 'icons' }],
+    });
+  });
+});
+
 describe('validateApplyUpgradeArgs', () => {
   const base = { projectPath: '/abs/project' };
 
-  test('defaults: new-file strategy, all components, lib dependencies included', () => {
+  test('defaults: new-file strategy, all components, dependencies included', () => {
     expect(validateApplyUpgradeArgs(base)).toEqual({
       projectPath: '/abs/project',
       components: [],
       strategy: 'new-file',
-      includeLibDependencies: true,
+      includeDependencies: true,
     });
+  });
+
+  test('includeLibDependencies is still accepted; includeDependencies wins when both are given', () => {
+    expect(validateApplyUpgradeArgs({ ...base, includeLibDependencies: false }).includeDependencies).toBe(false);
+    expect(validateApplyUpgradeArgs({ ...base, includeDependencies: false }).includeDependencies).toBe(false);
+    expect(validateApplyUpgradeArgs({ ...base, includeDependencies: true, includeLibDependencies: false }).includeDependencies).toBe(true);
   });
 
   test.each([
@@ -323,11 +393,12 @@ describe('validateApplyUpgradeArgs', () => {
     }
   });
 
-  test('requires an absolute projectPath and a boolean includeLibDependencies', () => {
+  test('requires an absolute projectPath and a boolean includeDependencies', () => {
     expect(() => validateApplyUpgradeArgs({})).toThrow('projectPath is required');
     expect(() => validateApplyUpgradeArgs({ projectPath: 'relative/dir' })).toThrow('absolute path');
     expect(() => validateApplyUpgradeArgs({ projectPath: '--cwd' })).toThrow('absolute path');
     expect(() => validateApplyUpgradeArgs({ ...base, includeLibDependencies: 'yes' })).toThrow('must be a boolean');
+    expect(() => validateApplyUpgradeArgs({ ...base, includeDependencies: 1 })).toThrow('includeDependencies must be a boolean');
   });
 });
 
@@ -343,6 +414,13 @@ describe('buildUpgradeCommand', () => {
   test('upgrades everything installed when no names are given', () => {
     expect(buildUpgradeCommand({ cliVersion: '2.7.0-next.1', projectPath: '/p', strategy: 'new-file', names: [] }).args)
       .toEqual(['--yes', '@buildpad/cli@2.7.0-next.1', 'upgrade', '--cwd', '/p', '--strategy', 'new-file', '--all']);
+  });
+
+  test('--no-deps goes before the names', () => {
+    expect(buildUpgradeCommand({ cliVersion: '3.0.0', projectPath: '/p', strategy: 'new-file', names: ['input'], noDeps: true }).args)
+      .toEqual(['--yes', '@buildpad/cli@3.0.0', 'upgrade', '--cwd', '/p', '--strategy', 'new-file', '--no-deps', '--', 'input']);
+    expect(buildUpgradeCommand({ cliVersion: '3.0.0', projectPath: '/p', strategy: 'new-file', names: [], noDeps: true }).args.slice(-2))
+      .toEqual(['--no-deps', '--all']);
   });
 
   test('refuses to pin to something that is not a release version', () => {
@@ -365,25 +443,46 @@ describe('apply_upgrade', () => {
     expect(spawnSyncMock).not.toHaveBeenCalled();
   });
 
-  test('adds the stale lib modules a named component depends on', async () => {
+  test('names the stale entries a named component depends on, and the missing ones, and runs the CLI with --no-deps', async () => {
     staleLibProject();
     spawnSyncMock.mockReturnValue({ status: 0, stdout: 'ok', stderr: '' });
     const result = json(await call('apply_upgrade', { projectPath: tmp, components: [component.name], strategy: 'three-way' }));
     expect(result.libDependencies).toEqual([libName]);
+    expect(result.componentDependencies).toEqual([]);
+    expect(result.missingDependencies).toEqual(otherDependencies);
+    // Every name the CLI touches is on the command line: the MCP checked exactly these.
+    const names = [component.name, libName, ...otherDependencies.map(d => d.name)];
     expect(spawnSyncMock).toHaveBeenCalledWith(
       'npx',
-      ['--yes', `@buildpad/cli@${MCP_VERSION}`, 'upgrade', '--cwd', tmp, '--strategy', 'three-way', '--', component.name, libName],
+      ['--yes', `@buildpad/cli@${MCP_VERSION}`, 'upgrade', '--cwd', tmp, '--strategy', 'three-way', '--no-deps', '--', ...names],
       expect.objectContaining({ cwd: tmp }),
     );
-    expect(result.command).toBe(`npx --yes @buildpad/cli@${MCP_VERSION} upgrade --cwd ${tmp} --strategy three-way -- ${component.name} ${libName}`);
+    expect(result.command).toBe(
+      `npx --yes @buildpad/cli@${MCP_VERSION} upgrade --cwd ${tmp} --strategy three-way --no-deps -- ${names.join(' ')}`,
+    );
   });
 
-  test('includeLibDependencies: false upgrades only the named entries', async () => {
+  test('includeDependencies: false upgrades only the named entries', async () => {
     staleLibProject();
     spawnSyncMock.mockReturnValue({ status: 0, stdout: '', stderr: '' });
-    const result = json(await call('apply_upgrade', { projectPath: tmp, components: [component.name], includeLibDependencies: false }));
+    const result = json(await call('apply_upgrade', { projectPath: tmp, components: [component.name], includeDependencies: false }));
     expect(result.libDependencies).toEqual([]);
-    expect(spawnSyncMock.mock.calls[0][1].slice(-2)).toEqual(['--', component.name]);
+    expect(result.missingDependencies).toEqual([]);
+    expect(spawnSyncMock.mock.calls[0][1].slice(-3)).toEqual(['--no-deps', '--', component.name]);
+    // The earlier name of the option does the same.
+    await call('apply_upgrade', { projectPath: tmp, components: [component.name], includeLibDependencies: false });
+    expect(spawnSyncMock.mock.calls[1][1].slice(-3)).toEqual(['--no-deps', '--', component.name]);
+  });
+
+  test('with no names the CLI upgrades everything and brings the dependencies itself', async () => {
+    staleLibProject();
+    spawnSyncMock.mockReturnValue({ status: 0, stdout: '', stderr: '' });
+    await call('apply_upgrade', { projectPath: tmp });
+    expect(spawnSyncMock.mock.calls[0][1].slice(-1)).toEqual(['--all']);
+    expect(spawnSyncMock.mock.calls[0][1]).not.toContain('--no-deps');
+    // Unless told not to.
+    await call('apply_upgrade', { projectPath: tmp, includeDependencies: false });
+    expect(spawnSyncMock.mock.calls[1][1].slice(-2)).toEqual(['--no-deps', '--all']);
   });
 
   test('refuses to downgrade a project installed from a newer release', async () => {
@@ -420,19 +519,19 @@ describe('apply_upgrade', () => {
       aheadOfRegistry: [{ kind: 'lib', name: libName, installedRelease: '999.0.0' }],
       libDependencies: [libName],
     });
-    expect(json(result).hint).toContain('includeLibDependencies: false');
+    expect(json(result).hint).toContain('includeDependencies: false');
     expect(spawnSyncMock).not.toHaveBeenCalled();
   });
 
-  test('an ahead lib dependency is left alone with includeLibDependencies: false', async () => {
+  test('an ahead lib dependency is left alone with includeDependencies: false', async () => {
     staleLibProject();
     const config = JSON.parse(fs.readFileSync(path.join(tmp, 'buildpad.json'), 'utf-8'));
     config.lib[libName].release = '999.0.0';
     writeConfig(config);
     spawnSyncMock.mockReturnValue({ status: 0, stdout: '', stderr: '' });
-    const result = await call('apply_upgrade', { projectPath: tmp, components: [component.name], includeLibDependencies: false });
+    const result = await call('apply_upgrade', { projectPath: tmp, components: [component.name], includeDependencies: false });
     expect(result.isError).toBeUndefined();
-    expect(spawnSyncMock.mock.calls[0][1].slice(-2)).toEqual(['--', component.name]);
+    expect(spawnSyncMock.mock.calls[0][1].slice(-3)).toEqual(['--no-deps', '--', component.name]);
   });
 
   test('reports a CLI that could not be started as an error', async () => {

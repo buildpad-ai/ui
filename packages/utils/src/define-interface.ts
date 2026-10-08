@@ -5,6 +5,8 @@
  * Similar to DaaS's defineInterface() pattern.
  * 
  * @module @buildpad/utils/define-interface
+ *
+ * @deprecated Dormant: definitions made here register into the unused InterfaceRegistry and never reach VForm. Interface identity lives in `INTERFACE_MANIFEST` (`interface-manifest`); custom interfaces register through VForm's `interfaces` prop or provider. Kept so existing imports keep compiling.
  */
 
 import type {
@@ -21,6 +23,8 @@ import { interfaceRegistry, InterfaceRegistry } from './interface-registry';
 
 /**
  * Configuration object for defineInterface
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export interface DefineInterfaceConfig<T = unknown> {
   /** Unique identifier for the interface */
@@ -87,6 +91,8 @@ export interface DefineInterfaceConfig<T = unknown> {
  * @param config - Interface configuration
  * @param options - Additional options
  * @returns Full interface definition
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export function defineInterface<T = unknown>(
   config: DefineInterfaceConfig<T>,
@@ -142,6 +148,8 @@ export function defineInterface<T = unknown>(
  * @param configs - Array of interface configurations
  * @param options - Additional options
  * @returns Array of interface definitions
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export function defineInterfaces(
   configs: DefineInterfaceConfig[],
@@ -171,6 +179,8 @@ export function defineInterfaces(
  * 
  * @param option - Option configuration
  * @returns Interface option
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export function createInterfaceOption(option: InterfaceOption): InterfaceOption {
   return {
@@ -189,6 +199,8 @@ export function createInterfaceOption(option: InterfaceOption): InterfaceOption 
  * @param groupName - Name for the group (shown as header)
  * @param options - Options in the group
  * @returns Array with divider and options
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export function createOptionGroup(
   groupName: string,
@@ -210,6 +222,8 @@ export function createOptionGroup(
 
 /**
  * Preset option creators for common interface options
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export const InterfaceOptions = {
   /** Create a placeholder text option */
