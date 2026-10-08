@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T02:46:20.047Z",
+  "generatedAt": "2026-10-08T04:09:17.996Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -77,6 +77,9 @@
       "maplibre-gl",
       "@mapbox/mapbox-gl-draw"
     ],
+    "diagram": [
+      "@xyflow/react"
+    ],
     "supabase": [
       "@supabase/ssr@^0.5",
       "@supabase/supabase-js@^2"
@@ -113,6 +116,10 @@
     "@buildpad/ui-users": {
       "version": "2.6.0",
       "changelogUrl": "ui-users/CHANGELOG.md"
+    },
+    "@buildpad/ui-workflows": {
+      "version": "2.6.0",
+      "changelogUrl": "ui-workflows/CHANGELOG.md"
     },
     "@buildpad/hooks": {
       "version": "2.6.0",
@@ -193,7 +200,7 @@
         {
           "source": "utils/src/workflow.ts",
           "target": "lib/buildpad/workflow.ts",
-          "sourceSha256": "6bf0dc353c305e9a707e41378924f38424b32242f0b4fbe3b6e0820a4c7efa3d"
+          "sourceSha256": "84f9baf198c0b98fab38bb74e2f4ecffb12bb4758b2e9f49d554a28e747ed9df"
         },
         {
           "source": "utils/src/list-page.ts",
@@ -243,7 +250,7 @@
         {
           "source": "utils/src/i18n/namespaces/workflows.ts",
           "target": "lib/buildpad/i18n/namespaces/workflows.ts",
-          "sourceSha256": "2454efbee67d3b54d611d8538ae24bc76010979c9f14d3aa107592ec4f99ce7c"
+          "sourceSha256": "5095f6fe4003b7bb56eb90f805d2fe53c1477774f6b10ac0f4c3fbb00bb7e734"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -453,7 +460,7 @@
         {
           "source": "utils/src/i18n/interpolate.ts",
           "target": "lib/buildpad/i18n/interpolate.ts",
-          "sourceSha256": "79f4b662b47622945de980f358d4cad713b14875a6275a39500dc61c214ec4e8"
+          "sourceSha256": "365e3a254766cd40b886d02a6261720be161f52debd687ce3e898b00187248ed"
         },
         {
           "source": "utils/src/i18n/plural.ts",
@@ -478,12 +485,12 @@
         {
           "source": "utils/src/i18n/index.ts",
           "target": "lib/buildpad/i18n/index.ts",
-          "sourceSha256": "4c46694e9759ba3d771c81fd950d4f672f26f215f725211f38b6e73879e21e59"
+          "sourceSha256": "d1a8ea3b3e596a54c05a99fdd5dc7da6133c5098566621d84b227de972aa5dc3"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "3c055c35353850a4c6d122bc4554a4c4893a8bbf6f2bad7a617e3ff4c16e0ded"
+          "sourceSha256": "0ec7d99c565970175c0558c0f6bc19b8b1dc9c199a4836c2b93748b308140889"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -890,7 +897,7 @@
         {
           "source": "cli/templates/lib/i18n/dictionaries/en.json",
           "target": "lib/i18n/dictionaries/en.json",
-          "sourceSha256": "0f394293d7264c0cb15fb1311f1bcc998c05967cd73b5d845affafaa40ac5908"
+          "sourceSha256": "bd730e69ca0dfe343f83bd104f87f70ed53973873aa835f8337a644bb2bf0ae1"
         },
         {
           "source": "cli/templates/lib/i18n/provider.tsx",
@@ -923,7 +930,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     "api-routes": {
       "name": "api-routes",
@@ -1248,6 +1255,78 @@
       "sourcePackage": "@buildpad/cli",
       "version": "2.6.0",
       "lastChangedIn": "2.3.0"
+    },
+    "workflows-routes": {
+      "name": "workflows-routes",
+      "description": "Workflow administration module pages — /workflows, /workflows/[id], /workflow-assignments, /workflow-assignments/[id], /workflow-instances, /workflow-instances/[id] (definitions list + editor, assignments list + form, read-only instances list + detail). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the workflow-management component.",
+      "files": [
+        {
+          "source": "cli/templates/app/workflows/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflows/page.tsx",
+          "sourceSha256": "e66eab2b8b201300280390a0fc8c016f0096324b54517a671f6c6f4e445b989a"
+        },
+        {
+          "source": "cli/templates/app/workflows/[id]/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflows/[id]/page.tsx",
+          "sourceSha256": "1ff922482ba3effd8dccc2ae6d9fc11e815bd7fb7bcb6ba03a64e696ffe93ce4"
+        },
+        {
+          "source": "cli/templates/app/workflow-assignments/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflow-assignments/page.tsx",
+          "sourceSha256": "802760793ddcc5ebe2e2e048fcb8f21133d5ed4c14f9710b3ec0b9f1a2796fd8"
+        },
+        {
+          "source": "cli/templates/app/workflow-assignments/[id]/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflow-assignments/[id]/page.tsx",
+          "sourceSha256": "fe9819afe193396a7a09d2f99949feb4fc988f59763ba3cf34ab87b9980f4ffc"
+        },
+        {
+          "source": "cli/templates/app/workflow-instances/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflow-instances/page.tsx",
+          "sourceSha256": "f0d98d44cd9510377305fe0e6295dee29007ad2a60c773c43f6b89979d65f802"
+        },
+        {
+          "source": "cli/templates/app/workflow-instances/[id]/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflow-instances/[id]/page.tsx",
+          "sourceSha256": "5de9068290ca39967e1986c137049969ff33e244705cc6a9b11c513f3fcb5a85"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "workflow-management"
+      ],
+      "navItems": [
+        {
+          "label": "Workflows",
+          "href": "/workflows",
+          "icon": "IconGitBranch",
+          "section": "Automation",
+          "labelKey": "app.nav.workflows",
+          "sectionKey": "app.nav.automation"
+        },
+        {
+          "label": "Workflow Assignments",
+          "href": "/workflow-assignments",
+          "icon": "IconLink",
+          "section": "Automation",
+          "labelKey": "app.nav.workflowAssignments",
+          "sectionKey": "app.nav.automation"
+        },
+        {
+          "label": "Workflow Instances",
+          "href": "/workflow-instances",
+          "icon": "IconListCheck",
+          "section": "Automation",
+          "labelKey": "app.nav.workflowInstances",
+          "sectionKey": "app.nav.automation"
+        }
+      ],
+      "sourcePackage": "@buildpad/cli",
+      "version": "2.6.0",
+      "lastChangedIn": "2.6.0"
     },
     "supabase-auth": {
       "name": "supabase-auth",
@@ -3930,6 +4009,144 @@
       "sourcePackage": "@buildpad/ui-forms",
       "version": "2.6.0",
       "lastChangedIn": "2.4.0"
+    },
+    {
+      "name": "workflow-management",
+      "title": "WorkflowManagement",
+      "excludeFromAll": true,
+      "description": "Workflow administration — the definitions list and the definition editor with its state diagram (states, commands, the policies and actions of a command), the assignments list and form (which workflow runs on which collection, with an optional filter rule), and the read-only instances list and detail with the transition history. Composes the useWorkflowDefinitions/useWorkflowAssignments/useWorkflowInstances hooks; the diagram is drawn with @xyflow/react.",
+      "category": "workflow",
+      "files": [
+        {
+          "source": "ui-workflows/src/WorkflowsManager.tsx",
+          "target": "components/ui/workflow-management/workflows-manager.tsx",
+          "sourceSha256": "a1e21fbfe16c7c620630b309fd4ad4020297936afbb0b0eb2a4003aa601db4cd"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowDetail.tsx",
+          "target": "components/ui/workflow-management/workflow-detail.tsx",
+          "sourceSha256": "b32089bb9290571b7bf1fc9eeb5a645754c4a7fe5da8910d11bf02ddf0e0b178"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowDiagram.tsx",
+          "target": "components/ui/workflow-management/workflow-diagram.tsx",
+          "sourceSha256": "7fd3a58fd4fc5c2437865d1d8addbd22cce0099ebc59d157fca8da0adbd324f9"
+        },
+        {
+          "source": "ui-workflows/src/workflowDiagramModel.ts",
+          "target": "components/ui/workflow-management/workflow-diagram-model.ts",
+          "sourceSha256": "aa4b753188f060080f357499284f1025f82bf15cd74677c99534d51b6bc5f74a"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowStateModal.tsx",
+          "target": "components/ui/workflow-management/workflow-state-modal.tsx",
+          "sourceSha256": "9ae72eb183803e2434c2745bf29a243e2cf1840684c42a83981c70e048c798d4"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowCommandModal.tsx",
+          "target": "components/ui/workflow-management/workflow-command-modal.tsx",
+          "sourceSha256": "cbdc165a5c53c7475ad36463ec5c5af8713ae91b316a5cce826ded0307f07107"
+        },
+        {
+          "source": "ui-workflows/src/workflowPolicies.ts",
+          "target": "components/ui/workflow-management/workflow-policies.ts",
+          "sourceSha256": "b4bc95f42d8cf702ac296aa270233f828f4c6782bc6af0271c252ecaa5a71dab"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowAssignmentsManager.tsx",
+          "target": "components/ui/workflow-management/workflow-assignments-manager.tsx",
+          "sourceSha256": "ffcb1b8fd7398bfc4ad4609371717ffb5abd40afbef91e8835b9dfbf6e68c2dd"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowAssignmentDetail.tsx",
+          "target": "components/ui/workflow-management/workflow-assignment-detail.tsx",
+          "sourceSha256": "2aa87c586d84d55067b8639116abe31fee95bd1e24746a41121b4f9cba758ea3"
+        },
+        {
+          "source": "ui-workflows/src/workflowAssignmentOptions.ts",
+          "target": "components/ui/workflow-management/workflow-assignment-options.ts",
+          "sourceSha256": "c2476555d4cec7e568577fa5d1817132930483712128bd3348b97df8df980df0"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowInstancesManager.tsx",
+          "target": "components/ui/workflow-management/workflow-instances-manager.tsx",
+          "sourceSha256": "0ce8b7788cbd6b23121d09086da1a22374aa9b2016624e4b22c95116131ac2f3"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowInstanceDetail.tsx",
+          "target": "components/ui/workflow-management/workflow-instance-detail.tsx",
+          "sourceSha256": "8b6aab2aea592820f19543bfdba87863351d49af93fcb36b8add9e30c4c0b6e0"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowManagerTable.css",
+          "target": "components/ui/workflow-management/workflow-manager-table.css",
+          "sourceSha256": "8991e6a7248af7f57a9dc42c504e58b6c6beb4799d5be83f5ee1a14d05d69805"
+        },
+        {
+          "source": "ui-workflows/src/useWorkflowList.ts",
+          "target": "components/ui/workflow-management/use-workflow-list.ts",
+          "sourceSha256": "0aafcdbe85331e4a9f0b895c079995642e06738a8424d8e821e4e009d54b777c"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowPageState.tsx",
+          "target": "components/ui/workflow-management/workflow-page-state.tsx",
+          "sourceSha256": "f26aa16af1dde7aa5f4e03f8e0e2169bb37df4e065f0e3c20b07dbbeac9a72e2"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowRichText.tsx",
+          "target": "components/ui/workflow-management/workflow-rich-text.tsx",
+          "sourceSha256": "88a27f0ff188143ba6d3fc4398f828444b604c3dde2379f48d7346673e061560"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowSearchInput.tsx",
+          "target": "components/ui/workflow-management/workflow-search-input.tsx",
+          "sourceSha256": "50a74a656ffa2927b6b1cbae61970002dc55f0dce112fd98859674290cce58eb"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowListFooter.tsx",
+          "target": "components/ui/workflow-management/workflow-list-footer.tsx",
+          "sourceSha256": "d88089a8c3249eac1e40274ff361cbd6d693e3b3ec889a3a736f0ced5a79ecf9"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowListEmptyState.tsx",
+          "target": "components/ui/workflow-management/workflow-list-empty-state.tsx",
+          "sourceSha256": "01dc696be63b1b922b66173f5c7fc9fe7f92974e66b461e6fe1be3e26c19c26e"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowRowActionsMenu.tsx",
+          "target": "components/ui/workflow-management/workflow-row-actions-menu.tsx",
+          "sourceSha256": "155d8320d3f263778cfeed1bbcaf7a9706cdfc0410222bcb8c1901da036172f7"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowDeleteConfirmModal.tsx",
+          "target": "components/ui/workflow-management/workflow-delete-confirm-modal.tsx",
+          "sourceSha256": "a12cab39303a0986c574f123dadcee54d660fb8c13ecfcc39efcc7d7250b172f"
+        },
+        {
+          "source": "ui-workflows/src/index.ts",
+          "target": "components/ui/workflow-management/index.ts",
+          "sourceSha256": "88bb2b3b37e753da7e1f8bd90d418076135dc08feefc53a740140981f46c6be5"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@tabler/icons-react",
+        "@xyflow/react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services",
+        "utils"
+      ],
+      "registryDependencies": [
+        "vtable"
+      ],
+      "sourcePackage": "@buildpad/ui-workflows",
+      "version": "2.6.0",
+      "lastChangedIn": "2.6.0"
     }
   ],
   "categories": [
