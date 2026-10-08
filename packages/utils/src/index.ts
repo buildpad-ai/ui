@@ -163,6 +163,7 @@ export {
   type CollectionsTranslations,
   type FilesTranslations,
   type UsersTranslations,
+  type WorkflowsTranslations,
   type FormsTranslations,
   type HooksTranslations,
   type DateTimeTranslations,

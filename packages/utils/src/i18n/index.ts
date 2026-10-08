@@ -13,6 +13,7 @@ export type {
   CollectionsTranslations,
   FilesTranslations,
   UsersTranslations,
+  WorkflowsTranslations,
   FormsTranslations,
   HooksTranslations,
   DateTimeTranslations,
