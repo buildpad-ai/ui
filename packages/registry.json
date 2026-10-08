@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T02:12:49.449Z",
+  "generatedAt": "2026-10-08T02:46:20.047Z",
   "version": "2.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -191,6 +191,16 @@
           "sourceSha256": "ec60890733f96d71e1265e8dead9a65d440d85df19fdd6d1764a7cabae135e55"
         },
         {
+          "source": "utils/src/workflow.ts",
+          "target": "lib/buildpad/workflow.ts",
+          "sourceSha256": "6bf0dc353c305e9a707e41378924f38424b32242f0b4fbe3b6e0820a4c7efa3d"
+        },
+        {
+          "source": "utils/src/list-page.ts",
+          "target": "lib/buildpad/list-page.ts",
+          "sourceSha256": "9f00a6b9cfcbfa4927e7caa9442c3b81c31e4f5ea8145e49c6b60c68af9aa1fa"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts",
           "sourceSha256": "ed12f01cfca2ffe0f9b7fdd5987617cf776c9425c444e4edfc553ff647db2afd"
@@ -229,6 +239,11 @@
           "source": "utils/src/i18n/namespaces/users.ts",
           "target": "lib/buildpad/i18n/namespaces/users.ts",
           "sourceSha256": "4605e47249c35640ed2b3c3ed1069ce0a6a5d549adec9ef9d56d79afffbf36d4"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/workflows.ts",
+          "target": "lib/buildpad/i18n/namespaces/workflows.ts",
+          "sourceSha256": "2454efbee67d3b54d611d8538ae24bc76010979c9f14d3aa107592ec4f99ce7c"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -423,12 +438,12 @@
         {
           "source": "utils/src/i18n/types.ts",
           "target": "lib/buildpad/i18n/types.ts",
-          "sourceSha256": "3f636ef15f97f863896916c7928ef14a37980320bc56f15fe8d22c547fb01cc0"
+          "sourceSha256": "eb71916377a0dc1fdeed371ad1b176374170afe4bd51b60240243099caf1d535"
         },
         {
           "source": "utils/src/i18n/defaults.ts",
           "target": "lib/buildpad/i18n/defaults.ts",
-          "sourceSha256": "228e96149630f6264ae5691367b605cacf013d3f2fd51fc0d9880a524bbb26fd"
+          "sourceSha256": "7340d129f972f16cc45e81c339cbeda8be47fc10627a780aa1ff4e34a81d6652"
         },
         {
           "source": "utils/src/i18n/merge.ts",
@@ -453,7 +468,7 @@
         {
           "source": "utils/src/i18n/locales/id.ts",
           "target": "lib/buildpad/i18n/locales/id.ts",
-          "sourceSha256": "0fdf67b75586caa701642cc805fed14b04c67af6de3a95587eddaf46c7bfc409"
+          "sourceSha256": "ce435d70db578730e9454b8a531e8bfc82a0486c3b3628b2e7d4b599fb24c69b"
         },
         {
           "source": "utils/src/i18n/locales/index.ts",
@@ -463,12 +478,12 @@
         {
           "source": "utils/src/i18n/index.ts",
           "target": "lib/buildpad/i18n/index.ts",
-          "sourceSha256": "de64dbaaca3d0dd63ebb268d9eeba066c81a996f38aa7aa34c25d86fb4ba3ba0"
+          "sourceSha256": "4c46694e9759ba3d771c81fd950d4f672f26f215f725211f38b6e73879e21e59"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "d5b26a8e32b54a4cfcf6004b660434f492ccc7fcab6bb0a5b0b6aea2708d8344"
+          "sourceSha256": "3c055c35353850a4c6d122bc4554a4c4893a8bbf6f2bad7a617e3ff4c16e0ded"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -528,14 +543,19 @@
           "sourceSha256": "8b6167a4e1c9c73e6c376287260100cc6ac552e4151473c58a481afc54c50b7d"
         },
         {
+          "source": "types/src/workflow.ts",
+          "target": "lib/buildpad/types/workflow.ts",
+          "sourceSha256": "08eb43fe07d4225a4aef107e596fc307686ca32611e18d8080b1a5d3c008ea57"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts",
-          "sourceSha256": "edc700667ec46e24b56b02c4c389e826fd16ded92e029f3ebbc1846091f1a4e0"
+          "sourceSha256": "714b4d34fafe2b60b5f1f915d7801e8c1460d86179e4d54354cfcfe746e06677"
         }
       ],
       "sourcePackage": "@buildpad/types",
       "version": "2.6.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "2.6.0"
     },
     "services": {
       "name": "services",
@@ -774,6 +794,11 @@
           "sourceSha256": "dd9007f2e1d0b464ca6da3ce58fd54a56599aca1fb31dfa7689dbdceb618b8de"
         },
         {
+          "source": "hooks/src/daasRequest.ts",
+          "target": "lib/buildpad/hooks/daasRequest.ts",
+          "sourceSha256": "bc60d55a2f8baa41343c2de98a3940b7de442e2c734e4c0397f146c62c626746"
+        },
+        {
           "source": "hooks/src/useUsers.ts",
           "target": "lib/buildpad/hooks/useUsers.ts",
           "sourceSha256": "76710bc5538e2717e417cc04e142d26381ba634dfe34b9b909381dd8e274eae7"
@@ -794,6 +819,21 @@
           "sourceSha256": "65e32c4d4f6ae544335c297948c6181511c3eaaa29e88f4791818f94fd9b558e"
         },
         {
+          "source": "hooks/src/useWorkflowDefinitions.ts",
+          "target": "lib/buildpad/hooks/useWorkflowDefinitions.ts",
+          "sourceSha256": "27f71bb8fd93a01f7d68af2ed14c8594546dcaa944427a11c3caa60fa7c748bc"
+        },
+        {
+          "source": "hooks/src/useWorkflowAssignments.ts",
+          "target": "lib/buildpad/hooks/useWorkflowAssignments.ts",
+          "sourceSha256": "ce8af46033d102075cc3eab89082697b9c83bf6902c83d7e9f63aff948ecad4e"
+        },
+        {
+          "source": "hooks/src/useWorkflowInstances.ts",
+          "target": "lib/buildpad/hooks/useWorkflowInstances.ts",
+          "sourceSha256": "83cd7c79827953a4e3a58ad16c9abcb8e55fa6a826a8162dc4b446609eb68d7d"
+        },
+        {
           "source": "hooks/src/useUrlListParams.ts",
           "target": "lib/buildpad/hooks/useUrlListParams.ts",
           "sourceSha256": "5b5e69610ac34b7c5fc2d6cf27c6d16419e962754fe2bbafe75e22ec4f5d4ed8"
@@ -806,7 +846,7 @@
         {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "6fd55cfed126fe862237f6784440d6a8a7705512514e4802c3bc56afdc351421"
+          "sourceSha256": "6bc796ac99d22e82487b9fcfa72ddbb10c84aa3ff6613a679f451a9daca9ce60"
         }
       ],
       "internalDependencies": [
