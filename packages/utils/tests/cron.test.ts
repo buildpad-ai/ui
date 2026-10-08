@@ -360,6 +360,11 @@ describe('cronJobToForm', () => {
     });
   });
 
+  it('reads a row answered without a name as an empty one', () => {
+    expect(cronJobToForm({ id: 'j1' }).name).toBe('');
+    expect(withheldCronJobFields({ id: 'j1' })).toContain('name');
+  });
+
   it('keeps a stored value the form inputs would not offer', () => {
     const form = cronJobToForm({ ...STORED, timeout_ms: 500, memory_limit_mb: 1024, timezone: 'Europe/Berlin' });
 

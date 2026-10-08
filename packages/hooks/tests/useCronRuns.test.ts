@@ -192,6 +192,18 @@ describe('useCronRuns.fetchRuns', () => {
     expect(out).toEqual({ items: page, total: 3, totalPages: 1, page: 2, limit: 10, offset: 10 });
   });
 
+  it('keeps the page it asked for when the answer names a page size of zero', async () => {
+    apiRequestMock.mockResolvedValueOnce(nextAnswer([], 0, 0, 0));
+    const { result } = renderHook(() => useCronRuns());
+
+    let out: Awaited<ReturnType<typeof result.current.fetchRuns>> | undefined;
+    await act(async () => {
+      out = await result.current.fetchRuns({ page: 2 });
+    });
+
+    expect(out).toEqual({ items: [], total: 0, totalPages: 1, page: 2, limit: 0, offset: 0 });
+  });
+
   it('reports the page size and the page the backend served when it caps the limit', async () => {
     apiRequestMock.mockResolvedValueOnce(engineAnswer(runs(2), 2500, 1000, 2000));
     const { result } = renderHook(() => useCronRuns());
