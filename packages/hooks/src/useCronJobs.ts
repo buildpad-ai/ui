@@ -169,18 +169,18 @@ export function useCronJobs() {
    * them from a form). Resolves to the stored job as the caller's grant
    * allows it to be read. Activate and Deactivate are `{ status }`.
    *
-   * `description: null` clears the description. It is sent as `''`, the one
-   * value both backends store on every route that takes a description (the
-   * workflow hooks clear one the same way, where the engine does not read a
-   * `null` as a change). The job then holds an empty description, which
-   * reads back as none.
+   * `description: null` clears the description, and is sent as `null`: both
+   * backends read it as a change and store NULL (the Next.js route writes the
+   * column as it is given, the engine decodes the key as a nullable string),
+   * so the job goes back to having no description — what a job created
+   * without one holds. Unlike the workflow hooks, nothing is rewritten here.
    */
   const updateJob = useCallback(
     (id: string, data: CronJobPatch): Promise<CronJobRecord> =>
       request(async () => {
         const result = await apiRequest(`${BASE_PATH}/${encodeURIComponent(id)}`, {
           method: 'PATCH',
-          body: JSON.stringify(data.description === null ? { ...data, description: '' } : data),
+          body: JSON.stringify(data),
         });
         const job = readSavedJob(result, 'The server did not answer the saved cron job');
         // A grant can withhold any column of the answer; the id is known.

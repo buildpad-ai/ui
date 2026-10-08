@@ -551,12 +551,26 @@ describe('useCronJobs.updateJob', () => {
     expect(out?.status).toBe(status);
   });
 
-  it('clears a description with an empty string, which both backends store', async () => {
+  it('clears a description with null, sent as it is: both backends store NULL for it', async () => {
+    apiRequestMock.mockResolvedValueOnce({ data: { ...job, description: null } });
+    const { result } = renderHook(() => useCronJobs());
+
+    let out: Awaited<ReturnType<typeof result.current.updateJob>> | undefined;
+    await act(async () => {
+      out = await result.current.updateJob(JOB_ID, { description: null });
+    });
+
+    // Not '' and not a missing key: the body names the column and its new value
+    expect(lastRequest()).toEqual({ method: 'PATCH', body: { description: null } });
+    expect(out?.description).toBeNull();
+  });
+
+  it('sends an empty description as an empty string when that is what it is given', async () => {
     apiRequestMock.mockResolvedValueOnce({ data: { ...job, description: '' } });
     const { result } = renderHook(() => useCronJobs());
 
     await act(async () => {
-      await result.current.updateJob(JOB_ID, { description: null });
+      await result.current.updateJob(JOB_ID, { description: '' });
     });
 
     expect(lastRequest()).toEqual({ method: 'PATCH', body: { description: '' } });
