@@ -66,3 +66,22 @@ export {
   type BuildpadI18nProviderProps,
   type DateInput,
 } from "./buildpad-i18n-context";
+
+// Relational UI context — the CollectionForm / CollectionList / VForm the
+// relational interfaces render in their dialogs. Components import it by its
+// deep path (`@buildpad/services/relational-ui-context`); it is re-exported
+// here for app code.
+export {
+  RELATIONAL_UI_SLOTS,
+  RelationalUIProvider,
+  mergeRelationalUI,
+  missingRelationalUI,
+  useRelationalUI,
+  type RelationalBulkAction,
+  type RelationalCollectionFormProps,
+  type RelationalCollectionListProps,
+  type RelationalFormRendererProps,
+  type RelationalUIComponents,
+  type RelationalUIProviderProps,
+  type RelationalUISlot,
+} from "./relational-ui-context";

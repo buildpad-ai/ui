@@ -2,16 +2,17 @@
  * Shared probe leaf for the FormField / FormFieldInterface prop-forwarding
  * tests.
  *
- * `@buildpad/ui-interfaces` has no jest moduleNameMapper entry, so these tests
- * mock the whole module down to a single fake leaf and assert on the props the
- * container hands it. Both test files previously carried their own copy of this
- * harness; keeping one copy means a new assertion (onChange suppression,
- * required, autofocus) is added in one place.
+ * FormFieldInterface takes every interface component from
+ * `components/interface-components`, so these tests mock that module down to
+ * a single fake leaf and assert on the props the container hands it. Both
+ * test files previously carried their own copy of this harness; keeping one
+ * copy means a new assertion (onChange suppression, required, autofocus) is
+ * added in one place.
  *
  * Usage — the jest.mock factory may not close over out-of-scope variables, so
  * pull the factory in through require():
  *
- *   jest.mock('@buildpad/ui-interfaces', () =>
+ *   jest.mock('../components/interface-components', () =>
  *     require('./helpers/leafProbe').makeInterfacesMock());
  *   import { received, resetProbe } from './helpers/leafProbe';
  */
@@ -76,22 +77,8 @@ export function makeInterfacesMock() {
 
     // Every interface name FormFieldInterface can resolve to maps onto the same
     // probe, so a test can change field type without touching the mock.
-    //
-    // A plain object, not a Proxy: FormFieldInterface uses `import * as` and
-    // TypeScript's interop COPIES the module's own enumerable keys, so a
-    // Proxy's `get` trap never fires for anything its `ownKeys` does not list.
-    // Only `Input` used to resolve; every other leaf silently came back
-    // undefined and rendered the "component not found" alert instead.
-    const leaves: Record<string, typeof Probe> = {};
-    for (const name of INTERFACE_COMPONENT_NAMES) leaves[name] = Probe;
-    return leaves;
+    return {
+        getInterfaceComponent: () => Probe,
+        loadInstalledInterfaceComponent: () => Promise.resolve(null),
+    };
 }
-
-/**
- * Component names in FormFieldInterface's `interfaceComponentMap`. Keep in
- * sync with that map — a missing name renders the not-found alert rather than
- * the probe, which reads as an assertion failure with no obvious cause.
- */
-const INTERFACE_COMPONENT_NAMES = [
-    'AutocompleteAPI','Boolean','CollectionItemDropdown','Color','DateTime','Divider','File','FileImage','Files','GroupAccordion','GroupDetail','GroupRaw','Input','InputBlockEditor','InputCode','InputHash','Map','Notice','RichTextHTML','RichTextMarkdown','SelectDropdown','SelectIcon','SelectMultipleCheckbox','SelectMultipleCheckboxTree','SelectMultipleDropdown','SelectRadio','Slider','SystemPermissions','SystemToken','Tags','Textarea','Toggle','WorkflowButton',
-] as const;

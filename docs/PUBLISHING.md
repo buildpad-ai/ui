@@ -376,13 +376,17 @@ its own hash of the transformed file (to detect that the **consumer** changed
 it). Those two questions are independent, which is what lets `upgrade` leave a
 locally-edited file alone when upstream did not move.
 
-The root `package.json` wires this into the build (`ui-form` builds first — other packages need its `.d.ts`):
+The root `package.json` wires this into the build. `utils` builds first (its
+`main` points at `dist/`, which the packages' type programs read); everything
+else follows pnpm's topological order — the package graph has no cycles
+(`pnpm graph:check` enforces that), so no package needs another's build output
+before pnpm schedules it, and no package's `dist/` is committed:
 ```json
 {
   "scripts": {
     "build:registry": "node scripts/build-registry.mjs",
     "registry:check": "node scripts/build-registry.mjs --check",
-    "build": "pnpm build:registry && pnpm --filter @buildpad/ui-form build && pnpm -r --filter '!@buildpad/ui-form' build"
+    "build": "pnpm build:registry && pnpm --filter @buildpad/utils build && pnpm -r --filter '!@buildpad/utils' build"
   }
 }
 ```

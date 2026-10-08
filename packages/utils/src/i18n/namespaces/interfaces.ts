@@ -25,6 +25,7 @@ import { listM2ADefaults, listM2AId, type ListM2ATranslations } from './interfac
 import { listM2MDefaults, listM2MId, type ListM2MTranslations } from './interfaces/list-m2m';
 import { listO2MDefaults, listO2MId, type ListO2MTranslations } from './interfaces/list-o2m';
 import { mapDefaults, mapId, type MapTranslations } from './interfaces/map';
+import { relationalUIDefaults, relationalUIId, type RelationalUITranslations } from './interfaces/relational-ui';
 import { noticeDefaults, noticeId, type NoticeTranslations } from './interfaces/notice';
 import { richTextHtmlDefaults, richTextHtmlId, type RichTextHtmlTranslations } from './interfaces/rich-text-html';
 import { richTextMarkdownDefaults, richTextMarkdownId, type RichTextMarkdownTranslations } from './interfaces/rich-text-markdown';
@@ -42,7 +43,7 @@ import { toggleDefaults, toggleId, type ToggleTranslations } from './interfaces/
 import { uploadDefaults, uploadId, type UploadTranslations } from './interfaces/upload';
 import { workflowButtonDefaults, workflowButtonId, type WorkflowButtonTranslations } from './interfaces/workflow-button';
 
-export type { AutocompleteApiTranslations, BooleanTranslations, CollectionItemDropdownTranslations, ColorTranslations, DateTimeTranslations, DividerTranslations, FileTranslations, FileImageTranslations, FilesTranslations, GroupAccordionTranslations, GroupDetailTranslations, GroupRawTranslations, InputTranslations, InputBlockEditorTranslations, InputCodeTranslations, InputHashTranslations, ListM2ATranslations, ListM2MTranslations, ListO2MTranslations, MapTranslations, NoticeTranslations, RichTextHtmlTranslations, RichTextMarkdownTranslations, SelectDropdownTranslations, SelectDropdownM2OTranslations, SelectIconTranslations, SelectMultipleCheckboxTranslations, SelectRadioTranslations, SliderTranslations, SystemPermissionsTranslations, SystemTokenTranslations, TagsTranslations, TextareaTranslations, ToggleTranslations, UploadTranslations, WorkflowButtonTranslations };
+export type { AutocompleteApiTranslations, BooleanTranslations, CollectionItemDropdownTranslations, ColorTranslations, DateTimeTranslations, DividerTranslations, FileTranslations, FileImageTranslations, FilesTranslations, GroupAccordionTranslations, GroupDetailTranslations, GroupRawTranslations, InputTranslations, InputBlockEditorTranslations, InputCodeTranslations, InputHashTranslations, ListM2ATranslations, ListM2MTranslations, ListO2MTranslations, MapTranslations, NoticeTranslations, RelationalUITranslations, RichTextHtmlTranslations, RichTextMarkdownTranslations, SelectDropdownTranslations, SelectDropdownM2OTranslations, SelectIconTranslations, SelectMultipleCheckboxTranslations, SelectRadioTranslations, SliderTranslations, SystemPermissionsTranslations, SystemTokenTranslations, TagsTranslations, TextareaTranslations, ToggleTranslations, UploadTranslations, WorkflowButtonTranslations };
 
 export interface InterfacesTranslations {
   autocompleteApi: AutocompleteApiTranslations;
@@ -66,6 +67,7 @@ export interface InterfacesTranslations {
   listO2M: ListO2MTranslations;
   map: MapTranslations;
   notice: NoticeTranslations;
+  relationalUI: RelationalUITranslations;
   richTextHtml: RichTextHtmlTranslations;
   richTextMarkdown: RichTextMarkdownTranslations;
   selectDropdown: SelectDropdownTranslations;
@@ -105,6 +107,7 @@ export const interfacesDefaults: InterfacesTranslations = {
   listO2M: listO2MDefaults,
   map: mapDefaults,
   notice: noticeDefaults,
+  relationalUI: relationalUIDefaults,
   richTextHtml: richTextHtmlDefaults,
   richTextMarkdown: richTextMarkdownDefaults,
   selectDropdown: selectDropdownDefaults,
@@ -144,6 +147,7 @@ export const interfacesId: InterfacesTranslations = {
   listO2M: listO2MId,
   map: mapId,
   notice: noticeId,
+  relationalUI: relationalUIId,
   richTextHtml: richTextHtmlId,
   richTextMarkdown: richTextMarkdownId,
   selectDropdown: selectDropdownId,

@@ -45,10 +45,17 @@ import {
   getDefaultValuesFromFields,
   interpolate,
   isConcealedValue,
+  isNonFlatRelationalField,
+  isRenderedPresentationInterface,
+  isSelfPersistingInterface,
   type CollectionsTranslations,
   type DeepPartial,
 } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
+import {
+  RelationalUIProvider,
+  type RelationalUIComponents,
+} from "@buildpad/services/relational-ui-context";
 import { IconAlertCircle, IconCheck, IconTrash, IconX } from "@tabler/icons-react";
 import React, {
   useCallback,
@@ -65,6 +72,13 @@ import {
   mergeExtras,
   missingExtrasColumnMessage,
 } from "./extras-storage";
+
+// The item picker the relational interfaces (ListO2M/M2M/M2A) open from inside
+// this form. Loaded on demand so a CollectionForm route does not bundle the
+// table, filter panel and list toolbar until a picker is opened.
+const LazyCollectionList = React.lazy(() =>
+  import("./CollectionList").then((m) => ({ default: m.CollectionList })),
+);
 
 export interface CollectionFormProps {
   /** Collection name */
@@ -132,20 +146,6 @@ const SYSTEM_FIELDS = new Set([
   "date_created",
   "date_updated",
   "sort",
-]);
-
-// Relational fields with no real flat column value — can't be requested as a
-// bare name in a fields= fetch (there's no single column to select), only
-// via a proper nested embed this form doesn't build. Matches the same
-// backend-agnostic signal used by CollectionList (some DaaS backends don't
-// mark these fields with column type "alias", so that alone isn't reliable).
-// select-dropdown-m2o is intentionally excluded from both sets: M2O fields
-// normally back a real FK column and fetch fine bare.
-const NON_FLAT_RELATIONAL_SPECIALS = new Set(["m2a", "m2m", "o2m"]);
-const NON_FLAT_RELATIONAL_INTERFACES = new Set([
-  "list-m2a",
-  "list-m2m",
-  "list-o2m",
 ]);
 
 // Fields that are read-only by nature
@@ -380,9 +380,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           // Exclude alias fields UNLESS they are group, presentation, or system interfaces
           if (f.type === "alias") {
             const isGroup = f.meta?.special?.includes?.("group");
-            const isPresentation =
-              f.meta?.interface === "presentation-divider" ||
-              f.meta?.interface === "presentation-notice";
+            const isPresentation = isRenderedPresentationInterface(f.meta?.interface);
             const isRelationalAlias =
               f.meta?.special?.includes?.("o2m") ||
               f.meta?.special?.includes?.("m2m") ||
@@ -543,14 +541,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           // items independently via their relation hooks once mounted with
           // the real primaryKey — they don't depend on this initial value.
           const fetchableFields = editableFields
-            .filter((f) => {
-              const special = f.meta?.special ?? [];
-              const isNonFlatRelational =
-                special.some((s) => NON_FLAT_RELATIONAL_SPECIALS.has(s)) ||
-                (!!f.meta?.interface &&
-                  NON_FLAT_RELATIONAL_INTERFACES.has(f.meta.interface));
-              return !isNonFlatRelational;
-            })
+            // Same check as CollectionList: an m2a/m2m/o2m special or a
+            // list-o2m/m2m/m2a interface (select-dropdown-m2o fetches fine).
+            .filter((f) => !isNonFlatRelationalField(f))
             .map((f) => f.field);
           const resolvedPkField = schemaPk ?? "id";
           if (!fetchableFields.includes(resolvedPkField)) {
@@ -817,12 +810,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       if (mode === "edit" && id) {
         // Collect only changed fields, excluding self-persisting interfaces
         // (e.g. "files" manages its own junction table independently)
-        const selfPersistingInterfaces = new Set(['files']);
         const allChanged: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           if (initialFormData[key] === value) continue;
           const fieldDef = fields.find(f => f.field === key);
-          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+          if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
             continue;
           }
           allChanged[key] = value;
@@ -905,11 +897,10 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // Create mode: split out M2M before creating the parent record.
         // Also strip self-persisting interfaces (e.g. "files") that manage
         // their own junction table persistence.
-        const selfPersistingInterfaces = new Set(['files']);
         const cleanedDataToSave: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(dataToSave)) {
           const fieldDef = fields.find(f => f.field === key);
-          if (fieldDef?.meta?.interface && selfPersistingInterfaces.has(fieldDef.meta.interface)) {
+          if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
             continue;
           }
           cleanedDataToSave[key] = value;
@@ -1064,21 +1055,27 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             </Text>
           ) : (
             <>
-              <VForm
-                collection={collection}
-                fields={fields}
-                modelValue={formData}
-                initialValues={initialFormData}
-                onUpdate={handleFormUpdate}
-                primaryKey={primaryKey}
-                disabled={saving || !saveAllowed}
-                // NOT `loading={saving}`: VForm renders a skeleton while
-                // loading, which unmounts every field and remounts them when
-                // the save resolves — re-firing mount-time autofocus and
-                // scrolling the user back to that field, losing their place.
-                // `disabled` above already blocks input during the save.
-                showNoVisibleFields={false}
-              />
+              {/* Relational fields in this form (ListO2M/M2M/M2A) open their
+                  create / edit / select dialogs with these components. Built-in
+                  defaults: a provider above (e.g. CollectionsRelationalProvider
+                  with custom components) wins. */}
+              <RelationalUIProvider defaults={collectionsRelationalUI}>
+                <VForm
+                  collection={collection}
+                  fields={fields}
+                  modelValue={formData}
+                  initialValues={initialFormData}
+                  onUpdate={handleFormUpdate}
+                  primaryKey={primaryKey}
+                  disabled={saving || !saveAllowed}
+                  // NOT `loading={saving}`: VForm renders a skeleton while
+                  // loading, which unmounts every field and remounts them when
+                  // the save resolves — re-firing mount-time autofocus and
+                  // scrolling the user back to that field, losing their place.
+                  // `disabled` above already blocks input during the save.
+                  showNoVisibleFields={false}
+                />
+              </RelationalUIProvider>
               {/* Per-field validation errors */}
               {Object.keys(fieldErrors).length > 0 && (
                 <Stack gap={4} data-testid="form-field-errors">
@@ -1187,5 +1184,24 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     </Paper>
   );
 };
+
+/**
+ * The components relational interfaces need, as this form provides them to
+ * its own fields: this form, a lazily loaded CollectionList picker and VForm.
+ * Declared after CollectionForm (read only at render time). Exported for
+ * CollectionsRelationalProvider, which loads this module on demand and takes
+ * VForm from here (a relative dynamic import, not one of `@buildpad/ui-form`).
+ */
+export const collectionsRelationalUI: Readonly<RelationalUIComponents> = {
+  CollectionForm,
+  CollectionList: LazyCollectionList,
+  FormRenderer: VForm,
+};
+
+// The pre-wired provider for standalone relational interfaces lives in its own
+// module (it loads these components on demand); re-exported here so
+// `import { CollectionsRelationalProvider } from '…/collection-form'` keeps working.
+export { CollectionsRelationalProvider } from "./CollectionsRelationalProvider";
+export type { CollectionsRelationalProviderProps } from "./CollectionsRelationalProvider";
 
 export default CollectionForm;

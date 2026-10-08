@@ -11,6 +11,9 @@ export default defineConfig({
       '@buildpad/ui-form': resolve(__dirname, '../ui-form/src/index.ts'),
       '@buildpad/utils': resolve(__dirname, '../utils/src/index.ts'),
       '@buildpad/types': resolve(__dirname, '../types/src/index.ts'),
+      // Deep services modules first: the barrel alias below would otherwise
+      // also match `@buildpad/services/<x>` (aliases match path prefixes).
+      '@buildpad/services/relational-ui-context': resolve(__dirname, '../services/src/relational-ui-context.tsx'),
       '@buildpad/services': resolve(__dirname, '../services/src/index.ts'),
       '@buildpad/ui-table': resolve(__dirname, '../ui-table/src/index.ts'),
       '@mantine/core': resolve(__dirname, 'tests/__mocks__/@mantine/core.tsx'),

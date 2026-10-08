@@ -518,3 +518,29 @@ export const FullFeatured: Story = {
     mockRelationInfo: REL_RICH,
   },
 };
+
+// ── Without a relational provider (3.0) ─────────────────────────────────────
+
+/**
+ * Rendered without `CollectionsRelationalProvider` (the decorator opts out):
+ * the field still lists and removes items, but shows the translated
+ * missing-provider alert and hides create, select and edit.
+ */
+export const WithoutProvider: Story = {
+  args: { ...Default.args, label: 'O2M without a relational provider' },
+  parameters: {
+    relationalUI: false,
+    docs: {
+      description: {
+        story:
+          'No relational provider: the alert explains which components are missing and the create / select / edit actions are hidden. Switch the Locale toolbar to see the translations.',
+      },
+    },
+  },
+};
+
+/** The same, in Indonesian. */
+export const WithoutProviderIndonesian: Story = {
+  ...WithoutProvider,
+  globals: { locale: 'id' },
+};

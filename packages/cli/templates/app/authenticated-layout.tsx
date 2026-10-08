@@ -2,7 +2,13 @@
  * Authenticated Route-Group Layout
  *
  * Wraps all authenticated pages (e.g. /content/*, /select-scope) with
- * DaaSProvider and ScopeProvider.
+ * DaaSProvider and ScopeProvider, and with CollectionsRelationalProvider, which
+ * supplies CollectionForm / CollectionList / VForm to relational fields
+ * (ListO2M, ListM2M, ListM2A) rendered outside a CollectionForm -- e.g. a
+ * standalone <VForm> or <ListO2M> on one of your pages. It loads those
+ * components on demand, so pages that never open a relational dialog do not
+ * bundle them. Without it such fields show an alert and hide create / select /
+ * edit.
  *
  * This layout lives at  app/(authenticated)/layout.tsx  so that it mounts
  * fresh every time a user logs in and unmounts cleanly on logout.
@@ -18,6 +24,7 @@
 
 import { DaaSProviderWrapper } from "@/components/DaaSProviderWrapper";
 import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
+import { CollectionsRelationalProvider } from "@/components/ui/collections-relational-provider";
 import type { ReactNode } from "react";
 
 export default function AuthenticatedLayout({
@@ -32,7 +39,9 @@ export default function AuthenticatedLayout({
   // use ContentLayout under its own /content route instead.)
   return (
     <DaaSProviderWrapper>
-      <AuthenticatedShell>{children}</AuthenticatedShell>
+      <CollectionsRelationalProvider>
+        <AuthenticatedShell>{children}</AuthenticatedShell>
+      </CollectionsRelationalProvider>
     </DaaSProviderWrapper>
   );
 }

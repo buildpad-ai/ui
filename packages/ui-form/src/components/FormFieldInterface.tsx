@@ -3,11 +3,12 @@
  * Dynamically renders the appropriate interface component for a field
  * Based on DaaS form-field-interface component
  * 
- * Uses @buildpad/utils for field interface mapping and
- * @buildpad/ui-interfaces for interface components.
+ * Uses @buildpad/utils for field interface mapping and the interface
+ * manifest, and ./interface-components for the components themselves: light
+ * ones are loaded with the form, heavy ones when a field first needs them.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Alert, Skeleton, Text } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { FormField } from '../types';
@@ -18,6 +19,9 @@ import {
   isConcealedField,
   concealingInterface,
   CONCEALED_PLACEHOLDER,
+  DEFAULT_INTERFACE_FALLBACK_HEIGHT,
+  getRenderedInterfaceEntry,
+  interfaceHasFlag,
   interpolate,
   type DeepPartial,
   type FormTranslations,
@@ -26,31 +30,64 @@ import {
 } from '@buildpad/utils';
 import { useBuildpadTranslations } from '@buildpad/services';
 import { InterfaceErrorBoundary } from './InterfaceErrorBoundary';
-
-// Import interface components
-import * as Interfaces from '@buildpad/ui-interfaces';
-
-/**
- * The three multi-select interfaces are registered for `types: ['json','csv']`
- * — storage is either a real array (`json`) or a comma-separated string
- * (`csv`) — but none of the leaf components (or this pipeline, previously)
- * normalized between the two shapes. A `csv` field therefore delivered a raw
- * string straight to array-only leaf logic: substring-match reads
- * (`string.includes` instead of `array.includes`), character-spread
- * corruption on toggle, and `TypeError`s calling `.filter`/`.map` on a
- * string. Normalizing once here — coerce to array on the way in, coerce back
- * to a comma-string on the way out when the field really is `csv` — fixes
- * the whole cluster (SelectMultipleCheckbox, SelectMultipleCheckboxTree,
- * SelectMultipleDropdown) without touching each leaf.
- */
-const MULTI_SELECT_INTERFACE_TYPES = new Set([
-  'select-multiple-checkbox',
-  'select-multiple-dropdown',
-  'select-multiple-checkbox-tree',
-]);
+import {
+  getInterfaceComponent,
+  loadInstalledInterfaceComponent,
+  type InterfaceComponent,
+} from './interface-components';
 
 /** Where the bold interface type goes inside `fieldInterface.componentNotFound.title`. */
 const INTERFACE_TYPE_PLACEHOLDER = '{interfaceType}';
+
+const subscribeToNothing = () => () => {};
+
+/**
+ * False on the server and while the server's HTML is being hydrated, true
+ * from then on (and at once in a tree rendered on the client only).
+ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(subscribeToNothing, () => true, () => false);
+}
+
+/**
+ * An interface ./interface-components has no entry for, looked up by export
+ * name in the components barrel: `loading` until the barrel has loaded, then
+ * the component, or `notFound` when nothing installed exports the name. A
+ * failed barrel load is thrown to the error boundary around this component.
+ */
+function InstalledInterface({
+  exportName,
+  interfaceProps,
+  loading,
+  notFound,
+}: {
+  exportName: string;
+  interfaceProps: Record<string, unknown>;
+  loading: React.ReactNode;
+  notFound: React.ReactNode;
+}) {
+  // Kept in an object: a component handed to setState directly would be
+  // called as a state updater.
+  const [lookup, setLookup] = useState<
+    { exportName: string; component: InterfaceComponent | null; error?: unknown } | undefined
+  >();
+
+  useEffect(() => {
+    let current = true;
+    loadInstalledInterfaceComponent(exportName).then(
+      (component) => current && setLookup({ exportName, component }),
+      (error: unknown) => current && setLookup({ exportName, component: null, error }),
+    );
+    return () => {
+      current = false;
+    };
+  }, [exportName]);
+
+  if (lookup?.exportName !== exportName) return <>{loading}</>;
+  if (lookup.error !== undefined) throw lookup.error;
+  const Component = lookup.component;
+  return Component ? <Component {...interfaceProps} /> : <>{notFound}</>;
+}
 
 /**
  * Get the default interface name for a given field type.
@@ -154,107 +191,23 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
     return config;
   }, [field]);
 
-  // Get interface component by type
-  const InterfaceComponent = useMemo(() => {
-    const interfaceType = interfaceConfig.type;
-    
-    // Map interface types to component names
-    // This handles special cases like relational interfaces and acronyms
-    const interfaceComponentMap: Record<string, string> = {
-      // Text inputs
-      'input': 'Input',
-      'input-code': 'InputCode',
-      'input-hash': 'InputHash',
-      'input-multiline': 'Textarea',
-      'input-autocomplete-api': 'AutocompleteAPI',
-      'input-block-editor': 'InputBlockEditor',
-      'input-rich-text-html': 'RichTextHTML',
-      'input-rich-text-md': 'RichTextMarkdown',
-      'textarea': 'Textarea',
-      
-      // Boolean
-      'boolean': 'Boolean',
-      'toggle': 'Toggle',
-      
-      // Date / Time
-      'datetime': 'DateTime',
-      
-      // Selection
-      'select-dropdown': 'SelectDropdown',
-      'select-radio': 'SelectRadio',
-      'select-icon': 'SelectIcon',
-      'select-color': 'Color',
-      
-      // Multiple selection
-      'select-multiple-checkbox': 'SelectMultipleCheckbox',
-      'select-multiple-dropdown': 'SelectMultipleDropdown',
-      'select-multiple-checkbox-tree': 'SelectMultipleCheckboxTree',
-      
-      // Other inputs
-      'slider': 'Slider',
-      'tags': 'Tags',
-      'number': 'Input', // Use Input with type="number"
-      'uuid': 'Input',
-      
-      // Presentation / Layout
-      'presentation-divider': 'Divider',
-      'presentation-notice': 'Notice',
-      'group-detail': 'GroupDetail',
-      'group-accordion': 'GroupAccordion',
-      'group-raw': 'GroupRaw',
-      
-      // Note: Relational interfaces (select-dropdown-m2o, list-o2m, list-m2m, list-m2a)
-      // are mapped separately in relationalFullComponentMap below
-      // to use full implementations with hooks integration
-      
-      // File interfaces - use the real DaaS-integrated components
-      'file': 'File',
-      'file-image': 'FileImage',
-      'files': 'Files',
-      
-      // Collection
-      'collection-item-dropdown': 'CollectionItemDropdown',
-      
-      // Map / Geometry
-      'map': 'Map',
-      
-      // Workflow
-      'workflow-button': 'WorkflowButton',
+  // The component for the resolved type. A built-in interface names its
+  // component in the manifest; any other type falls back to the PascalCase of
+  // its id (`my-widget` → `MyWidget`). Components ./interface-components does
+  // not name are looked up in the components barrel when the field renders.
+  const renderedEntry = getRenderedInterfaceEntry(interfaceConfig.type);
+  const exportName =
+    renderedEntry?.exportName ??
+    interfaceConfig.type
+      .split('-')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join('');
+  const InterfaceComponent = getInterfaceComponent(exportName);
 
-      // System Token
-      'system-token': 'SystemToken',
-
-      // System Permissions
-      'system-permissions': 'SystemPermissions',
-    };
-    
-    // For relational interfaces, prefer the full implementation (ListM2M, SelectDropdownM2O, ListO2M)
-    // over the placeholder *Interface components that require render props.
-    // The full implementations use @buildpad/hooks and @buildpad/ui-collections internally.
-    const relationalFullComponentMap: Record<string, string> = {
-      'list-m2o': 'SelectDropdownM2O',
-      'select-dropdown-m2o': 'SelectDropdownM2O',
-      'list-o2m': 'ListO2M',
-      'list-m2m': 'ListM2M',
-      'list-m2a': 'ListM2A',
-    };
-    
-    // Check if this is a relational interface - use full component
-    let componentName = relationalFullComponentMap[interfaceType] || interfaceComponentMap[interfaceType];
-    
-    if (!componentName) {
-      // Fallback: Convert kebab-case to PascalCase
-      componentName = interfaceType
-        .split('-')
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join('');
-    }
-
-    // Get component from interfaces package
-    const component = (Interfaces as any)[componentName];
-    
-    return component;
-  }, [interfaceConfig.type]);
+  // A client-only component cannot even be evaluated on the server, so it is
+  // not rendered until the server's HTML has hydrated.
+  const hydrated = useHydrated();
+  const awaitingClient = renderedEntry?.loading === 'client-only' && !hydrated;
 
   // Build props for interface component
   // Merge interfaceConfig.props (from @buildpad/utils) with runtime props.
@@ -269,7 +222,7 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   // DaaS uses a server-side 'conceal' transformer to return '**********' instead.
   // Synthesize the same indicator so InputHash can detect an existing hashed value.
   //
-  // Hoisted above the early returns below (loading skeleton / component-not-found alert)
+  // Hoisted above the early return below (the loading skeleton)
   // so every hook in this component runs unconditionally on every render. Previously this
   // useMemo ran after those returns, so toggling `loading` or the interface resolving from
   // unknown to known changed the hook count on the same instance, triggering React's
@@ -304,7 +257,17 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
     return CONCEALED_PLACEHOLDER;
   }, [value, field, interfaceConfig.type, primaryKey]);
 
-  const isMultiSelectInterface = MULTI_SELECT_INTERFACE_TYPES.has(interfaceConfig.type);
+  // The multi-select interfaces are registered for `types: ['json','csv']` —
+  // storage is either a real array (`json`) or a comma-separated string
+  // (`csv`) — but none of the leaf components normalizes between the two
+  // shapes. A `csv` field therefore delivered a raw string straight to
+  // array-only leaf logic: substring-match reads (`string.includes` instead
+  // of `array.includes`), character-spread corruption on toggle, and
+  // `TypeError`s calling `.filter`/`.map` on a string. Normalizing once here
+  // — coerce to array on the way in, coerce back to a comma-string on the way
+  // out when the field really is `csv` — fixes the whole cluster (the
+  // manifest's `csvMultiValue` interfaces) without touching each leaf.
+  const isMultiSelectInterface = interfaceHasFlag(interfaceConfig.type, 'csvMultiValue');
 
   // Coerce a csv-stored string to an array before it reaches the leaf.
   const normalizedMultiSelectValue = useMemo(() => {
@@ -340,23 +303,6 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   // Show loading skeleton
   if (loading && !field.hideLoader) {
     return <Skeleton height={36} />;
-  }
-
-  // Show error if component not found
-  if (!InterfaceComponent) {
-    // The interface type is rendered bold, so the template is split around
-    // its placeholder instead of being interpolated into one string.
-    const [before, after] = t.fieldInterface.componentNotFound.title.split(INTERFACE_TYPE_PLACEHOLDER);
-    return (
-      <Alert icon={<IconAlertCircle size={16} />} color="warning">
-        <Text size="sm">
-          {before}<Text component="span" fw={600}>{interfaceConfig.type}</Text>{after}
-        </Text>
-        <Text size="xs" c="dimmed" mt="xs">
-          {interpolate(t.fieldInterface.componentNotFound.detail, { field: field.field, type: field.type })}
-        </Text>
-      </Alert>
-    );
   }
 
   const interfaceProps: any = {
@@ -436,10 +382,47 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   // Note: File interfaces (File, FileImage, Files) now use @buildpad/hooks useFiles
   // directly and don't need an external upload handler passed in
 
-  // Render interface component wrapped in error boundary
+  // Shown while an on-demand component loads, sized like the control it
+  // stands in for so the form does not jump when it arrives.
+  const loadingFallback = (
+    <Skeleton
+      height={renderedEntry?.fallbackHeight ?? DEFAULT_INTERFACE_FALLBACK_HEIGHT}
+      data-testid={`field-${field.field}-loading`}
+    />
+  );
+
+  let rendered: React.ReactNode;
+  if (InterfaceComponent) {
+    rendered = awaitingClient ? loadingFallback : <InterfaceComponent {...interfaceProps} />;
+  } else {
+    // The interface type is rendered bold, so the template is split around
+    // its placeholder instead of being interpolated into one string.
+    const [before, after] = t.fieldInterface.componentNotFound.title.split(INTERFACE_TYPE_PLACEHOLDER);
+    rendered = (
+      <InstalledInterface
+        exportName={exportName}
+        interfaceProps={interfaceProps}
+        loading={loadingFallback}
+        notFound={
+          <Alert icon={<IconAlertCircle size={16} />} color="warning">
+            <Text size="sm">
+              {before}<Text component="span" fw={600}>{interfaceConfig.type}</Text>{after}
+            </Text>
+            <Text size="xs" c="dimmed" mt="xs">
+              {interpolate(t.fieldInterface.componentNotFound.detail, { field: field.field, type: field.type })}
+            </Text>
+          </Alert>
+        }
+      />
+    );
+  }
+
+  // Render the interface inside an error boundary (a failed component load
+  // lands there too) and its own Suspense boundary, so one field loading its
+  // component never suspends the rest of the form.
   return (
     <InterfaceErrorBoundary interfaceName={interfaceConfig.type} fieldKey={field.field} translations={translations}>
-      <InterfaceComponent {...interfaceProps} />
+      <Suspense fallback={loadingFallback}>{rendered}</Suspense>
     </InterfaceErrorBoundary>
   );
 };

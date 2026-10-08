@@ -26,7 +26,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, Text } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
-import { CollectionForm } from '@buildpad/ui-collections';
+import { CollectionForm, CollectionsRelationalProvider } from '@buildpad/ui-collections';
 import { VForm } from '@buildpad/ui-form';
 import { useBuildpadTranslations } from '@buildpad/services';
 import {
@@ -84,14 +84,18 @@ export function FormPreview({
         <Text size="xs" c="dimmed" mb="xs">
           {t.formPreview.offlineHint}
         </Text>
-        <VForm
-          fields={offlineFields}
-          primaryKey="+"
-          action="create"
-          modelValue={values}
-          onUpdate={setValues}
-          enforcePermissions={false}
-        />
+        {/* A standalone VForm: supply the relational dialogs' components
+            (CollectionForm does this itself on the bound path below). */}
+        <CollectionsRelationalProvider>
+          <VForm
+            fields={offlineFields}
+            primaryKey="+"
+            action="create"
+            modelValue={values}
+            onUpdate={setValues}
+            enforcePermissions={false}
+          />
+        </CollectionsRelationalProvider>
       </>
     );
   }

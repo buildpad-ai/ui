@@ -1555,3 +1555,32 @@ export const NullInterfaceFallback: Story = {
     },
   },
 };
+
+// ============================================================================
+// On-demand interfaces
+// ============================================================================
+
+const onDemandFields: Field[] = [
+  createField('title', 'string', 'input', { meta: { name: 'Title', sort: 1 } }),
+  createField('body', 'text', 'input-rich-text-html', { meta: { name: 'Body (rich text)', sort: 2 } }),
+  createField('notes', 'text', 'input-rich-text-md', { meta: { name: 'Notes (markdown)', sort: 3 } }),
+  createField('icon', 'string', 'select-icon', { meta: { name: 'Icon', sort: 4, width: 'half' } }),
+  createField('blocks', 'json', 'input-block-editor', { meta: { name: 'Blocks', sort: 5 } }),
+];
+
+/**
+ * Heavy interfaces load when a field first needs them. Each field shows a
+ * skeleton of its interface's height until its component arrives; the text
+ * input above them renders at once.
+ */
+export const OnDemandInterfaces: Story = {
+  render: () => <VFormWrapper fields={onDemandFields} />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Rich text, markdown, the icon picker and the block editor are loaded on demand '
+          + '(interface manifest `loading: lazy | client-only`). Reload with the network throttled to see the skeletons.',
+      },
+    },
+  },
+};

@@ -19,7 +19,7 @@ const received: { value: unknown; readOnly?: boolean }[] = [];
 // Defined inside the factory: it is *called* at factory time (unlike `received`,
 // which is only touched when a probe renders), so a module-scope binding would
 // still be in its temporal dead zone here.
-jest.mock('@buildpad/ui-interfaces', () => {
+jest.mock('../components/interface-components', () => {
     const Probe = ({ value, onChange, readOnly }: any) => {
         received.push({ value, readOnly });
         return (
@@ -29,9 +29,8 @@ jest.mock('@buildpad/ui-interfaces', () => {
         );
     };
     return {
-        SelectMultipleCheckbox: Probe,
-        SelectMultipleCheckboxTree: Probe,
-        SelectMultipleDropdown: Probe,
+        getInterfaceComponent: () => Probe,
+        loadInstalledInterfaceComponent: () => Promise.resolve(null),
     };
 });
 
@@ -129,9 +128,9 @@ describe('FormFieldInterface csv normalization', () => {
 });
 
 /**
- * The normalization above is keyed off MULTI_SELECT_INTERFACE_TYPES, and every
+ * The normalization above is keyed off the manifest's `csvMultiValue` flag, and every
  * assertion in the block above resolves to `select-multiple-checkbox`. Nothing
- * pinned the other two members, so dropping one from that set silently
+ * pinned the other two members, so dropping the flag from one silently
  * reintroduced substring reads, a `.filter is not a function` crash and array
  * writes into a comma-string column, with a fully green suite.
  */
@@ -139,7 +138,7 @@ describe.each([
     'select-multiple-checkbox-tree',
     'select-multiple-dropdown',
 ])('FormFieldInterface csv normalization — %s', (interfaceType) => {
-    it('is a member of MULTI_SELECT_INTERFACE_TYPES: csv in, comma-string out', () => {
+    it('carries the csvMultiValue flag: csv in, comma-string out', () => {
         resolved.type = interfaceType;
         const onChange = jest.fn();
         render(

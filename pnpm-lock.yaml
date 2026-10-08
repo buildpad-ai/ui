@@ -260,6 +260,9 @@ importers:
       react:
         specifier: ^19
         version: 19.2.0
+      react-dom:
+        specifier: ^19
+        version: 19.2.0(react@19.2.0)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -858,12 +861,6 @@ importers:
       '@buildpad/types':
         specifier: workspace:*
         version: link:../types
-      '@buildpad/ui-collections':
-        specifier: workspace:*
-        version: link:../ui-collections
-      '@buildpad/ui-form':
-        specifier: workspace:*
-        version: link:../ui-form
       '@chromatic-com/storybook':
         specifier: ^5.0.1
         version: 5.0.1(storybook@10.2.8(@testing-library/dom@10.4.0)(prettier@2.8.8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))

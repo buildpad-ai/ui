@@ -8,6 +8,9 @@
 export { CollectionForm } from './CollectionForm';
 export type { CollectionFormProps, FormPermissionState } from './CollectionForm';
 
+export { CollectionsRelationalProvider } from './CollectionsRelationalProvider';
+export type { CollectionsRelationalProviderProps } from './CollectionsRelationalProvider';
+
 export {
   EXTRAS_COLUMN,
   flattenExtras,

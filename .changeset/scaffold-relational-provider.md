@@ -1,0 +1,5 @@
+---
+"@buildpad/cli": major
+---
+
+The scaffolded authenticated route-group layout (`app/[lang]/(authenticated)/layout.tsx`, lib module `api-routes`) wraps every authenticated page in `CollectionsRelationalProvider` (imported from `@/components/ui/collections-relational-provider`, which loads the form components on demand), so standalone `ListO2M` / `ListM2M` / `ListM2A` and plain `VForm`s with relational fields work on any authenticated page. `api-routes` therefore declares `collection-form` as a registry dependency. `add --with-api` (and `bootstrap`) now install the components the API lib modules declare, and `add <lib>` also installs the components of lib modules it pulls in that are not installed yet (e.g. `add external-oauth` → `api-routes` → `collection-form`). A 2.6 project with `api-routes` but without `collection-form` must run `buildpad add collection-form` after upgrading. docs/MIGRATION-3.0.md also says to use a plain `buildpad upgrade` for the 3.0 upgrade: `upgrade <name>` does not co-upgrade dependencies yet.

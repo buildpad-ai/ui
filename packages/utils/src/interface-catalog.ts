@@ -52,14 +52,15 @@
  */
 
 import type { FieldType } from './interface-types';
+import {
+  INTERFACE_MANIFEST,
+  interfaceIdsWithFlag,
+  type InterfaceManifestEntry,
+  type ProvisionableInterfaceGroup,
+} from './interface-manifest';
 
-/** Group buckets shown in the interface picker. */
-export type ProvisionableInterfaceGroup =
-  | 'Text'
-  | 'Rich content'
-  | 'Selection'
-  | 'Numeric & date'
-  | 'Geospatial';
+/** Group buckets shown in the interface picker (defined with the manifest). */
+export type { ProvisionableInterfaceGroup };
 
 /** A picker-ready interface descriptor for a provisionable real column. */
 export interface ProvisionableInterface {
@@ -73,38 +74,21 @@ export interface ProvisionableInterface {
   types: FieldType[];
 }
 
+/** The manifest, widened to its entry type for filtering. */
+const manifestEntries: readonly InterfaceManifestEntry[] = INTERFACE_MANIFEST;
+
 /**
  * The provisionable scalar/selection interfaces, with `value` = renderer id and
- * `types` = `registry.json` compatibility. Keep every `value` in sync with a
- * `case` in `field-interface-mapper.ts` `getFieldInterface`.
+ * `types` = `registry.json` compatibility, in picker order: the manifest
+ * entries that carry a `provision` descriptor (interface-manifest.ts). Rich
+ * content needs @buildpad/ui-forms' interface-rendering peer deps, and the map
+ * needs maplibre-gl + @mapbox/mapbox-gl-draw.
  */
-export const PROVISIONABLE_INTERFACES: ProvisionableInterface[] = [
-  // Text
-  { value: 'input', label: 'Text input', group: 'Text', types: ['string', 'text', 'integer', 'bigInteger', 'float', 'decimal'] },
-  { value: 'input-multiline', label: 'Multiline text', group: 'Text', types: ['string', 'text'] },
-  { value: 'input-code', label: 'Code / JSON', group: 'Text', types: ['string', 'text', 'json'] },
-  { value: 'input-hash', label: 'Hash (masked)', group: 'Text', types: ['hash'] },
-  { value: 'tags', label: 'Tags', group: 'Text', types: ['json', 'csv'] },
-  // Rich content (need @buildpad/ui-forms' interface-rendering peer deps)
-  { value: 'input-rich-text-html', label: 'Rich text (WYSIWYG)', group: 'Rich content', types: ['text'] },
-  { value: 'input-rich-text-md', label: 'Rich text (Markdown)', group: 'Rich content', types: ['text'] },
-  { value: 'input-block-editor', label: 'Block editor', group: 'Rich content', types: ['json', 'text'] },
-  // Selection
-  { value: 'select-dropdown', label: 'Dropdown (choices)', group: 'Selection', types: ['string', 'integer', 'bigInteger', 'float', 'decimal'] },
-  { value: 'select-radio', label: 'Radio (choices)', group: 'Selection', types: ['string', 'integer'] },
-  { value: 'select-multiple-checkbox', label: 'Checkboxes (multiple)', group: 'Selection', types: ['json', 'csv'] },
-  { value: 'select-multiple-checkbox-tree', label: 'Checkboxes (tree)', group: 'Selection', types: ['json', 'csv'] },
-  { value: 'select-multiple-dropdown', label: 'Multi-select dropdown', group: 'Selection', types: ['json', 'csv'] },
-  { value: 'select-icon', label: 'Icon picker', group: 'Selection', types: ['string'] },
-  { value: 'select-color', label: 'Color picker', group: 'Selection', types: ['string'] },
-  { value: 'boolean', label: 'Checkbox', group: 'Selection', types: ['boolean'] },
-  { value: 'toggle', label: 'Toggle', group: 'Selection', types: ['boolean'] },
-  // Numeric & date
-  { value: 'slider', label: 'Slider', group: 'Numeric & date', types: ['integer', 'bigInteger', 'float', 'decimal'] },
-  { value: 'datetime', label: 'Date / time picker', group: 'Numeric & date', types: ['dateTime', 'date', 'time', 'timestamp'] },
-  // Geospatial (needs maplibre-gl + @mapbox/mapbox-gl-draw)
-  { value: 'map', label: 'Map (geometry)', group: 'Geospatial', types: ['geometry', 'json', 'text'] },
-];
+export const PROVISIONABLE_INTERFACES: ProvisionableInterface[] = manifestEntries.flatMap((entry) =>
+  entry.provision
+    ? [{ value: entry.id, label: entry.provision.label, group: entry.provision.group, types: [...entry.types] }]
+    : [],
+);
 
 /**
  * The provisionable interfaces compatible with a given field `type`, in catalog
@@ -120,17 +104,12 @@ export function provisionableInterfacesForType(
 
 /**
  * Interfaces that require an author-supplied **choices** list (dropdowns, radios,
- * checkbox/multi-select groups). Kept here — alongside the catalog — so both the
- * "Add field" modal and the settings panel share one source of truth (and unit
- * tests can assert it). Values are renderer-recognized interface ids.
+ * checkbox/multi-select groups): the manifest's `choices` flag. Kept here —
+ * alongside the catalog — so both the "Add field" modal and the settings panel
+ * share one source of truth (and unit tests can assert it). Values are
+ * renderer-recognized interface ids.
  */
-export const CHOICE_INTERFACES: ReadonlySet<string> = new Set([
-  'select-dropdown',
-  'select-radio',
-  'select-multiple-checkbox',
-  'select-multiple-checkbox-tree',
-  'select-multiple-dropdown',
-]);
+export const CHOICE_INTERFACES: ReadonlySet<string> = new Set(interfaceIdsWithFlag('choices'));
 
 /**
  * Whether an interface needs an author-supplied choices list. Used to gate the
