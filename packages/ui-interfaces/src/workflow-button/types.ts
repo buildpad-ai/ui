@@ -128,6 +128,13 @@ export interface WorkflowButtonProps {
   alwaysVisible?: boolean;
   /** Item ID */
   itemId?: string | number;
+  /**
+   * Item ID under the name a form container uses. `FormFieldInterface` hands
+   * every interface the record's key as `primaryKey` and never sets `itemId`,
+   * so this is how the id arrives when the button is a form field. `itemId`
+   * wins when both are given.
+   */
+  primaryKey?: string | number | null;
   /** Collection name */
   collection?: string;
   /** Version key for versioned content */

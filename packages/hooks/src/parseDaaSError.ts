@@ -3,13 +3,15 @@
  *
  * `apiRequest` (see `@buildpad/services`) throws
  * `new Error(\`API error: ${status} - ${rawBody}\`)` where `rawBody` is the raw
- * response text. That text is typically JSON in one of two shapes used across
- * the DaaS backend:
+ * response text. That text is typically JSON in one of three shapes used
+ * across the DaaS backend:
  *
  *   - Custom DaaS routes:  `{ error: string }`
  *   - DaaS-compatible: `{ errors: [{ message: string, extensions?: { code?: string } }] }`
+ *   - Bare message: `{ message: string }` (the workflow-transition refusal, and
+ *     the Go engine's transition envelope when it carries no `errors`)
  *
- * This helper extracts a clean, human-readable message from either shape —
+ * This helper extracts a clean, human-readable message from any of them —
  * whether embedded in an `apiRequest`-style Error, passed as a raw JSON
  * string, or some other unknown value — and falls back to the raw message
  * text when no known shape is found.
@@ -35,6 +37,13 @@ export function parseDaaSError(err: unknown): string {
       const errorField = (parsed as { error?: unknown }).error;
       if (typeof errorField === 'string' && errorField.trim()) {
         return errorField;
+      }
+
+      // Bare shape: { message: string }. Read last, so a body that also
+      // carries `errors` or `error` keeps the message it always produced.
+      const messageField = (parsed as { message?: unknown }).message;
+      if (typeof messageField === 'string' && messageField.trim()) {
+        return messageField;
       }
     }
   }

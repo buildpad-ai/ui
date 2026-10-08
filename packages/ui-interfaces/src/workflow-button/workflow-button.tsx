@@ -48,6 +48,7 @@ export function WorkflowButton({
   alwaysVisible = true,
   workflowField = 'status',
   itemId,
+  primaryKey,
   collection,
   versionKey,
   translationId,
@@ -68,7 +69,10 @@ export function WorkflowButton({
     loading,
     executeTransition,
   } = useWorkflow({
-    itemId,
+    // A form passes the record's key as `primaryKey` (see WorkflowButtonProps).
+    // Reading `itemId` alone left the hook with no id inside a form, so an
+    // existing item looked new: no current state and no transitions.
+    itemId: itemId ?? primaryKey,
     collection,
     versionKey,
     translationId,

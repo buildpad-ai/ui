@@ -1,7 +1,7 @@
 /**
  * parseDaaSError unit tests
  *
- * Covers both backend error shapes embedded in an `apiRequest`-style
+ * Covers the three backend error shapes embedded in an `apiRequest`-style
  * `Error` (`API error: {status} - {rawBody}`), the same shapes as raw JSON
  * strings, and the raw-message fallback for anything else.
  */
@@ -50,6 +50,49 @@ describe('parseDaaSError', () => {
     it('falls back to raw message when errors array is empty', () => {
       const raw = '{"errors":[]}';
       expect(parseDaaSError(raw)).toBe(raw);
+    });
+  });
+
+  describe('bare shape: { message }', () => {
+    it('extracts the message from an apiRequest-style Error', () => {
+      const err = new Error(
+        'API error: 403 - {"message":"You are not authorized to perform this transition"}'
+      );
+      expect(parseDaaSError(err)).toBe('You are not authorized to perform this transition');
+    });
+
+    it('extracts the message from a raw JSON string', () => {
+      expect(parseDaaSError('{"message":"Transition refused","success":false}')).toBe(
+        'Transition refused'
+      );
+    });
+
+    it('ignores an empty message and falls back to the raw message', () => {
+      const err = new Error('API error: 403 - {"message":"  "}');
+      expect(parseDaaSError(err)).toBe('API error: 403 - {"message":"  "}');
+    });
+
+    it('ignores a message that is not a string', () => {
+      const raw = '{"message":{"text":"nested"}}';
+      expect(parseDaaSError(raw)).toBe(raw);
+    });
+
+    it('keeps errors[0].message ahead of a top-level message', () => {
+      const raw = JSON.stringify({
+        message: 'Request failed',
+        errors: [{ message: 'Title is required' }],
+      });
+      expect(parseDaaSError(raw)).toBe('Title is required');
+    });
+
+    it('keeps error ahead of a top-level message', () => {
+      const raw = JSON.stringify({ message: 'Request failed', error: 'Not found' });
+      expect(parseDaaSError(raw)).toBe('Not found');
+    });
+
+    it('reads the message when errors is present but empty', () => {
+      const raw = JSON.stringify({ errors: [], message: 'Transition refused' });
+      expect(parseDaaSError(raw)).toBe('Transition refused');
     });
   });
 

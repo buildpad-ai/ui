@@ -175,6 +175,61 @@ describe('useWorkflow', () => {
     });
   });
 
+  // `item_id` alone matched the instance of another collection's item with
+  // the same key (integer keys repeat across collections).
+  describe('Instance lookup filter', () => {
+    /** The `filter` of the first instance lookup the hook made. */
+    const instanceFilter = (): Record<string, unknown> => {
+      const call = mockFetch.mock.calls.find((c) => String(c[0]).includes('/api/items/daas_wf_instance'));
+      const query = new URLSearchParams(String(call![0]).split('?')[1]);
+      return JSON.parse(query.get('filter') as string);
+    };
+
+    beforeEach(() => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [] }),
+      });
+    });
+
+    it('filters by collection as well as item id', async () => {
+      const { result } = renderHook(() => useWorkflow({ itemId: 5, collection: 'pages' }));
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(instanceFilter()).toEqual({ item_id: 5, collection: 'pages' });
+    });
+
+    it('keeps the version key next to the collection', async () => {
+      const { result } = renderHook(() =>
+        useWorkflow({ itemId: 5, collection: 'pages', versionKey: 'draft-v1' })
+      );
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(instanceFilter()).toEqual({ item_id: 5, collection: 'pages', version_key: 'draft-v1' });
+    });
+
+    it('leaves a translation lookup filtered by id only', async () => {
+      const { result } = renderHook(() =>
+        useWorkflow({ itemId: 5, collection: 'pages', translationId: 'translation-9' })
+      );
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(instanceFilter()).toEqual({ item_id: 'translation-9' });
+    });
+  });
+
   describe('Version Key Support', () => {
     beforeEach(() => {
       mockFetch.mockImplementation((url: string) => {
@@ -370,6 +425,42 @@ describe('useWorkflow', () => {
       await waitFor(() => {
         expect(result.current.transitionCount).toBe(initialCount + 1);
       });
+    });
+
+    it('reports a refused transition in errorMessage and still rejects', async () => {
+      const { result } = renderHook(() =>
+        useWorkflow({ itemId: 'article-123', collection: 'articles' })
+      );
+
+      await waitFor(() => {
+        expect(result.current.workflowInstanceId).toBe(1);
+      });
+
+      const accept = mockFetch.getMockImplementation()!;
+      mockFetch.mockImplementation((url: string, options?: RequestInit) =>
+        url.includes('/api/workflow/transition')
+          ? Promise.resolve({ ok: false, status: 403 })
+          : accept(url, options)
+      );
+
+      await act(async () => {
+        await expect(result.current.executeTransition('Submit')).rejects.toThrow(
+          'HTTP error! status: 403'
+        );
+      });
+
+      expect(result.current.errorMessage).toBe('HTTP error! status: 403');
+      // The instance is untouched: the item is still in the state it was in.
+      expect(result.current.workflowInstance?.current_state).toBe('Draft');
+      expect(result.current.transitionCount).toBe(0);
+
+      // The next attempt starts clean.
+      mockFetch.mockImplementation(accept);
+      await act(async () => {
+        await result.current.executeTransition('Submit');
+      });
+
+      expect(result.current.errorMessage).toBe('');
     });
 
     it('throws error when no workflow instance available', async () => {

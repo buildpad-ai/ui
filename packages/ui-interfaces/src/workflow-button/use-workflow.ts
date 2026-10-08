@@ -183,6 +183,13 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
         const filter: Record<string, unknown> = {
           item_id: queryItemId,
         };
+        // `item_id` alone is ambiguous: integer keys repeat across collections,
+        // so item 5 of `pages` matched the instance of item 5 of `articles`.
+        // A translation lookup is left as it was: this hook does not know
+        // which collection a translation's instance is recorded under.
+        if (queryItemId === itemId) {
+          filter.collection = collection;
+        }
         if (requestedVersion) {
           filter.version_key = requestedVersion;
         }
@@ -318,11 +325,21 @@ export function useWorkflow(options: UseWorkflowOptions): UseWorkflowReturn {
         throw new Error(t.error.noInstance);
       }
 
-      await apiClient.post('/api/workflow/transition', {
-        workflowInstanceId: workflowInstanceId,
-        commandName: commandName,
-        workflowField: workflowField,
-      });
+      setErrorMessage('');
+
+      try {
+        await apiClient.post('/api/workflow/transition', {
+          workflowInstanceId: workflowInstanceId,
+          commandName: commandName,
+          workflowField: workflowField,
+        });
+      } catch (error) {
+        // A refused or failed transition still rejects, but it also reaches
+        // `errorMessage`: the button only logged the rejection, so the user
+        // saw the old state come back with no explanation.
+        setErrorMessage(error instanceof Error && error.message ? error.message : String(error));
+        throw error;
+      }
 
       // Refetch the workflow instance
       await fetchWorkflowInstance();
