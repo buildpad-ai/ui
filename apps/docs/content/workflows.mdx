@@ -288,7 +288,7 @@ Every component also takes `translations`, a partial override of the
 | `workflowsCollection` | `'daas_wf_definition'` | Collection the permission checks use |
 | `readOnly` | `false` | Show the definition with no way to change it. A user without update access gets this view in any case |
 | `policies` | — | The policies the Command dialog offers. Pass every policy, not one page |
-| `loadPolicies()` | all policies, through `usePolicies` | Loads the policies when the Command dialog first opens. The default needs read access to `daas_policies` |
+| `loadPolicies()` | all policies, through `usePolicies` | Loads the policies the Command dialog offers. Yours is called each time the dialog opens; the default reads every policy once per editor and needs read access to `daas_policies` |
 | `diagramHeight` | `600` | Height of the diagram (pixels or a CSS length) |
 | `hideAttribution` | `false` | Hide React Flow's attribution; see [Prerequisites](#prerequisites) |
 
@@ -388,6 +388,16 @@ editor around `WorkflowDiagram`.
 A command is saved on top of the stored command, so keys the dialog has no
 field for are kept.
 
+An action's Parameters must be a JSON object. Text that is not JSON, and JSON
+that is not an object (`[]`, `123`, `"x"`), is refused on the field. The save
+opens the tab and the action that hold it. An empty field means no parameters.
+
+A definition can be answered without its `workflow_json`, when the user's read
+grant on `daas_wf_definition` leaves that field out. The editor then shows a
+notice in place of the statistics and the diagram. It does not draw an empty
+machine, and it never sends the document. The name and the description can
+still be saved.
+
 ## The data layer
 
 The screens are thin. The work is in three hooks that you can use anywhere
@@ -423,12 +433,16 @@ interface WorkflowListResult<T> {
 }
 ```
 
-Three details matter when you call the hooks yourself:
+Four details matter when you call the hooks yourself:
 
 - `fetchDefinitions` returns one page. For a picker, use
   `fetchAllDefinitions`, which reads every page.
 - `updateDefinition` resolves to nothing. Read the definition again with
-  `getDefinition` when you need the stored form.
+  `getDefinition` when you need the stored form. `description: null` clears
+  the description.
+- A `WorkflowDefinitionRecord` has no `workflow_json` when the caller's grant
+  withholds that field. This is not an empty machine: do not draw one, and do
+  not send one back.
 - `deleteDefinition` is refused (`kind: 'invalid'`) for a definition that is
   assigned to a collection or has instances. The message says which.
 
