@@ -216,7 +216,18 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
   //   readonly     — value visible, not editable, still focusable and un-greyed
   //   nonEditable  — no interaction at all; keeps `disabled` on top of readOnly
   // Both suppress onChange; only nonEditable sets `disabled`.
-  const isEffectivelyReadonly = readonly || nonEditable;
+  //
+  // The workflow button is the exception to both. It is not an input: it never
+  // edits the field's value, it asks the server to run a transition, and
+  // whether the user may do that is decided by the command's policies and
+  // module access keys — not by whether they may edit this column. The state
+  // field is in fact *meant* to be locked against edits (the Studio's wizard
+  // creates it `readonly`, and a hardened update permission leaves it out of
+  // its field list), and applying those locks here made the button inert in
+  // exactly the collections that were set up correctly. So field-level locks
+  // do not reach it; the form-level `disabled` still does.
+  const isWorkflowControl = interfaceConfig.type === 'workflow-button';
+  const isEffectivelyReadonly = !isWorkflowControl && (readonly || nonEditable);
 
   // DaaS omits hash field values (e.g. password) from API responses for security.
   // DaaS uses a server-side 'conceal' transformer to return '**********' instead.
@@ -369,13 +380,18 @@ export const FormFieldInterface: React.FC<FormFieldInterfaceProps> = ({
     // onChange is suppressed for readonly as well as nonEditable: with
     // `disabled` gone for a merely-readonly field this is the container-level
     // write block, and it must not depend on each leaf honouring `readOnly`.
-    onChange: isEffectivelyReadonly ? undefined : (isMultiSelectInterface ? handleMultiSelectChange : onChange), // NOSONAR: idiomatic tri-state ternary, not confusing nesting
+    //
+    // The workflow button gets no onChange either. It reports the *command* it
+    // ran ("Submit"), not a field value, so wiring it to the form put the
+    // command name into the edits under the state field's key — and the next
+    // save wrote it over the state the transition had just set.
+    onChange: isEffectivelyReadonly || isWorkflowControl ? undefined : (isMultiSelectInterface ? handleMultiSelectChange : onChange), // NOSONAR: idiomatic tri-state ternary, not confusing nesting
     // S2.6: a merely-readonly field (readonly=true, nonEditable=false) must NOT
     // also set disabled=true — the two are visually and semantically distinct
     // (readonly: value visible, not editable; disabled: greyed out, inert).
     // nonEditable is stronger — no interaction at all, including focus — so it
     // keeps the disabled styling on top of readOnly.
-    disabled: disabled || nonEditable,
+    disabled: disabled || (nonEditable && !isWorkflowControl),
     readOnly: isEffectivelyReadonly,
   };
 
