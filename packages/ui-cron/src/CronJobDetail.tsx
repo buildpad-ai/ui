@@ -358,6 +358,10 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
 
     savingRef.current = true;
     setSaving(true);
+    // The answer belongs to the job on screen now. When the host has opened
+    // another one by the time it arrives, it must not be drawn over that job.
+    const shown = requestRef.current;
+    const stillShown = () => shown === requestRef.current;
     try {
       if (isNew) {
         const stored = await createJob(cronJobInputFromForm(form));
@@ -369,8 +373,10 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
         });
         // What is on screen is the stored job from here on, so the next Save
         // updates it; where to go next is the host's to say
-        setCreated(stored);
-        showStored(stored, null, form);
+        if (stillShown()) {
+          setCreated(stored);
+          showStored(stored, null, form);
+        }
         onCreated?.(stored);
       } else {
         // Only the fields edited since the form was filled from the server: the
@@ -384,7 +390,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
           icon: <IconCheck size={16} />,
         });
         // Not inside the optional call: without `onSaved` its argument is never evaluated
-        const now = showStored(saved, record, form);
+        const now = stillShown() ? showStored(saved, record, form) : { ...record, ...saved };
         onSaved?.(now);
       }
     } catch (err) {
@@ -406,11 +412,13 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
       switchingRef.current = true;
       setSwitching(true);
       const active = status === 'active';
+      const shown = requestRef.current;
       try {
         const saved = await updateJob(record.id, { status });
         // The form has no unsaved edit when the button is clicked (it waits
-        // for them); one typed while the request runs is kept
-        showStored(saved, record, form);
+        // for them); one typed while the request runs is kept. Not drawn over
+        // another job the host has opened meanwhile.
+        if (shown === requestRef.current) showStored(saved, record, form);
         notifications.show({
           title: active ? t.notificationTitles.activated : t.notificationTitles.deactivated,
           message: active ? t.jobDetail.notifications.activated : t.jobDetail.notifications.deactivated,

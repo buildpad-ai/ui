@@ -414,6 +414,54 @@ describe('CronJobDetail', () => {
       );
     });
 
+    it('a save answered after another job was opened is not drawn over that job', async () => {
+      const request = deferred<CronJobRecord>();
+      updateJobMock.mockImplementation(() => request.promise);
+      const onSaved = vi.fn();
+      const { update } = renderDetail({ onSaved });
+      await loaded();
+
+      fireEvent.change(field.description(), { target: { value: 'Saved late' } });
+      fireEvent.click(button('Save'));
+      // The host opens another job in the same editor before the answer is in
+      update({ id: sweep.id, onSaved });
+      await loaded('Cache sweep');
+
+      await act(async () => {
+        request.resolve({ ...report, description: 'Saved late' });
+      });
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: report.id })));
+      // Still the job that is open, untouched and with nothing to save
+      expect(field.name()).toHaveValue('Cache sweep');
+      expect(field.description()).toHaveValue(sweep.description ?? '');
+      expect(screen.getByTestId('cron-job-detail-breadcrumb-current')).toHaveTextContent('Cache sweep');
+      expect(unsavedBadge()).not.toBeInTheDocument();
+    });
+
+    it('a create answered after another job was opened does not take that editor over', async () => {
+      const request = deferred<CronJobRecord>();
+      createJobMock.mockImplementation(() => request.promise);
+      const onCreated = vi.fn();
+      const { update } = renderDetail({ id: 'new', onCreated });
+      fireEvent.change(field.name(), { target: { value: 'Hourly ping' } });
+      fireEvent.click(button('Create'));
+
+      update({ id: sweep.id, onCreated });
+      await loaded('Cache sweep');
+      await act(async () => {
+        request.resolve({ id: 'new-job-id', name: 'Hourly ping' });
+      });
+      await waitFor(() => expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-job-id' })));
+      expect(field.name()).toHaveValue('Cache sweep');
+
+      // A save here goes to the job that is open, not to the one that was created
+      fireEvent.change(field.name(), { target: { value: 'Cache sweep v2' } });
+      updateJobMock.mockImplementation(async (id: string, patch: Partial<CronJobRecord>) => ({ ...sweep, ...patch, id }));
+      await waitFor(() => expect(button('Save')).toBeEnabled());
+      fireEvent.click(button('Save'));
+      await waitFor(() => expect(updateJobMock).toHaveBeenCalledWith(sweep.id, { name: 'Cache sweep v2' }));
+    });
+
     it('a failed save is an Error notification with the server\'s sentence, and the edits stay', async () => {
       updateJobMock.mockRejectedValueOnce(
         new DaaSRequestError('Cron job code is invalid: Unexpected token', { kind: 'invalid', status: 400 }),
