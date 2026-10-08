@@ -34,6 +34,11 @@ export interface WorkflowCommand {
   next_state?: string;
   /** Policy UUIDs required to execute this command */
   policies: string[];
+  /**
+   * Module access keys that also open this command. OR'd with `policies`: the
+   * user needs one policy or one key. A command with neither list is open.
+   */
+  module_access_keys?: string[];
   /** Actions to execute after transition */
   actions?: WorkflowAction[];
 }
@@ -114,6 +119,10 @@ export interface WorkflowButtonProps {
    * Current state is visible but no transition may be triggered. Menu commands
    * execute a real state transition, so they must be gated on this as well as
    * on `disabled`.
+   *
+   * This is for a caller that wants the button inert. A form does not derive it
+   * from the state field being read-only: that field is supposed to be locked
+   * against edits, and a transition is not an edit (see `FormFieldInterface`).
    */
   readOnly?: boolean;
   /** Placeholder text when no workflow exists */
