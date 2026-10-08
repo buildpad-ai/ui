@@ -30,7 +30,7 @@ npm install -g @buildpad/cli
 | `buildpad validate` | Validate installation for common issues |
 | `buildpad fix` | Auto-fix common issues |
 | `buildpad outdated` | Check which installed components **and lib modules** (incl. `design-system`) have newer versions |
-| `buildpad upgrade <component>` | Upgrade component(s) or lib module(s) to the latest registry version |
+| `buildpad upgrade <component>` | Upgrade component(s) or lib module(s), and what they depend on, to the latest registry version |
 | `buildpad upgrade --design` | Upgrade only the design-system module (tokens, globals, theme, app shell) |
 | `buildpad changelog <pkg>` | View changelog between your installed and latest version |
 | `buildpad migrate` | Migrate `buildpad.json` from schema v1 to v2 |
@@ -90,6 +90,8 @@ buildpad upgrade input vform
 # Preview what would change without writing files
 buildpad upgrade --all --dry-run
 ```
+
+`upgrade` brings dependencies along. The new code of an entry imports the new code of what it depends on, so the out-of-date components and lib modules an upgraded entry depends on are upgraded in the same run, and the ones your project does not have are installed. The run lists them first, with the entry that needs each one. Entries that nothing you selected depends on are left alone. Pass `--no-deps` to upgrade only the entries you name; the project may then not compile until their dependencies are upgraded too.
 
 When a component has been locally modified, `upgrade` will prompt you for each file. You can control the behaviour with `--strategy`:
 

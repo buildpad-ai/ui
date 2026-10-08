@@ -794,7 +794,7 @@ async function copyComponent(
  * Names exported by more than one component are re-exported explicitly from
  * the first (see renderComponentsIndex) and reported.
  */
-async function generateComponentsIndex(
+export async function generateComponentsIndex(
   config: Config,
   cwd: string,
   registry: Registry,

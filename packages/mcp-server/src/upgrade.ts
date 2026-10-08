@@ -17,6 +17,12 @@
  *   targets are used as written.
  * - apply_upgrade runs the CLI pinned to this server's own version. Under
  *   lockstep releases that CLI fetches the same registry this server embeds.
+ * - Naming entries also brings what they depend on: the out-of-date ones are
+ *   upgraded and the missing ones installed, as `buildpad upgrade <names>`
+ *   does (packages/cli/src/utils/upgrade-plan.ts). The MCP works the list out
+ *   itself and hands the CLI every name with `--no-deps`, so the names it
+ *   checked (nothing newer than this server is moved backwards) are exactly
+ *   the names the CLI touches.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
@@ -183,8 +189,7 @@ export function libDependencyClosure(names: string[], registry: Registry): strin
 
 /**
  * Installed lib modules that `names` depend on (transitively) and that are
- * outdated. `buildpad upgrade <names>` installs missing lib modules but does
- * not upgrade stale ones, so the MCP adds these names itself.
+ * outdated.
  */
 export function staleLibDependencies(
   names: string[],
@@ -195,6 +200,71 @@ export function staleLibDependencies(
   return statuses
     .filter(s => s.kind === 'lib' && s.isOutdated && closure.has(s.name) && !names.includes(s.name))
     .map(s => s.name);
+}
+
+/** A registry entry by kind and name. */
+export interface EntryName {
+  kind: EntryKind;
+  name: string;
+}
+
+const sameEntry = (a: EntryName, b: EntryName) => a.kind === b.kind && a.name === b.name;
+
+/** The kind the CLI gives a name: a lib module when the registry has one, otherwise a component. */
+export function entryNameOf(name: string, registry: Registry): EntryName | undefined {
+  if (registry.lib?.[name]) return { kind: 'lib', name };
+  if (registry.components.some(c => c.name === name)) return { kind: 'component', name };
+  return undefined;
+}
+
+/**
+ * Everything `names` depend on, directly or through other entries, of both
+ * kinds: `internalDependencies` name lib modules, `registryDependencies` name
+ * components. Breadth-first from `names`, which are not listed themselves.
+ * The same walk as the CLI's planDependencies.
+ */
+export function dependencyClosure(names: string[], registry: Registry): EntryName[] {
+  const targets = names.map(n => entryNameOf(n, registry)).filter((e): e is EntryName => !!e);
+  const seen: EntryName[] = [...targets];
+  for (let i = 0; i < seen.length; i++) {
+    const entry = seen[i];
+    const source = entry.kind === 'component'
+      ? registry.components.find(c => c.name === entry.name)
+      : registry.lib?.[entry.name];
+    const deps: EntryName[] = [
+      ...(source?.internalDependencies ?? [])
+        .filter(name => !!registry.lib?.[name])
+        .map((name): EntryName => ({ kind: 'lib', name })),
+      ...(source?.registryDependencies ?? [])
+        .filter(name => registry.components.some(c => c.name === name))
+        .map((name): EntryName => ({ kind: 'component', name })),
+    ];
+    for (const dep of deps) if (!seen.some(e => sameEntry(e, dep))) seen.push(dep);
+  }
+  return seen.slice(targets.length);
+}
+
+export interface DependencyNames {
+  /** Installed and outdated: upgraded with the named entries. */
+  stale: EntryName[];
+  /** Not installed: installed with the named entries. */
+  missing: EntryName[];
+}
+
+/**
+ * What upgrading `names` brings along: the installed, outdated entries they
+ * depend on, and the ones the project does not have. `statuses` holds every
+ * installed entry.
+ */
+export function dependenciesToBring(names: string[], statuses: EntryStatus[], registry: Registry): DependencyNames {
+  const stale: EntryName[] = [];
+  const missing: EntryName[] = [];
+  for (const dep of dependencyClosure(names, registry)) {
+    const status = statuses.find(s => sameEntry(s, dep));
+    if (!status) missing.push(dep);
+    else if (status.isOutdated) stale.push(dep);
+  }
+  return { stale, missing };
 }
 
 // ─── Files on disk ───────────────────────────────────────────────
@@ -300,7 +370,8 @@ export interface ApplyUpgradeInput {
   projectPath: string;
   components: string[];
   strategy: UpgradeStrategy;
-  includeLibDependencies: boolean;
+  /** Also upgrade the outdated entries the targets depend on, and install the missing ones. */
+  includeDependencies: boolean;
 }
 
 /**
@@ -337,14 +408,18 @@ export function validateApplyUpgradeArgs(args: unknown): ApplyUpgradeInput {
     }
   }
 
-  const includeLib = a.includeLibDependencies ?? true;
-  if (typeof includeLib !== 'boolean') throw new Error('includeLibDependencies must be a boolean');
+  // `includeLibDependencies` is the name this option had while it covered lib
+  // modules only; it is still accepted.
+  for (const key of ['includeDependencies', 'includeLibDependencies'] as const) {
+    if (a[key] !== undefined && typeof a[key] !== 'boolean') throw new Error(`${key} must be a boolean`);
+  }
+  const includeDependencies = (a.includeDependencies ?? a.includeLibDependencies ?? true) as boolean;
 
   return {
     projectPath,
     components: [...new Set(raw as string[])],
     strategy: strategy as UpgradeStrategy,
-    includeLibDependencies: includeLib,
+    includeDependencies,
   };
 }
 
@@ -355,19 +430,22 @@ const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
  * The `npx` arguments that run `buildpad upgrade` with the CLI release this
  * server belongs to. Names go after `--`, so commander reads them as names
  * even if one looked like a flag. With no names, `--all` upgrades every
- * installed component and lib module.
+ * installed component and lib module. `noDeps` passes `--no-deps`: the CLI
+ * then touches the given names only (see the module note).
  */
 export function buildUpgradeCommand(options: {
   cliVersion: string;
   projectPath: string;
   strategy: UpgradeStrategy;
   names: string[];
+  noDeps?: boolean;
 }): { command: 'npx'; args: string[] } {
-  const { cliVersion, projectPath, strategy, names } = options;
+  const { cliVersion, projectPath, strategy, names, noDeps = false } = options;
   if (!VERSION_PATTERN.test(cliVersion)) {
     throw new Error(`Cannot pin @buildpad/cli: ${JSON.stringify(cliVersion)} is not a release version`);
   }
   const args = ['--yes', `@buildpad/cli@${cliVersion}`, 'upgrade', '--cwd', projectPath, '--strategy', strategy];
+  if (noDeps) args.push('--no-deps');
   if (names.length > 0) args.push('--', ...names);
   else args.push('--all');
   return { command: 'npx', args };

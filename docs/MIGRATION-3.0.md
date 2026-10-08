@@ -20,21 +20,28 @@ The 3.0 sources import new lib files and new exports across entries.
 Upgrading only some entries leaves the others on 2.6 code that does not
 match.
 
-**Do not run `upgrade <name>` for the first 3.0 upgrade.** In this release,
-`upgrade <name>` upgrades only the named entry. It does not yet upgrade the
-stale lib modules and components that entry imports, and it does not install
-missing dependencies. The project then fails to compile. For example:
+**`upgrade` brings dependencies along.** New in the 3.0 CLI: when an entry is
+upgraded, the out-of-date components and lib modules it depends on are
+upgraded in the same run, and the ones your project does not have are
+installed. The run lists them, with the entry that needs each one, before it
+writes anything. So you can also upgrade one feature at a time:
 
-- `upgrade list-o2m` (or `list-m2m`, `vform`, `collection-form`) writes code
-  that imports `@/lib/buildpad/services/relational-ui-context` and
-  `./list-m2a/relational-slots`. The 2.6 services lib and `list-m2a` do not
-  have these files (TS2307).
-- `upgrade content-routes` writes a layout that imports
-  `CollectionsRelationalProvider`, which a 2.6 `collection-form` does not
-  export (TS2614).
+```bash
+npx @buildpad/cli@3 upgrade list-o2m --three-way
+```
 
-Run the plain `upgrade` shown above. If you already ran `upgrade <name>`, run
-the plain `upgrade` now to repair the project.
+That upgrades `list-o2m` and, with it, `collection-form`, `collection-list`,
+`list-m2a`, `vform`, the interfaces `vform` renders, and the `services`,
+`hooks` and `utils` lib modules. Entries that `list-o2m` does not depend on
+stay on 2.6 until you upgrade them.
+
+`--no-deps` turns this off and upgrades only the entries you name. Do not use
+it for the 3.0 upgrade: the project then fails to compile. For example,
+`upgrade list-o2m --no-deps` writes code that imports
+`@/lib/buildpad/services/relational-ui-context` and
+`./list-m2a/relational-slots`, which the 2.6 services lib and `list-m2a` do not
+have (TS2307). To repair such a project, run the upgrade again without
+`--no-deps`.
 
 If you edited a copied file, `--three-way` merges your edits with the new
 version. When the merge conflicts, the CLI keeps your file and writes the new
@@ -152,15 +159,15 @@ What you get without changing anything:
   the authenticated layout, the 3-way merge adds one import and one wrapper
   element. Keep them.
 - **`api-routes` now depends on `collection-form`**, because its layout imports
-  the provider. `add --with-api`, `add api-routes` and `bootstrap` install it.
-  A 2.6 project that has `api-routes` but not `collection-form` fails to
-  compile after the upgrade (TS2307 on
-  `@/components/ui/collections-relational-provider`). Add the component:
-  `npx @buildpad/cli@3 add collection-form`.
+  the provider. `add --with-api`, `add api-routes` and `bootstrap` install it,
+  and so does `upgrade`: a 2.6 project that has `api-routes` but not
+  `collection-form` gets the component installed when `api-routes` is
+  upgraded.
 - `collection-form` now depends on `collection-list` (it loads the picker
   lazily from `./collection-list`). If your project has `collection-form` but
-  not `collection-list`, the build fails on that import until you add it:
-  `npx @buildpad/cli@3 add collection-list`.
+  not `collection-list`, `upgrade` installs it with `collection-form`.
+- If you upgraded with `--no-deps`, neither is installed and the build fails
+  on those imports (TS2307). Run the upgrade again without `--no-deps`.
 
 What you must do:
 
@@ -188,10 +195,10 @@ What you must do:
   nested providers merge. `CollectionForm`, `VForm` and a bare
   `CollectionsRelationalProvider` only fill slots no provider above them
   chose, so your app-level choice is kept inside the scaffolded layouts.
-- **Upgrade the whole set together.** A new `list-o2m.tsx` with a 2.6
-  `collection-form.tsx` has no provider and shows the alert. A 2.6
-  `list-o2m.tsx` with a new `collection-form.tsx` keeps working (it still
-  imports from the barrel).
+- **Upgrade the whole set together** (`upgrade` does, unless you pass
+  `--no-deps`). A new `list-o2m.tsx` with a 2.6 `collection-form.tsx` has no
+  provider and shows the alert. A 2.6 `list-o2m.tsx` with a new
+  `collection-form.tsx` keeps working (it still imports from the barrel).
 - If you edited `list-o2m.tsx`, `list-m2m.tsx`, `list-m2a.tsx`,
   `list-m2a/JunctionItemForm.tsx`, `collection-form.tsx` or
   `vform/VForm.tsx`, expect a 3-way merge there. The changes are small: the
@@ -245,7 +252,7 @@ What changes in your copied files:
   maps and the multi-select id set are gone. The component name, the skeleton
   height and the csv handling now come from the interface manifest
   (`getRenderedInterfaceEntry`, `interfaceHasFlag(…, 'csvMultiValue')`), so
-  this file needs the 3.0 utils lib: upgrade the whole project.
+  this file needs the 3.0 utils lib, which `upgrade` brings with `vform`.
 - **`vform/components/FormGroupField.tsx`** imports `GroupDetail`,
   `GroupAccordion` and `GroupRaw` from their own files instead of the barrel.
 - If you edited `FormFieldInterface.tsx`, expect a 3-way merge. If you added

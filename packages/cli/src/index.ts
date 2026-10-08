@@ -153,11 +153,12 @@ program
 program
   .command('upgrade')
   .description('Upgrade installed components to the release this CLI ships against')
-  .argument('[components...]', 'Specific components to upgrade (default: all outdated)')
+  .argument('[components...]', 'Specific components to upgrade, with what they depend on (default: all outdated)')
   .option('--all', 'Upgrade every installed component')
   .option('--package <name>', 'Upgrade all components from a specific source package')
   .option('--design', 'Upgrade only the design-system module (tokens, globals, theme, app shell)')
   .option('--force', 'Re-sync every file even when upstream is unchanged (default target: all installed)')
+  .option('--no-deps', 'Upgrade only the selected entries; do not upgrade or install what they depend on')
   .option('-n, --dry-run', 'Show what would change without writing files')
   .option('-y, --yes', 'Shorthand for --strategy=overwrite')
   .option('--three-way', 'Shorthand for --strategy=three-way')
@@ -180,6 +181,7 @@ program
       package: options.package,
       design: options.design,
       force: options.force,
+      deps: options.deps,
       dryRun: options.dryRun,
       yes: options.yes,
       threeWay: options.threeWay,

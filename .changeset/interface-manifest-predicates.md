@@ -12,6 +12,6 @@
 - `JunctionItemForm` keeps any `presentation-*` alias field through `isPresentationLikeInterface()`.
 - `useRelationO2M`, `useRelationM2M` and `useRelationM2A` check the field through `isRelationListInterface()` (`one-to-many` is still accepted by `useRelationO2M`).
 
-These files import the predicates from the utils barrel (`@/lib/buildpad/utils`), so they need the 3.0 utils lib: upgrade the whole project.
+These files import the predicates from the utils barrel (`@/lib/buildpad/utils`), so they need the 3.0 utils lib, which the 3.0 `buildpad upgrade` brings along with them.
 
 The `hooks` lib module now declares `utils` in its `internalDependencies` (registry metadata only; no file moves). Its sources import `@buildpad/utils` directly, and until now `utils` was reachable only through `services`. Installing `hooks` behaves the same, because `services` already pulled `utils` in.

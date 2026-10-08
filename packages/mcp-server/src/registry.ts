@@ -44,6 +44,8 @@ export interface LibModule {
   sourceSha256?: string;
   dependencies?: string[];
   internalDependencies?: string[];
+  /** Components this lib module needs installed with it (a route module's pages, a layout's provider). */
+  registryDependencies?: string[];
   sourcePackage?: string;
 }
 

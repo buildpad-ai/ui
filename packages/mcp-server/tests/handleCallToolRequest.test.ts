@@ -392,9 +392,13 @@ describe('handleCallToolRequest — apply_upgrade', () => {
     expect(result.success).toBe(true);
     expect(result.stdout).toContain('upgraded');
     expect(result.cliVersion).toBe(MCP_VERSION);
+    // The MCP names every entry the CLI may touch (the named one and what it
+    // brings along) and passes --no-deps, so the CLI adds nothing by itself.
+    const { dependencyClosure } = await import('../src/upgrade.js');
+    const dependencies = dependencyClosure(['input'], getRegistry()).map(d => d.name);
     expect(spawnSyncMock).toHaveBeenCalledWith(
       'npx',
-      ['--yes', `@buildpad/cli@${MCP_VERSION}`, 'upgrade', '--cwd', tmpdir, '--strategy', 'new-file', '--', 'input'],
+      ['--yes', `@buildpad/cli@${MCP_VERSION}`, 'upgrade', '--cwd', tmpdir, '--strategy', 'new-file', '--no-deps', '--', 'input', ...dependencies],
       expect.objectContaining({ cwd: tmpdir }),
     );
   });
