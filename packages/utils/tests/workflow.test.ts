@@ -228,21 +228,52 @@ describe('parseWorkflowActionParameters', () => {
   it('hands the parser message to a caller that words the error itself', () => {
     const parsed = parseWorkflowActionParameters('{"a":2', (reason) => `JSON tidak valid: ${reason}`);
     if (parsed.valid) throw new Error('expected an invalid result');
+    expect(parsed.code).toBe('invalidJson');
     expect(parsed.reason).toMatch(/\S/);
     expect(parsed.error).toBe(`JSON tidak valid: ${parsed.reason}`);
+  });
+
+  // The parameters are spread into the emitted event, and the Go engine reads
+  // the stored document with `parameters` typed as an object: any other JSON
+  // there makes it refuse the whole definition ("Invalid workflow JSON
+  // structure: missing initial_state or states array").
+  it.each([['[]'], ['[1, 2]'], ['123'], ['"text"'], ['true'], ['null']])(
+    'refuses %s: valid JSON that is not an object',
+    (text) => {
+      const parsed = parseWorkflowActionParameters(text);
+      expect(parsed).toEqual({
+        valid: false,
+        code: 'notObject',
+        error: 'Parameters must be a JSON object',
+        reason: 'Parameters must be a JSON object',
+      });
+    },
+  );
+
+  it('tells a caller that words the error which of the two problems it is', () => {
+    const words = (reason: string, code: string) => `${code}|${reason}`;
+    expect(parseWorkflowActionParameters('[]', words)).toMatchObject({ error: 'notObject|Parameters must be a JSON object' });
+    expect(parseWorkflowActionParameters('{', words)).toMatchObject({ error: expect.stringMatching(/^invalidJson\|\S/) });
   });
 });
 
 describe('findWorkflowParameterErrors', () => {
   it('finds nothing while every Parameters text parses or is empty', () => {
     expect(findWorkflowParameterErrors({})).toEqual({});
-    expect(findWorkflowParameterErrors({ 0: '{\n  "a": 1\n}', 1: '', 2: '[]' })).toEqual({});
+    expect(findWorkflowParameterErrors({ 0: '{\n  "a": 1\n}', 1: '', 2: '{}' })).toEqual({});
   });
 
   it('reports valid parameters that were replaced by text that no longer parses', () => {
     // The lost edit: {"a":1} was typed and formatted, then changed to {"a":2 without the brace.
     const errors = findWorkflowParameterErrors({ 0: '{"a":2' });
     expect(errors[0]).toMatch(/invalid json/i);
+  });
+
+  it('reports parameters that are JSON but no object', () => {
+    expect(findWorkflowParameterErrors({ 0: '{"a":1}', 1: '[]', 2: '5' })).toEqual({
+      1: 'Parameters must be a JSON object',
+      2: 'Parameters must be a JSON object',
+    });
   });
 
   it('lists every failing action by its index, lowest first', () => {

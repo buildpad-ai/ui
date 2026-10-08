@@ -135,6 +135,7 @@ export {
   type WorkflowConnection,
   type WorkflowReconnectResult,
   type ParsedWorkflowActionParameters,
+  type WorkflowParametersProblemCode,
   type ParsedWorkflowFilterRule,
 } from '../workflow';
 

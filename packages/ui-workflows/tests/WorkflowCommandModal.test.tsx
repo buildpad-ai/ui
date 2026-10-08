@@ -251,6 +251,37 @@ describe('WorkflowCommandModal', () => {
       expect(parameters()).toHaveAttribute('aria-invalid', 'true');
     });
 
+    // The Go engine reads `parameters` as an object: an array or a number
+    // there makes it refuse the whole definition at save, with a message
+    // about initial_state and states
+    it.each([['[1, 2]'], ['123'], ['"text"'], ['null']])(
+      'Parameters that are valid JSON but no object (%s) are refused, and the stored parameters stay',
+      async (text) => {
+        const { onSave, onClose } = renderModal({ command: submit });
+        openTab('actions');
+        fireEvent.click(screen.getByText('Notify reviewers'));
+        const parameters = () => screen.getByTestId('workflow-command-action-parameters-0') as HTMLTextAreaElement;
+        fireEvent.change(parameters(), { target: { value: text } });
+        fireEvent.blur(parameters());
+        // Marked on blur, and not reformatted as if it were storable
+        expect(parameters()).toHaveAttribute('aria-invalid', 'true');
+        expect(parameters().value).toBe(text);
+
+        openTab('general');
+        save();
+
+        expect(onSave).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(tabSelected('actions')).toBe(true);
+        await waitFor(() => expect(screen.getByText('Parameters must be a JSON object')).toBeInTheDocument());
+
+        // An object in its place saves
+        fireEvent.change(parameters(), { target: { value: '{"subject": "Hi"}' } });
+        save();
+        expect(onSave.mock.calls[0][0].actions[0].parameters).toEqual({ subject: 'Hi' });
+      },
+    );
+
     it('marks invalid Parameters on blur, without a message yet', () => {
       renderModal({ command: submit });
       openTab('actions');

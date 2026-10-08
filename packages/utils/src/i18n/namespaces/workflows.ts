@@ -253,6 +253,8 @@ export interface WorkflowsTranslations {
       duplicateName: string;
       /** "Invalid JSON: {reason}" — `{reason}` is the parser's own message */
       invalidJson: string;
+      /** Parameters that are valid JSON but no object (an array, a number, text, null) */
+      parametersNotObject: string;
     };
   };
   assignmentsManager: {
@@ -598,6 +600,7 @@ export const workflowsDefaults: WorkflowsTranslations = {
       targetStateRequired: 'Target state is required',
       duplicateName: 'A command with this name already exists in this state',
       invalidJson: 'Invalid JSON: {reason}',
+      parametersNotObject: 'Parameters must be a JSON object',
     },
   },
   assignmentsManager: {
@@ -933,6 +936,7 @@ export const workflowsId: WorkflowsTranslations = {
       targetStateRequired: 'Status tujuan wajib diisi',
       duplicateName: 'Perintah dengan nama ini sudah ada di status ini',
       invalidJson: 'JSON tidak valid: {reason}',
+      parametersNotObject: 'Parameter harus berupa objek JSON',
     },
   },
   assignmentsManager: {

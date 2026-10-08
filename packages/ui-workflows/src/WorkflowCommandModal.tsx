@@ -29,6 +29,7 @@ import {
   parseWorkflowActionParameters,
   removeIndexed,
   type DeepPartial,
+  type WorkflowParametersProblemCode,
   type WorkflowsTranslations,
 } from '@buildpad/utils';
 import { WorkflowRichText } from './WorkflowRichText';
@@ -85,6 +86,8 @@ export interface WorkflowCommandModalProps {
  * - A refused save opens the tab that holds the failing field, and the action
  *   whose Parameters are not JSON; that text is marked and blocks the save
  *   instead of being dropped for the last parameters that did parse.
+ * - Parameters have to be a JSON object. The reference stored any JSON; an
+ *   array or a number there makes one backend refuse the whole definition.
  *
  * What differs from the reference, on purpose:
  *
@@ -211,8 +214,11 @@ export const WorkflowCommandModal: React.FC<WorkflowCommandModalProps> = ({
       label: s.isEndState ? interpolate(t.commandModal.general.endStateOption, { name: s.name }) : s.name,
     }));
 
-  const describeInvalidJson = (reason: string) =>
-    interpolate(t.commandModal.validation.invalidJson, { reason });
+  // Parameters that do not parse, or that parse to something that is no object
+  const describeParametersProblem = (reason: string, code: WorkflowParametersProblemCode) =>
+    code === 'notObject'
+      ? t.commandModal.validation.parametersNotObject
+      : interpolate(t.commandModal.validation.invalidJson, { reason });
 
   const handleAddAction = () => {
     const newIndex = actions.length;
@@ -248,7 +254,7 @@ export const WorkflowCommandModal: React.FC<WorkflowCommandModalProps> = ({
 
     const problem = findWorkflowCommandProblem(
       { name, nextState, siblingNames, parameterTexts: jsonTextValues },
-      describeInvalidJson,
+      describeParametersProblem,
     );
 
     if (problem) {
@@ -486,16 +492,16 @@ export const WorkflowCommandModal: React.FC<WorkflowCommandModalProps> = ({
                               setJsonTextValues((texts) => ({ ...texts, [index]: newValue }));
                               setParameterErrors((errors) => ({ ...errors, [index]: undefined }));
 
-                              // Update the actual parameters when the text parses
-                              // (an empty value is an empty object). Invalid JSON
-                              // is not reported yet: the user is still typing
+                              // Update the actual parameters when the text is a JSON
+                              // object (an empty value is an empty object). Anything
+                              // else is not reported yet: the user is still typing
                               const parsed = parseWorkflowActionParameters(newValue);
                               if (parsed.valid) {
                                 handleActionChange(index, 'parameters', parsed.parameters);
                               }
                             }}
                             onBlur={(e) => {
-                              // On blur, mark invalid JSON on the field and keep the text as is.
+                              // On blur, mark text that is no JSON object on the field and keep it as is.
                               // The message is left to Save: its extra line would move the
                               // buttons below the field out from under the click that took the focus
                               const text = e.currentTarget.value;

@@ -122,40 +122,68 @@ export function buildWorkflowCommand(
   };
 }
 
+/** Why an action's Parameters text cannot be stored. */
+export type WorkflowParametersProblemCode = 'invalidJson' | 'notObject';
+
 /** What an action's Parameters text holds: the parameters, or why it has none. */
 export type ParsedWorkflowActionParameters =
   | { valid: true; parameters: WorkflowActionParameters }
   | {
       valid: false;
+      /** `invalidJson`: the text does not parse. `notObject`: it parses, to something that is no object. */
+      code: WorkflowParametersProblemCode;
       /** The sentence the field shows */
       error: string;
-      /** The parser's own message, for a translated sentence */
+      /** The parser's own message (`invalidJson`), for a translated sentence */
       reason: string;
     };
 
-/** The English sentence for a Parameters text that does not parse. */
-function describeInvalidJson(reason: string): string {
-  return `Invalid JSON: ${reason}`;
+/** The English sentence for a Parameters text that cannot be stored. */
+function describeInvalidParameters(reason: string, code: WorkflowParametersProblemCode): string {
+  return code === 'notObject' ? reason : `Invalid JSON: ${reason}`;
 }
+
+const PARAMETERS_NOT_OBJECT = 'Parameters must be a JSON object';
 
 /**
  * Reads the text of an action's Parameters field. An empty field means no
- * parameters ({}); anything else has to parse as JSON. `describe` turns the
- * parser's message into the sentence to show (English by default).
+ * parameters ({}); anything else has to parse as JSON, to an object.
+ *
+ * Valid JSON is not enough. The parameters are spread into the event the
+ * action emits, where only an object has keys to add, and one backend reads
+ * the stored document with `parameters` typed as an object: an array, a
+ * number, text or `null` there makes it refuse the whole definition, with a
+ * message about `initial_state` and `states`.
+ *
+ * `describe` turns a problem into the sentence to show (English by default);
+ * it is given the parser's message and the problem's code.
  */
 export function parseWorkflowActionParameters(
   text: string | undefined,
-  describe: (reason: string) => string = describeInvalidJson,
+  describe: (reason: string, code: WorkflowParametersProblemCode) => string = describeInvalidParameters,
 ): ParsedWorkflowActionParameters {
   if (!text?.trim()) {
     return { valid: true, parameters: {} };
   }
+
+  let parsed: unknown;
   try {
-    return { valid: true, parameters: JSON.parse(text) };
+    parsed = JSON.parse(text);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    return { valid: false, error: describe(reason), reason };
+    return { valid: false, code: 'invalidJson', error: describe(reason, 'invalidJson'), reason };
   }
+
+  if (!isPlainObject(parsed)) {
+    return {
+      valid: false,
+      code: 'notObject',
+      error: describe(PARAMETERS_NOT_OBJECT, 'notObject'),
+      reason: PARAMETERS_NOT_OBJECT,
+    };
+  }
+
+  return { valid: true, parameters: parsed };
 }
 
 /**
@@ -164,7 +192,7 @@ export function parseWorkflowActionParameters(
  */
 export function findWorkflowParameterErrors(
   texts: Record<number, string>,
-  describe?: (reason: string) => string,
+  describe?: (reason: string, code: WorkflowParametersProblemCode) => string,
 ): Record<number, string> {
   const errors: Record<number, string> = {};
   Object.entries(texts).forEach(([key, text]) => {
@@ -231,7 +259,7 @@ export type WorkflowCommandProblem =
  */
 export function findWorkflowCommandProblem(
   form: WorkflowCommandCheck,
-  describe?: (reason: string) => string,
+  describe?: (reason: string, code: WorkflowParametersProblemCode) => string,
 ): WorkflowCommandProblem | null {
   const name = form.name.trim();
   if (!name) {
