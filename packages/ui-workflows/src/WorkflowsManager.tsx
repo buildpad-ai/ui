@@ -1,48 +1,25 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Badge, Box, Button, Center, Group, Loader, Stack, Text, Title } from '@mantine/core';
-import { useDebouncedValue } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconGitBranch, IconPlus } from '@tabler/icons-react';
-import {
-  DaaSRequestError,
-  readUrlIntParam,
-  readUrlParam,
-  useHydrated,
-  usePermissions,
-  useUrlListParams,
-  useWorkflowDefinitions,
-} from '@buildpad/hooks';
+import { useHydrated, usePermissions, useWorkflowDefinitions } from '@buildpad/hooks';
 import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
 import { WORKFLOW_DEFINITION_COLLECTION, type WorkflowDefinitionRecord } from '@buildpad/types';
 import { VTable } from '@buildpad/ui-table';
 import type { Header, HeaderRaw, Item } from '@buildpad/ui-table';
-import {
-  clampPage,
-  interpolate,
-  pageAfterRemoval,
-  type DeepPartial,
-  type WorkflowsTranslations,
-} from '@buildpad/utils';
+import { interpolate, pageAfterRemoval, type DeepPartial, type WorkflowsTranslations } from '@buildpad/utils';
 import { WorkflowDeleteConfirmModal } from './WorkflowDeleteConfirmModal';
 import { WorkflowListEmptyState } from './WorkflowListEmptyState';
 import { WorkflowListFooter } from './WorkflowListFooter';
 import { WorkflowPageState } from './WorkflowPageState';
 import { WorkflowRowActionsMenu } from './WorkflowRowActionsMenu';
 import { WorkflowSearchInput } from './WorkflowSearchInput';
+import { useWorkflowList } from './useWorkflowList';
 import './WorkflowManagerTable.css';
 
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-
-/** Why the list has no rows to show, when the reason is not "there are none". */
-type LoadFailure =
-  | {
-      kind: 'accessDenied';
-      /** The server's own sentence, when it says what to do (a second factor is required) */
-      description?: string;
-    }
-  | { kind: 'error'; message: string };
 
 export interface WorkflowsManagerProps {
   /** Called when a definition row is clicked, and by the row menu's Edit. */
@@ -151,38 +128,17 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
     [t],
   );
 
-  const [workflows, setWorkflows] = useState<WorkflowDefinitionRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [failure, setFailure] = useState<LoadFailure | null>(null);
-  const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
-  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
-  const [limit, setLimit] = useState(pageSize);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-
-  const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
-  const [debouncedSearch] = useDebouncedValue(search, 300);
-
-  // URL persistence — see useUrlListParams. Defaults serialize to null so they
-  // stay off the URL; Back/Forward and bridge rewrites flow back in below.
-  useUrlListParams({
-    enabled: urlParams,
-    params: {
-      [param('search')]: debouncedSearch || null,
-      [param('page')]: page > 1 ? String(page) : null,
-    },
-    onExternalChange: useCallback(
-      (get: (name: string) => string | null) => {
-        const nextSearch = get(param('search')) ?? '';
-        setSearch((current) => (current === nextSearch ? current : nextSearch));
-        const rawPage = get(param('page'));
-        const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
-        const nextPage = Number.isInteger(value) && value > 0 ? value : 1;
-        setPage((current) => (current === nextPage ? current : nextPage));
-      },
-      [param],
-    ),
+  // Search, paging, URL state and the load itself: the state the three list
+  // managers share
+  const list = useWorkflowList<WorkflowDefinitionRecord>({
+    fetchPage: fetchDefinitions,
+    pageSize,
+    pageSizeOptions,
+    urlParams,
+    urlParamPrefix,
+    loadFailedMessage: t.workflowsManager.notifications.loadFailed,
   });
+  const { rows: workflows, loading, failure, page, setPage, reload } = list;
 
   const [deleteModal, setDeleteModal] = useState<{ opened: boolean; id: string }>({
     opened: false,
@@ -192,73 +148,6 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
   // The state above disables the button on the next render; the ref refuses a
   // second click that arrives before that render.
   const deletingRef = useRef(false);
-
-  const sizeOptions = useMemo(() => {
-    return Array.from(new Set([...pageSizeOptions, pageSize])).sort((a, b) => a - b);
-  }, [pageSizeOptions, pageSize]);
-
-  // Only the answer to the latest request may be drawn: a slow answer to an
-  // earlier search must not replace the rows of a later one.
-  const requestRef = useRef(0);
-
-  const load = useCallback(async () => {
-    const request = ++requestRef.current;
-    setLoading(true);
-    try {
-      const result = await fetchDefinitions({
-        page,
-        limit,
-        search: debouncedSearch || undefined,
-      });
-      if (request !== requestRef.current) return;
-
-      // Rows can also go because someone else deleted them: a page past the
-      // end of the list is answered empty, so load the last page instead.
-      const lastPage = clampPage(page, result.totalPages);
-      if (lastPage !== page) {
-        setPage(lastPage);
-        return;
-      }
-
-      setWorkflows(result.items);
-      setTotalCount(result.total);
-      setTotalPages(result.totalPages);
-      setFailure(null);
-      setLoading(false);
-    } catch (err) {
-      if (request !== requestRef.current) return;
-      const message = err instanceof Error && err.message ? err.message : t.workflowsManager.notifications.loadFailed;
-      const kind = err instanceof DaaSRequestError ? err.kind : 'failure';
-      setWorkflows([]);
-      setTotalCount(0);
-      setTotalPages(1);
-      setLoading(false);
-      if (kind === 'forbidden' || kind === 'mfaRequired') {
-        setFailure({ kind: 'accessDenied', description: kind === 'mfaRequired' ? message : undefined });
-      } else {
-        setFailure({ kind: 'error', message });
-        notifications.show({ title: t.workflowsManager.notifications.loadFailed, message, color: 'red' });
-      }
-    }
-  }, [fetchDefinitions, page, limit, debouncedSearch, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  // Only on CHANGES — not mount, or a ?page= restored from the URL is clobbered.
-  // StrictMode-safe: compare against the previous values rather than "has
-  // mounted". StrictMode re-runs mount effects with refs intact, so a
-  // has-mounted flag fires setPage(1) on the second run and clobbers a
-  // ?page= restored from the URL in development.
-  const filtersKey = JSON.stringify([debouncedSearch, limit]);
-  const previousFiltersKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
-      setPage(1);
-    }
-    previousFiltersKeyRef.current = filtersKey;
-  }, [filtersKey]);
 
   const confirmDelete = useCallback(async () => {
     if (deletingRef.current) return;
@@ -276,7 +165,7 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
       // load the page before it. Changing the page reloads through the effect.
       const nextPage = pageAfterRemoval(page, workflows.length);
       if (nextPage === page) {
-        await load();
+        await reload();
       } else {
         setPage(nextPage);
       }
@@ -291,7 +180,7 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
       deletingRef.current = false;
       setDeleting(false);
     }
-  }, [deleteDefinition, deleteModal.id, load, page, workflows.length, t, common]);
+  }, [deleteDefinition, deleteModal.id, reload, page, setPage, workflows.length, t, common]);
 
   const addButton =
     createAllowed && onCreateWorkflow ? (
@@ -391,8 +280,8 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
         <Group className="bp-workflow-manager-toolbar" wrap="wrap">
           <WorkflowSearchInput
             placeholder={t.workflowsManager.searchPlaceholder}
-            value={search}
-            onChange={setSearch}
+            value={list.search}
+            onChange={list.setSearch}
             style={{ flex: 1, minWidth: 200, maxWidth: 360 }}
             data-testid="workflows-manager-search"
             translations={translations}
@@ -400,7 +289,7 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
           <Group gap="sm" style={{ marginLeft: 'auto' }}>
             {!failure && (
               <Badge variant="light" color="gray" size="lg" radius="sm" data-testid="workflows-manager-count">
-                {formatCount(totalCount, t.count.workflows)}
+                {formatCount(list.totalCount, t.count.workflows)}
               </Badge>
             )}
             {addButton}
@@ -418,7 +307,9 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
         {empty && !failure && (
           <WorkflowListEmptyState
             title={t.workflowsManager.emptyState.title}
-            hint={debouncedSearch ? t.workflowsManager.emptyState.search : t.workflowsManager.emptyState.pristine}
+            hint={
+              list.debouncedSearch ? t.workflowsManager.emptyState.search : t.workflowsManager.emptyState.pristine
+            }
             data-testid="workflows-manager-empty"
           />
         )}
@@ -437,14 +328,14 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
             renderFooter={() => (
               <WorkflowListFooter
                 shown={workflows.length}
-                totalCount={totalCount}
+                totalCount={list.totalCount}
                 itemsLabel={t.workflowsManager.itemsLabel}
                 page={page}
-                totalPages={totalPages}
+                totalPages={list.totalPages}
                 onPageChange={setPage}
-                limit={limit}
-                sizeOptions={sizeOptions}
-                onLimitChange={setLimit}
+                limit={list.limit}
+                sizeOptions={list.sizeOptions}
+                onLimitChange={list.setLimit}
                 data-testid="workflows-manager-page-size"
                 translations={translations}
               />

@@ -53,8 +53,8 @@ export interface WorkflowListState<T> {
 }
 
 /**
- * The state of a paged, searchable workflow list — what the assignments and
- * instances managers share, and the same behaviour `WorkflowsManager` has:
+ * The state of a paged, searchable workflow list — what the definitions,
+ * assignments and instances managers share:
  *
  * - search is debounced (300 ms) and, like a page-size change, returns to
  *   page 1;
