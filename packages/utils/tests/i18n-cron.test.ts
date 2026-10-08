@@ -61,7 +61,6 @@ describe('cron namespace', () => {
       cloned: 'Cloned',
       deleted: 'Deleted',
       triggered: 'Triggered',
-      notFound: 'Not found',
     });
   });
 

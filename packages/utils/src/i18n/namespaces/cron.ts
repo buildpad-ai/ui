@@ -88,7 +88,6 @@ export interface CronTranslations {
     triggered: string;
     /** A run that did not happen because the job was already running */
     runSkipped: string;
-    notFound: string;
   };
   searchInput: {
     clearAriaLabel: string;
@@ -317,7 +316,6 @@ export const cronDefaults: CronTranslations = {
     deleted: 'Deleted',
     triggered: 'Triggered',
     runSkipped: 'Already running',
-    notFound: 'Not found',
   },
   searchInput: {
     clearAriaLabel: 'Clear search',
@@ -513,7 +511,6 @@ export const cronId: CronTranslations = {
     deleted: 'Dihapus',
     triggered: 'Dijalankan',
     runSkipped: 'Sedang berjalan',
-    notFound: 'Tidak ditemukan',
   },
   searchInput: {
     clearAriaLabel: 'Bersihkan pencarian',
