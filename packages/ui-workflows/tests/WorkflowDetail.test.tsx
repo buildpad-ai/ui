@@ -568,6 +568,70 @@ describe('WorkflowDetail', () => {
     });
   });
 
+  // Both backends drop a column the caller's read grant withholds. A document
+  // that was not answered is not an empty machine: drawn as one, "Add your
+  // first state" and Save would replace the stored states, commands and gates.
+  describe('a definition answered without its document', () => {
+    const withheld = { id: mockWorkflow.id, name: mockWorkflow.name, description: mockWorkflow.description };
+    const formLoaded = () => waitFor(() => expect(nameInput().value).toBe('Article review'));
+
+    it('says the states and commands are withheld instead of drawing an empty machine', async () => {
+      mocks.getDefinition.mockResolvedValue(withheld);
+      renderDetail();
+      await formLoaded();
+
+      expect(screen.getByTestId('workflow-detail-document-withheld')).toHaveTextContent(
+        'Your access to this definition does not include its states and commands',
+      );
+      expect(screen.queryByTestId('workflow-diagram')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-diagram-empty')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-diagram-add-first-state')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-detail-diagram-hint')).not.toBeInTheDocument();
+      // No "0 states" either: the count is not known
+      expect(screen.queryByTestId('workflow-detail-stat-states')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-detail-states-overview')).not.toBeInTheDocument();
+    });
+
+    it('still saves the name and the description, and never sends a document', async () => {
+      mocks.getDefinition.mockResolvedValue(withheld);
+      const { onSaved } = renderDetail();
+      await formLoaded();
+      expect(saveButton()).toBeDisabled();
+
+      fireEvent.change(nameInput(), { target: { value: 'Article review v2' } });
+      fireEvent.click(saveButton());
+
+      await waitFor(() => expect(mocks.updateDefinition).toHaveBeenCalledTimes(1));
+      expect(mocks.updateDefinition).toHaveBeenCalledWith(mockWorkflow.id, { name: 'Article review v2' });
+      await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+      // The saved record is not handed an empty machine it never had
+      expect(onSaved.mock.calls[0][0]).toEqual({ ...withheld, name: 'Article review v2' });
+      expect(screen.getByTestId('workflow-detail-document-withheld')).toBeInTheDocument();
+    });
+
+    it('still requires a name', async () => {
+      mocks.getDefinition.mockResolvedValue(withheld);
+      renderDetail();
+      await formLoaded();
+
+      fireEvent.change(nameInput(), { target: { value: '  ' } });
+      fireEvent.click(saveButton());
+
+      expect(show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Workflow name is required' }));
+      expect(mocks.updateDefinition).not.toHaveBeenCalled();
+    });
+
+    it('a stored document that is empty is still an empty machine to add to', async () => {
+      mocks.getDefinition.mockResolvedValue({ ...withheld, workflow_json: { initial_state: '', states: [] } });
+      renderDetail();
+      await formLoaded();
+
+      expect(screen.queryByTestId('workflow-detail-document-withheld')).not.toBeInTheDocument();
+      expect(screen.getByTestId('workflow-diagram-add-first-state')).toBeInTheDocument();
+      expect(screen.getByTestId('workflow-detail-stat-states')).toHaveTextContent('0');
+    });
+  });
+
   describe('read-only', () => {
     it('a user who may read but not update gets the definition with nothing to change', async () => {
       grant(['read']);

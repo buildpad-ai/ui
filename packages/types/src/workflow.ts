@@ -167,8 +167,12 @@ export interface WorkflowDefinitionRecord {
 
   description?: string | null;
 
-  /** The state machine */
-  workflow_json: WorkflowJson;
+  /**
+   * The state machine. Absent when the caller's grant withholds the column —
+   * which is not "no states yet": an editor that did not receive the document
+   * must not draw an empty one, and must not send one back.
+   */
+  workflow_json?: WorkflowJson;
 
   date_created?: string | null;
   date_updated?: string | null;

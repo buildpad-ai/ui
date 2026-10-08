@@ -142,6 +142,11 @@ export interface WorkflowDetailProps {
  *   form with no Save button.
  * - An update sends only the keys that changed, and Save Changes is disabled
  *   while there is nothing to save.
+ * - A definition answered without its `workflow_json` (the caller's grant
+ *   withholds the column) says so in place of the statistics and the diagram.
+ *   It is not an empty machine: drawn as one, a state added to it and saved
+ *   would replace the stored document. The name and the description can
+ *   still be edited, and the document is never sent.
  */
 export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   id,
@@ -170,6 +175,9 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   const viewOnly = readOnly || !saveAllowed;
 
   const [record, setRecord] = useState<WorkflowDefinitionRecord | null>(null);
+  // The definition was answered without its document: the caller's grant
+  // withholds the column, which is not the same as a machine without states
+  const documentWithheld = !isNew && record !== null && record.workflow_json === undefined;
   const [loading, setLoading] = useState(!isNew);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
   const [saving, setSaving] = useState(false);
@@ -257,8 +265,9 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   const handleSave = useCallback(async () => {
     if (savingRef.current || viewOnly) return;
 
+    // A document the editor was not given has no states to check, and is not sent
     const problem = findWorkflowDefinitionProblem(form);
-    if (problem) {
+    if (problem && (problem.code === 'nameRequired' || !documentWithheld)) {
       notifications.show({
         title: t.validationErrorTitle,
         message: t.workflowDetail.validation[problem.code],
@@ -284,7 +293,11 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
         const edits: WorkflowDefinitionUpdate = {};
         if (form.name !== initial.name) edits.name = form.name;
         if (form.description !== initial.description) edits.description = description;
-        if (JSON.stringify(form.workflow_json) !== JSON.stringify(initial.workflow_json)) {
+        // Never a document the editor was not given: it would replace the stored one
+        if (
+          !documentWithheld &&
+          JSON.stringify(form.workflow_json) !== JSON.stringify(initial.workflow_json)
+        ) {
           edits.workflow_json = form.workflow_json;
         }
         await updateDefinition(id, edits);
@@ -303,7 +316,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
         id: savedId,
         name: form.name,
         description,
-        workflow_json: form.workflow_json,
+        ...(documentWithheld ? {} : { workflow_json: form.workflow_json }),
       };
       if (!isNew) setRecord(saved);
       onSaved?.(saved);
@@ -317,7 +330,20 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
       savingRef.current = false;
       setSaving(false);
     }
-  }, [viewOnly, form, initial, id, isNew, record, createDefinition, updateDefinition, onSaved, t, common]);
+  }, [
+    viewOnly,
+    form,
+    initial,
+    id,
+    isNew,
+    record,
+    documentWithheld,
+    createDefinition,
+    updateDefinition,
+    onSaved,
+    t,
+    common,
+  ]);
 
   const handleWorkflowJsonChange = useCallback((workflowJson: WorkflowJson) => {
     setForm((prev) => ({ ...prev, workflow_json: workflowJson }));
@@ -505,39 +531,41 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
                   data-testid="workflow-detail-description"
                 />
 
-                <Box>
-                  <Text size="sm" fw={500} mb="xs">
-                    {t.workflowDetail.statistics.title}
-                  </Text>
-                  <Group gap="md">
-                    <Box>
-                      <Text size="xs" c="dimmed">
-                        {t.workflowDetail.statistics.states}
-                      </Text>
-                      <Text fw={500} data-testid="workflow-detail-stat-states">
-                        {workflowJson.states.length}
-                      </Text>
-                    </Box>
-                    <Box>
-                      <Text size="xs" c="dimmed">
-                        {t.workflowDetail.statistics.commands}
-                      </Text>
-                      <Text fw={500} data-testid="workflow-detail-stat-commands">
-                        {commandCount}
-                      </Text>
-                    </Box>
-                    <Box>
-                      <Text size="xs" c="dimmed">
-                        {t.workflowDetail.statistics.initialState}
-                      </Text>
-                      <Badge variant="light" color="green" data-testid="workflow-detail-stat-initial">
-                        {workflowJson.initial_state || t.workflowDetail.statistics.notSet}
-                      </Badge>
-                    </Box>
-                  </Group>
-                </Box>
+                {!documentWithheld && (
+                  <Box>
+                    <Text size="sm" fw={500} mb="xs">
+                      {t.workflowDetail.statistics.title}
+                    </Text>
+                    <Group gap="md">
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          {t.workflowDetail.statistics.states}
+                        </Text>
+                        <Text fw={500} data-testid="workflow-detail-stat-states">
+                          {workflowJson.states.length}
+                        </Text>
+                      </Box>
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          {t.workflowDetail.statistics.commands}
+                        </Text>
+                        <Text fw={500} data-testid="workflow-detail-stat-commands">
+                          {commandCount}
+                        </Text>
+                      </Box>
+                      <Box>
+                        <Text size="xs" c="dimmed">
+                          {t.workflowDetail.statistics.initialState}
+                        </Text>
+                        <Badge variant="light" color="green" data-testid="workflow-detail-stat-initial">
+                          {workflowJson.initial_state || t.workflowDetail.statistics.notSet}
+                        </Badge>
+                      </Box>
+                    </Group>
+                  </Box>
+                )}
 
-                {workflowJson.states.length > 0 && (
+                {!documentWithheld && workflowJson.states.length > 0 && (
                   <Box data-testid="workflow-detail-states-overview">
                     <Text size="sm" fw={500} mb="xs">
                       {t.workflowDetail.statesOverview.title}
@@ -581,25 +609,32 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
               <Stack gap="md">
                 <Group justify="space-between">
                   <Title order={4}>{t.workflowDetail.diagramTitle}</Title>
-                  {!viewOnly && (
+                  {!viewOnly && !documentWithheld && (
                     <Text size="sm" c="dimmed" data-testid="workflow-detail-diagram-hint">
                       {t.workflowDetail.diagramHint}
                     </Text>
                   )}
                 </Group>
 
-                <WorkflowDiagram
-                  workflowJson={workflowJson}
-                  onChange={handleWorkflowJsonChange}
-                  onEditState={handleEditState}
-                  onAddState={handleAddState}
-                  onEditCommand={handleEditCommand}
-                  onAddCommand={handleAddCommand}
-                  readOnly={viewOnly}
-                  height={diagramHeight}
-                  hideAttribution={hideAttribution}
-                  translations={translations}
-                />
+                {documentWithheld ? (
+                  // No canvas at all: an empty one offers "Add your first state"
+                  <Text size="sm" c="dimmed" role="note" data-testid="workflow-detail-document-withheld">
+                    {t.workflowDetail.documentWithheld}
+                  </Text>
+                ) : (
+                  <WorkflowDiagram
+                    workflowJson={workflowJson}
+                    onChange={handleWorkflowJsonChange}
+                    onEditState={handleEditState}
+                    onAddState={handleAddState}
+                    onEditCommand={handleEditCommand}
+                    onAddCommand={handleAddCommand}
+                    readOnly={viewOnly}
+                    height={diagramHeight}
+                    hideAttribution={hideAttribution}
+                    translations={translations}
+                  />
+                )}
               </Stack>
             </Paper>
           </Grid.Col>

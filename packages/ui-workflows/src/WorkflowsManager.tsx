@@ -323,7 +323,10 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
             </Badge>
           );
         case 'states':
-          return <Text size="sm">{workflow.workflow_json?.states?.length ?? 0}</Text>;
+          // Absent is "withheld by the caller's grant", which is not "no states"
+          return (
+            <Text size="sm">{workflow.workflow_json?.states?.length ?? t.workflowsManager.emptyValue}</Text>
+          );
         case 'description':
           return (
             <Text size="sm" c="dimmed" lineClamp={1}>

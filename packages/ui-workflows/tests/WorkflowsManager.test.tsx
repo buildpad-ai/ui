@@ -116,6 +116,22 @@ describe('WorkflowsManager', () => {
       expect(fetchDefinitionsMock).toHaveBeenCalledWith({ page: 1, limit: 25, search: undefined });
     });
 
+    it('marks the states of a definition answered without its document, instead of counting 0', async () => {
+      // Both backends drop a column the caller's read grant withholds
+      const { workflow_json: _withheld, ...bare } = mockWorkflows[0];
+      fetchDefinitionsMock.mockResolvedValue(pageOf([bare, { ...mockWorkflows[1], workflow_json: { initial_state: '', states: [] } }]));
+      renderManager();
+      await waitFor(() => expect(screen.getByText('Article review')).toBeInTheDocument());
+
+      const cells = (name: string) =>
+        Array.from((screen.getByText(name).closest('tr') as HTMLElement).querySelectorAll('td')).map(
+          (cell) => cell.textContent,
+        );
+      // name, initial state, states, description
+      expect(cells('Article review').slice(1, 4)).toEqual(['Article review', '-', '-']);
+      expect(cells('Support ticket').slice(1, 4)).toEqual(['Support ticket', '-', '0']);
+    });
+
     it('counts one workflow in the singular', async () => {
       fetchDefinitionsMock.mockResolvedValue(pageOf(mockWorkflows.slice(0, 1)));
       renderManager();

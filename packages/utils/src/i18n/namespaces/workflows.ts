@@ -128,6 +128,8 @@ export interface WorkflowsTranslations {
     diagramTitle: string;
     /** How to work the diagram, parts joined by "•" */
     diagramHint: string;
+    /** Shown in place of the diagram when the caller's grant withholds `workflow_json` */
+    documentWithheld: string;
     validation: {
       nameRequired: string;
       noStates: string;
@@ -485,6 +487,8 @@ export const workflowsDefaults: WorkflowsTranslations = {
     },
     diagramTitle: 'State Diagram',
     diagramHint: 'Drag states to reposition • Edit a state from its menu • Click a command to edit it',
+    documentWithheld:
+      'Your access to this definition does not include its states and commands, so they are not shown and cannot be changed here.',
     validation: {
       nameRequired: 'Workflow name is required',
       noStates: 'Please add at least one state to the workflow',
@@ -818,6 +822,8 @@ export const workflowsId: WorkflowsTranslations = {
     diagramTitle: 'Diagram Status',
     diagramHint:
       'Seret status untuk memindahkannya • Ubah status dari menunya • Klik perintah untuk mengubahnya',
+    documentWithheld:
+      'Akses Anda ke definisi ini tidak mencakup status dan perintahnya, sehingga keduanya tidak ditampilkan dan tidak dapat diubah di sini.',
     validation: {
       nameRequired: 'Nama alur kerja wajib diisi',
       noStates: 'Tambahkan setidaknya satu status ke alur kerja',

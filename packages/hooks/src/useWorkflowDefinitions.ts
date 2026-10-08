@@ -30,8 +30,17 @@ const ALL_MAX_PAGES = 100;
 
 const NOT_FOUND = 'Workflow definition not found';
 
-/** A definition row with its document in the shape the editor can walk. */
+/**
+ * A definition row with its document in the shape the editor can walk.
+ *
+ * A row answered without the key is left without one. Both backends drop a
+ * column the caller's grant withholds, and an empty machine in its place
+ * would read as "no states yet": the editor would draw a blank canvas, and a
+ * save from it would replace the stored document, every command's gate
+ * included.
+ */
 function readDefinition(row: WorkflowDefinitionRecord): WorkflowDefinitionRecord {
+  if (row.workflow_json === undefined) return row;
   return { ...row, workflow_json: normalizeWorkflowJson(row.workflow_json) };
 }
 

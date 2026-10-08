@@ -144,14 +144,38 @@ describe('useWorkflowDefinitions.fetchDefinitions', () => {
       out = await result.current.fetchDefinitions();
     });
 
-    expect(out?.items[0].workflow_json.states[0].commands[0]).toEqual({
+    expect(out?.items[0].workflow_json?.states[0].commands[0]).toEqual({
       name: 'Go',
       next_state: 'B',
       actions: [],
       policies: [],
     });
-    // A row whose grant withholds the document still has one to read.
-    expect(out?.items[1].workflow_json).toEqual({ initial_state: '', states: [] });
+    // A row whose grant withholds the document is not given an empty one:
+    // "withheld" must stay tellable from "no states yet".
+    expect(out?.items[1]).toEqual({ id: 'd2', name: 'Bare' });
+    expect('workflow_json' in (out?.items[1] ?? {})).toBe(false);
+  });
+
+  it('reads a stored document that is null or not a document as an empty machine', async () => {
+    apiRequestMock.mockResolvedValueOnce({
+      data: [
+        { id: 'd3', name: 'Null', workflow_json: null },
+        { id: 'd4', name: 'Text', workflow_json: 'not json' },
+      ],
+      count: 2,
+      totalPages: 1,
+    });
+    const { result } = renderHook(() => useWorkflowDefinitions());
+
+    let out: Awaited<ReturnType<typeof result.current.fetchDefinitions>> | undefined;
+    await act(async () => {
+      out = await result.current.fetchDefinitions();
+    });
+
+    expect(out?.items.map((row) => row.workflow_json)).toEqual([
+      { initial_state: '', states: [] },
+      { initial_state: '', states: [] },
+    ]);
   });
 
   it('rejects a failed load instead of resolving to an empty list', async () => {
@@ -292,6 +316,20 @@ describe('useWorkflowDefinitions.getDefinition', () => {
 
     expect(lastPath()).toBe('/api/workflows/d1');
     expect(out?.workflow_json).toEqual({ initial_state: 'Draft', states: [{ name: 'Draft', commands: [] }] });
+  });
+
+  // Both backends drop a column the caller's read grant withholds
+  it('leaves a definition answered without its document without one', async () => {
+    apiRequestMock.mockResolvedValueOnce({ data: { id: 'd1', name: 'Review flow', description: null } });
+    const { result } = renderHook(() => useWorkflowDefinitions());
+
+    let out: Awaited<ReturnType<typeof result.current.getDefinition>> | undefined;
+    await act(async () => {
+      out = await result.current.getDefinition('d1');
+    });
+
+    expect(out).toEqual({ id: 'd1', name: 'Review flow', description: null });
+    expect(out?.workflow_json).toBeUndefined();
   });
 
   it('escapes the id in the path', async () => {
