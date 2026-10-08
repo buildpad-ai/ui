@@ -50,6 +50,8 @@ describe('toInstallSpec', () => {
     expect(toInstallSpec('@tiptap/extension-table')).toBe('"@tiptap/extension-table@^3.31.4"');
     expect(toInstallSpec('tiptap-markdown')).toBe('"tiptap-markdown@^0.9.0"');
     expect(toInstallSpec('marked')).toBe('"marked@^16.4.2"');
+    // workflow-management's diagram library, pinned to the 12.x line it is built on.
+    expect(toInstallSpec('@xyflow/react')).toBe('"@xyflow/react@^12.9.3"');
   });
 
   test('leaves unknown deps bare', () => {

@@ -26,6 +26,7 @@ const meta: MetaRecord = {
   files: 'Files Module Recipe',
   forms: 'Forms Module Recipe',
   users: 'Users Module Recipe',
+  workflows: 'Workflows Module Recipe',
   testing: 'Testing Guide',
 };
 

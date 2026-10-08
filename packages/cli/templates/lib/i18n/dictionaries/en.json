@@ -25,8 +25,12 @@
       "policies": "Policies",
       "moduleAccessKeys": "Module Access Keys",
       "forms": "Forms",
+      "workflows": "Workflows",
+      "workflowAssignments": "Workflow Assignments",
+      "workflowInstances": "Workflow Instances",
       "mainMenu": "Main Menu",
-      "administration": "Administration"
+      "administration": "Administration",
+      "automation": "Automation"
     },
     "shell": {
       "workspace": "Workspace",

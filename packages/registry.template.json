@@ -75,6 +75,9 @@
       "maplibre-gl",
       "@mapbox/mapbox-gl-draw"
     ],
+    "diagram": [
+      "@xyflow/react"
+    ],
     "supabase": [
       "@supabase/ssr@^0.5",
       "@supabase/supabase-js@^2"
@@ -133,6 +136,14 @@
           "target": "lib/buildpad/interface-manifest.ts"
         },
         {
+          "source": "utils/src/workflow.ts",
+          "target": "lib/buildpad/workflow.ts"
+        },
+        {
+          "source": "utils/src/list-page.ts",
+          "target": "lib/buildpad/list-page.ts"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts"
         },
@@ -163,6 +174,10 @@
         {
           "source": "utils/src/i18n/namespaces/users.ts",
           "target": "lib/buildpad/i18n/namespaces/users.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/workflows.ts",
+          "target": "lib/buildpad/i18n/namespaces/workflows.ts"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -406,6 +421,10 @@
           "target": "lib/buildpad/types/users.ts"
         },
         {
+          "source": "types/src/workflow.ts",
+          "target": "lib/buildpad/types/workflow.ts"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts"
         }
@@ -606,6 +625,10 @@
           "target": "lib/buildpad/hooks/parseDaaSError.ts"
         },
         {
+          "source": "hooks/src/daasRequest.ts",
+          "target": "lib/buildpad/hooks/daasRequest.ts"
+        },
+        {
           "source": "hooks/src/useUsers.ts",
           "target": "lib/buildpad/hooks/useUsers.ts"
         },
@@ -620,6 +643,18 @@
         {
           "source": "hooks/src/useAccess.ts",
           "target": "lib/buildpad/hooks/useAccess.ts"
+        },
+        {
+          "source": "hooks/src/useWorkflowDefinitions.ts",
+          "target": "lib/buildpad/hooks/useWorkflowDefinitions.ts"
+        },
+        {
+          "source": "hooks/src/useWorkflowAssignments.ts",
+          "target": "lib/buildpad/hooks/useWorkflowAssignments.ts"
+        },
+        {
+          "source": "hooks/src/useWorkflowInstances.ts",
+          "target": "lib/buildpad/hooks/useWorkflowInstances.ts"
         },
         {
           "source": "hooks/src/useUrlListParams.ts",
@@ -964,6 +999,69 @@
           "href": "/forms",
           "icon": "IconForms",
           "labelKey": "app.nav.forms"
+        }
+      ]
+    },
+    "workflows-routes": {
+      "name": "workflows-routes",
+      "description": "Workflow administration module pages \u2014 /workflows, /workflows/[id], /workflow-assignments, /workflow-assignments/[id], /workflow-instances, /workflow-instances/[id] (definitions list + editor, assignments list + form, read-only instances list + detail). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the workflow-management component.",
+      "files": [
+        {
+          "source": "cli/templates/app/workflows/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflows/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/workflows/[id]/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflows/[id]/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/workflow-assignments/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflow-assignments/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/workflow-assignments/[id]/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflow-assignments/[id]/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/workflow-instances/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflow-instances/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/workflow-instances/[id]/page.tsx",
+          "target": "app/[lang]/(authenticated)/workflow-instances/[id]/page.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "workflow-management"
+      ],
+      "navItems": [
+        {
+          "label": "Workflows",
+          "href": "/workflows",
+          "icon": "IconGitBranch",
+          "section": "Automation",
+          "labelKey": "app.nav.workflows",
+          "sectionKey": "app.nav.automation"
+        },
+        {
+          "label": "Workflow Assignments",
+          "href": "/workflow-assignments",
+          "icon": "IconLink",
+          "section": "Automation",
+          "labelKey": "app.nav.workflowAssignments",
+          "sectionKey": "app.nav.automation"
+        },
+        {
+          "label": "Workflow Instances",
+          "href": "/workflow-instances",
+          "icon": "IconListCheck",
+          "section": "Automation",
+          "labelKey": "app.nav.workflowInstances",
+          "sectionKey": "app.nav.automation"
         }
       ]
     },
@@ -3310,6 +3408,119 @@
       "registryDependencies": [
         "collection-form",
         "filter-panel"
+      ]
+    },
+    {
+      "name": "workflow-management",
+      "title": "WorkflowManagement",
+      "excludeFromAll": true,
+      "description": "Workflow administration \u2014 the definitions list and the definition editor with its state diagram (states, commands, the policies and actions of a command), the assignments list and form (which workflow runs on which collection, with an optional filter rule), and the read-only instances list and detail with the transition history. Composes the useWorkflowDefinitions/useWorkflowAssignments/useWorkflowInstances hooks; the diagram is drawn with @xyflow/react.",
+      "category": "workflow",
+      "files": [
+        {
+          "source": "ui-workflows/src/WorkflowsManager.tsx",
+          "target": "components/ui/workflow-management/workflows-manager.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowDetail.tsx",
+          "target": "components/ui/workflow-management/workflow-detail.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowDiagram.tsx",
+          "target": "components/ui/workflow-management/workflow-diagram.tsx"
+        },
+        {
+          "source": "ui-workflows/src/workflowDiagramModel.ts",
+          "target": "components/ui/workflow-management/workflow-diagram-model.ts"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowStateModal.tsx",
+          "target": "components/ui/workflow-management/workflow-state-modal.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowCommandModal.tsx",
+          "target": "components/ui/workflow-management/workflow-command-modal.tsx"
+        },
+        {
+          "source": "ui-workflows/src/workflowPolicies.ts",
+          "target": "components/ui/workflow-management/workflow-policies.ts"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowAssignmentsManager.tsx",
+          "target": "components/ui/workflow-management/workflow-assignments-manager.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowAssignmentDetail.tsx",
+          "target": "components/ui/workflow-management/workflow-assignment-detail.tsx"
+        },
+        {
+          "source": "ui-workflows/src/workflowAssignmentOptions.ts",
+          "target": "components/ui/workflow-management/workflow-assignment-options.ts"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowInstancesManager.tsx",
+          "target": "components/ui/workflow-management/workflow-instances-manager.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowInstanceDetail.tsx",
+          "target": "components/ui/workflow-management/workflow-instance-detail.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowManagerTable.css",
+          "target": "components/ui/workflow-management/workflow-manager-table.css"
+        },
+        {
+          "source": "ui-workflows/src/useWorkflowList.ts",
+          "target": "components/ui/workflow-management/use-workflow-list.ts"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowPageState.tsx",
+          "target": "components/ui/workflow-management/workflow-page-state.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowRichText.tsx",
+          "target": "components/ui/workflow-management/workflow-rich-text.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowSearchInput.tsx",
+          "target": "components/ui/workflow-management/workflow-search-input.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowListFooter.tsx",
+          "target": "components/ui/workflow-management/workflow-list-footer.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowListEmptyState.tsx",
+          "target": "components/ui/workflow-management/workflow-list-empty-state.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowRowActionsMenu.tsx",
+          "target": "components/ui/workflow-management/workflow-row-actions-menu.tsx"
+        },
+        {
+          "source": "ui-workflows/src/WorkflowDeleteConfirmModal.tsx",
+          "target": "components/ui/workflow-management/workflow-delete-confirm-modal.tsx"
+        },
+        {
+          "source": "ui-workflows/src/index.ts",
+          "target": "components/ui/workflow-management/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@tabler/icons-react",
+        "@xyflow/react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services",
+        "utils"
+      ],
+      "registryDependencies": [
+        "vtable"
       ]
     }
   ],

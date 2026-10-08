@@ -25,6 +25,7 @@ import type { InterfacesTranslations } from './namespaces/interfaces';
 import type { CollectionsTranslations } from './namespaces/collections';
 import type { FilesTranslations } from './namespaces/files';
 import type { UsersTranslations } from './namespaces/users';
+import type { WorkflowsTranslations } from './namespaces/workflows';
 import type { FormsTranslations } from './namespaces/forms';
 import type { HooksTranslations } from './namespaces/hooks';
 
@@ -36,6 +37,7 @@ export type * from './namespaces/interfaces';
 export type { CollectionsTranslations } from './namespaces/collections';
 export type { FilesTranslations } from './namespaces/files';
 export type { UsersTranslations } from './namespaces/users';
+export type { WorkflowsTranslations } from './namespaces/workflows';
 export type { FormsTranslations } from './namespaces/forms';
 export type { HooksTranslations, HooksRelationsTranslations } from './namespaces/hooks';
 
@@ -47,6 +49,7 @@ export interface BuildpadTranslations {
   collections: CollectionsTranslations;
   files: FilesTranslations;
   users: UsersTranslations;
+  workflows: WorkflowsTranslations;
   forms: FormsTranslations;
   hooks: HooksTranslations;
 }

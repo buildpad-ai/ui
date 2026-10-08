@@ -15,6 +15,7 @@ import { interfacesDefaults } from './namespaces/interfaces';
 import { collectionsDefaults } from './namespaces/collections';
 import { filesDefaults } from './namespaces/files';
 import { usersDefaults } from './namespaces/users';
+import { workflowsDefaults } from './namespaces/workflows';
 import { formsDefaults } from './namespaces/forms';
 import { hooksDefaults } from './namespaces/hooks';
 
@@ -26,6 +27,7 @@ export const defaultTranslations: BuildpadTranslations = {
   collections: collectionsDefaults,
   files: filesDefaults,
   users: usersDefaults,
+  workflows: workflowsDefaults,
   forms: formsDefaults,
   hooks: hooksDefaults,
 };

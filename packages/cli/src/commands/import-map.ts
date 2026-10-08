@@ -70,6 +70,12 @@ export const BUILDPAD_PACKAGES: Readonly<Record<string, PackageTarget>> = {
   '@buildpad/ui-files': { folder: 'ui-files', alias: 'components', root: 'file-manager', subpaths: 'kebab' },
   '@buildpad/ui-users': { folder: 'ui-users', alias: 'components', root: 'users-management', subpaths: 'kebab' },
   '@buildpad/ui-forms': { folder: 'ui-forms', alias: 'components', root: 'form-builder', subpaths: 'kebab' },
+  '@buildpad/ui-workflows': {
+    folder: 'ui-workflows',
+    alias: 'components',
+    root: 'workflow-management',
+    subpaths: 'kebab',
+  },
 };
 
 /**

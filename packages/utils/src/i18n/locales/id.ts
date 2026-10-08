@@ -14,6 +14,7 @@ import { interfacesId } from '../namespaces/interfaces';
 import { collectionsId } from '../namespaces/collections';
 import { filesId } from '../namespaces/files';
 import { usersId } from '../namespaces/users';
+import { workflowsId } from '../namespaces/workflows';
 import { formsId } from '../namespaces/forms';
 import { hooksId } from '../namespaces/hooks';
 
@@ -25,6 +26,7 @@ export const id: BuildpadTranslations = {
   collections: collectionsId,
   files: filesId,
   users: usersId,
+  workflows: workflowsId,
   forms: formsId,
   hooks: hooksId,
 };
