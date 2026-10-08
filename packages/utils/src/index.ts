@@ -105,6 +105,36 @@ export {
   type ProvisionableInterfaceGroup,
 } from './interface-catalog';
 
+// Workflow definition editor + assignment form logic (pure)
+export {
+  normalizeWorkflowJson,
+  buildWorkflowCommand,
+  buildWorkflowState,
+  parseWorkflowActionParameters,
+  findWorkflowParameterErrors,
+  removeIndexed,
+  findWorkflowCommandProblem,
+  findWorkflowStateProblem,
+  findWorkflowDefinitionProblem,
+  applyWorkflowStateSave,
+  applyWorkflowCommandSave,
+  isWorkflowFilterRule,
+  parseWorkflowFilterRule,
+  type WorkflowCommandForm,
+  type WorkflowCommandCheck,
+  type WorkflowCommandProblem,
+  type WorkflowStateForm,
+  type WorkflowStateCheck,
+  type WorkflowStateProblem,
+  type WorkflowStateSave,
+  type WorkflowDefinitionProblem,
+  type ParsedWorkflowActionParameters,
+  type ParsedWorkflowFilterRule,
+} from './workflow';
+
+// Page arithmetic for paged lists
+export { clampPage, pageAfterRemoval } from './list-page';
+
 // Component i18n core: dictionary shape, English defaults, bundled locales,
 // merge / interpolate / plural helpers. The React provider and hooks live in
 // @buildpad/services (re-exported by @buildpad/hooks).
