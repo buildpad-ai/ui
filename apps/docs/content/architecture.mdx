@@ -31,6 +31,7 @@ The source layer contains all the packages in the monorepo:
 | `@buildpad/ui-files` | FileManager + FileDetail — upload, folders, preview, bulk actions ([recipe](/files)) |
 | `@buildpad/ui-forms` | Visual FormBuilder + DynamicForm runtime — the Dynamic Form Builder module ([recipe](/forms)) |
 | `@buildpad/ui-users` | Users/roles/policies admin — RBAC management with a permissions matrix ([recipe](/users)) |
+| `@buildpad/ui-workflows` | Workflow admin — definitions with a state diagram editor, assignments, read-only instances ([recipe](/workflows)) |
 
 ### UI layers
 
@@ -42,7 +43,7 @@ grouping organizes the Storybook landing page:
 | **Field Interfaces** | `ui-interfaces` | Schema-mapped primitives — one component per field type |
 | **Renderers** | `ui-form` (VForm), `ui-table` (VTable) | Turn a collection schema into a form or table |
 | **Composition** | `ui-collections` | CollectionForm + CollectionList — data fetching + renderers into CRUD |
-| **App Modules** | `ui-files`, `ui-forms`, `ui-users` | Full, recipe-backed features (file manager; visual form builder; users/roles/policies admin) |
+| **App Modules** | `ui-files`, `ui-forms`, `ui-users`, `ui-workflows` | Full, recipe-backed features (file manager; visual form builder; users/roles/policies admin; workflow admin) |
 
 Note the distinction inside the form family: **VForm** (`ui-form`) *renders* a form
 from a schema, while the **Form Builder** (`ui-forms`) is an authoring module that
@@ -65,6 +66,9 @@ types (base)
        ├─ ui-files  (FileManager — files module)
        ├─ ui-forms  (FormBuilder + DynamicForm — form builder module)
        └─ ui-users  (Users/Roles/Policies admin — users module)
+
+  ui-table (VTable) + hooks
+       └─ ui-workflows  (Workflow definitions, assignments, instances — workflows module)
 ```
 
 ### Relational interfaces and the relational UI context

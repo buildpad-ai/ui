@@ -12,3 +12,4 @@ export * from './form-definition';
 export * from './field-spec';
 export * from './module-access';
 export * from './users';
+export * from './workflow';

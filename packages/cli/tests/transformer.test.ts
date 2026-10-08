@@ -577,6 +577,72 @@ describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
     );
   });
 
+  test("ui-workflows maps to the workflow-management component, subpaths kebab-cased", () => {
+    expect(
+      rewriteBuildpadSpecifiers(
+        [
+          `import { WorkflowsManager } from '@buildpad/ui-workflows';`,
+          `import type { WorkflowDetailProps } from "@buildpad/ui-workflows";`,
+          `import { WorkflowDiagram } from '@buildpad/ui-workflows/WorkflowDiagram';`,
+          `import { loadAllWorkflowPolicyOptions } from '@buildpad/ui-workflows/workflowPolicies';`,
+          `const Detail = lazy(() => import('@buildpad/ui-workflows/WorkflowInstanceDetail'));`,
+        ].join("\n"),
+        config,
+      ),
+    ).toBe(
+      [
+        `import { WorkflowsManager } from '@/components/ui/workflow-management';`,
+        `import type { WorkflowDetailProps } from '@/components/ui/workflow-management';`,
+        `import { WorkflowDiagram } from '@/components/ui/workflow-management/workflow-diagram';`,
+        `import { loadAllWorkflowPolicyOptions } from '@/components/ui/workflow-management/workflow-policies';`,
+        `const Detail = lazy(() => import('@/components/ui/workflow-management/workflow-instance-detail'));`,
+      ].join("\n"),
+    );
+  });
+
+  test("ui-workflows follows a custom components alias", () => {
+    expect(
+      rewriteBuildpadSpecifiers(`export * from '@buildpad/ui-workflows';`, {
+        ...config,
+        aliases: { ...config.aliases, components: "~/ui" },
+      }),
+    ).toBe(`export * from '~/ui/workflow-management';`);
+  });
+
+  test("a workflow-management file keeps the React Flow stylesheet import and gets sibling paths", () => {
+    const files = [
+      { source: "ui-workflows/src/WorkflowDiagram.tsx", target: "components/ui/workflow-management/workflow-diagram.tsx" },
+      { source: "ui-workflows/src/workflowDiagramModel.ts", target: "components/ui/workflow-management/workflow-diagram-model.ts" },
+      { source: "ui-workflows/src/WorkflowManagerTable.css", target: "components/ui/workflow-management/workflow-manager-table.css" },
+    ];
+    const out = transformRegistryFile(
+      [
+        `"use client";`,
+        `import { ReactFlow } from '@xyflow/react';`,
+        `import '@xyflow/react/dist/style.css';`,
+        `import { VTable } from '@buildpad/ui-table';`,
+        `import type { Header } from '@buildpad/ui-table';`,
+        `import { clampPage } from '@buildpad/utils';`,
+        `import { toFlowNodes } from './workflowDiagramModel';`,
+        `import './WorkflowManagerTable.css';`,
+        ``,
+      ].join("\n"),
+      files[0],
+      { kind: "component", name: "workflow-management", files, sourcePackage: "@buildpad/ui-workflows" },
+      config,
+      "2.7.0",
+    );
+    expect(out).toContain("@buildpad-origin @buildpad/ui-workflows/workflow-management");
+    expect(out).toContain(`import { ReactFlow } from '@xyflow/react';`);
+    expect(out).toContain(`import '@xyflow/react/dist/style.css';`);
+    expect(out).toContain(`import { VTable } from '@/components/ui/vtable';`);
+    expect(out).toContain(`import type { Header } from '@/components/ui/vtable-types';`);
+    expect(out).toContain(`import { clampPage } from '@/lib/buildpad/utils';`);
+    expect(out).toContain(`import { toFlowNodes } from './workflow-diagram-model';`);
+    expect(out).toContain(`import './workflow-manager-table.css';`);
+    expect(out).not.toMatch(/(from|import)\s+['"]@buildpad\//);
+  });
+
   test("ui-collections / ui-files / ui-users subpaths are kebab-cased like their targets", () => {
     expect(
       rewriteBuildpadSpecifiers(

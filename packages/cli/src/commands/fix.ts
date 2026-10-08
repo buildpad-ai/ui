@@ -350,6 +350,8 @@ const KNOWN_NPM_PACKAGES = new Set([
   'lowlight', 'highlight.js', 'dayjs', 'axios',
   // Maps
   'maplibre-gl', '@mapbox/mapbox-gl-draw',
+  // State diagram (workflow-management)
+  '@xyflow/react',
   // Supabase auth
   '@supabase/ssr', '@supabase/supabase-js',
   // React / Next.js (framework — usually present)

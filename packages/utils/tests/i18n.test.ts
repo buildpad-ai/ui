@@ -11,6 +11,7 @@ import {
   directionForLocale,
   formatCount,
   hasPlaceholders,
+  splitRichText,
   id,
   interpolate,
   isPluralFormsValue,
@@ -44,6 +45,51 @@ describe('interpolate', () => {
     expect(hasPlaceholders('x y')).toBe(false);
     // stateful regex must not alternate between calls
     expect(hasPlaceholders('x {y}')).toBe(true);
+  });
+});
+
+describe('splitRichText', () => {
+  it('splits a template into its text and tag runs, in order', () => {
+    expect(splitRichText('From: <from>{from}</from> → To: <to>{to}</to>')).toEqual([
+      { tag: null, text: 'From: ' },
+      { tag: 'from', text: '{from}' },
+      { tag: null, text: ' → To: ' },
+      { tag: 'to', text: '{to}' },
+    ]);
+  });
+
+  it('returns one text run for a template without tags, and none for an empty one', () => {
+    expect(splitRichText('Plain text')).toEqual([{ tag: null, text: 'Plain text' }]);
+    expect(splitRichText('')).toEqual([]);
+  });
+
+  it('keeps a tag at either end and text after the last tag', () => {
+    expect(splitRichText('<strong>{name}</strong> will be deleted.')).toEqual([
+      { tag: 'strong', text: '{name}' },
+      { tag: null, text: ' will be deleted.' },
+    ]);
+  });
+
+  it('leaves an unclosed or mismatched tag as text', () => {
+    expect(splitRichText('a <b>c')).toEqual([{ tag: null, text: 'a <b>c' }]);
+    expect(splitRichText('a <b>c</i>')).toEqual([{ tag: null, text: 'a <b>c</i>' }]);
+  });
+
+  it('gives the same answer when called twice (no state between calls)', () => {
+    const template = 'Use <code>xtr.item.promote</code> as the Event Name';
+    expect(splitRichText(template)).toEqual(splitRichText(template));
+  });
+
+  it('never reads an interpolated value as markup when each run is interpolated after the split', () => {
+    const runs = splitRichText('Delete <strong>{name}</strong>?').map((run) => ({
+      ...run,
+      text: interpolate(run.text, { name: '<em>x</em>' }),
+    }));
+    expect(runs).toEqual([
+      { tag: null, text: 'Delete ' },
+      { tag: 'strong', text: '<em>x</em>' },
+      { tag: null, text: '?' },
+    ]);
   });
 });
 

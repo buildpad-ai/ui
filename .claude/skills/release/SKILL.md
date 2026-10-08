@@ -5,7 +5,7 @@ description: Cut a lockstep release of all @buildpad packages — version bump, 
 
 # Buildpad Release
 
-Releases ALL `@buildpad/*` packages in **lockstep**: every package ships the same version, every release (single `fixed` group in `.changeset/config.json` — 13 packages as of 1.10.0). Only `@buildpad/cli` and `@buildpad/mcp` are published to npm; the other 11 are `private: true` registry-source packages whose version feeds `packages/registry.json` (per-component `version` / `lastChangedIn`) — that is what drives `npx buildpad outdated` / `upgrade` in consumer apps.
+Releases ALL `@buildpad/*` packages in **lockstep**: every package ships the same version, every release (single `fixed` group in `.changeset/config.json` — 14 packages as of 2.7.0). Only `@buildpad/cli` and `@buildpad/mcp` are published to npm; the other 12 are `private: true` registry-source packages whose version feeds `packages/registry.json` (per-component `version` / `lastChangedIn`) — that is what drives `npx buildpad outdated` / `upgrade` in consumer apps.
 
 Authoritative reference: `docs/PUBLISHING.md`. This skill is the operational checklist; if the two disagree, reconcile them in the same PR.
 
@@ -25,8 +25,8 @@ The pipeline is `.github/workflows/publish.yml` (changesets/action on pushes to 
 2. **Pre-release checks on the release PR:**
    - `pnpm build:registry && pnpm registry:check` — registry.json regenerated and committed (the artifact on `main` is what consumers download).
    - `pnpm build` passes (builds registry, then `ui-form` first for its `.d.ts`, then the rest).
-3. **Merge to `main`** → the changesets action opens a **"chore: version packages" PR** (bumps all 13 `package.json`s, writes CHANGELOGs).
-4. **On that Version Packages PR, before merging:** bump `packages/registry.template.json` top-level `"version"` to the new version and re-run `pnpm build:registry`; commit both to the PR. Verify all 13 packages got the SAME version, and that the bump matches the highest changeset (see *Peer ranges* below — a minor that comes out as a major means a `workspace:*` peer range crept back in).
+3. **Merge to `main`** → the changesets action opens a **"chore: version packages" PR** (bumps all 14 `package.json`s, writes CHANGELOGs).
+4. **On that Version Packages PR, before merging:** bump `packages/registry.template.json` top-level `"version"` to the new version and re-run `pnpm build:registry`; commit both to the PR. Verify all 14 packages got the SAME version, and that the bump matches the highest changeset (see *Peer ranges* below — a minor that comes out as a major means a `workspace:*` peer range crept back in).
 5. **Merge the Version Packages PR** → CI publishes `@buildpad/cli` + `@buildpad/mcp` to npm and creates git tags (per-package tags incl. private packages — `privatePackages.tag: true`). Tags are what `build-registry.mjs` uses to derive `lastChangedIn` in FUTURE releases — they are load-bearing, never skip them.
 
 ## Fallback flow — manual local release
@@ -35,7 +35,7 @@ Only when CI is unavailable or for a forced realignment (like 1.1.0 itself):
 
 1. Clean tree on `main` (up to date). `pnpm registry:check` passes before starting.
 2. Choose the version: `npm view @buildpad/cli versions` — new version > latest published, > every `packages/*/package.json`, and ≥ the consumer floor (see policy above).
-3. Apply: `pnpm changeset version` (if changesets pending) or set `"version"` in all 13 `packages/*/package.json` by hand AND hand-write `## X.Y.Z` CHANGELOG entries (changesets heading format — `### Minor Changes` / `### Patch Changes` — the CLI's `changelog`/`upgrade` commands parse these).
+3. Apply: `pnpm changeset version` (if changesets pending) or set `"version"` in all 14 `packages/*/package.json` by hand AND hand-write `## X.Y.Z` CHANGELOG entries (changesets heading format — `### Minor Changes` / `### Patch Changes` — the CLI's `changelog`/`upgrade` commands parse these).
 4. Bump `packages/registry.template.json` top-level `"version"`. Do NOT touch root `package.json` or `apps/*` (private, not released).
 5. `pnpm build:registry && pnpm registry:check && pnpm build`.
 6. Sanity:

@@ -16,6 +16,7 @@
       "@buildpad/ui-interfaces",
       "@buildpad/ui-table",
       "@buildpad/ui-users",
+      "@buildpad/ui-workflows",
       "@buildpad/utils"
     ]
   ],

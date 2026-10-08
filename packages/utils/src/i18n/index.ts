@@ -13,6 +13,7 @@ export type {
   CollectionsTranslations,
   FilesTranslations,
   UsersTranslations,
+  WorkflowsTranslations,
   FormsTranslations,
   HooksTranslations,
   DateTimeTranslations,
@@ -30,7 +31,7 @@ export { defaultTranslations } from './defaults';
 export { en, id, bundledLocales, bundledTranslationsFor } from './locales';
 export { isPluralFormsValue, PLURAL_CATEGORIES } from './primitives';
 export { mergeTranslations } from './merge';
-export { interpolate, hasPlaceholders } from './interpolate';
+export { interpolate, hasPlaceholders, splitRichText, type RichTextSegment } from './interpolate';
 export { pluralCategory, selectPlural, formatCount } from './plural';
 export {
   DEFAULT_LOCALE,

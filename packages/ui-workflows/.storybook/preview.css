@@ -1,0 +1,15 @@
+/* ui-workflows — wide admin table/editor layout (the editor is two columns with a diagram) */
+.sb-workflows-wrapper {
+  max-width: 1400px;
+}
+
+/* Dark color scheme (toolbar switch): plain Mantine dark, without the light-only enterprise skin */
+.sb-workflows-dark {
+  padding: 1.5rem 2rem;
+  margin: 0 auto;
+  color: var(--mantine-color-text);
+}
+
+body:has(.sb-workflows-dark) {
+  background: var(--mantine-color-body);
+}

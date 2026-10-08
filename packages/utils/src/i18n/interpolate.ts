@@ -29,3 +29,38 @@ export function hasPlaceholders(template: string): boolean {
   PLACEHOLDER.lastIndex = 0;
   return PLACEHOLDER.test(template);
 }
+
+/** One run of a rich-text template: plain text (`tag` null) or the text inside `<tag>…</tag>`. */
+export interface RichTextSegment {
+  tag: string | null;
+  text: string;
+}
+
+const RICH_TEXT_TAG = /<([a-z]+)>([\s\S]*?)<\/\1>/g;
+
+/**
+ * Splits a template that carries inline `<tag>…</tag>` markers into its runs,
+ * for a component that draws each tag as an element of its own
+ * (`'Delete <strong>{name}</strong>?'` → text, `strong`, text).
+ *
+ * Tags are lowercase names, do not nest and carry no attributes; anything else
+ * stays text. Split first and interpolate each run afterwards: a value is then
+ * never read as markup, whatever it contains.
+ *
+ * @example
+ * splitRichText('From: <from>{from}</from> → To: <to>{to}</to>')
+ * // → [{ tag: null, text: 'From: ' }, { tag: 'from', text: '{from}' },
+ * //    { tag: null, text: ' → To: ' }, { tag: 'to', text: '{to}' }]
+ */
+export function splitRichText(template: string): RichTextSegment[] {
+  const segments: RichTextSegment[] = [];
+  let last = 0;
+  RICH_TEXT_TAG.lastIndex = 0;
+  for (let match = RICH_TEXT_TAG.exec(template); match; match = RICH_TEXT_TAG.exec(template)) {
+    if (match.index > last) segments.push({ tag: null, text: template.slice(last, match.index) });
+    segments.push({ tag: match[1], text: match[2] });
+    last = match.index + match[0].length;
+  }
+  if (last < template.length) segments.push({ tag: null, text: template.slice(last) });
+  return segments;
+}

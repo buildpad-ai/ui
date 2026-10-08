@@ -1140,17 +1140,11 @@ export async function add(
 
     spinner.succeed('All components added!');
 
-    // Run post-install validation to catch any issues (skip in non-interactive mode — bootstrap runs its own)
-    if (!nonInteractive) {
-      console.log(chalk.bold('\n🔍 Running post-install validation...\n'));
-      try {
-        await validate({ cwd, json: false });
-      } catch {
-        // Validation errors are already printed, continue with summary
-      }
-    }
-
-    // Check for missing external dependencies
+    // Check for missing external dependencies — before validation, which
+    // typechecks the copied files: a component whose npm dependency is not in
+    // the app yet (workflow-management → @xyflow/react) fails that check with
+    // TS2307, and validate exits the process on errors, so the dependency was
+    // never installed and its install command never printed.
     console.log(chalk.bold('\n📦 External dependencies...\n'));
 
     // In non-interactive mode (bootstrap), auto-install without prompting
@@ -1160,6 +1154,16 @@ export async function add(
       autoInstall: nonInteractive ? true : undefined,
       announceClean: true,
     });
+
+    // Run post-install validation to catch any issues (skip in non-interactive mode — bootstrap runs its own)
+    if (!nonInteractive) {
+      console.log(chalk.bold('\n🔍 Running post-install validation...\n'));
+      try {
+        await validate({ cwd, json: false });
+      } catch {
+        // Validation errors are already printed, continue with summary
+      }
+    }
 
     // Summary
     console.log(chalk.bold.blue('📋 Summary:\n'));
