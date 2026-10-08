@@ -33,6 +33,7 @@
     "storybook:files": "pnpm --filter @buildpad/ui-files storybook",
     "storybook:forms": "pnpm --filter @buildpad/ui-forms storybook",
     "storybook:users": "pnpm --filter @buildpad/ui-users storybook",
+    "storybook:workflows": "pnpm --filter @buildpad/ui-workflows storybook",
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r --if-present test:coverage",
     "test:e2e": "playwright test --project=chromium",

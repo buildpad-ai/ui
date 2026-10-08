@@ -105,6 +105,13 @@ const catalog: CatalogTier[] = [
         port: 6011,
         blurb: "Users, roles & policies admin — RBAC management with a permissions matrix.",
       },
+      {
+        emoji: "🔀",
+        name: "Workflows",
+        path: "/storybook/workflows",
+        port: 6013,
+        blurb: "Workflow definitions with a state diagram editor, assignments & instances.",
+      },
     ],
   },
 ];
@@ -430,7 +437,8 @@ pnpm storybook:forms        # Port 6010 (form builder)
 pnpm storybook:table        # Port 6007
 pnpm storybook:collections  # Port 6008
 pnpm storybook:files        # Port 6009
-pnpm storybook:users        # Port 6011 (users/roles/policies)`}</pre>
+pnpm storybook:users        # Port 6011 (users/roles/policies)
+pnpm storybook:workflows    # Port 6013 (workflow definitions/assignments/instances)`}</pre>
           </div>
         )}
       </section>
