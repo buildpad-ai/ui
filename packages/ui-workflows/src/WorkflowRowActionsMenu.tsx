@@ -11,6 +11,10 @@ export interface WorkflowRowActionsMenuProps {
   onEdit?: () => void;
   /** Delete item; omit when the current user may not delete. */
   onDelete?: () => void;
+  /** Accessible name of the Edit item when "Edit" alone does not say which row ("Edit assignment for articles"). */
+  editAriaLabel?: string;
+  /** Accessible name of the Delete item, likewise. */
+  deleteAriaLabel?: string;
   /** Per-instance overrides of the `workflows` dictionary namespace (prop > provider > defaults). */
   translations?: DeepPartial<WorkflowsTranslations>;
 }
@@ -26,6 +30,8 @@ export interface WorkflowRowActionsMenuProps {
 export const WorkflowRowActionsMenu: React.FC<WorkflowRowActionsMenuProps> = ({
   onEdit,
   onDelete,
+  editAriaLabel,
+  deleteAriaLabel,
   translations,
 }) => {
   const t = useBuildpadTranslations((d) => d.workflows, translations);
@@ -50,6 +56,7 @@ export const WorkflowRowActionsMenu: React.FC<WorkflowRowActionsMenuProps> = ({
         {onEdit && (
           <Menu.Item
             leftSection={<IconEdit size={14} />}
+            aria-label={editAriaLabel}
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
@@ -62,6 +69,7 @@ export const WorkflowRowActionsMenu: React.FC<WorkflowRowActionsMenuProps> = ({
           <Menu.Item
             leftSection={<IconTrash size={14} />}
             color="red"
+            aria-label={deleteAriaLabel}
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
