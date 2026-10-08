@@ -102,6 +102,36 @@ export {
   type DefineInterfaceConfig,
 } from '../define-interface';
 
+// Workflow definition editor + assignment form logic — shipped as lib/buildpad/workflow.ts
+export {
+  normalizeWorkflowJson,
+  buildWorkflowCommand,
+  buildWorkflowState,
+  parseWorkflowActionParameters,
+  findWorkflowParameterErrors,
+  removeIndexed,
+  findWorkflowCommandProblem,
+  findWorkflowStateProblem,
+  findWorkflowDefinitionProblem,
+  applyWorkflowStateSave,
+  applyWorkflowCommandSave,
+  isWorkflowFilterRule,
+  parseWorkflowFilterRule,
+  type WorkflowCommandForm,
+  type WorkflowCommandCheck,
+  type WorkflowCommandProblem,
+  type WorkflowStateForm,
+  type WorkflowStateCheck,
+  type WorkflowStateProblem,
+  type WorkflowStateSave,
+  type WorkflowDefinitionProblem,
+  type ParsedWorkflowActionParameters,
+  type ParsedWorkflowFilterRule,
+} from '../workflow';
+
+// Page arithmetic for paged lists — shipped as lib/buildpad/list-page.ts
+export { clampPage, pageAfterRemoval } from '../list-page';
+
 // Component i18n core — dictionary shape, English defaults, bundled locales,
 // merge / interpolate / plural helpers (shipped as lib/buildpad/i18n/*).
 // The provider + hooks live in lib/buildpad/services and lib/buildpad/hooks.
@@ -130,6 +160,7 @@ export {
   type CollectionsTranslations,
   type FilesTranslations,
   type UsersTranslations,
+  type WorkflowsTranslations,
   type FormsTranslations,
   type HooksTranslations,
   type DateTimeTranslations,

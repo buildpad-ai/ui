@@ -129,6 +129,14 @@
           "target": "lib/buildpad/interface-catalog.ts"
         },
         {
+          "source": "utils/src/workflow.ts",
+          "target": "lib/buildpad/workflow.ts"
+        },
+        {
+          "source": "utils/src/list-page.ts",
+          "target": "lib/buildpad/list-page.ts"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts"
         },
@@ -159,6 +167,10 @@
         {
           "source": "utils/src/i18n/namespaces/users.ts",
           "target": "lib/buildpad/i18n/namespaces/users.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/workflows.ts",
+          "target": "lib/buildpad/i18n/namespaces/workflows.ts"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -398,6 +410,10 @@
           "target": "lib/buildpad/types/users.ts"
         },
         {
+          "source": "types/src/workflow.ts",
+          "target": "lib/buildpad/types/workflow.ts"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts"
         }
@@ -594,6 +610,10 @@
           "target": "lib/buildpad/hooks/parseDaaSError.ts"
         },
         {
+          "source": "hooks/src/daasRequest.ts",
+          "target": "lib/buildpad/hooks/daasRequest.ts"
+        },
+        {
           "source": "hooks/src/useUsers.ts",
           "target": "lib/buildpad/hooks/useUsers.ts"
         },
@@ -608,6 +628,18 @@
         {
           "source": "hooks/src/useAccess.ts",
           "target": "lib/buildpad/hooks/useAccess.ts"
+        },
+        {
+          "source": "hooks/src/useWorkflowDefinitions.ts",
+          "target": "lib/buildpad/hooks/useWorkflowDefinitions.ts"
+        },
+        {
+          "source": "hooks/src/useWorkflowAssignments.ts",
+          "target": "lib/buildpad/hooks/useWorkflowAssignments.ts"
+        },
+        {
+          "source": "hooks/src/useWorkflowInstances.ts",
+          "target": "lib/buildpad/hooks/useWorkflowInstances.ts"
         },
         {
           "source": "hooks/src/useUrlListParams.ts",

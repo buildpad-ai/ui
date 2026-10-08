@@ -185,6 +185,26 @@ export {
   type FetchAccessParams,
 } from './useAccess';
 export { parseDaaSError } from './parseDaaSError';
+export {
+  DaaSRequestError,
+  toDaaSRequestError,
+  missingWhenIdIsMalformed,
+  readDaaSRecord,
+  buildDaaSListQuery,
+  readDaaSListResponse,
+  useDaaSRequest,
+  type DaaSErrorKind,
+  type DaaSListPage,
+  type DaaSRequestState,
+} from './daasRequest';
+
+// Workflow administration hooks (definitions, assignments, instances + history).
+// Their row types live in @/lib/buildpad/types (`Workflow…Record`, `WorkflowJson…`);
+// the `WorkflowAssignment` / `WorkflowState` / `WorkflowInstance` types above
+// belong to the two versioning hooks and are narrower shapes.
+export { useWorkflowDefinitions } from './useWorkflowDefinitions';
+export { useWorkflowAssignments } from './useWorkflowAssignments';
+export { useWorkflowInstances } from './useWorkflowInstances';
 
 // API helpers
 export { api, daasAPI, createDaaSAPI, type DaaSAPIConfig, type QueryParams } from './api';
