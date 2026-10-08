@@ -898,15 +898,40 @@ describe('CronJobDetail', () => {
       expect(field.status()).toHaveValue('Inactive');
     });
 
-    it('Run Now, Activate and Deactivate wait for unsaved edits to be saved — Deactivate as Activate does', async () => {
+    it('Deactivate stays enabled with unsaved edits and keeps them, as in the reference', async () => {
+      renderDetail();
+      await loaded();
+      fireEvent.change(field.description(), { target: { value: 'pending edit' } });
+      fireEvent.change(field.code(), { target: { value: 'if (' } });
+      expect(button('Run Now')).toBeDisabled();
+      // The way to stop a job, whatever state the edit is in
+      expect(button('Deactivate')).toBeEnabled();
+
+      fireEvent.click(button('Deactivate'));
+      await waitFor(() => expect(updateJobMock).toHaveBeenCalledWith(report.id, { status: 'inactive' }));
+      expect(await screen.findByTestId('cron-job-detail-status-badge')).toHaveTextContent('Inactive');
+      expect(field.status()).toHaveValue('Inactive');
+      // The edits are still there, still unsaved, and Activate waits for them
+      expect(field.description()).toHaveValue('pending edit');
+      expect(field.code()).toHaveValue('if (');
+      expect(unsavedBadge()).toBeInTheDocument();
+      expect(button('Activate')).toBeDisabled();
+
+      // Save sends the edits, and not the status the switch already stored
+      fireEvent.click(button('Save'));
+      await waitFor(() =>
+        expect(updateJobMock).toHaveBeenLastCalledWith(report.id, { description: 'pending edit', code: 'if (' }),
+      );
+    });
+
+    it('Run Now and Activate wait for unsaved edits to be saved', async () => {
       const user = userEvent.setup();
       const { unmount } = renderDetail();
       await loaded();
       fireEvent.change(field.description(), { target: { value: 'pending edit' } });
       expect(button('Run Now')).toBeDisabled();
-      expect(button('Deactivate')).toBeDisabled();
-      fireEvent.click(button('Deactivate'));
-      expect(updateJobMock).not.toHaveBeenCalled();
+      fireEvent.click(button('Run Now'));
+      expect(runJobMock).not.toHaveBeenCalled();
 
       // The tooltip is the hint of why
       await user.hover(button('Run Now'));

@@ -315,8 +315,9 @@ Each also takes `size` (a Mantine size) and `data-testid`.
   refused save shows the server's sentence.
 - Save is disabled while there is nothing to save. A save of an existing job
   sends only the fields that changed.
-- Run Now, Activate and Deactivate are disabled while the form has unsaved
-  changes. Save first.
+- Run Now and Activate are disabled while the form has unsaved changes. Save
+  first. Deactivate is not: it stops the job at once, and the unsaved changes
+  stay in the form.
 - Run Now is answered when the run has ended. The editor then opens the
   History tab and loads it. A job that was already running is not started
   again, and the notification says so.

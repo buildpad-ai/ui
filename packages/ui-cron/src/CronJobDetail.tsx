@@ -180,9 +180,10 @@ export interface CronJobDetailProps {
  *   again, and the notification says so. The history is loaded when the
  *   request is answered — which is when the run has ended — not 1.5 seconds
  *   after the click.
- * - Deactivate follows Activate's rule: both wait for unsaved edits to be
- *   saved, and both are pending while they run. The reference disabled only
- *   Activate.
+ * - Activate and Deactivate are pending while they run and take no second
+ *   click. As in the reference, Activate waits for unsaved edits to be saved
+ *   and Deactivate does not: stopping a job must not depend on the edit in
+ *   progress being one the server accepts. The edits stay in the form.
  * - The status badge reads "Active" / "Inactive", as the jobs list does; the
  *   reference showed the stored value in lower case here.
  * - "Job Code" names the editor (`aria-labelledby`); it was a text beside it.
@@ -322,9 +323,10 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
 
   /**
    * Shows the job as it is stored now: what a write answered, over what was
-   * known. `sent` is the form as it was when the request left: a field edited
-   * since then (the request takes a while, and the inputs stay open) keeps
-   * what was typed, as an edit that is not saved yet.
+   * known. `sent` is the form the answer accounts for — what a save sent, or
+   * what was loaded when the write did not send the form at all. A field that
+   * differs from it (typed while the request was out, or an edit the write
+   * did not save) keeps what was typed, as an edit that is not saved yet.
    */
   const showStored = useCallback(
     (stored: CronJobRecord, known: CronJobRecord | null, sent: CronJobForm): CronJobRecord => {
@@ -415,10 +417,11 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
       const shown = requestRef.current;
       try {
         const saved = await updateJob(record.id, { status });
-        // The form has no unsaved edit when the button is clicked (it waits
-        // for them); one typed while the request runs is kept. Not drawn over
-        // another job the host has opened meanwhile.
-        if (shown === requestRef.current) showStored(saved, record, form);
+        // Measured against the form as it was loaded, so every unsaved edit
+        // stays: Deactivate does not wait for them, and one can be typed while
+        // either request runs. Not drawn over another job the host has opened
+        // meanwhile.
+        if (shown === requestRef.current) showStored(saved, record, initial);
         notifications.show({
           title: active ? t.notificationTitles.activated : t.notificationTitles.deactivated,
           message: active ? t.jobDetail.notifications.activated : t.jobDetail.notifications.deactivated,
@@ -438,7 +441,7 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
         setSwitching(false);
       }
     },
-    [record, form, updateJob, showStored, t, common],
+    [record, initial, updateJob, showStored, t, common],
   );
 
   const handleRunNow = useCallback(async () => {
@@ -614,7 +617,6 @@ export const CronJobDetail: React.FC<CronJobDetailProps> = ({
                 color="yellow"
                 onClick={() => void handleSetStatus('inactive')}
                 loading={switching}
-                disabled={hasEdits}
                 data-testid="cron-job-detail-deactivate-btn"
               >
                 {t.actions.deactivate}

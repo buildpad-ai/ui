@@ -55,7 +55,8 @@ function Harness({
 
 /**
  * A stored job, as an administrator. Edit a field: the Unsaved Changes badge
- * appears, Save is enabled, and Run Now and Deactivate wait for the save. Run
+ * appears, Save is enabled, and Run Now waits for the save (Deactivate does
+ * not: it stops the job at once and keeps the edit). Run
  * Now is answered when the run has ended, and then opens the History tab.
  */
 export const Existing: Story = {
