@@ -20,7 +20,7 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 
-jest.mock('@buildpad/ui-interfaces', () => require('./helpers/leafProbe').makeInterfacesMock());
+jest.mock('../components/interface-components', () => require('./helpers/leafProbe').makeInterfacesMock());
 
 const interfaceProps: { props: Record<string, unknown> } = { props: {} };
 jest.mock('@buildpad/utils', () => ({

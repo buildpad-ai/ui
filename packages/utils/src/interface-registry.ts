@@ -5,6 +5,8 @@
  * Supports both built-in interfaces and extension-registered interfaces.
  * 
  * @module @buildpad/utils/interface-registry
+ *
+ * @deprecated Dormant: nothing in Buildpad populates this registry and VForm never reads it. Interface identity lives in `INTERFACE_MANIFEST` (`interface-manifest`); custom interfaces register through VForm's `interfaces` prop or provider. Kept so existing imports keep compiling.
  */
 
 import type {
@@ -30,6 +32,7 @@ const GROUP_INFO: Record<InterfaceGroup, { name: string; description: string }> 
   group: { name: 'Groups', description: 'Field grouping components' },
   workflow: { name: 'Workflow', description: 'Workflow state and transition components' },
   other: { name: 'Other', description: 'Miscellaneous components' },
+  system: { name: 'System', description: 'System administration components' },
 };
 
 /**
@@ -37,6 +40,8 @@ const GROUP_INFO: Record<InterfaceGroup, { name: string; description: string }> 
  * 
  * Manages the collection of available interface definitions.
  * Provides methods for registration, lookup, and filtering.
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export class InterfaceRegistry {
   private interfaces: Map<string, InterfaceDefinition> = new Map();
@@ -229,11 +234,15 @@ export class InterfaceRegistry {
 
 /**
  * Global singleton instance of the InterfaceRegistry
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export const interfaceRegistry = new InterfaceRegistry();
 
 /**
  * Get the global interface registry instance
+ *
+ * @deprecated Dormant (VForm never reads it). Use `INTERFACE_MANIFEST` for interface identity and VForm's `interfaces` prop or provider for custom interfaces.
  */
 export function getInterfaceRegistry(): InterfaceRegistry {
   return interfaceRegistry;

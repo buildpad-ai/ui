@@ -355,6 +355,40 @@ import { ListM2M, ListM2O, ListO2M, ListM2A } from '@buildpad/ui-interfaces';
 />
 ```
 
+#### Relational dialogs need a provider (3.0)
+
+`ListO2M`, `ListM2M`, `ListM2A` and `JunctionItemForm` open create / edit /
+select dialogs that render `CollectionForm`, `CollectionList` and `VForm`. This
+package does not import them (that would be a package cycle); it reads them
+from the relational UI context in `@buildpad/services/relational-ui-context`.
+
+- Inside a `CollectionForm` nothing is needed: it supplies all three to every
+  field it renders.
+- A plain `VForm` supplies only itself (the `FormRenderer` that `ListM2A` and
+  `JunctionItemForm` use), not `CollectionForm` / `CollectionList`. So an
+  O2M / M2M field in a standalone `VForm`, or the M2A picker, still needs a
+  provider around the form.
+- Used on their own (or in a standalone `VForm`), wrap them in
+  `CollectionsRelationalProvider` (`@buildpad/ui-collections`):
+
+```tsx
+import { CollectionsRelationalProvider } from '@buildpad/ui-collections';
+
+<CollectionsRelationalProvider>
+  <ListO2M field="variants" collection="products" primaryKey={productId} />
+</CollectionsRelationalProvider>
+```
+
+- Or pass components directly — a `components` prop wins over any provider:
+  `<ListM2M components={{ CollectionForm: MyForm, CollectionList: MyPicker }} … />`.
+  `ListM2A` / `JunctionItemForm` use `FormRenderer` (a VForm-compatible form)
+  instead of `CollectionForm`. Custom providers: `RelationalUIProvider` from
+  `@buildpad/services/relational-ui-context` (nested providers merge).
+
+Without any of these the field still lists, removes and reorders items, but
+shows a translated alert (`interfaces.relationalUI`) and hides the actions whose
+dialog component is missing.
+
 ### Rich Text Editors
 
 ```tsx

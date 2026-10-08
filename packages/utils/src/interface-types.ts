@@ -53,7 +53,7 @@ export type LocalType =
   | 'geometry';
 
 /**
- * Interface groupings for UI display
+ * Interface groupings for UI display (the registry's `interface.group`)
  */
 export type InterfaceGroup =
   | 'standard'
@@ -62,7 +62,8 @@ export type InterfaceGroup =
   | 'presentation'
   | 'group'
   | 'workflow'
-  | 'other';
+  | 'other'
+  | 'system';
 
 /**
  * Common props passed to all interface components

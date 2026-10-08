@@ -136,8 +136,20 @@ collection-form
 │   └── services
 │
 └── registryDependencies:
-    └── vform (includes all 32 interface components)
+    ├── vform (includes all 32 interface components)
+    ├── save-options
+    └── collection-list (the picker relational fields open; loaded lazily)
 ```
+
+CollectionForm also supplies CollectionForm / CollectionList / VForm to the
+relational fields it renders (the relational UI context in
+`lib/buildpad/services/relational-ui-context.tsx`). Relational fields used
+outside a CollectionForm need `CollectionsRelationalProvider`
+(`components/ui/collections-relational-provider.tsx`, part of
+`collection-form`); a plain VForm supplies only itself. The scaffolded
+authenticated layout (`api-routes`, which therefore declares `collection-form`
+as a registry dependency) and the `/content` layout already wrap their pages
+in it. See docs/MIGRATION-3.0.md.
 
 ## Common Agent Tasks
 
@@ -253,8 +265,11 @@ npm is unreachable.
 # Upgrade all components (silent overwrite for pristine, prompt for modified)
 buildpad upgrade --all
 
-# Upgrade specific components
+# Upgrade specific components, with what they depend on (see below)
 buildpad upgrade input vform
+
+# Upgrade ONLY the named entries, leaving their dependencies as they are
+buildpad upgrade input vform --no-deps
 
 # Preview what would change
 buildpad upgrade --all --dry-run
@@ -277,6 +292,29 @@ buildpad upgrade --all --ref main
 buildpad upgrade --design
 buildpad upgrade --design --three-way   # merge local token edits instead of overwriting
 ```
+
+**Dependencies come along.** The new source of an entry imports the new source
+of the entries it depends on, so `upgrade` follows the registry's dependency
+lists (`internalDependencies` for lib modules, `registryDependencies` for
+components), through every entry they lead to:
+
+- A dependency that is installed and out of date is upgraded in the same run.
+  A file you edited goes through `--strategy` like any other; it is never
+  overwritten silently.
+- A dependency the project does not have is installed, and added to
+  `components/ui/index.ts`.
+- A dependency that is up to date is left alone.
+- Out-of-date entries that nothing selected depends on are left alone too.
+
+The run lists what it brings along and which entry needs it, before it writes
+anything (`--dry-run` shows the same list). This applies to named entries, to
+`--package`, and to a bare `upgrade` / `--all`, where everything out of date
+is selected already and only missing dependencies are added. `--design` stays
+scoped to the design-system module. Pass `--no-deps` to upgrade only what you
+selected; the project may then not compile until the dependencies are upgraded
+too. Naming a component the project does not have installs it.
+
+**Without a terminal** (CI, a pipe, the MCP server) `upgrade` asks nothing. A locally-modified file keeps your version and the new one is written as `<file>.new`, as with `--strategy=new-file`; pass `--strategy` to choose. Missing npm packages are listed with the command that installs them, but are not installed; pass `--yes` to install them (it also overwrites modified files).
 
 `upgrade` handles **lib modules** (not just components). The `design-system` module —
 scaffolded by `init` and tracked in `buildpad.json` — is refreshed with `--design`, or

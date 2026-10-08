@@ -25,6 +25,7 @@ import type {
 - 🔐 **Permission Enforcement** - Filter fields based on user permissions (DaaS-compatible)
 - 📝 **FormField Component** - Individual field wrapper with label, validation, and interface rendering
 - 🔌 **Interface Integration** - Automatically loads appropriate interface component based on field type
+- ⏳ **On-demand Interfaces** - Editors, the map, files and the relational tables load when a field first needs them; a form bundles only the light controls
 - 🎨 **Field Metadata** - Respects meta configuration from `daas_fields` table (interface, options, display)
 - 📊 **Field Groups** - Support for nested field groups and hierarchical organization
 - ✅ **Validation** - Built-in validation error display and handling
@@ -125,6 +126,26 @@ function ProtectedForm() {
 />
 ```
 
+### Relational Fields in a Standalone VForm (3.0)
+
+Relational fields (O2M, M2M, M2A) open create / edit / select dialogs that
+render `CollectionForm` and `CollectionList`. `VForm` supplies only itself (as
+the relational `FormRenderer`); inside a `CollectionForm` the rest is supplied
+automatically. When you render `VForm` on its own with relational fields, wrap
+it in the pre-wired provider:
+
+```tsx
+import { CollectionsRelationalProvider } from '@buildpad/ui-collections';
+
+<CollectionsRelationalProvider>
+  <VForm collection="articles" primaryKey={id} modelValue={edits} onUpdate={setEdits} />
+</CollectionsRelationalProvider>
+```
+
+Without it the relational fields still list their items but show an alert and
+hide create / select / edit. See `@buildpad/services/relational-ui-context`
+(`RelationalUIProvider`) for custom components.
+
 ## API Reference
 
 ### VForm Props
@@ -181,6 +202,31 @@ VForm
     │   └── ... (40+ interfaces)
     └── Validation Errors
 ```
+
+## How interface components load
+
+`FormFieldInterface` resolves a field to a component export name through the
+interface manifest (`getRenderedInterfaceEntry` in `@buildpad/utils`) and looks
+the component up in `src/components/interface-components.tsx`:
+
+- `EAGER_INTERFACE_COMPONENTS` — light controls (inputs, selects, toggles,
+  groups), imported statically.
+- `LAZY_INTERFACE_COMPONENTS` — rich text, markdown, the block editor, the
+  icon picker, the map, files, autocomplete and the relational lists, each
+  behind its own `React.lazy(() => import(…))`. The field shows a skeleton of
+  the manifest's `fallbackHeight` in its own Suspense boundary until the
+  component arrives, so the rest of the form is never suspended. The block
+  editor (`client-only`) is not rendered until the page has hydrated.
+
+Every component is imported from its own module (`@buildpad/ui-interfaces/<x>`),
+never from the package barrel. A component neither table names (for example
+`SystemPermissions`, or an interface of your own) is looked up on demand in
+the barrel; if nothing exports it, the field shows the "Interface component
+not found" alert. A component that fails to load is reported by the field's
+error boundary.
+
+To render your own interface, add its component to one of the two tables under
+the PascalCase of its interface id (`my-widget` → `MyWidget`).
 
 ## Related Packages
 

@@ -6,7 +6,11 @@
  * utils/staleness.ts.
  *
  * Flags:
- *   [components...]              Specific components to upgrade (default: all stale)
+ *   [components...]              Specific components to upgrade (default: all stale).
+ *                                Their out-of-date dependencies are upgraded with them
+ *                                and missing ones installed — see utils/upgrade-plan.ts.
+ *   --no-deps                    Upgrade only the selected entries: leave what they
+ *                                depend on alone (missing lib modules are still installed)
  *   --all                        Upgrade every installed component
  *   --package <name>             Upgrade all components from a specific source package
  *   --design                     Upgrade only the design-system module (tokens, globals,
@@ -21,7 +25,8 @@
  *                                  "overwrite"  – replace with upstream
  *                                  "new-file"   – write new version as <file>.new
  *                                  "three-way"  – attempt diff3 merge; on conflict write .new
- *                                  "prompt"     – ask the user (default for TTY)
+ *                                  "prompt"     – ask the user (default for TTY;
+ *                                                 without a terminal it acts as "new-file")
  *
  * Per-file behaviour (§4 of the versioning redesign):
  *
@@ -72,8 +77,9 @@ import {
 } from '../utils/staleness.js';
 import { threeWayMerge } from '../utils/three-way-merge.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
-import { applyNavItems, copyLibModule } from './add.js';
+import { applyNavItems, copyLibModule, generateComponentsIndex } from './add.js';
 import { componentFilePath } from '../utils/paths.js';
+import { entryKey, isEmptyPlan, planDependencies, type DependencyPlan, type EntryRef } from '../utils/upgrade-plan.js';
 
 async function getRegistry(): Promise<Registry> {
   try {
@@ -127,6 +133,11 @@ interface UpgradeOptions {
   package?: string;
   design?: boolean;
   force?: boolean;
+  /**
+   * Also upgrade the out-of-date entries the targets depend on, and install
+   * the missing ones (default true). `--no-deps` turns it off.
+   */
+  deps?: boolean;
   dryRun?: boolean;
   yes?: boolean;
   threeWay?: boolean;
@@ -360,7 +371,8 @@ async function installMissingLibDeps(
 
 type ComponentUpgradeOutcome =
   | { status: 'skipped'; dirty: boolean }
-  | { status: 'upgraded'; dirty: boolean; conflicts: number };
+  /** `installed`: the project did not have the component; this run added it. */
+  | { status: 'upgraded'; dirty: boolean; conflicts: number; installed: boolean };
 
 /**
  * Upgrade one installed component. Extracted from `upgrade()` — the
@@ -390,13 +402,17 @@ async function upgradeOneComponent(
   const sourcePackage = regComponent.sourcePackage ?? '@buildpad/ui-interfaces';
   const installedRecord = config.components?.[componentName];
   const staleness = computeEntryStaleness(registryFilesOf(regComponent), installedRecord);
+  // Not in the project yet: a dependency of something being upgraded (or a
+  // name the user gave). Every file is written and the component is listed
+  // as installed afterwards, as `add` would.
+  const isInstall = !config.installedComponents.includes(componentName);
 
   let dirty = false;
   if (await installMissingLibDeps(regComponent.internalDependencies, registry, config, cwd, dryRun, externalDeps)) {
     dirty = true;
   }
 
-  if (!staleness.stale && !staleness.needsMigrate && !staleness.untracked && !force) {
+  if (!isInstall && !staleness.stale && !staleness.needsMigrate && !staleness.untracked && !force) {
     console.log(chalk.dim(`  ${componentName} — already up to date`));
     return { status: 'skipped', dirty };
   }
@@ -407,15 +423,15 @@ async function upgradeOneComponent(
   //
   // A record with no upstream hashes (v2, or none at all) cannot be compared
   // file by file, so every file is in scope: this run re-baselines it to v3.
-  const staleTargets = staleness.needsMigrate || staleness.untracked
+  const staleTargets = isInstall || staleness.needsMigrate || staleness.untracked
     ? new Set(regComponent.files.map(f => f.target))
     : new Set(staleness.files.filter(f => f.reason !== 'removed').map(f => f.target));
 
   const from = installedRecord?.release ?? installedRecord?.version ?? 'unknown'; // NOSONAR: intentional v1/v2 manifest backward-compat fallback
-  console.log(
-    chalk.cyan(`  ${componentName}`) +
-    chalk.dim(force ? ` re-sync @ ${release} (--force)` : ` ${from} → ${release}`)
-  );
+  let delta = ` ${from} → ${release}`;
+  if (isInstall) delta = ` install @ ${release}`;
+  else if (force) delta = ` re-sync @ ${release} (--force)`;
+  console.log(chalk.cyan(`  ${componentName}`) + chalk.dim(delta));
 
   // Removals are reported here and then simply absent from `newFiles`.
   reportRemovedFiles(
@@ -493,6 +509,17 @@ async function upgradeOneComponent(
       files: newFiles,
     };
     config.components[componentName] = record;
+    if (isInstall) {
+      config.installedComponents.push(componentName);
+      // Keep the v1 map in step when the manifest still carries it, as `add` does.
+      if (config.componentVersions) { // NOSONAR: intentionally writing the deprecated v1 field for backward compat
+        config.componentVersions[componentName] = { // NOSONAR: intentionally writing the deprecated v1 field for backward compat
+          version: release,
+          installedAt: record.installedAt,
+          source: sourcePackage,
+        };
+      }
+    }
     dirty = true;
   }
 
@@ -501,10 +528,10 @@ async function upgradeOneComponent(
   } else if (pendingCount > 0) {
     console.log(chalk.yellow(`  ⚠ ${componentName} → ${release} (${pendingCount} file(s) still pending)`));
   } else {
-    console.log(chalk.green(`  ✓ ${componentName} upgraded to ${release}`));
+    console.log(chalk.green(`  ✓ ${componentName} ${isInstall ? 'installed at' : 'upgraded to'} ${release}`));
   }
 
-  return { status: 'upgraded', dirty, conflicts: conflictsThisComponent };
+  return { status: 'upgraded', dirty, conflicts: conflictsThisComponent, installed: isInstall };
 }
 
 type LibModuleUpgradeOutcome =
@@ -713,13 +740,28 @@ export async function upgrade(options: UpgradeOptions) {
     package: packageFilter,
     design = false,
     force = false,
+    deps = true,
     dryRun = false,
     cwd,
   } = options;
-  const strategy = resolveStrategy(options);
+  let strategy = resolveStrategy(options);
 
   if (dryRun) {
     console.log(chalk.yellow('\n🔍 Dry Run Mode — no files will be modified\n'));
+  }
+
+  // "prompt" asks about each locally-modified file. With no terminal on stdin
+  // (CI, a pipe) the question is never answered: the process ended at the
+  // first one with exit code 0, files already written and the manifest not
+  // saved. Take the prompt's own default instead, which loses nothing.
+  if (strategy === 'prompt' && !process.stdin.isTTY) {
+    strategy = 'new-file';
+    if (!dryRun) {
+      console.log(chalk.dim(
+        '\nNo terminal to ask on: a locally-modified file keeps your version and gets the new one as <file>.new ' +
+        '(--strategy=new-file). Pass --strategy to choose.'
+      ));
+    }
   }
 
   // Load config
@@ -806,7 +848,40 @@ export async function upgrade(options: UpgradeOptions) {
     return;
   }
 
+  // ── What the targets depend on ────────────────────────────────────
+  // The new source of an entry imports the new source of its dependencies,
+  // so the out-of-date ones are upgraded in the same run and the missing ones
+  // installed. `--design` stays scoped to the design-system module.
+  const libSrcDir = config.srcDir ? path.join(cwd, 'src') : cwd;
+  const needsUpgrade = (entry: EntryRef): boolean => {
+    const s = entry.kind === 'component' ? componentStaleness(entry.name) : libStaleness(entry.name);
+    if (!s) return false;
+    if (s.stale || s.needsMigrate || s.untracked) return true;
+    // A lib module also has work to do when a registered file is absent on disk.
+    return entry.kind === 'lib' &&
+      registryFilesOf(registry.lib[entry.name]).some(f => !fs.existsSync(path.join(libSrcDir, f.target)));
+  };
+  const plan: DependencyPlan | undefined = deps && !design
+    ? planDependencies({
+        targets: [
+          ...targetComponents.map((name): EntryRef => ({ kind: 'component', name })),
+          ...targetLibModules.map((name): EntryRef => ({ kind: 'lib', name })),
+        ],
+        registry,
+        installedComponents: config.installedComponents,
+        installedLib: config.installedLib,
+        needsUpgrade,
+      })
+    : undefined;
+  if (plan && !isEmptyPlan(plan)) reportDependencyPlan(plan);
+
+  // `--force` re-syncs what was selected; a dependency brought along is
+  // upgraded like any stale entry (only the files whose upstream changed).
+  const dependencyComponents = [...(plan?.upgradeComponents ?? []), ...(plan?.installComponents ?? [])];
+  const dependencyLibModules = plan?.upgradeLibModules ?? [];
+
   let upgraded = 0;
+  let installedCount = 0;
   let skipped = 0;
   let conflicts = 0;
   let dirty = false;
@@ -815,32 +890,61 @@ export async function upgrade(options: UpgradeOptions) {
   // added @tiptap/extension-table + tiptap-markdown + marked).
   const externalDeps = new Set<string>();
 
-  // ── Components ────────────────────────────────────────────────────
-  if (targetComponents.length > 0) {
-    console.log(chalk.bold(`\n⬆  Upgrading ${targetComponents.length} component(s)...\n`));
+  // ── Missing lib modules ───────────────────────────────────────────
+  // Installed before anything that imports them is written.
+  if (plan && plan.installLibModules.length > 0) {
+    console.log(chalk.bold(`\n⬇  Installing ${plan.installLibModules.length} missing lib module(s)...\n`));
+    const before = config.installedLib.length;
+    if (await installMissingLibDeps(plan.installLibModules, registry, config, cwd, dryRun, externalDeps)) {
+      dirty = true;
+    }
+    // copyLibModule installs a module's own missing lib dependencies with it.
+    installedCount += config.installedLib.length - before;
   }
 
-  for (const componentName of targetComponents) {
+  // ── Components ────────────────────────────────────────────────────
+  const allComponents = [...targetComponents, ...dependencyComponents];
+  if (allComponents.length > 0) {
+    console.log(chalk.bold(`\n⬆  Upgrading ${allComponents.length} component(s)...\n`));
+  }
+
+  let installedAComponent = false;
+  for (const componentName of allComponents) {
+    const isTarget = targetComponents.includes(componentName);
     const outcome = await upgradeOneComponent(
-      componentName, registry, config, cwd, dryRun, force, release, ref, strategy, externalDeps
+      componentName, registry, config, cwd, dryRun, isTarget && force, release, ref, strategy, externalDeps
     );
     if (outcome.dirty) dirty = true;
-    if (outcome.status === 'upgraded') {
-      upgraded++;
-      conflicts += outcome.conflicts;
-    } else {
+    if (outcome.status === 'skipped') {
       skipped++;
+    } else {
+      if (outcome.installed) {
+        installedCount++;
+        installedAComponent = true;
+      } else {
+        upgraded++;
+      }
+      conflicts += outcome.conflicts;
     }
   }
 
-  // ── Lib modules (e.g. design-system) ──────────────────────────────
-  if (targetLibModules.length > 0) {
-    console.log(chalk.bold(`\n⬆  Upgrading ${targetLibModules.length} lib module(s)...\n`));
+  // A new component needs its line in the generated components barrel.
+  if (installedAComponent && !dryRun) {
+    const indexSpinner = ora('').start();
+    await generateComponentsIndex(config, cwd, registry, indexSpinner);
+    indexSpinner.stop();
   }
 
-  for (const moduleName of targetLibModules) {
+  // ── Lib modules (e.g. design-system) ──────────────────────────────
+  const allLibModules = [...targetLibModules, ...dependencyLibModules];
+  if (allLibModules.length > 0) {
+    console.log(chalk.bold(`\n⬆  Upgrading ${allLibModules.length} lib module(s)...\n`));
+  }
+
+  for (const moduleName of allLibModules) {
+    const isTarget = targetLibModules.includes(moduleName);
     const outcome = await upgradeOneLibModule(
-      moduleName, registry, config, cwd, dryRun, force, release, ref, strategy, externalDeps
+      moduleName, registry, config, cwd, dryRun, isTarget && force, release, ref, strategy, externalDeps
     );
     if (outcome.dirty) dirty = true;
     if (outcome.status === 'upgraded') {
@@ -875,11 +979,29 @@ export async function upgrade(options: UpgradeOptions) {
 
   console.log('\n' + chalk.bold('Summary:'));
   console.log(`  Upgraded : ${upgraded}`);
+  if (installedCount > 0) console.log(`  Installed: ${installedCount}`);
   console.log(`  Skipped  : ${skipped}`);
   if (conflicts > 0) {
     console.log(chalk.yellow(`  Conflicts: ${conflicts} (.new files written — please review)`));
   }
   console.log('');
+}
+
+/**
+ * Say what the run brings along besides the selected entries, and why.
+ */
+function reportDependencyPlan(plan: DependencyPlan): void {
+  const line = (verb: string, kind: EntryRef['kind'], name: string) => {
+    const parent = plan.neededBy.get(entryKey({ kind, name }));
+    const label = kind === 'lib' ? `${name} (lib)` : name;
+    console.log(`  ${verb} ${chalk.cyan(label)}` + chalk.dim(parent ? ` — needed by ${parent.name}` : ''));
+  };
+  console.log(chalk.bold('\n🔗 Dependencies of what is being upgraded:\n'));
+  plan.installLibModules.forEach(name => line('install', 'lib', name));
+  plan.installComponents.forEach(name => line('install', 'component', name));
+  plan.upgradeLibModules.forEach(name => line('upgrade', 'lib', name));
+  plan.upgradeComponents.forEach(name => line('upgrade', 'component', name));
+  console.log(chalk.dim('\n  Their new code is imported by the entries above. Pass --no-deps to leave them alone.'));
 }
 
 /**
