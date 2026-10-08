@@ -1,0 +1,15 @@
+/* ui-cron — wide admin table/editor layout (the editor is a code column beside a settings column) */
+.sb-cron-wrapper {
+  max-width: 1400px;
+}
+
+/* Dark color scheme (toolbar switch): plain Mantine dark, without the light-only enterprise skin */
+.sb-cron-dark {
+  padding: 1.5rem 2rem;
+  margin: 0 auto;
+  color: var(--mantine-color-text);
+}
+
+body:has(.sb-cron-dark) {
+  background: var(--mantine-color-body);
+}
