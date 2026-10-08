@@ -202,3 +202,44 @@ export function manyMockRuns(count: number, job: CronJobRecord = reportJob): Cro
     } satisfies CronRunRecord;
   });
 }
+
+/**
+ * Jobs and runs whose texts are longer than any column should become: a long
+ * name, a long description, a schedule with lists, the longest date an
+ * English locale writes, and an error of a sentence or two. For the
+ * narrow-container stories and the layout checks: these must end in an
+ * ellipsis, not widen the table.
+ */
+export const longTextJobs: CronJobRecord[] = [
+  {
+    ...reportJob,
+    id: '7b4e9e96-0d42-4b4f-9ec2-4a9f1e5d5001',
+    name: 'Quarterly reconciliation of the regional sales ledgers against the warehouse',
+    description:
+      'Compares every regional ledger with the warehouse stock counts and mails the differences to the finance team before the offices open.',
+    schedule: '0,15,30,45 8-18 1-7,15-21 1,4,7,10 1-5',
+    timezone: 'America/Argentina/Buenos_Aires',
+    status: 'active',
+    last_run_at: '2026-09-30T22:59:59.000Z',
+    last_run_status: 'timeout',
+    next_run_at: '2026-12-31T22:59:59.000Z',
+  },
+  ...mockJobs,
+];
+
+export const longTextRuns: CronRunRecord[] = [
+  {
+    ...successRun,
+    id: '7b4e9e96-0d42-4b4f-9ec2-4a9f1e5d6001',
+    job_id: longTextJobs[0].id,
+    job_name: longTextJobs[0].name,
+    triggered_at: '2026-09-30T22:59:59.000Z',
+    duration_ms: 1234567,
+    status: 'error',
+    error:
+      'The warehouse API answered 503 Service Unavailable three times in a row; the reconciliation was abandoned after the third attempt and nothing was mailed.',
+    logs: ['[2026-09-30T22:59:59.120Z] [ERROR] Giving up after 3 attempts'],
+    triggered_by: 'extension',
+  },
+  ...mockRuns,
+];

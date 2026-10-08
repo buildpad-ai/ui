@@ -680,6 +680,7 @@ describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
       { source: "ui-cron/src/CronJobDetail.tsx", target: "components/ui/cron-management/cron-job-detail.tsx" },
       { source: "ui-cron/src/CronCodeEditor.tsx", target: "components/ui/cron-management/cron-code-editor.tsx" },
       { source: "ui-cron/src/cronFormat.ts", target: "components/ui/cron-management/cron-format.ts" },
+      { source: "ui-cron/src/cronTableColumns.ts", target: "components/ui/cron-management/cron-table-columns.ts" },
       { source: "ui-cron/src/useCronList.ts", target: "components/ui/cron-management/use-cron-list.ts" },
       { source: "ui-cron/src/CronManagerTable.css", target: "components/ui/cron-management/cron-manager-table.css" },
     ];
@@ -694,6 +695,7 @@ describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
         `import { interpolate, type CronTranslations } from '@buildpad/utils';`,
         `import { CronCodeEditor, type CronCodeEditorProps } from './CronCodeEditor';`,
         `import { CRON_DATE_TIME_FORMAT } from './cronFormat';`,
+        `import { CRON_JOBS_COLUMNS, cronGridStyle } from './cronTableColumns';`,
         `import { useCronList } from './useCronList';`,
         `import './CronManagerTable.css';`,
         ``,
@@ -712,6 +714,7 @@ describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
     expect(out).toContain(`import { interpolate, type CronTranslations } from '@/lib/buildpad/utils';`);
     expect(out).toContain(`import { CronCodeEditor, type CronCodeEditorProps } from './cron-code-editor';`);
     expect(out).toContain(`import { CRON_DATE_TIME_FORMAT } from './cron-format';`);
+    expect(out).toContain(`import { CRON_JOBS_COLUMNS, cronGridStyle } from './cron-table-columns';`);
     expect(out).toContain(`import { useCronList } from './use-cron-list';`);
     expect(out).toContain(`import './cron-manager-table.css';`);
     expect(out).not.toMatch(/(from|import)\s+['"]@buildpad\//);

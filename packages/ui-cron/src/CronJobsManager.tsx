@@ -38,6 +38,7 @@ import {
   type DeepPartial,
 } from '@buildpad/utils';
 import { CRON_DATE_TIME_FORMAT } from './cronFormat';
+import { CRON_JOBS_COLUMNS, cronGridStyle } from './cronTableColumns';
 import { CronDeleteConfirmModal } from './CronDeleteConfirmModal';
 import { CronJobStatusBadge } from './CronJobStatusBadge';
 import { CronListEmptyState } from './CronListEmptyState';
@@ -219,17 +220,19 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
 
   // -- The jobs list ------------------------------------------------------------
 
+  // How wide each column is drawn is not said here: the columns share the
+  // width of the card (`CRON_JOBS_COLUMNS`, cronTableColumns.ts). The icon's
+  // `width` only tells VTable to draw that heading as a narrow one.
   const headers = useMemo<HeaderRaw[]>(
     () => [
-      { text: '', value: 'icon', sortable: false, width: 48 },
-      // The name carries the description under it; the others hold one short value
-      { text: t.jobsManager.columns.name, value: 'name', sortable: false, width: 280 },
-      { text: t.jobsManager.columns.schedule, value: 'schedule', sortable: false, width: 150 },
-      { text: t.jobsManager.columns.timezone, value: 'timezone', sortable: false, width: 130 },
-      { text: t.jobsManager.columns.status, value: 'status', sortable: false, width: 110 },
-      { text: t.jobsManager.columns.lastRun, value: 'lastRun', sortable: false, width: 190 },
-      { text: t.jobsManager.columns.lastStatus, value: 'lastStatus', sortable: false, width: 120 },
-      { text: t.jobsManager.columns.nextRun, value: 'nextRun', sortable: false, width: 190 },
+      { text: '', value: 'icon', sortable: false, width: 44 },
+      { text: t.jobsManager.columns.name, value: 'name', sortable: false },
+      { text: t.jobsManager.columns.schedule, value: 'schedule', sortable: false },
+      { text: t.jobsManager.columns.timezone, value: 'timezone', sortable: false },
+      { text: t.jobsManager.columns.status, value: 'status', sortable: false },
+      { text: t.jobsManager.columns.lastRun, value: 'lastRun', sortable: false },
+      { text: t.jobsManager.columns.lastStatus, value: 'lastStatus', sortable: false },
+      { text: t.jobsManager.columns.nextRun, value: 'nextRun', sortable: false },
     ],
     [t],
   );
@@ -412,7 +415,9 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
           return <IconClock size={20} color="var(--mantine-color-teal-6)" />;
         case 'name':
           return (
-            <Stack gap={2}>
+            // As wide as the column and no wider: a long name or description
+            // ends in an ellipsis
+            <Stack gap={2} miw={0} style={{ flex: 1 }}>
               {onJobClick ? (
                 // A real button: the way into a job for a keyboard and for a
                 // screen reader, which a clickable row alone does not give
@@ -423,19 +428,20 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
                     onJobClick(job);
                   }}
                   aria-label={interpolate(t.jobsManager.openAriaLabel, { name: job.name })}
+                  title={job.name}
                   data-testid="cron-jobs-manager-open-job"
                 >
-                  <Text size="sm" fw={500}>
+                  <Text size="sm" fw={500} truncate="end">
                     {job.name}
                   </Text>
                 </UnstyledButton>
               ) : (
-                <Text size="sm" fw={500}>
+                <Text size="sm" fw={500} truncate="end" title={job.name}>
                   {job.name}
                 </Text>
               )}
               {job.description && (
-                <Text size="xs" c="dimmed" lineClamp={1}>
+                <Text size="xs" c="dimmed" truncate="end" title={job.description}>
                   {job.description}
                 </Text>
               )}
@@ -443,18 +449,28 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
           );
         case 'schedule':
           // Absent is "withheld by the caller's grant"
-          return job.schedule ? <Code>{job.schedule}</Code> : <Text size="xs" c="dimmed">{t.emptyValue}</Text>;
-        case 'timezone':
-          return (
+          return job.schedule ? (
+            <Code className="bp-cron-cell-code" title={job.schedule}>
+              {job.schedule}
+            </Code>
+          ) : (
             <Text size="xs" c="dimmed">
-              {displayCronTimezone(job.timezone) || t.emptyValue}
+              {t.emptyValue}
             </Text>
           );
+        case 'timezone': {
+          const timezone = displayCronTimezone(job.timezone);
+          return (
+            <Text size="xs" c="dimmed" truncate="end" title={timezone || undefined}>
+              {timezone || t.emptyValue}
+            </Text>
+          );
+        }
         case 'status':
           return <CronJobStatusBadge status={job.status} translations={translations} />;
         case 'lastRun':
           return (
-            <Text size="xs" c="dimmed">
+            <Text size="xs" c="dimmed" truncate="end">
               {dateTime(job.last_run_at)}
             </Text>
           );
@@ -462,7 +478,7 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
           return <CronRunStatusBadge status={job.last_run_status} translations={translations} />;
         case 'nextRun':
           return (
-            <Text size="xs" c="dimmed">
+            <Text size="xs" c="dimmed" truncate="end">
               {/* A job that is not active never fires, whatever time is left on it */}
               {job.status === 'active' ? dateTime(job.next_run_at) : t.emptyValue}
             </Text>
@@ -549,7 +565,12 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
         </Tabs.List>
 
         <Tabs.Panel value="jobs">
-          <div className="bp-cron-manager-card">
+          <div
+            className="bp-cron-manager-card"
+            // The rows end in a menu cell only when the user may do something in it
+            style={cronGridStyle(CRON_JOBS_COLUMNS, Boolean(renderRowAppend))}
+            data-testid="cron-jobs-manager-card"
+          >
             <Group className="bp-cron-manager-toolbar" wrap="wrap">
               <CronSearchInput
                 placeholder={t.jobsManager.searchPlaceholder}

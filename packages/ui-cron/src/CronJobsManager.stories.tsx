@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Code, Stack, Text } from '@mantine/core';
 import { CronJobsManager } from './CronJobsManager';
 import { MockCronApi, type MockCronApiOptions } from './_mockApi';
-import { JOB_REPORT_ID, manyMockJobs, manyMockRuns } from './_fixtures';
+import { JOB_REPORT_ID, longTextJobs, longTextRuns, manyMockJobs, manyMockRuns } from './_fixtures';
 
 /**
  * Fixture stories: `CronJobsManager` loads through `useCronJobs` and
@@ -91,4 +91,20 @@ export const AlreadyRunning: Story = {
 /** `hideHeader` for an embedded list: no heading, the New Cron Job button stays. */
 export const WithoutHeader: Story = {
   render: () => <Harness hideHeader />,
+};
+
+/**
+ * A 970 px wide container — what an admin shell with an open sidebar leaves
+ * on a 1280 px screen — and texts longer than their columns. Every column is
+ * on screen, the row menu included, with no horizontal scrollbar: the columns
+ * share the width, and a long name, description, schedule or timezone ends in
+ * an ellipsis. The History tab holds the same for its seven columns and the
+ * View logs button.
+ */
+export const NarrowContainer: Story = {
+  render: () => (
+    <div style={{ width: 970 }} data-testid="narrow-container">
+      <Harness api={{ jobs: longTextJobs, runs: longTextRuns }} />
+    </div>
+  ),
 };

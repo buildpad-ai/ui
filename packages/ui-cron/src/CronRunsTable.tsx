@@ -10,6 +10,7 @@ import { VTable } from '@buildpad/ui-table';
 import type { Header, HeaderRaw, Item } from '@buildpad/ui-table';
 import { interpolate, type CronTranslations, type DeepPartial } from '@buildpad/utils';
 import { CRON_DATE_TIME_FORMAT } from './cronFormat';
+import { CRON_RUNS_COLUMNS, CRON_RUNS_JOB_COLUMNS, cronGridStyle } from './cronTableColumns';
 import { CronListEmptyState } from './CronListEmptyState';
 import { CronListFooter } from './CronListFooter';
 import { CronPageState } from './CronPageState';
@@ -113,22 +114,29 @@ export const CronRunsTable: React.FC<CronRunsTableProps> = ({
 
   const [selectedRun, setSelectedRun] = useState<CronRunRecord | null>(null);
 
+  // How wide each column is drawn is not said here: the columns share the
+  // width of the card (cronTableColumns.ts). The icon's `width` only tells
+  // VTable to draw that heading as a narrow one.
   const headers = useMemo<HeaderRaw[]>(
     () => [
       ...(showJobColumn
         ? [
             { text: '', value: 'icon', sortable: false, width: 40 },
-            { text: t.runsTable.columns.job, value: 'job', sortable: false, width: 240 },
+            { text: t.runsTable.columns.job, value: 'job', sortable: false },
           ]
         : []),
-      { text: t.runsTable.columns.triggered, value: 'triggered', sortable: false, width: 190 },
-      { text: t.runsTable.columns.durationMs, value: 'duration', sortable: false, width: 130 },
-      { text: t.runsTable.columns.status, value: 'status', sortable: false, width: 110 },
-      { text: t.runsTable.columns.triggeredBy, value: 'triggeredBy', sortable: false, width: 110 },
-      // The widest: an error is written here in place of the line count
-      { text: t.runsTable.columns.logs, value: 'logs', sortable: false, width: 320 },
+      { text: t.runsTable.columns.triggered, value: 'triggered', sortable: false },
+      { text: t.runsTable.columns.durationMs, value: 'duration', sortable: false },
+      { text: t.runsTable.columns.status, value: 'status', sortable: false },
+      { text: t.runsTable.columns.triggeredBy, value: 'triggeredBy', sortable: false },
+      { text: t.runsTable.columns.logs, value: 'logs', sortable: false },
     ],
     [t, showJobColumn],
+  );
+  // The same columns, as the grid they are drawn on; every row ends in the View logs cell
+  const gridStyle = useMemo(
+    () => cronGridStyle(showJobColumn ? [...CRON_RUNS_JOB_COLUMNS, ...CRON_RUNS_COLUMNS] : CRON_RUNS_COLUMNS, true),
+    [showJobColumn],
   );
 
   // `formatDate` returns '' for an empty or invalid value
@@ -145,19 +153,19 @@ export const CronRunsTable: React.FC<CronRunsTableProps> = ({
           return <IconClock size={14} color="var(--mantine-color-teal-6)" />;
         case 'job':
           return (
-            <Text size="sm" fw={500}>
+            <Text size="sm" fw={500} truncate="end" title={run.job_name}>
               {run.job_name}
             </Text>
           );
         case 'triggered':
           return (
-            <Text size="xs" c="dimmed">
+            <Text size="xs" c="dimmed" truncate="end">
               {dateTime(run.triggered_at)}
             </Text>
           );
         case 'duration':
           return (
-            <Text size="xs">
+            <Text size="xs" truncate="end">
               {typeof run.duration_ms === 'number' ? formatNumber(run.duration_ms) : t.emptyValue}
             </Text>
           );
@@ -167,7 +175,8 @@ export const CronRunsTable: React.FC<CronRunsTableProps> = ({
           return <CronTriggerBadge triggeredBy={run.triggered_by} translations={translations} />;
         case 'logs':
           return run.error ? (
-            <Text size="xs" c="red" lineClamp={1}>
+            // The whole error is in the run log; here it is one line
+            <Text size="xs" c="red" truncate="end" title={run.error}>
               {run.error}
             </Text>
           ) : (
@@ -218,7 +227,7 @@ export const CronRunsTable: React.FC<CronRunsTableProps> = ({
 
   return (
     <>
-      <div className="bp-cron-manager-card" data-testid={testId}>
+      <div className="bp-cron-manager-card" style={gridStyle} data-testid={testId}>
         <Group className="bp-cron-manager-toolbar" justify="flex-end" gap="sm">
           {!failure && (
             <Badge variant="light" color="gray" size="lg" radius="sm" data-testid={`${testId}-count`}>

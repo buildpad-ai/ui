@@ -67,7 +67,7 @@ buildpad add cron-routes
 This copies:
 
 - two page shells into `app/[lang]/(authenticated)/cron/`;
-- the components into `components/ui/cron-management/` (20 files);
+- the components into `components/ui/cron-management/` (21 files);
 - the `vtable` and `input-code` components into `components/ui/`, when the
   app does not have them;
 - the cron hooks, types and form logic into `lib/buildpad/`.
@@ -162,6 +162,15 @@ has ended, not when it starts; the list reloads then. A job that was already
 running is not started again, and the notification says so.
 
 Next Run is shown for an active job only.
+
+The jobs table and the two history tables share the width of their container.
+The icon and the badges have a fixed column; the other columns take what is
+left over, the name (and the Logs column of a history) most of it. In a
+container of 970 px or more every column is on screen, the row menu and the
+View logs button included, and no table scrolls sideways. A name, description,
+schedule, timezone or error that is longer than its column ends in an
+ellipsis, and the whole text is its tooltip. In a narrower container the
+table scrolls sideways.
 
 ### URL state (shareable views)
 

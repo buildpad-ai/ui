@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Button, Stack } from '@mantine/core';
 import { CronRunsTable } from './CronRunsTable';
 import { MockCronApi, type MockCronApiOptions } from './_mockApi';
-import { JOB_REPORT_ID, JOB_SWEEP_ID, manyMockRuns } from './_fixtures';
+import { JOB_REPORT_ID, JOB_SWEEP_ID, longTextJobs, longTextRuns, manyMockRuns } from './_fixtures';
 
 /**
  * Fixture stories: `CronRunsTable` loads through `useCronRuns`, so these run
@@ -78,4 +78,26 @@ function RefreshKeyHarness() {
 /** A host reloads the table by changing `refreshKey` — after a Run Now of its own, for example. */
 export const RefreshKey: Story = {
   render: () => <RefreshKeyHarness />,
+};
+
+/**
+ * The runs of every job in a 970 px wide container, one of them with a long
+ * job name and a long error: all seven columns and the View logs button are
+ * on screen, and the long texts end in an ellipsis.
+ */
+export const NarrowAllJobs: Story = {
+  render: () => (
+    <div style={{ width: 970 }} data-testid="narrow-container">
+      <Harness api={{ jobs: longTextJobs, runs: longTextRuns }} />
+    </div>
+  ),
+};
+
+/** The runs of one job in a 970 px wide container (no Job column). */
+export const NarrowOneJob: Story = {
+  render: () => (
+    <div style={{ width: 970 }} data-testid="narrow-container">
+      <Harness api={{ jobs: longTextJobs, runs: longTextRuns }} jobId={longTextJobs[0].id} />
+    </div>
+  ),
 };

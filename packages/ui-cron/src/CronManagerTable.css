@@ -24,3 +24,26 @@
   border-bottom: var(--ds-table-border, 1px solid var(--mantine-color-default-border));
   background: var(--mantine-color-body);
 }
+
+/* The columns of the two cron tables share the width of the card: the grid
+   template comes from cronTableColumns.ts (a few fixed columns, the others
+   flexible above a minimum), in place of VTable's own, whose columns are all
+   fixed. One template for the header and for every row, so they line up. */
+.bp-cron-manager-card .v-table table thead tr,
+.bp-cron-manager-card .v-table table tbody tr {
+  --grid-columns: var(--bp-cron-grid-columns, var(--grid-columns-rows));
+}
+
+/* A cell is a flex row: what it holds may shrink to the column, and says so
+   with an ellipsis (the texts carry `truncate`). */
+.bp-cron-manager-card .v-table .table-row .cell:not(.append) > * {
+  min-width: 0;
+}
+
+.bp-cron-cell-code {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

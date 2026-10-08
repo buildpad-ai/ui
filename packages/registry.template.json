@@ -3622,6 +3622,10 @@
           "target": "components/ui/cron-management/cron-format.ts"
         },
         {
+          "source": "ui-cron/src/cronTableColumns.ts",
+          "target": "components/ui/cron-management/cron-table-columns.ts"
+        },
+        {
           "source": "ui-cron/src/CronManagerTable.css",
           "target": "components/ui/cron-management/cron-manager-table.css"
         },
