@@ -611,7 +611,6 @@ const CronJobsManagerBody: React.FC<CronJobsManagerProps> = ({
                   />
                 )}
                 onRowClick={onJobClick ? ({ item }) => onJobClick(item as unknown as CronJobRecord) : undefined}
-                data-testid="cron-jobs-manager-table"
               />
             )}
           </div>

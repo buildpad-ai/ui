@@ -280,7 +280,6 @@ export const CronRunsTable: React.FC<CronRunsTableProps> = ({
               />
             )}
             onRowClick={({ item }) => setSelectedRun(item as unknown as CronRunRecord)}
-            data-testid={`${testId}-table`}
           />
         )}
       </div>
