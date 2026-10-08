@@ -2,16 +2,19 @@
  * @buildpad/ui-workflows
  *
  * Workflow administration UI for Buildpad projects: the definitions list and
- * the definition editor with its state diagram, built with Mantine v8,
+ * the definition editor with its state diagram, the assignments list and
+ * form, and the read-only instances list and detail, built with Mantine v8,
  * @xyflow/react and the @buildpad/hooks data layer.
  *
  * Navigation is prop-injected (`onWorkflowClick`, `onCreateWorkflow`,
- * `onBack`, `onSaved`) so the components work in any React app.
+ * `onAssignmentClick`, `onCreateAssignment`, `onInstanceClick`, `onBack`,
+ * `onSaved`) so the components work in any React app.
  *
  * The list chrome (`WorkflowSearchInput`, `WorkflowListFooter`,
  * `WorkflowListEmptyState`, `WorkflowRowActionsMenu`,
- * `WorkflowDeleteConfirmModal`, `WorkflowPageState`, `WorkflowRichText`) is
- * private to the package: it is shared by its surfaces and not exported.
+ * `WorkflowDeleteConfirmModal`, `WorkflowPageState`, `WorkflowRichText`,
+ * `useWorkflowList`) is private to the package: it is shared by its surfaces
+ * and not exported.
  */
 
 // Definitions surfaces
@@ -35,6 +38,9 @@ export type { WorkflowCommandModalProps } from './WorkflowCommandModal';
 export { WorkflowAssignmentsManager } from './WorkflowAssignmentsManager';
 export type { WorkflowAssignmentsManagerProps } from './WorkflowAssignmentsManager';
 
+export { WorkflowAssignmentDetail } from './WorkflowAssignmentDetail';
+export type { WorkflowAssignmentDetailProps } from './WorkflowAssignmentDetail';
+
 // Instances surfaces (read-only)
 export { WorkflowInstancesManager } from './WorkflowInstancesManager';
 export type { WorkflowInstancesManagerProps } from './WorkflowInstancesManager';
@@ -45,3 +51,7 @@ export type { WorkflowInstanceDetailProps } from './WorkflowInstanceDetail';
 // Policy options of the Command dialog
 export { loadAllWorkflowPolicyOptions } from './workflowPolicies';
 export type { WorkflowPolicyOption, WorkflowPolicyPage } from './workflowPolicies';
+
+// Picker options of the assignment form
+export { loadWorkflowCollectionNames } from './workflowAssignmentOptions';
+export type { WorkflowDefinitionOption } from './workflowAssignmentOptions';
