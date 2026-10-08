@@ -206,6 +206,11 @@ export { useWorkflowDefinitions } from './useWorkflowDefinitions';
 export { useWorkflowAssignments } from './useWorkflowAssignments';
 export { useWorkflowInstances } from './useWorkflowInstances';
 
+// Cron administration hooks (jobs + their runs). Their row types live in
+// @/lib/buildpad/types (`CronJobRecord`, `CronRunRecord`).
+export { useCronJobs } from './useCronJobs';
+export { useCronRuns } from './useCronRuns';
+
 // API helpers
 export { api, daasAPI, createDaaSAPI, type DaaSAPIConfig, type QueryParams } from './api';
 

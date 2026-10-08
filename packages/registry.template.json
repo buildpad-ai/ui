@@ -144,6 +144,10 @@
           "target": "lib/buildpad/list-page.ts"
         },
         {
+          "source": "utils/src/cron.ts",
+          "target": "lib/buildpad/cron.ts"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts"
         },
@@ -178,6 +182,10 @@
         {
           "source": "utils/src/i18n/namespaces/workflows.ts",
           "target": "lib/buildpad/i18n/namespaces/workflows.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/cron.ts",
+          "target": "lib/buildpad/i18n/namespaces/cron.ts"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -425,6 +433,10 @@
           "target": "lib/buildpad/types/workflow.ts"
         },
         {
+          "source": "types/src/cron.ts",
+          "target": "lib/buildpad/types/cron.ts"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts"
         }
@@ -655,6 +667,14 @@
         {
           "source": "hooks/src/useWorkflowInstances.ts",
           "target": "lib/buildpad/hooks/useWorkflowInstances.ts"
+        },
+        {
+          "source": "hooks/src/useCronJobs.ts",
+          "target": "lib/buildpad/hooks/useCronJobs.ts"
+        },
+        {
+          "source": "hooks/src/useCronRuns.ts",
+          "target": "lib/buildpad/hooks/useCronRuns.ts"
         },
         {
           "source": "hooks/src/useUrlListParams.ts",
