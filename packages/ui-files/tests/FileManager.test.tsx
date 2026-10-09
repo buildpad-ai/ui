@@ -4,7 +4,7 @@
  * the upload zone is the real `Upload` interface from ui-interfaces.
  */
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -76,6 +76,8 @@ function grant(actions: string[], isAdmin = false, loading = false) {
   });
 }
 
+/** The breadcrumb's first crumb: back to the root of the library. */
+const rootCrumb = () => within(screen.getByTestId('folder-breadcrumb')).getByText('Files');
 const listed = () => waitFor(() => expect(screen.getAllByTestId('file-card')).toHaveLength(mockFiles.length));
 const png = () => new File(['x'], 'drop.png', { type: 'image/png' });
 
@@ -304,6 +306,147 @@ describe('FileManager', () => {
       // The upload that was out is still the zone's to finish
       await act(async () => finish([mockFiles[0]]));
       await waitFor(() => expect(mocks.fetchFiles).toHaveBeenCalledTimes(2));
+    });
+  });
+
+  // The point of these is the COUNT of requests: a search or a folder opened
+  // from a later page is one request (the new listing on page 1), not one for
+  // the old page of the new listing followed by one for page 1.
+  describe('requests from a later page', () => {
+    type FileParams = { page?: number; search?: string; folder?: string; filter?: unknown };
+    /** What the list asked for since the last `mockClear()`, in order. */
+    const fileRequests = () =>
+      mocks.fetchFiles.mock.calls.map(([params]: [FileParams]) => ({
+        page: params.page,
+        search: params.search,
+        folder: params.folder,
+      }));
+    /** Long enough for the 300 ms search debounce and for any request it would start after it. */
+    const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 500)));
+    /** A full page of two whatever is asked for, so every page of every listing has a next one. */
+    const pageOfTwo = async ({ page = 1 }: FileParams) => ({
+      files: mockFiles.slice(0, 2).map((file) => ({ ...file, id: `${file.id}-p${page}` })),
+      total: 60,
+    });
+    const inner: Folder = { id: 'f-inner', name: 'Inner', parent: 'f-marketing' };
+
+    /** Lists two files a page and leaves the list on page 2 (of the root, or of what `props` say). */
+    async function onPageTwo(props: Partial<Props> = {}) {
+      mocks.fetchFiles.mockImplementation(pageOfTwo);
+      const view = render(ui({ pageSize: 2, ...props }));
+      await waitFor(() => expect(mocks.fetchFiles).toHaveBeenCalledTimes(1));
+      fireEvent.click(await screen.findByRole('button', { name: '2' }));
+      await waitFor(() => expect(mocks.fetchFiles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
+      await settle();
+      mocks.fetchFiles.mockClear();
+      mocks.fetchFolders.mockClear();
+      return view;
+    }
+
+    it('a search typed on page 2 is ONE request: that search, on page 1', async () => {
+      await onPageTwo();
+      fireEvent.change(screen.getByTestId('files-search'), { target: { value: 'report' } });
+      await settle();
+      // Not [{ page: 2, search: 'report' }, { page: 1, search: 'report' }]
+      expect(fileRequests()).toEqual([{ page: 1, search: 'report', folder: undefined }]);
+      expect(mocks.fetchFolders).toHaveBeenCalledTimes(1);
+    });
+
+    it('clearing a search on a later page is one request as well', async () => {
+      mocks.fetchFiles.mockImplementation(pageOfTwo);
+      render(ui({ pageSize: 2 }));
+      await waitFor(() => expect(mocks.fetchFiles).toHaveBeenCalledTimes(1));
+      fireEvent.change(screen.getByTestId('files-search'), { target: { value: 'report' } });
+      await settle();
+      fireEvent.click(await screen.findByRole('button', { name: '2' }));
+      await waitFor(() =>
+        expect(mocks.fetchFiles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, search: 'report' })),
+      );
+      await settle();
+      mocks.fetchFiles.mockClear();
+
+      fireEvent.change(screen.getByTestId('files-search'), { target: { value: '' } });
+      await settle();
+      expect(fileRequests()).toEqual([{ page: 1, search: undefined, folder: undefined }]);
+    });
+
+    it('a folder opened from page 2 is ONE request: that folder, on page 1', async () => {
+      await onPageTwo();
+      fireEvent.click(screen.getByText('Marketing'));
+      await settle();
+      // Not [{ page: 2, folder }, { page: 1, folder }]
+      expect(fileRequests()).toEqual([{ page: 1, search: undefined, folder: 'f-marketing' }]);
+      expect(mocks.fetchFolders.mock.calls).toEqual([[{ parent: 'f-marketing' }]]);
+    });
+
+    it('going back up from page 2 of a folder is one request', async () => {
+      mocks.fetchFiles.mockImplementation(pageOfTwo);
+      render(ui({ pageSize: 2 }));
+      await waitFor(() => expect(mocks.fetchFiles).toHaveBeenCalledTimes(1));
+      fireEvent.click(await screen.findByText('Marketing'));
+      await waitFor(() =>
+        expect(mocks.fetchFiles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, folder: 'f-marketing' })),
+      );
+      await settle();
+      fireEvent.click(await screen.findByRole('button', { name: '2' }));
+      await waitFor(() =>
+        expect(mocks.fetchFiles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, folder: 'f-marketing' })),
+      );
+      await settle();
+      mocks.fetchFiles.mockClear();
+
+      fireEvent.click(rootCrumb());
+      await settle();
+      expect(fileRequests()).toEqual([{ page: 1, search: undefined, folder: undefined }]);
+    });
+
+    it('what is typed sends nothing until the debounce has passed, and keeps the page until then', async () => {
+      await onPageTwo();
+      // Typed and taken back within the debounce: the list never searched for it
+      fireEvent.change(screen.getByTestId('files-search'), { target: { value: 'rep' } });
+      fireEvent.change(screen.getByTestId('files-search'), { target: { value: '' } });
+      await settle();
+      expect(fileRequests()).toEqual([]);
+      expect(screen.getByRole('button', { name: '2' })).toHaveAttribute('aria-current', 'page');
+    });
+
+    // With the URL in step (the default) the old page was written back over
+    // the reset: the list stayed on page 2 of the new search.
+    it('with the URL in step, a search typed on page 2 lands on page 1, in the list and in the URL', async () => {
+      window.history.replaceState(null, '', '/');
+      try {
+        await onPageTwo({ urlParams: true });
+        expect(window.location.search).toBe('?page=2');
+        fireEvent.change(screen.getByTestId('files-search'), { target: { value: 'report' } });
+        await settle();
+        expect(fileRequests()).toEqual([{ page: 1, search: 'report', folder: undefined }]);
+        expect(screen.getByRole('button', { name: '1' })).toHaveAttribute('aria-current', 'page');
+        expect(window.location.search).toBe('?search=report');
+      } finally {
+        window.history.replaceState(null, '', '/');
+      }
+    });
+
+    it('a folder and a page restored from the URL are one request, and the page is kept', async () => {
+      window.history.replaceState(null, '', '/?folder=f-inner&page=2');
+      mocks.fetchFiles.mockImplementation(pageOfTwo);
+      mocks.fetchFolder.mockImplementation(async (id: string) => (id === inner.id ? inner : mockFolders[0]));
+      try {
+        render(ui({ pageSize: 2, urlParams: true }));
+        await waitFor(() => expect(mocks.fetchFiles).toHaveBeenCalled());
+        await settle();
+        expect(fileRequests()).toEqual([{ page: 2, search: undefined, folder: 'f-inner' }]);
+        expect(screen.getByRole('button', { name: '2' })).toHaveAttribute('aria-current', 'page');
+
+        // Leaving the folder drops the page, in the list and in the URL
+        mocks.fetchFiles.mockClear();
+        fireEvent.click(rootCrumb());
+        await settle();
+        expect(fileRequests()).toEqual([{ page: 1, search: undefined, folder: undefined }]);
+        expect(window.location.search).toBe('');
+      } finally {
+        window.history.replaceState(null, '', '/');
+      }
     });
   });
 });

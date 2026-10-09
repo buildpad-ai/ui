@@ -42,6 +42,11 @@ Users and Files modules: the fixes that were made in `@buildpad/ui-cron` and `@b
 - On page 2 or later, typing a search, clearing one, picking a role or status filter, sorting a column or picking another page size sent two requests: the new filter for the old page, then the same filter for page 1. The answers could arrive in either order (the lists draw whichever comes last), and a backend that refuses a page past the end of the list answered the first with an error. The list now sends the one request for page 1. A page restored from the URL is kept as before.
 - `ModuleAccessKeysManager` (one request for the whole tree, searched in the browser), `RoleUsersManager` and the policy picker do not page and are unchanged.
 
+**Files: a search or a folder opened from a later page is one request, for page 1** (`FileManager`)
+
+- With `urlParams={false}`, typing a search (or clearing one), opening a folder or going back up from page 2 or later sent two listings: the new search or folder for the old page, then for page 1.
+- With the URL in step (the default) it was worse: the old page was written back over the reset, so the list asked for the OLD page of the new search or folder and stayed there (stepping back one request at a time when that page was empty). The list now sends the one request for page 1, and the URL drops its `page`. A folder and a page restored from the URL are kept as before.
+
 **The footer names one row in the singular** (`@buildpad/utils` `users` namespace, `ListFooter`, the three lists)
 
 - A list of one read "Showing 1 of 1 users" / "roles" / "policies". `usersManager.itemsLabel`, `rolesManager.itemsLabel` and `policiesManager.itemsLabel` are now plural forms (`{ one: 'user', other: 'users' }`), as the namespace's `count` entries are, and the footer picks the form the locale's plural rules give the TOTAL: "Showing 1 of 1 user", "Showing 1 of 26 users". Indonesian nouns have one form: `{ other: 'pengguna' }`.

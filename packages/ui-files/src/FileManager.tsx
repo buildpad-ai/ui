@@ -143,7 +143,27 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
+  // A page belongs to the search and the folder it was reached under: it is
+  // kept with them, and a page kept under another search or folder is page 1.
+  // The reset is decided while rendering, not in an effect after it, so the
+  // load below sees the new listing and page 1 as one change and sends one
+  // request. (An effect ran after the load had already asked for the old page
+  // of the new listing; and with the URL in step, the old page was written
+  // back over the reset.) A page restored from the URL is kept: it is stored
+  // with the listing of the first render.
+  const filtersKey = JSON.stringify([debouncedSearch, currentFolder]);
+  const [pageState, setPageState] = useState(() => ({
+    page: urlParams ? readUrlIntParam(param('page'), 1) : 1,
+    filtersKey,
+  }));
+  let page = pageState.page;
+  if (pageState.filtersKey !== filtersKey) {
+    page = 1;
+    setPageState({ page: 1, filtersKey });
+  }
+  const setPage = useCallback((next: number) => {
+    setPageState((current) => (current.page === next ? current : { ...current, page: next }));
+  }, []);
   const [listLoading, setListLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
@@ -206,10 +226,10 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
 
       setFolders(folderRes);
 
-      // Overshot the end (deletion, or a stale page after a filter change)?
-      // Step back instead of showing an empty page.
+      // Overshot the end (a deletion, or a page from the URL that is not
+      // there)? Step back instead of showing an empty page.
       if (fileRes.files.length === 0 && page > 1) {
-        setPage((current) => Math.max(1, current - 1));
+        setPage(page - 1);
         return;
       }
 
@@ -232,27 +252,13 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
     enableFolders,
     fetchFiles,
     fetchFolders,
+    setPage,
     t,
   ]);
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  // Reset to first page whenever the search term or folder CHANGES — not on
-  // mount, or a ?page=2 restored from the URL would be clobbered.
-  // StrictMode-safe: compare against the previous values rather than "has
-  // mounted". StrictMode re-runs mount effects with refs intact, so a
-  // has-mounted flag fires setPage(1) on the second run and clobbers a
-  // ?page= restored from the URL in development.
-  const filtersKey = JSON.stringify([debouncedSearch, currentFolder]);
-  const previousFiltersKeyRef = React.useRef<string | null>(null);
-  useEffect(() => {
-    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
-      setPage(1);
-    }
-    previousFiltersKeyRef.current = filtersKey;
-  }, [filtersKey]);
 
   /**
    * Rebuild the breadcrumb for a folder that arrived as a bare id (deep link,
@@ -323,9 +329,9 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
           const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
           return Number.isInteger(value) && value > 0 ? value : 1;
         })();
-        setPage((current) => (current === nextPage ? current : nextPage));
+        setPage(nextPage);
       },
-      [param, enableFolders, rebuildPath],
+      [param, enableFolders, rebuildPath, setPage],
     ),
   });
 

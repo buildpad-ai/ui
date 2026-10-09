@@ -25,8 +25,9 @@ export default defineConfig({
       // reasons that have nothing to do with the source.
       include: ['src/**'],
       // Floors just under the coverage measured when they were added
-      // (56.28 / 61.72 / 37.64 / 56.28); raise them as tests are added.
-      thresholds: { statements: 55, branches: 60, functions: 36, lines: 55 },
+      // (59.03 / 74.8 / 43.52 / 59.03, stories and fixtures included); raise
+      // them as tests are added.
+      thresholds: { statements: 58, branches: 73, functions: 42, lines: 58 },
     },
   },
   resolve: {
