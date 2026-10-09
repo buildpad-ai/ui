@@ -392,14 +392,57 @@ function buildRegistry() {
 
 // ─── Generate mode ──────────────────────────────────────────────
 
+/** Drop the one field that is expected to differ between two builds. */
+const withoutGeneratedAt = (registry) => {
+  const { generatedAt, ...rest } = registry;
+  return rest;
+};
+
+/**
+ * The `generatedAt` a build should write: the committed one whenever nothing
+ * else in the artifact moved.
+ *
+ * Stamping `new Date()` unconditionally made every `pnpm build` rewrite
+ * registry.json even on an untouched tree. That phantom diff is not cosmetic:
+ * it is enough to fail release-local.sh's clean-tree preflight, so a release
+ * could not follow a build without an intervening `git checkout`, and it put
+ * an unexplained one-line change into PRs that never touched the registry.
+ *
+ * `--check` has always compared with the timestamp stripped, i.e. it already
+ * treats `generatedAt` as non-semantic. This makes the writer agree: the field
+ * now moves when the artifact's content moves, and otherwise holds still.
+ */
+export function stableGeneratedAt(fresh, committed) {
+  if (!committed || typeof committed.generatedAt !== 'string') return fresh.generatedAt;
+  return stableStringify(withoutGeneratedAt(fresh)) === stableStringify(withoutGeneratedAt(committed))
+    ? committed.generatedAt
+    : fresh.generatedAt;
+}
+
+/** The committed artifact, or undefined when it is absent or unreadable. */
+function readCommittedRegistry(outPath) {
+  if (!existsSync(outPath)) return undefined;
+  try {
+    return JSON.parse(readFileSync(outPath, 'utf8'));
+  } catch {
+    // A malformed artifact carries no timestamp worth keeping; regenerate it.
+    return undefined;
+  }
+}
+
 function writeRegistry() {
   const output = buildRegistry();
   const outPath = join(PACKAGES_DIR, 'registry.json');
+
+  const committed = readCommittedRegistry(outPath);
+  output.generatedAt = stableGeneratedAt(output, committed);
+  const unchanged = committed !== undefined && output.generatedAt === committed.generatedAt;
+
   writeFileSync(outPath, JSON.stringify(output, null, 2) + '\n');
 
   console.log(`✓ Generated packages/registry.json`);
   console.log(`  schemaVersion : 2`);
-  console.log(`  generatedAt   : ${output.generatedAt}`);
+  console.log(`  generatedAt   : ${output.generatedAt}${unchanged ? ' (unchanged)' : ''}`);
   console.log(`  packages      : ${Object.keys(output.packages).length}`);
   console.log(`  components    : ${output.components.length}`);
   console.log(`  lib modules   : ${Object.keys(output.lib).length}`);
@@ -645,10 +688,10 @@ function checkRegistry() {
   }
 
   // Non-hash staleness: compare the whole artifact, key-order-independent,
-  // ignoring the always-changing generatedAt timestamp.
-  const strip = (r) => { const { generatedAt, ...rest } = r; return rest; };
+  // ignoring generatedAt — a rebuild may legitimately restamp it (and now only
+  // does so when something else moved; see stableGeneratedAt).
   const registryStale =
-    stableStringify(strip(fresh)) !== stableStringify(strip(committed));
+    stableStringify(withoutGeneratedAt(fresh)) !== stableStringify(withoutGeneratedAt(committed));
 
   if (unversioned.length > 0) {
     console.error('\n✗ Source changed without a version bump:\n');
