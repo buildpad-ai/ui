@@ -1,5 +1,19 @@
 # @buildpad/ui-forms
 
+## 3.1.0
+
+### Patch Changes
+
+- Updated dependencies [45feba0]
+- Updated dependencies [dca3742]
+  - @buildpad/types@3.1.0
+  - @buildpad/hooks@3.1.0
+  - @buildpad/utils@3.1.0
+  - @buildpad/ui-interfaces@3.1.0
+  - @buildpad/ui-form@3.1.0
+  - @buildpad/services@3.1.0
+  - @buildpad/ui-collections@3.1.0
+
 ## 3.0.0
 
 ### Major Changes

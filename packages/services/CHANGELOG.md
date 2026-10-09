@@ -1,5 +1,13 @@
 # @buildpad/services
 
+## 3.1.0
+
+### Patch Changes
+
+- Updated dependencies [45feba0]
+  - @buildpad/types@3.1.0
+  - @buildpad/utils@3.1.0
+
 ## 3.0.0
 
 ### Major Changes

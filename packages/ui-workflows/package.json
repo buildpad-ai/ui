@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-workflows",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Workflow administration UI (definitions with a state diagram editor, assignments, instances) for Buildpad projects",
   "type": "module",
   "main": "./dist/index.js",

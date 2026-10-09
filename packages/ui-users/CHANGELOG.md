@@ -1,5 +1,18 @@
 # @buildpad/ui-users
 
+## 3.1.0
+
+### Patch Changes
+
+- Updated dependencies [45feba0]
+- Updated dependencies [dca3742]
+  - @buildpad/types@3.1.0
+  - @buildpad/hooks@3.1.0
+  - @buildpad/utils@3.1.0
+  - @buildpad/ui-interfaces@3.1.0
+  - @buildpad/services@3.1.0
+  - @buildpad/ui-table@3.1.0
+
 ## 3.0.0
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-users",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Users, roles, and policies administration UI (RBAC management) for Buildpad projects",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,0 +1,43 @@
+# @buildpad/ui-cron
+
+## 3.1.0
+
+### Minor Changes
+
+- 0578a05: The Cron Jobs module is installable: the `cron-management` registry component and the `cron-routes` lib module. `buildpad add cron-routes` installs the whole feature.
+
+  **Registry and CLI**
+
+  - `cron-management` (category `admin`, not part of `add --all`): the 20 source files of `@buildpad/ui-cron` under `components/ui/cron-management/`; depends on the `types`, `hooks`, `services` and `utils` lib modules and on the `vtable` and `input-code` components (`input-code` is the built-in code editor). No new npm dependency.
+  - `cron-routes`: two pages under `app/[lang]/(authenticated)/` — `/cron` (`CronJobsManager`) and `/cron/[id]` (`CronJobDetail`; `/cron/new` creates) — and one sidebar entry, Cron Jobs (`IconClock`), in the Automation section the workflow routes use. The app dictionary gains `app.nav.cron`; an existing app gets it from `buildpad upgrade i18n`, and the sidebar shows the English label until then.
+  - The editor does not navigate, so the installed detail page moves to `/cron/<id>` of the stored job in `onCreated`, as the reference admin UI does. After a save of an existing job it stays on the editor.
+  - `@buildpad/ui-cron` imports are rewritten to `@/components/ui/cron-management` (subpaths kebab-cased).
+  - `@buildpad/mcp` embeds the same registry, so `list_components`, `list_lib_modules` and `copy_component` serve both entries.
+
+  Docs: the Cron Jobs Module Recipe page (install, the two routes, component props, the `renderCodeEditor` slot with an example of a syntax-highlighting editor, permissions on `daas_cron_jobs`, both backends, prerequisites).
+
+- cceb814: New package `@buildpad/ui-cron`: the components of a Cron Jobs admin module, on the cron data layer (`useCronJobs`, `useCronRuns`, the `cron` namespace). The registry component and the installed pages have an entry of their own (`cron-management`, `cron-routes`).
+
+  - **Jobs list** (`CronJobsManager`): a Jobs tab with search, refresh, the table (name and description, schedule, timezone, status, last run and its outcome, next run for an active job), a row menu (Edit, Run Now, Activate or Deactivate, Clone, Delete) and paging with a page-size selector; a History tab with the runs of every job. The search, the page and the open tab are kept in the URL (`urlParams`, `urlParamPrefix`).
+  - **Job editor** (`CronJobDetail`, `id` = `new` or a job id): the code beside the settings (name, description, schedule, timezone, timeout, memory limit, and status for a stored job), Run Now, Activate or Deactivate and Save in the header, and the job's own run history on a second tab. Save sends only the fields that changed and is disabled until something has.
+  - **Run history** (`CronRunsTable`): one table for the runs of every job and for the runs of one (`jobId`), with its own load, Refresh and pager; a row opens the run log (`CronRunLogModal`: outcome, trigger, time, duration, error, and the console output line by line). `refreshKey` reloads it from outside.
+  - **Badges**: `CronJobStatusBadge`, `CronRunStatusBadge`, `CronTriggerBadge`.
+  - Navigation is by callback props (`onJobClick`, `onCreateJob`, `onBack`, `onCreated`, `onSaved`). After a create the editor goes on as the editor of the stored job, so a second Save updates it and never creates it twice; navigate in `onCreated` so the URL names the job.
+  - Permissions are checked on `daas_cron_jobs`, the one collection both backends decide every cron route by (`collection` prop). A user who may not save gets a read-only editor, code included, and no action buttons; a row menu without any allowed action is not drawn. Write controls are drawn once the permissions are known, so they do not flash for a user without them. Not-found, access-denied (with the server's sentence when a second factor is required) and load-error states are drawn in place, never as an empty list or an empty form, and nothing redirects.
+  - Run Now reads its answer: a job that was already running was not started again, and the notification says so. The request is answered when the run has ended, so the list and the history reload then, not on a timer.
+  - A stored timezone outside the options is shown and kept as stored; re-picking the selected Timezone or Status keeps it; Timeout and Memory Limit take whole numbers only; deleting the only row of the last page loads the page before it; the delete confirm, Run Now, Activate, Deactivate and Clone are pending while they run and take no second click; a job opens from the keyboard through a named button on its row.
+  - **Code editor**: the built-in one is `InputCode` of `@buildpad/ui-interfaces` (a monospace textarea with line numbers, no highlighting), named by the "Job Code" label. `renderCodeEditor` puts a host's own editor in its place (`CronCodeEditorProps` is the slot's contract); `defaultCode`, `codeHelp` and `timezoneOptions` replace the new-job snippet, the notice above the editor and the timezone list. No new npm dependency.
+  - Strings come from the `cron` namespace (English and Indonesian); every component takes a `translations` override. The namespace gains `jobDetail.unsavedChanges` ("Unsaved Changes", as the reference admin UI words the badge).
+
+  Storybook: `pnpm storybook:cron` (port 6014), built with the others by `pnpm build:storybook`.
+
+### Patch Changes
+
+- Updated dependencies [45feba0]
+- Updated dependencies [dca3742]
+  - @buildpad/types@3.1.0
+  - @buildpad/hooks@3.1.0
+  - @buildpad/utils@3.1.0
+  - @buildpad/ui-interfaces@3.1.0
+  - @buildpad/services@3.1.0
+  - @buildpad/ui-table@3.1.0
