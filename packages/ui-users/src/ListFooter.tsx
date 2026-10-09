@@ -2,15 +2,21 @@
 
 import React from 'react';
 import { Group, Pagination, Select, Text } from '@mantine/core';
-import { useBuildpadTranslations } from '@buildpad/services';
-import { interpolate, type DeepPartial, type UsersTranslations } from '@buildpad/utils';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type PluralForms, type UsersTranslations } from '@buildpad/utils';
 
 export interface ListFooterProps {
   /** Rows on the current page. */
   shown: number;
   totalCount: number;
-  /** Plural noun for the "Showing N of M {label}" line (e.g. "users"). */
-  itemsLabel: string;
+  /**
+   * The noun of the "Showing N of M {label}" line, one form per plural
+   * category of M (`{ one: 'user', other: 'users' }`): one user is not
+   * "1 users". A plain string is shown as it is: a host that renders this
+   * footer itself may pass one, and so does a dictionary written before the
+   * managers' entries had forms.
+   */
+  itemsLabel: PluralForms | string;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -28,7 +34,8 @@ export interface ListFooterProps {
  * List footer shared by the three managers, owning the footer contract:
  * rendered only when `totalCount > 0`, "Showing N of M" plus the page-size
  * selector always, the `Pagination` control only when `totalPages > 1`
- * (daas wording parity — keep the copy byte-stable).
+ * (daas wording parity — keep the copy byte-stable; the noun alone follows
+ * the total: "Showing 1 of 1 user").
  */
 export const ListFooter: React.FC<ListFooterProps> = ({
   shown,
@@ -44,14 +51,20 @@ export const ListFooter: React.FC<ListFooterProps> = ({
   translations,
 }) => {
   const t = useBuildpadTranslations((d) => d.users, translations);
+  const { formatCount } = useBuildpadI18n();
 
   if (totalCount <= 0) return null;
+
+  // The noun follows the total, as the number beside it does: "1 of 1 user",
+  // "1 of 26 users". `formatCount` picks the form the locale's plural rules
+  // give that number (Indonesian has one form for every number).
+  const noun = typeof itemsLabel === 'string' ? itemsLabel : formatCount(totalCount, itemsLabel);
 
   return (
     <Group justify="space-between" px="md" py="sm" style={{ borderTop: 'var(--ds-table-border, 1px solid #e8ebf1)' }}>
       <Group gap="sm">
         <Text size="xs" c="dimmed">
-          {interpolate(t.listFooter.showing, { shown, totalCount, itemsLabel })}
+          {interpolate(t.listFooter.showing, { shown, totalCount, itemsLabel: noun })}
         </Text>
         <Select
           size="xs"

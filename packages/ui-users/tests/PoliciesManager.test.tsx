@@ -54,6 +54,17 @@ describe('PoliciesManager', () => {
     expect(screen.getByText('Content Editor')).toBeInTheDocument();
   });
 
+  it('names the rows in its footer by their number: one policy, three policies', async () => {
+    const { unmount } = renderManager();
+    expect(await screen.findByText('Showing 3 of 3 policies')).toBeInTheDocument();
+    unmount();
+
+    fetchPoliciesMock.mockResolvedValue({ policies: mockPolicies.slice(0, 1), total: 1, totalPages: 1 });
+    renderManager();
+    expect(await screen.findByText('Showing 1 of 1 policy')).toBeInTheDocument();
+    expect(screen.getByText('1 policy')).toBeInTheDocument();
+  });
+
   it('hideHeader hides the heading + subtitle but keeps the Add button', async () => {
     renderManager({ hideHeader: true, onCreatePolicy: vi.fn() });
     await waitFor(() => expect(fetchPoliciesMock).toHaveBeenCalled());

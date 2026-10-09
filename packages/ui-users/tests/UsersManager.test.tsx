@@ -97,6 +97,24 @@ describe('UsersManager', () => {
     expect(screen.getByText('sam.lee@example.com')).toBeInTheDocument();
   });
 
+  it('names the rows in its footer by their number: one user, four users', async () => {
+    const { unmount } = renderManager();
+    expect(await screen.findByText('Showing 4 of 4 users')).toBeInTheDocument();
+    unmount();
+
+    fetchUsersMock.mockResolvedValue({ users: mockUsers.slice(0, 1), total: 1, totalPages: 1 });
+    renderManager();
+    expect(await screen.findByText('Showing 1 of 1 user')).toBeInTheDocument();
+    expect(screen.getByText('1 user')).toBeInTheDocument();
+  });
+
+  it('shows a footer noun overridden with one string as it is', async () => {
+    fetchUsersMock.mockResolvedValue({ users: mockUsers.slice(0, 1), total: 1, totalPages: 1 });
+    // A dictionary written when the entry was one string
+    renderManager({ translations: { usersManager: { itemsLabel: 'people' as never } } });
+    expect(await screen.findByText('Showing 1 of 1 people')).toBeInTheDocument();
+  });
+
   it('shows the Add User button when onCreateUser is provided and create is allowed', async () => {
     const onCreateUser = vi.fn();
     renderManager({ onCreateUser });

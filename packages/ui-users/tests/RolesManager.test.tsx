@@ -52,6 +52,17 @@ describe('RolesManager', () => {
     expect(screen.getByText('Editor')).toBeInTheDocument();
   });
 
+  it('names the rows in its footer by their number: one role, three roles', async () => {
+    const { unmount } = renderManager();
+    expect(await screen.findByText('Showing 3 of 3 roles')).toBeInTheDocument();
+    unmount();
+
+    fetchRolesMock.mockResolvedValue({ roles: mockRoles.slice(0, 1), total: 1, totalPages: 1 });
+    renderManager();
+    expect(await screen.findByText('Showing 1 of 1 role')).toBeInTheDocument();
+    expect(screen.getByText('1 role')).toBeInTheDocument();
+  });
+
   it('hideHeader hides the heading + subtitle but keeps the Add button', async () => {
     renderManager({ hideHeader: true, onCreateRole: vi.fn() });
     await waitFor(() => expect(fetchRolesMock).toHaveBeenCalled());
