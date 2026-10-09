@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-09T12:16:00.048Z",
-  "version": "3.2.0",
+  "generatedAt": "2026-10-09T12:41:55.930Z",
+  "version": "3.3.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
   "license": "MIT",
@@ -90,59 +90,59 @@
   },
   "packages": {
     "@buildpad/ui-interfaces": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-interfaces/CHANGELOG.md"
     },
     "@buildpad/ui-form": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-form/CHANGELOG.md"
     },
     "@buildpad/ui-table": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-table/CHANGELOG.md"
     },
     "@buildpad/ui-collections": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-collections/CHANGELOG.md"
     },
     "@buildpad/ui-files": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-files/CHANGELOG.md"
     },
     "@buildpad/ui-forms": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-forms/CHANGELOG.md"
     },
     "@buildpad/ui-users": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-users/CHANGELOG.md"
     },
     "@buildpad/ui-workflows": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-workflows/CHANGELOG.md"
     },
     "@buildpad/ui-cron": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "ui-cron/CHANGELOG.md"
     },
     "@buildpad/hooks": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "hooks/CHANGELOG.md"
     },
     "@buildpad/services": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "services/CHANGELOG.md"
     },
     "@buildpad/types": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "types/CHANGELOG.md"
     },
     "@buildpad/utils": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "utils/CHANGELOG.md"
     },
     "@buildpad/cli": {
-      "version": "3.2.0",
+      "version": "3.3.0",
       "changelogUrl": "cli/CHANGELOG.md"
     }
   },
@@ -531,8 +531,8 @@
         "types"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
-      "lastChangedIn": "3.2.0"
+      "version": "3.3.0",
+      "lastChangedIn": "3.3.0"
     },
     "types": {
       "name": "types",
@@ -590,7 +590,7 @@
         }
       ],
       "sourcePackage": "@buildpad/types",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.1.0"
     },
     "services": {
@@ -682,7 +682,7 @@
         "dayjs"
       ],
       "sourcePackage": "@buildpad/services",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     "hooks": {
@@ -906,7 +906,7 @@
         "services"
       ],
       "sourcePackage": "@buildpad/hooks",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.1.0"
     },
     "i18n": {
@@ -974,7 +974,7 @@
         "services"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.1.0"
     },
     "api-routes": {
@@ -1107,7 +1107,7 @@
         "collection-form"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     "content-routes": {
@@ -1146,7 +1146,7 @@
         "collection-form"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     "files-routes": {
@@ -1180,7 +1180,7 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.3.0"
     },
     "users-routes": {
@@ -1257,8 +1257,8 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
-      "lastChangedIn": "3.2.0"
+      "version": "3.3.0",
+      "lastChangedIn": "3.3.0"
     },
     "forms-routes": {
       "name": "forms-routes",
@@ -1301,7 +1301,7 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.3.0"
     },
     "workflows-routes": {
@@ -1373,7 +1373,7 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.2.0"
     },
     "cron-routes": {
@@ -1409,7 +1409,7 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.1.0"
     },
     "supabase-auth": {
@@ -1455,7 +1455,7 @@
         "i18n"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     "external-oauth": {
@@ -1506,7 +1506,7 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     "scope-routes": {
@@ -1543,7 +1543,7 @@
         }
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     "design-system": {
@@ -1585,7 +1585,7 @@
         "i18n"
       ],
       "sourcePackage": "@buildpad/cli",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.3.0"
     }
   },
@@ -1630,7 +1630,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -1666,7 +1666,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -1704,7 +1704,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -1747,7 +1747,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.3.0"
     },
     {
@@ -1792,7 +1792,7 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -1885,7 +1885,7 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -1943,7 +1943,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -1980,7 +1980,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -2024,7 +2024,7 @@
         "select-icon"
       ],
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -2064,7 +2064,7 @@
         "select-icon"
       ],
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -2104,7 +2104,7 @@
         "select-icon"
       ],
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -2142,7 +2142,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -2182,7 +2182,7 @@
         "select-icon"
       ],
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -2218,7 +2218,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.3.0"
     },
     {
@@ -2255,7 +2255,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -2299,7 +2299,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -2345,7 +2345,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -2381,7 +2381,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -2417,7 +2417,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -2461,7 +2461,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.3.0"
     },
     {
@@ -2504,7 +2504,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -2547,7 +2547,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -2593,7 +2593,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -2628,7 +2628,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -2685,7 +2685,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -2743,7 +2743,7 @@
         ]
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.5.0"
     },
     {
@@ -2790,7 +2790,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -2851,7 +2851,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -2887,7 +2887,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "1.2.0"
     },
     {
@@ -2923,7 +2923,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "1.2.0"
     },
     {
@@ -2960,7 +2960,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -2996,7 +2996,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3031,7 +3031,7 @@
         "hasOptions": false
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "1.2.0"
     },
     {
@@ -3069,7 +3069,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3122,7 +3122,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3182,7 +3182,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3343,7 +3343,7 @@
         "system-token"
       ],
       "sourcePackage": "@buildpad/ui-form",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.1.0"
     },
     {
@@ -3383,7 +3383,7 @@
         "collection-list"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -3438,7 +3438,7 @@
       ],
       "internalDependencies": [],
       "sourcePackage": "@buildpad/ui-table",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3492,7 +3492,7 @@
         "filter-panel"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -3515,7 +3515,7 @@
         "types"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3540,7 +3540,7 @@
         "hooks"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3565,7 +3565,7 @@
         "content-navigation"
       ],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3586,7 +3586,7 @@
       ],
       "internalDependencies": [],
       "sourcePackage": "@buildpad/ui-collections",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3624,7 +3624,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "2.4.0"
     },
     {
@@ -3668,7 +3668,7 @@
         "map"
       ],
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -3721,7 +3721,7 @@
         "hasOptions": true
       },
       "sourcePackage": "@buildpad/ui-interfaces",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.1.0"
     },
     {
@@ -3827,8 +3827,8 @@
         "upload"
       ],
       "sourcePackage": "@buildpad/ui-files",
-      "version": "3.2.0",
-      "lastChangedIn": "3.2.0"
+      "version": "3.3.0",
+      "lastChangedIn": "3.3.0"
     },
     {
       "name": "users-management",
@@ -3996,8 +3996,8 @@
         "vtable"
       ],
       "sourcePackage": "@buildpad/ui-users",
-      "version": "3.2.0",
-      "lastChangedIn": "3.2.0"
+      "version": "3.3.0",
+      "lastChangedIn": "3.3.0"
     },
     {
       "name": "form-builder",
@@ -4107,7 +4107,7 @@
         "filter-panel"
       ],
       "sourcePackage": "@buildpad/ui-forms",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.0.0"
     },
     {
@@ -4245,7 +4245,7 @@
         "vtable"
       ],
       "sourcePackage": "@buildpad/ui-workflows",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "lastChangedIn": "3.2.0"
     },
     {
@@ -4378,8 +4378,8 @@
         "input-code"
       ],
       "sourcePackage": "@buildpad/ui-cron",
-      "version": "3.2.0",
-      "lastChangedIn": "3.2.0"
+      "version": "3.3.0",
+      "lastChangedIn": "3.3.0"
     }
   ],
   "categories": [
