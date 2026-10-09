@@ -135,7 +135,7 @@ export interface CronJobsManagerProps {
  *   drew a trigger that opened an empty menu.
  * - New Cron Job and the row menus are drawn once the permissions are known,
  *   as the reference did; they do not flash for a user who has none of them.
- *   (ui-workflows is optimistic while they load.)
+ *   (ui-workflows, ui-users and ui-files wait in the same way.)
  * - Next Run is shown for an active job only: both backends leave the last
  *   computed time on a job that is deactivated, and an inactive job never
  *   fires.
