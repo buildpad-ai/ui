@@ -68,7 +68,7 @@ describe('WorkflowListFooter', () => {
   const props = {
     shown: 25,
     totalCount: 26,
-    itemsLabel: 'workflows',
+    itemsLabel: { one: 'workflow', other: 'workflows' },
     page: 1,
     totalPages: 2,
     onPageChange: vi.fn(),
@@ -89,6 +89,28 @@ describe('WorkflowListFooter', () => {
     ui(<WorkflowListFooter {...props} shown={3} totalCount={3} totalPages={1} />);
     expect(screen.getByText('Showing 3 of 3 workflows')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '2' })).not.toBeInTheDocument();
+  });
+
+  it('names one row in the singular: the noun follows the total', () => {
+    ui(<WorkflowListFooter {...props} shown={1} totalCount={1} totalPages={1} />);
+    expect(screen.getByText('Showing 1 of 1 workflow')).toBeInTheDocument();
+    expect(screen.queryByText('Showing 1 of 1 workflows')).not.toBeInTheDocument();
+  });
+
+  it('keeps the plural for the one row of a last page', () => {
+    ui(<WorkflowListFooter {...props} shown={1} totalCount={26} page={2} />);
+    expect(screen.getByText('Showing 1 of 26 workflows')).toBeInTheDocument();
+  });
+
+  it('uses the one form a noun has in a language without plurals', () => {
+    ui(<WorkflowListFooter {...props} shown={1} totalCount={1} totalPages={1} itemsLabel={{ other: 'alur kerja' }} />);
+    expect(screen.getByText('Showing 1 of 1 alur kerja')).toBeInTheDocument();
+  });
+
+  // A host dictionary written when the entry was one string
+  it('shows a noun given as one string as it is', () => {
+    ui(<WorkflowListFooter {...props} shown={1} totalCount={1} totalPages={1} itemsLabel="flows" />);
+    expect(screen.getByText('Showing 1 of 1 flows')).toBeInTheDocument();
   });
 
   it('draws nothing for an empty list', () => {

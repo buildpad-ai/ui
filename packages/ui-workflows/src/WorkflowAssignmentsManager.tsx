@@ -80,6 +80,9 @@ export interface WorkflowAssignmentsManagerProps {
  *   their first assignment.
  * - A filter rule the caller's grant withholds shows the missing-value marker,
  *   not "No filter".
+ * - New Assignment and the row menus are drawn once the permissions are
+ *   known; they do not flash for a user who has none of them. The list itself
+ *   does not wait.
  *
  * Client-only gate: see `WorkflowsManager`.
  */
@@ -114,9 +117,17 @@ const WorkflowAssignmentsManagerBody: React.FC<WorkflowAssignmentsManagerProps> 
   const common = useBuildpadTranslations((d) => d.common);
   const { formatCount, formatDate } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(assignmentsCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(assignmentsCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(assignmentsCollection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown New Assignment and a full row menu for the length of that request.
+  // Known once is known: a later refresh (a renewed token, another scope)
+  // answers from what was known until its own answer is in, so the controls
+  // do not blink.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(assignmentsCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(assignmentsCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(assignmentsCollection, 'delete'));
 
   const headers = useMemo<HeaderRaw[]>(
     () => [

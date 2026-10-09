@@ -76,6 +76,9 @@ export interface WorkflowsManagerProps {
  *   native `alert()`.
  * - A row opens for every reader (the editor is read-only without update
  *   access); the reference let only updaters open one.
+ * - Add Workflow and the row menus are drawn once the permissions are known;
+ *   they do not flash for a user who has none of them. The list itself does
+ *   not wait.
  *
  * Client-only gate: the body seeds its state from the URL in `useState`
  * initializers, which renders differently on the server (no URL) and on the
@@ -113,9 +116,17 @@ const WorkflowsManagerBody: React.FC<WorkflowsManagerProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatCount } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(workflowsCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(workflowsCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(workflowsCollection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown Add Workflow and a full row menu for the length of that request.
+  // Known once is known: a later refresh (a renewed token, another scope)
+  // answers from what was known until its own answer is in, so the controls
+  // do not blink.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(workflowsCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(workflowsCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(workflowsCollection, 'delete'));
 
   const headers = useMemo<HeaderRaw[]>(
     () => [

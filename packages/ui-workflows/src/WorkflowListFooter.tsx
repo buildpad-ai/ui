@@ -2,15 +2,20 @@
 
 import React from 'react';
 import { Group, Pagination, Select, Text } from '@mantine/core';
-import { useBuildpadTranslations } from '@buildpad/services';
-import { interpolate, type DeepPartial, type WorkflowsTranslations } from '@buildpad/utils';
+import { useBuildpadI18n, useBuildpadTranslations } from '@buildpad/services';
+import { interpolate, type DeepPartial, type PluralForms, type WorkflowsTranslations } from '@buildpad/utils';
 
 export interface WorkflowListFooterProps {
   /** Rows on the current page. */
   shown: number;
   totalCount: number;
-  /** Plural noun for the "Showing N of M {label}" line (e.g. "workflows"). */
-  itemsLabel: string;
+  /**
+   * The noun of the "Showing N of M {label}" line, one form per plural
+   * category of M (`{ one: 'workflow', other: 'workflows' }`): one workflow is
+   * not "1 workflows". A plain string is shown as it is: a dictionary written
+   * before the entry had forms holds one, and must not break the list.
+   */
+  itemsLabel: PluralForms | string;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -46,8 +51,14 @@ export const WorkflowListFooter: React.FC<WorkflowListFooterProps> = ({
   translations,
 }) => {
   const t = useBuildpadTranslations((d) => d.workflows, translations);
+  const { formatCount } = useBuildpadI18n();
 
   if (totalCount <= 0) return null;
+
+  // The noun follows the total, as the number beside it does: "1 of 1
+  // workflow", "1 of 26 workflows". `formatCount` picks the form the locale's
+  // plural rules give that number (Indonesian has one form for every number).
+  const noun = typeof itemsLabel === 'string' ? itemsLabel : formatCount(totalCount, itemsLabel);
 
   return (
     <Group
@@ -58,7 +69,7 @@ export const WorkflowListFooter: React.FC<WorkflowListFooterProps> = ({
     >
       <Group gap="sm">
         <Text size="xs" c="dimmed">
-          {interpolate(t.listFooter.showing, { shown, totalCount, itemsLabel })}
+          {interpolate(t.listFooter.showing, { shown, totalCount, itemsLabel: noun })}
         </Text>
         <Select
           size="xs"

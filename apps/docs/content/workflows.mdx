@@ -243,12 +243,13 @@ export default function WorkflowDetailPage({
 }
 ```
 
-<Callout type="warning">
-**Navigate after a create.** A detail component does not change its own `id`.
-After a successful create it still holds `id="new"`, and a second Save would
-create a second record. `onSaved` receives the saved record with its new id.
-Navigate there to the list (as the generated pages do) or to
-`/workflows/${workflow.id}`.
+<Callout type="info">
+**Navigate after a create.** A detail component does not navigate. After a
+successful create it goes on as the editor of the stored record: a further
+Save updates that record, and does not create a second one. The URL still says
+`/workflows/new`, though, and a reload would open an empty form. `onSaved`
+receives the saved record with its new id. Navigate there to the list (as the
+generated pages do) or to `/workflows/${workflow.id}`.
 </Callout>
 
 The generated pages follow the reference admin UI: the definition editor
@@ -513,6 +514,15 @@ from `@/lib/buildpad/types` as `WORKFLOW_COLLECTIONS`.
 
 - The gates come from `usePermissions().canPerform(collection, action)`.
   Administrators pass every gate.
+- Until the permissions are known, no write control is drawn and the editors
+  take no edit: no Add or New button, no row menu, no Save button, a covered
+  form, and a diagram without its edit controls. The controls appear when the
+  answer is in, so a user without a right does not see its button first. A
+  `new` route does not open its form and does not draw access-denied before
+  then. Reading does not wait: the lists and the records load at once. A later
+  refresh of the permissions (a renewed token, another scope) keeps the
+  controls as they were until its answer is in.
+- A row menu with no allowed action is not drawn.
 - The gates only hide controls. The API enforces the same collections, so a
   hidden button is not the protection.
 - Gate your navigation links too, so a user without read access to

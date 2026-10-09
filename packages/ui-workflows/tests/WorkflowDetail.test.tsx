@@ -5,7 +5,7 @@
  * is mocked; the diagram is the real one.
  */
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MantineProvider } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -46,6 +46,27 @@ function renderDetail(props: Partial<React.ComponentProps<typeof WorkflowDetail>
     </MantineProvider>,
   );
   return { ...utils, onBack, onSaved };
+}
+
+/** The host gives the editor that is on screen other props (another `id`, above all). */
+function reopen(
+  rerender: (ui: React.ReactElement) => void,
+  props: React.ComponentProps<typeof WorkflowDetail>,
+) {
+  rerender(
+    <MantineProvider>
+      <WorkflowDetail {...props} />
+    </MantineProvider>,
+  );
+}
+
+/** A request the test answers when it chooses to. */
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }
 
 function grant(actions: string[], isAdmin = false) {
@@ -577,6 +598,63 @@ describe('WorkflowDetail', () => {
       finish();
       await waitFor(() => expect(saveButton()).not.toHaveAttribute('data-loading', 'true'));
     });
+
+    it('keeps what was typed while the save was in flight, as an edit that is not saved yet', async () => {
+      const request = deferred<void>();
+      mocks.updateDefinition.mockImplementation(() => request.promise);
+      renderDetail();
+      await loaded();
+
+      fireEvent.change(nameInput(), { target: { value: 'Sent with the save' } });
+      fireEvent.click(saveButton());
+      expect(mocks.updateDefinition).toHaveBeenCalledWith(mockWorkflow.id, { name: 'Sent with the save' });
+      // The request is slow, and the inputs stay open
+      fireEvent.change(descriptionInput(), { target: { value: 'typed after the click' } });
+
+      await act(async () => {
+        request.resolve();
+      });
+      await waitFor(() => expect(saveButton()).not.toHaveAttribute('data-loading', 'true'));
+      expect(nameInput().value).toBe('Sent with the save');
+      expect(descriptionInput().value).toBe('typed after the click');
+      expect(screen.getByTestId('workflow-detail-unsaved-badge')).toBeInTheDocument();
+
+      // The next Save sends that edit, and only that
+      mocks.updateDefinition.mockResolvedValue(undefined);
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updateDefinition).toHaveBeenLastCalledWith(mockWorkflow.id, {
+          description: 'typed after the click',
+        }),
+      );
+    });
+
+    it('a save answered after another definition was opened is not drawn over that definition', async () => {
+      const request = deferred<void>();
+      mocks.updateDefinition.mockImplementation(() => request.promise);
+      const { rerender, onSaved } = renderDetail();
+      await loaded();
+
+      fireEvent.change(nameInput(), { target: { value: 'Saved late' } });
+      fireEvent.click(saveButton());
+      // The host opens another definition in the same editor before the answer is in
+      mocks.getDefinition.mockResolvedValue({ ...mockWorkflow, id: 'other', name: 'Other flow' });
+      reopen(rerender, { id: 'other', onSaved });
+      await waitFor(() => expect(nameInput().value).toBe('Other flow'));
+
+      await act(async () => {
+        request.resolve();
+      });
+      await waitFor(() =>
+        expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: mockWorkflow.id, name: 'Saved late' })),
+      );
+      // Still the definition that is open, untouched and with nothing to save
+      expect(nameInput().value).toBe('Other flow');
+      expect(screen.getByRole('heading', { name: 'Other flow' })).toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-detail-unsaved-badge')).not.toBeInTheDocument();
+      await waitFor(() => expect(saveButton()).not.toHaveAttribute('data-loading', 'true'));
+      expect(saveButton()).toBeDisabled();
+    });
   });
 
   describe('a new definition', () => {
@@ -631,6 +709,118 @@ describe('WorkflowDetail', () => {
       await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-id-1', name: 'Flow' })));
       expect(show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Workflow created successfully' }));
       expect(mocks.updateDefinition).not.toHaveBeenCalled();
+    });
+
+    // A host that does not navigate in onSaved (or is slow to) left an enabled
+    // Create button on a form that had already been stored
+    it('edits the definition it created when the host does not navigate: a second Save updates it, and nothing is created twice', async () => {
+      const { onSaved } = renderDetail({ id: 'new' });
+      fireEvent.change(nameInput(), { target: { value: 'Flow' } });
+      await addState('Draft', { first: true });
+      fireEvent.click(saveButton());
+
+      // The editor is the stored definition's now: its title, and a Save that waits for an edit
+      expect(await screen.findByRole('heading', { name: 'Flow' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'New Workflow Definition' })).not.toBeInTheDocument();
+      expect(screen.queryByText('New Workflow')).not.toBeInTheDocument();
+      expect(saveButton()).toHaveTextContent('Save Changes');
+      expect(saveButton()).toBeDisabled();
+      expect(screen.queryByTestId('workflow-detail-unsaved-badge')).not.toBeInTheDocument();
+      expect(onSaved).toHaveBeenCalledTimes(1);
+      // Shown from what was sent, without a load for it
+      expect(mocks.getDefinition).not.toHaveBeenCalled();
+
+      // The second click of a double click that arrives after the answer
+      fireEvent.click(saveButton());
+      expect(mocks.createDefinition).toHaveBeenCalledTimes(1);
+      expect(mocks.updateDefinition).not.toHaveBeenCalled();
+
+      fireEvent.change(nameInput(), { target: { value: 'Flow v2' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.updateDefinition).toHaveBeenCalledWith('new-id-1', { name: 'Flow v2' }));
+      expect(mocks.createDefinition).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onSaved).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'new-id-1', name: 'Flow v2' })));
+      expect(show).toHaveBeenLastCalledWith(expect.objectContaining({ message: 'Workflow updated successfully' }));
+    });
+
+    it('loads the created definition once when the host then navigates to it', async () => {
+      const { rerender } = renderDetail({ id: 'new' });
+      fireEvent.change(nameInput(), { target: { value: 'Flow' } });
+      await addState('Draft', { first: true });
+      fireEvent.click(saveButton());
+      await screen.findByRole('heading', { name: 'Flow' });
+
+      // As a host may do in onSaved: open the new definition's own route
+      mocks.getDefinition.mockResolvedValue({ ...mockWorkflow, id: 'new-id-1', name: 'Flow' });
+      reopen(rerender, { id: 'new-id-1' });
+      await waitFor(() => expect(mocks.getDefinition).toHaveBeenCalledWith('new-id-1'));
+      await waitFor(() => expect(screen.getAllByTestId('workflow-diagram-state')).toHaveLength(3));
+      expect(mocks.getDefinition).toHaveBeenCalledTimes(1);
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('a new definition opened after one was created here starts empty again', async () => {
+      const { rerender } = renderDetail({ id: 'new' });
+      fireEvent.change(nameInput(), { target: { value: 'Flow' } });
+      await addState('Draft', { first: true });
+      fireEvent.click(saveButton());
+      await screen.findByRole('heading', { name: 'Flow' });
+
+      reopen(rerender, { id: mockWorkflow.id });
+      await loaded();
+      reopen(rerender, { id: 'new' });
+      expect(await screen.findByRole('heading', { name: 'New Workflow Definition' })).toBeInTheDocument();
+      expect(nameInput().value).toBe('');
+      expect(saveButton()).toHaveTextContent('Create Workflow');
+      expect(saveButton()).not.toBeDisabled();
+
+      // And it creates: the definition created before is not the one saved to
+      fireEvent.change(nameInput(), { target: { value: 'Second flow' } });
+      await addState('Open', { first: true });
+      mocks.createDefinition.mockResolvedValue('new-id-2');
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.createDefinition).toHaveBeenCalledTimes(2));
+      expect(mocks.updateDefinition).not.toHaveBeenCalled();
+    });
+
+    it('a create answered after another definition was opened does not take that editor over', async () => {
+      const request = deferred<string>();
+      mocks.createDefinition.mockImplementation(() => request.promise);
+      const { rerender, onSaved } = renderDetail({ id: 'new' });
+      fireEvent.change(nameInput(), { target: { value: 'Flow' } });
+      await addState('Draft', { first: true });
+      fireEvent.click(saveButton());
+
+      reopen(rerender, { id: mockWorkflow.id, onSaved });
+      await loaded();
+      await act(async () => {
+        request.resolve('new-id-1');
+      });
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-id-1', name: 'Flow' })));
+      expect(nameInput().value).toBe('Article review');
+      expect(screen.queryByTestId('workflow-detail-unsaved-badge')).not.toBeInTheDocument();
+
+      // A save here goes to the definition that is open, not to the one that was created
+      fireEvent.change(nameInput(), { target: { value: 'Article review v2' } });
+      await waitFor(() => expect(saveButton()).not.toBeDisabled());
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updateDefinition).toHaveBeenCalledWith(mockWorkflow.id, { name: 'Article review v2' }),
+      );
+    });
+
+    it('a user who may create but not update gets the definition it created read-only', async () => {
+      grant(['read', 'create']);
+      renderDetail({ id: 'new' });
+      fireEvent.change(nameInput(), { target: { value: 'Flow' } });
+      await addState('Draft', { first: true });
+      fireEvent.click(saveButton());
+
+      await screen.findByRole('heading', { name: 'Flow' });
+      await waitFor(() => expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument());
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-detail-cancel-btn')).toHaveTextContent('Back');
+      expect(mocks.createDefinition).toHaveBeenCalledTimes(1);
     });
 
     it('is refused outright to a user who may not create', async () => {
@@ -734,11 +924,115 @@ describe('WorkflowDetail', () => {
       expect(screen.queryByLabelText('Actions for state Draft')).not.toBeInTheDocument();
     });
 
-    it('stays editable while permissions load', async () => {
-      mocks.usePermissions.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
-      renderDetail();
+  });
+
+  describe('while the permissions are not known', () => {
+    const overlay = () => document.querySelector('.mantine-LoadingOverlay-root');
+    const permissionsLoading = (isAdmin: boolean) =>
+      mocks.usePermissions.mockReturnValue({ canPerform: () => isAdmin, isAdmin, loading: true });
+
+    it('offers nothing that writes: no Save, a covered form that takes no edit, a diagram without edit affordances', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      permissionsLoading(true);
+      const { rerender, onBack, onSaved } = renderDetail();
       await loaded();
-      expect(screen.getByTestId('workflow-detail-save-btn')).toBeInTheDocument();
+
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(descriptionInput()).toHaveAttribute('readonly');
+      expect(overlay()).toBeInTheDocument();
+      // The diagram is drawn (reading does not wait), without anything to edit it with
+      expect(screen.getAllByTestId('workflow-diagram-state')).toHaveLength(3);
+      expect(screen.queryByTestId('workflow-detail-diagram-hint')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-diagram-add-state')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Actions for state Draft')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Delete command Reject')).not.toBeInTheDocument();
+      // Neither dialog can be opened: a command is text, not a button to its dialog
+      fireEvent.click(within(card('Review')).getByText('Reject'));
+      expect(screen.queryByTestId('workflow-command-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-state-name')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      // Nobody is called a reader before the answer is in: the way out is still Cancel
+      expect(screen.getByTestId('workflow-detail-cancel-btn')).toHaveTextContent('Cancel');
+
+      grant([], true);
+      reopen(rerender, { id: mockWorkflow.id, onBack, onSaved });
+      expect(await screen.findByTestId('workflow-detail-save-btn')).toBeInTheDocument();
+      expect(nameInput()).not.toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-detail-diagram-hint')).toBeInTheDocument();
+      expect(await screen.findByLabelText('Actions for state Draft')).toBeInTheDocument();
+      expect(screen.getByTestId('workflow-diagram-add-state')).toBeInTheDocument();
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      // The definition was loaded once: the permissions arriving do not fetch it again
+      expect(mocks.getDefinition).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never offered the editor, and is called one only when the answer is in', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail();
+      await loaded();
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(screen.queryByLabelText('Actions for state Draft')).not.toBeInTheDocument();
+      expect(screen.getByTestId('workflow-detail-cancel-btn')).toHaveTextContent('Cancel');
+
+      grant(['read']);
+      reopen(rerender, { id: mockWorkflow.id, onBack });
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(screen.queryByLabelText('Actions for state Draft')).not.toBeInTheDocument();
+      expect(screen.getByTestId('workflow-detail-cancel-btn')).toHaveTextContent('Back');
+    });
+
+    it('a later refresh of the permissions does not close the form under the user', async () => {
+      const { rerender, onBack, onSaved } = renderDetail();
+      await loaded();
+      fireEvent.change(descriptionInput(), { target: { value: 'still typing' } });
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      permissionsLoading(true);
+      reopen(rerender, { id: mockWorkflow.id, onBack, onSaved });
+      expect(descriptionInput()).not.toHaveAttribute('readonly');
+      expect(descriptionInput().value).toBe('still typing');
+      expect(saveButton()).not.toBeDisabled();
+      expect(screen.getByTestId('workflow-detail-unsaved-badge')).toBeInTheDocument();
+      expect(screen.getByLabelText('Actions for state Draft')).toBeInTheDocument();
+      expect(screen.getByTestId('workflow-diagram-add-state')).toBeInTheDocument();
+      expect(overlay()).not.toBeInTheDocument();
+    });
+
+    it('a new definition is neither opened nor refused', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail({ id: 'new' });
+
+      // Not refused yet: this user may turn out to be allowed
+      expect(screen.queryByTestId('workflow-detail-access-denied')).not.toBeInTheDocument();
+      // Not opened yet either: no Create, the form takes no edit, the diagram offers no first state
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(screen.queryByTestId('workflow-diagram-add-first-state')).not.toBeInTheDocument();
+      expect(overlay()).toBeInTheDocument();
+
+      // A user who may not create is refused, without ever having had the form
+      grant(['read', 'update']);
+      reopen(rerender, { id: 'new', onBack });
+      expect(await screen.findByTestId('workflow-detail-access-denied')).toBeInTheDocument();
+      expect(mocks.createDefinition).not.toHaveBeenCalled();
+    });
+
+    it('a new definition opens for a user who may create once the permissions are known', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail({ id: 'new' });
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+
+      grant(['read', 'create']);
+      reopen(rerender, { id: 'new', onBack });
+      expect(await screen.findByTestId('workflow-detail-save-btn')).toHaveTextContent('Create Workflow');
+      expect(saveButton()).not.toBeDisabled();
+      expect(nameInput()).not.toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-diagram-add-first-state')).toBeInTheDocument();
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
     });
   });
 

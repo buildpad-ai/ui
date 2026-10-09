@@ -77,6 +77,16 @@ afterEach(() => {
 
 describe('WorkflowInstancesManager', () => {
   describe('the list', () => {
+    it('names the rows in its footer by their number: one instance, three instances', async () => {
+      const { unmount } = renderManager();
+      expect(await screen.findByText('Showing 3 of 3 instances')).toBeInTheDocument();
+      unmount();
+
+      fetchInstancesMock.mockResolvedValue(pageOf(mockInstances.slice(0, 1)));
+      renderManager();
+      expect(await screen.findByText('Showing 1 of 1 instance')).toBeInTheDocument();
+    });
+
     it('lists the instances with workflow, collection, item, state, version, status and date', async () => {
       renderManager();
       await listed();

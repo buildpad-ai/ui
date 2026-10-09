@@ -92,7 +92,10 @@ export interface WorkflowDetailProps {
   /**
    * Called after a successful create or update with the definition as it was
    * saved (a created one carries its new id). The reference admin UI returns
-   * to the list after a create and stays on the editor after an update.
+   * to the list after a create and stays on the editor after an update. The
+   * component itself goes nowhere: after a create it becomes the editor of the
+   * definition it created, so a further Save updates that definition whether
+   * or not the host has navigated yet.
    */
   onSaved?: (workflow: WorkflowDefinitionRecord) => void;
   /**
@@ -147,6 +150,17 @@ export interface WorkflowDetailProps {
  *   It is not an empty machine: drawn as one, a state added to it and saved
  *   would replace the stored document. The name and the description can
  *   still be edited, and the document is never sent.
+ * - After a create the editor is the stored definition's: a second Save
+ *   updates it. Nothing is created twice when the host is slow to navigate,
+ *   or does not.
+ * - A save answered after the host opened another definition in the same
+ *   editor is not drawn over that definition.
+ * - Until the permissions are known nothing that writes is offered: the
+ *   editor is covered and takes no edit, the diagram has no edit affordance
+ *   (so neither dialog can open), and no Save button is drawn. A new
+ *   definition's form is neither opened to a user who may not create nor
+ *   refused to one who may before the answer is in. The definition itself
+ *   loads at once.
  */
 export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   id,
@@ -160,7 +174,13 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   hideAttribution = false,
   translations,
 }) => {
-  const isNew = id === 'new' || id === '+';
+  const newRoute = id === 'new' || id === '+';
+  // The definition this editor created while `id` still says "new". From then
+  // on it edits that definition: a second Save must update it, not create it
+  // once more, whether or not the host has navigated to its own route yet.
+  const [created, setCreated] = useState<WorkflowDefinitionRecord | null>(null);
+  const isNew = newRoute && !created;
+  const definitionId = newRoute && created ? created.id : id;
   const { getDefinition, createDefinition, updateDefinition } = useWorkflowDefinitions();
   const { fetchPolicies } = usePolicies();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
@@ -169,16 +189,28 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   const t = useBuildpadTranslations((d) => d.workflows, translations);
   const common = useBuildpadTranslations((d) => d.common);
 
-  const createAllowed = permsLoading || isAdmin || canPerform(workflowsCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(workflowsCollection, 'update');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save, an open form or a diagram that
+  // can be edited for the length of that request. Known once is known: a
+  // later refresh (a renewed token, another scope) answers from what was
+  // known until its own answer is in, so the form does not close under a
+  // user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(workflowsCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(workflowsCollection, 'update'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
   const viewOnly = readOnly || !saveAllowed;
+  // Who is told there is nothing to cancel: nobody is called a reader before
+  // the permissions are known
+  const reader = readOnly || (permsKnown && !saveAllowed);
 
   const [record, setRecord] = useState<WorkflowDefinitionRecord | null>(null);
   // The definition was answered without its document: the caller's grant
   // withholds the column, which is not the same as a machine without states
   const documentWithheld = !isNew && record !== null && record.workflow_json === undefined;
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(!newRoute);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -196,10 +228,14 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
 
   const requestRef = useRef(0);
 
+  // Keyed on the `id` it is given, not on the definition a create adopted:
+  // the load runs when the host opens another definition (or a new one), and
+  // not for the definition that was just created here.
   const load = useCallback(async () => {
     const request = ++requestRef.current;
     setFailure(null);
-    if (isNew) {
+    setCreated(null);
+    if (newRoute) {
       setRecord(null);
       setInitial(EMPTY_FORM);
       setForm(EMPTY_FORM);
@@ -241,7 +277,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
     } finally {
       if (request === requestRef.current) setLoading(false);
     }
-  }, [getDefinition, id, isNew, t]);
+  }, [getDefinition, id, newRoute, t]);
 
   useEffect(() => {
     void load();
@@ -278,9 +314,14 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
 
     savingRef.current = true;
     setSaving(true);
+    // The answer belongs to the definition on screen now. When the host has
+    // opened another one by the time it arrives, it must not be drawn over
+    // that definition.
+    const shown = requestRef.current;
+    const stillShown = () => shown === requestRef.current;
     try {
       const description = form.description.trim() ? form.description : null;
-      let savedId = id;
+      let savedId = definitionId;
       if (isNew) {
         savedId = await createDefinition({
           name: form.name,
@@ -300,7 +341,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
         ) {
           edits.workflow_json = form.workflow_json;
         }
-        await updateDefinition(id, edits);
+        await updateDefinition(definitionId, edits);
       }
 
       notifications.show({
@@ -309,8 +350,6 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
         color: 'green',
       });
 
-      // What is on screen is what is stored now
-      setInitial(form);
       const saved: WorkflowDefinitionRecord = {
         ...record,
         id: savedId,
@@ -318,7 +357,16 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
         description,
         ...(documentWithheld ? {} : { workflow_json: form.workflow_json }),
       };
-      if (!isNew) setRecord(saved);
+      if (stillShown()) {
+        // What was sent is what is stored now. `form` is the form as it was
+        // when the request left: an edit made since then (the request takes a
+        // while, and the inputs stay open) differs from it, and stays unsaved.
+        setInitial(form);
+        setRecord(saved);
+        // A created definition is the one on screen from here on, so the next
+        // Save updates it; where to go next is the host's to say
+        if (isNew) setCreated(saved);
+      }
       onSaved?.(saved);
     } catch (err) {
       notifications.show({
@@ -334,7 +382,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
     viewOnly,
     form,
     initial,
-    id,
+    definitionId,
     isNew,
     record,
     documentWithheld,
@@ -413,7 +461,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   );
 
   // Nothing to edit: say which of the three it is, and offer the way out
-  const refusedCreate = isNew && !createAllowed;
+  const refusedCreate = isNew && permsKnown && !createAllowed;
   if (failure || refusedCreate) {
     let state: React.ReactNode;
     if (refusedCreate || failure?.kind === 'accessDenied') {
@@ -463,7 +511,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
 
   return (
     <Box pos="relative" data-testid="workflow-detail">
-      <LoadingOverlay visible={loading} />
+      <LoadingOverlay visible={loading || !permsKnown} />
 
       <Stack gap="md">
         <Breadcrumbs>
@@ -483,7 +531,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
           <Group>
             {onBack && (
               <Button variant="light" onClick={onBack} data-testid="workflow-detail-cancel-btn">
-                {viewOnly ? common.back : common.cancel}
+                {reader ? common.back : common.cancel}
               </Button>
             )}
             {!viewOnly && (

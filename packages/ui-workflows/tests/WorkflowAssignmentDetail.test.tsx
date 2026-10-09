@@ -59,6 +59,27 @@ function renderDetail(props: Partial<React.ComponentProps<typeof WorkflowAssignm
   return { ...utils, onBack, onSaved };
 }
 
+/** The host gives the form that is on screen other props (another `id`, above all). */
+function reopen(
+  rerender: (ui: React.ReactElement) => void,
+  props: React.ComponentProps<typeof WorkflowAssignmentDetail>,
+) {
+  rerender(
+    <MantineProvider>
+      <WorkflowAssignmentDetail {...props} />
+    </MantineProvider>,
+  );
+}
+
+/** A request the test answers when it chooses to. */
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 function grant(actions: string[], isAdmin = false) {
   mocks.usePermissions.mockReturnValue({
     canPerform: (_collection: string, action: string) => actions.includes(action),
@@ -600,6 +621,128 @@ describe('WorkflowAssignmentDetail', () => {
       });
       expect(mocks.createAssignment).toHaveBeenCalledTimes(1);
     });
+
+    // A host that does not navigate in onSaved (or is slow to) left an enabled
+    // Create button on a form that had already been stored
+    it('edits the assignment it created when the host does not navigate: a second Save updates it, and nothing is created twice', async () => {
+      mocks.createAssignment.mockResolvedValue(
+        stored({ id: 'new-assignment-1', workflow: mockWorkflows[1].id, collection: 'pages', filter_rule: null }),
+      );
+      const { onSaved } = renderDetail({ id: 'new' });
+      await optionsLoaded();
+      await fillRequired();
+      fireEvent.click(saveButton());
+
+      // The form is the stored assignment's now: its title, and a Save that waits for an edit
+      expect(await screen.findByRole('heading', { name: 'Edit Workflow Assignment' })).toBeInTheDocument();
+      expect(screen.getByText('Edit Assignment')).toBeInTheDocument();
+      expect(screen.queryByText('New Assignment')).not.toBeInTheDocument();
+      expect(saveButton()).toHaveTextContent('Save Changes');
+      expect(saveButton()).toBeDisabled();
+      expect(screen.queryByTestId('workflow-assignment-detail-unsaved-badge')).not.toBeInTheDocument();
+      expect(onSaved).toHaveBeenCalledTimes(1);
+      // Shown from what was sent, without a load for it
+      expect(mocks.getAssignment).not.toHaveBeenCalled();
+      expect(workflowInput().value).toBe('Support ticket');
+      expect(collectionInput().value).toBe('pages');
+
+      // The second click of a double click that arrives after the answer
+      fireEvent.click(saveButton());
+      expect(mocks.createAssignment).toHaveBeenCalledTimes(1);
+      expect(mocks.updateAssignment).not.toHaveBeenCalled();
+
+      await pick(collectionInput(), 'tickets');
+      mocks.updateAssignment.mockResolvedValue(stored({ id: 'new-assignment-1', collection: 'tickets' }));
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updateAssignment).toHaveBeenCalledWith('new-assignment-1', { collection: 'tickets' }),
+      );
+      expect(mocks.createAssignment).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2));
+      expect(show).toHaveBeenLastCalledWith(
+        expect.objectContaining({ message: 'Workflow assignment updated successfully' }),
+      );
+    });
+
+    it('loads the created assignment once when the host then navigates to it', async () => {
+      const { rerender } = renderDetail({ id: 'new' });
+      await optionsLoaded();
+      await fillRequired();
+      fireEvent.click(saveButton());
+      await screen.findByRole('heading', { name: 'Edit Workflow Assignment' });
+
+      // As a host may do in onSaved: open the new assignment's own route
+      mocks.getAssignment.mockResolvedValue(mockAssignments[1]);
+      reopen(rerender, { id: 'new-assignment-1' });
+      await waitFor(() => expect(mocks.getAssignment).toHaveBeenCalledWith('new-assignment-1'));
+      await waitFor(() => expect(collectionInput().value).toBe('tickets'));
+      expect(mocks.getAssignment).toHaveBeenCalledTimes(1);
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('a new assignment opened after one was created here starts empty again', async () => {
+      const { rerender } = renderDetail({ id: 'new' });
+      await optionsLoaded();
+      await fillRequired();
+      fireEvent.click(saveButton());
+      await screen.findByRole('heading', { name: 'Edit Workflow Assignment' });
+
+      reopen(rerender, { id: mockAssignment.id });
+      await loaded();
+      reopen(rerender, { id: 'new' });
+      expect(await screen.findByRole('heading', { name: 'New Workflow Assignment' })).toBeInTheDocument();
+      expect(workflowInput().value).toBe('');
+      expect(collectionInput().value).toBe('');
+      expect(saveButton()).toHaveTextContent('Create Assignment');
+
+      // And it creates: the assignment created before is not the one saved to
+      await fillRequired();
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.createAssignment).toHaveBeenCalledTimes(2));
+      expect(mocks.updateAssignment).not.toHaveBeenCalled();
+    });
+
+    it('a create answered after another assignment was opened does not take that form over', async () => {
+      const request = deferred<WorkflowAssignmentRecord>();
+      mocks.createAssignment.mockImplementation(() => request.promise);
+      const { rerender, onSaved } = renderDetail({ id: 'new' });
+      await optionsLoaded();
+      await fillRequired();
+      fireEvent.click(saveButton());
+
+      reopen(rerender, { id: mockAssignment.id, onSaved });
+      await loaded();
+      await act(async () => {
+        request.resolve(stored({ id: 'new-assignment-1' }));
+      });
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(stored({ id: 'new-assignment-1' })));
+      expect(collectionInput().value).toBe('articles');
+      expect(screen.queryByTestId('workflow-assignment-detail-unsaved-badge')).not.toBeInTheDocument();
+
+      // A save here goes to the assignment that is open, not to the one that was created
+      await pick(collectionInput(), 'tickets');
+      await waitFor(() => expect(saveButton()).not.toBeDisabled());
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updateAssignment).toHaveBeenCalledWith(mockAssignment.id, { collection: 'tickets' }),
+      );
+    });
+
+    it('a user who may create but not update gets the assignment it created read-only', async () => {
+      grant(['read', 'create']);
+      renderDetail({ id: 'new' });
+      await optionsLoaded();
+      await fillRequired();
+      fireEvent.click(saveButton());
+
+      await screen.findByRole('heading', { name: 'Edit Workflow Assignment' });
+      await waitFor(() =>
+        expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument(),
+      );
+      expect(collectionInput()).toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-assignment-detail-cancel-btn')).toHaveTextContent('Back');
+      expect(mocks.createAssignment).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('updating', () => {
@@ -623,6 +766,80 @@ describe('WorkflowAssignmentDetail', () => {
       expect(mocks.createAssignment).not.toHaveBeenCalled();
       // What is on screen is what is stored now
       expect(screen.queryByTestId('workflow-assignment-detail-unsaved-badge')).not.toBeInTheDocument();
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('keeps what was typed while the save was in flight, as an edit that is not saved yet', async () => {
+      const request = deferred<WorkflowAssignmentRecord>();
+      mocks.updateAssignment.mockImplementation(() => request.promise);
+      // The collections cannot be listed, so the name is typed
+      renderDetail({ loadCollections: () => Promise.reject(new Error('Admin access required')) });
+      await loaded();
+      await waitFor(() => expect(collectionInput()).not.toHaveAttribute('aria-haspopup'));
+
+      fireEvent.change(collectionInput(), { target: { value: 'pages' } });
+      fireEvent.click(saveButton());
+      expect(mocks.updateAssignment).toHaveBeenCalledWith(mockAssignment.id, { collection: 'pages' });
+      // The request is slow, and the inputs stay open
+      fireEvent.change(collectionInput(), { target: { value: 'tickets' } });
+      typeRule('{"status":{"_eq":"review"}}');
+
+      await act(async () => {
+        request.resolve(stored({ collection: 'pages' }));
+      });
+      await waitFor(() => expect(saveButton()).not.toHaveAttribute('data-loading', 'true'));
+      expect(collectionInput().value).toBe('tickets');
+      expect(JSON.parse(ruleInput().value)).toEqual({ status: { _eq: 'review' } });
+      expect(screen.getByTestId('workflow-assignment-detail-unsaved-badge')).toBeInTheDocument();
+
+      // The next Save sends those edits, and only those
+      mocks.updateAssignment.mockResolvedValue(stored({ collection: 'tickets' }));
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updateAssignment).toHaveBeenLastCalledWith(mockAssignment.id, {
+          collection: 'tickets',
+          filter_rule: { status: { _eq: 'review' } },
+        }),
+      );
+    });
+
+    it('shows a typed collection the way it was sent when nothing was typed since', async () => {
+      renderDetail({ loadCollections: () => Promise.reject(new Error('Admin access required')) });
+      await loaded();
+      await waitFor(() => expect(collectionInput()).not.toHaveAttribute('aria-haspopup'));
+
+      fireEvent.change(collectionInput(), { target: { value: '  pages  ' } });
+      mocks.updateAssignment.mockResolvedValue(stored({ collection: 'pages' }));
+      fireEvent.click(saveButton());
+
+      await waitFor(() => expect(mocks.updateAssignment).toHaveBeenCalledWith(mockAssignment.id, { collection: 'pages' }));
+      await waitFor(() => expect(collectionInput().value).toBe('pages'));
+      expect(screen.queryByTestId('workflow-assignment-detail-unsaved-badge')).not.toBeInTheDocument();
+    });
+
+    it('a save answered after another assignment was opened is not drawn over that assignment', async () => {
+      const request = deferred<WorkflowAssignmentRecord>();
+      mocks.updateAssignment.mockImplementation(() => request.promise);
+      const { rerender, onSaved } = renderDetail();
+      await loaded();
+      await optionsLoaded();
+
+      await pick(collectionInput(), 'pages');
+      fireEvent.click(saveButton());
+      // The host opens another assignment in the same form before the answer is in
+      mocks.getAssignment.mockResolvedValue(mockAssignments[1]);
+      reopen(rerender, { id: mockAssignments[1].id, onSaved });
+      await waitFor(() => expect(collectionInput().value).toBe('tickets'));
+
+      await act(async () => {
+        request.resolve(stored({ collection: 'pages' }));
+      });
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(stored({ collection: 'pages' })));
+      // Still the assignment that is open, untouched and with nothing to save
+      expect(collectionInput().value).toBe('tickets');
+      expect(workflowInput().value).toBe('Support ticket');
+      expect(screen.queryByTestId('workflow-assignment-detail-unsaved-badge')).not.toBeInTheDocument();
+      await waitFor(() => expect(saveButton()).not.toHaveAttribute('data-loading', 'true'));
       expect(saveButton()).toBeDisabled();
     });
 
@@ -798,12 +1015,109 @@ describe('WorkflowAssignmentDetail', () => {
       expect(saveButton()).toHaveTextContent('Save Changes');
     });
 
-    it('stays optimistic while permissions load, and waits for them before asking for options', async () => {
-      mocks.usePermissions.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
-      renderDetail();
+  });
+
+  describe('while the permissions are not known', () => {
+    const overlay = () => document.querySelector('.mantine-LoadingOverlay-root');
+    const permissionsLoading = (isAdmin: boolean) =>
+      mocks.usePermissions.mockReturnValue({ canPerform: () => isAdmin, isAdmin, loading: true });
+
+    it('offers nothing that writes: no Save, a covered form that takes no edit, and no option requests', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      permissionsLoading(true);
+      const { rerender, onBack, onSaved } = renderDetail();
       await loaded();
-      expect(saveButton()).toBeInTheDocument();
+
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+      expect(workflowInput()).toHaveAttribute('readonly');
+      expect(collectionInput()).toHaveAttribute('readonly');
+      expect(ruleInput()).toHaveAttribute('readonly');
+      expect(overlay()).toBeInTheDocument();
+      // Reading does not wait: the assignment is there
+      expect(collectionInput().value).toBe('articles');
       expect(mocks.fetchAllDefinitions).not.toHaveBeenCalled();
+      expect(mocks.apiRequest).not.toHaveBeenCalled();
+      // Nobody is called a reader before the answer is in: the way out is still Cancel
+      expect(screen.getByTestId('workflow-assignment-detail-cancel-btn')).toHaveTextContent('Cancel');
+
+      grant([], true);
+      reopen(rerender, { id: mockAssignment.id, onBack, onSaved });
+      expect(await screen.findByTestId('workflow-assignment-detail-save-btn')).toHaveTextContent('Save Changes');
+      expect(collectionInput()).not.toHaveAttribute('readonly');
+      expect(ruleInput()).not.toHaveAttribute('readonly');
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      await optionsLoaded();
+      // The assignment was loaded once: the permissions arriving do not fetch it again
+      expect(mocks.getAssignment).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never offered the form, and is called one only when the answer is in', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail();
+      await loaded();
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+      expect(ruleInput()).toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-assignment-detail-cancel-btn')).toHaveTextContent('Cancel');
+
+      grant(['read']);
+      reopen(rerender, { id: mockAssignment.id, onBack });
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+      expect(ruleInput()).toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-assignment-detail-cancel-btn')).toHaveTextContent('Back');
+      expect(mocks.fetchAllDefinitions).not.toHaveBeenCalled();
+    });
+
+    it('a later refresh of the permissions does not close the form under the user', async () => {
+      const { rerender, onBack, onSaved } = renderDetail();
+      await loaded();
+      await optionsLoaded();
+      typeRule('{"status":{"_eq":"review"}}');
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      permissionsLoading(true);
+      reopen(rerender, { id: mockAssignment.id, onBack, onSaved });
+      expect(ruleInput()).not.toHaveAttribute('readonly');
+      expect(ruleInput().value).toBe('{"status":{"_eq":"review"}}');
+      expect(collectionInput()).not.toHaveAttribute('readonly');
+      expect(saveButton()).not.toBeDisabled();
+      expect(screen.getByTestId('workflow-assignment-detail-unsaved-badge')).toBeInTheDocument();
+      expect(overlay()).not.toBeInTheDocument();
+    });
+
+    it('a new assignment is neither opened nor refused', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail({ id: 'new' });
+
+      // Not refused yet: this user may turn out to be allowed
+      expect(screen.queryByTestId('workflow-assignment-detail-access-denied')).not.toBeInTheDocument();
+      // Not opened yet either: no Create, and the form takes no edit
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+      expect(workflowInput()).toHaveAttribute('readonly');
+      expect(ruleInput()).toHaveAttribute('readonly');
+      expect(overlay()).toBeInTheDocument();
+      expect(mocks.fetchAllDefinitions).not.toHaveBeenCalled();
+
+      // A user who may not create is refused, without ever having had the form
+      grant(['read', 'update']);
+      reopen(rerender, { id: 'new', onBack });
+      expect(await screen.findByTestId('workflow-assignment-detail-access-denied')).toBeInTheDocument();
+      expect(mocks.createAssignment).not.toHaveBeenCalled();
+      expect(mocks.fetchAllDefinitions).not.toHaveBeenCalled();
+    });
+
+    it('a new assignment opens for a user who may create once the permissions are known', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail({ id: 'new' });
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+
+      grant(['read', 'create']);
+      reopen(rerender, { id: 'new', onBack });
+      expect(await screen.findByTestId('workflow-assignment-detail-save-btn')).toHaveTextContent('Create Assignment');
+      expect(saveButton()).not.toBeDisabled();
+      expect(ruleInput()).not.toHaveAttribute('readonly');
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      await optionsLoaded();
     });
   });
 });

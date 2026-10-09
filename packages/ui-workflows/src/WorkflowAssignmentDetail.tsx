@@ -100,7 +100,10 @@ export interface WorkflowAssignmentDetailProps {
   /**
    * Called after a successful create or update with the assignment as the
    * server stored it (a created one carries its new id). The reference admin
-   * UI returns to the list after either.
+   * UI returns to the list after either. The component itself goes nowhere:
+   * after a create it becomes the form of the assignment it created, so a
+   * further Save updates that assignment whether or not the host has
+   * navigated yet.
    */
   onSaved?: (assignment: WorkflowAssignmentRecord) => void;
   /**
@@ -170,6 +173,17 @@ export interface WorkflowAssignmentDetailProps {
  *   withholds is not shown and never sent back.
  * - The invalid Filter Rule is reported when the field is left, not only on
  *   save.
+ * - After a create the form is the stored assignment's: a second Save updates
+ *   it. Nothing is created twice when the host is slow to navigate, or does
+ *   not.
+ * - What is typed while a save is in flight is kept as an unsaved edit, and a
+ *   save answered after the host opened another assignment in the same form
+ *   is not drawn over that assignment.
+ * - Until the permissions are known nothing that writes is offered: the form
+ *   is covered and takes no edit, and no Save button is drawn. A new
+ *   assignment's form is neither opened to a user who may not create nor
+ *   refused to one who may before the answer is in. The assignment itself
+ *   loads at once.
  */
 export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> = ({
   id,
@@ -183,7 +197,13 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
   loadCollections,
   translations,
 }) => {
-  const isNew = id === 'new' || id === '+';
+  const newRoute = id === 'new' || id === '+';
+  // The assignment this form created while `id` still says "new". From then on
+  // it edits that assignment: a second Save must update it, not create it once
+  // more, whether or not the host has navigated to its own route yet.
+  const [created, setCreated] = useState<WorkflowAssignmentRecord | null>(null);
+  const isNew = newRoute && !created;
+  const assignmentId = newRoute && created ? created.id : id;
   const { getAssignment, createAssignment, updateAssignment } = useWorkflowAssignments();
   const { fetchAllDefinitions } = useWorkflowDefinitions();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
@@ -192,13 +212,24 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
   const t = useBuildpadTranslations((d) => d.workflows, translations);
   const common = useBuildpadTranslations((d) => d.common);
 
-  const createAllowed = permsLoading || isAdmin || canPerform(assignmentsCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(assignmentsCollection, 'update');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save or an open form for the length
+  // of that request. Known once is known: a later refresh (a renewed token,
+  // another scope) answers from what was known until its own answer is in, so
+  // the form does not close under a user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(assignmentsCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(assignmentsCollection, 'update'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
   const viewOnly = readOnly || !saveAllowed;
+  // Who is told there is nothing to cancel: nobody is called a reader before
+  // the permissions are known
+  const reader = readOnly || (permsKnown && !saveAllowed);
 
   const [record, setRecord] = useState<WorkflowAssignmentRecord | null>(null);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(!newRoute);
   const [failure, setFailure] = useState<LoadFailure | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -219,12 +250,16 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
 
   const requestRef = useRef(0);
 
+  // Keyed on the `id` it is given, not on the assignment a create adopted: the
+  // load runs when the host opens another assignment (or a new one), and not
+  // for the assignment that was just created here.
   const load = useCallback(async () => {
     const request = ++requestRef.current;
     setFailure(null);
+    setCreated(null);
     setFilterRuleError(null);
     setMissing({ workflow: false, collection: false });
-    if (isNew) {
+    if (newRoute) {
       setRecord(null);
       setInitial(EMPTY_STORED);
       setForm(EMPTY_FORM);
@@ -263,7 +298,7 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
     } finally {
       if (request === requestRef.current) setLoading(false);
     }
-  }, [getAssignment, id, isNew, t]);
+  }, [getAssignment, id, newRoute, t]);
 
   useEffect(() => {
     void load();
@@ -279,8 +314,9 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
   });
   const [collectionOptions, setCollectionOptions] = useState<Options<string>>({ status: 'idle', items: [] });
   // Not before the assignment is here either: a form that turns out to be a
-  // not-found state has no use for them, nor for the notification of their failure
-  const editable = !viewOnly && !permsLoading && !loading && !failure;
+  // not-found state has no use for them, nor for the notification of their
+  // failure. (Not before the permissions are known: `viewOnly` until then.)
+  const editable = !viewOnly && !loading && !failure;
   const workflowsAskedRef = useRef(false);
   const collectionsAskedRef = useRef(false);
 
@@ -387,6 +423,11 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
 
     savingRef.current = true;
     setSaving(true);
+    // The answer belongs to the assignment on screen now. When the host has
+    // opened another one by the time it arrives, it must not be drawn over
+    // that assignment.
+    const shown = requestRef.current;
+    const stillShown = () => shown === requestRef.current;
     try {
       let saved: WorkflowAssignmentRecord;
       if (isNew) {
@@ -398,7 +439,7 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
         if (form.workflow !== initial.workflow) edits.workflow = form.workflow;
         if (collection !== initial.collection) edits.collection = collection;
         if (filterRuleEdited) edits.filter_rule = filterRule;
-        saved = await updateAssignment(id, edits);
+        saved = await updateAssignment(assignmentId, edits);
       }
 
       notifications.show({
@@ -407,14 +448,22 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
         color: 'green',
       });
 
-      // What is on screen is what is stored now
-      setInitial({
-        workflow: form.workflow,
-        collection,
-        filterRule: filterRuleWithheld ? undefined : filterRule,
-      });
-      setForm((prev) => ({ ...prev, collection }));
-      if (!isNew) setRecord(saved);
+      if (stillShown()) {
+        // What was sent is what is stored now
+        setInitial({
+          workflow: form.workflow,
+          collection,
+          filterRule: filterRuleWithheld ? undefined : filterRule,
+        });
+        // The collection is shown the way it was sent (trimmed) — unless it
+        // was edited since the request left (the request takes a while, and
+        // the inputs stay open): that text stays, as an edit not saved yet.
+        setForm((prev) => (prev.collection === form.collection ? { ...prev, collection } : prev));
+        setRecord(saved);
+        // A created assignment is the one on screen from here on, so the next
+        // Save updates it; where to go next is the host's to say
+        if (isNew) setCreated(saved);
+      }
       onSaved?.(saved);
     } catch (err) {
       const fallback = isNew
@@ -433,7 +482,7 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
     filterRuleWithheld,
     filterRuleEdited,
     filterRuleProblem,
-    id,
+    assignmentId,
     isNew,
     createAssignment,
     updateAssignment,
@@ -458,7 +507,7 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
   );
 
   // Nothing to edit: say which of the three it is, and offer the way out
-  const refusedCreate = isNew && !createAllowed;
+  const refusedCreate = isNew && permsKnown && !createAllowed;
   if (failure || refusedCreate) {
     let state: React.ReactNode;
     if (refusedCreate || failure?.kind === 'accessDenied') {
@@ -523,7 +572,7 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
       </Group>
 
       <Paper shadow="xs" radius="md" p="xl" withBorder pos="relative" maw={720}>
-        <LoadingOverlay visible={loading} />
+        <LoadingOverlay visible={loading || !permsKnown} />
 
         <Stack gap="md">
           <Select
@@ -604,11 +653,11 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
             {onBack && (
               <Button
                 variant="light"
-                leftSection={viewOnly ? undefined : <IconX size={16} />}
+                leftSection={reader ? undefined : <IconX size={16} />}
                 onClick={onBack}
                 data-testid="workflow-assignment-detail-cancel-btn"
               >
-                {viewOnly ? common.back : common.cancel}
+                {reader ? common.back : common.cancel}
               </Button>
             )}
             {!viewOnly && (
