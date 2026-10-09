@@ -20,6 +20,7 @@ import {
   moduleSpecifiers,
   PACKAGE_FOLDERS,
   inferSourcePackage,
+  stableGeneratedAt,
   // @ts-expect-error — pure ESM helper file lives outside the TS project
 } from '../../../scripts/build-registry.mjs';
 
@@ -302,5 +303,60 @@ describe('package folders agree with the CLI install map', () => {
       expect(inferSourcePackage(`${folder}/src/x.ts`), folder).toBe(name);
     }
     expect(inferSourcePackage('cli/templates/app/layout.tsx')).toBe('@buildpad/cli');
+  });
+});
+
+
+describe('stableGeneratedAt', () => {
+  // A build used to stamp `new Date()` every run, so `pnpm build` dirtied
+  // registry.json on an untouched tree. That tripped release-local.sh's
+  // clean-tree preflight — a release could not follow a build — and put an
+  // unexplained one-line diff into PRs that never touched the registry.
+  const committed = {
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    version: '3.1.0',
+    components: [{ name: 'vtable', files: [{ path: 'a.tsx', sourceSha256: 'aaa' }] }],
+  };
+  const fresh = { ...committed, generatedAt: '2026-06-06T12:00:00.000Z' };
+
+  test('keeps the committed timestamp when nothing else moved', () => {
+    expect(stableGeneratedAt(fresh, committed)).toBe(committed.generatedAt);
+  });
+
+  test('restamps when any content changed', () => {
+    const changed = {
+      ...fresh,
+      components: [{ name: 'vtable', files: [{ path: 'a.tsx', sourceSha256: 'bbb' }] }],
+    };
+    expect(stableGeneratedAt(changed, committed)).toBe(changed.generatedAt);
+  });
+
+  test('restamps when the version alone changed', () => {
+    expect(stableGeneratedAt({ ...fresh, version: '3.2.0' }, committed)).toBe(fresh.generatedAt);
+  });
+
+  test('restamps when a field is added or removed', () => {
+    expect(stableGeneratedAt({ ...fresh, extra: 1 }, committed)).toBe(fresh.generatedAt);
+    const { version: _dropped, ...withoutVersion } = fresh;
+    expect(stableGeneratedAt(withoutVersion, committed)).toBe(fresh.generatedAt);
+  });
+
+  test('restamps when there is no committed artifact', () => {
+    expect(stableGeneratedAt(fresh, undefined)).toBe(fresh.generatedAt);
+  });
+
+  test('restamps when the committed artifact carries no usable timestamp', () => {
+    const { generatedAt: _missing, ...noStamp } = committed;
+    expect(stableGeneratedAt(fresh, noStamp)).toBe(fresh.generatedAt);
+    expect(stableGeneratedAt(fresh, { ...committed, generatedAt: 12345 })).toBe(fresh.generatedAt);
+  });
+
+  test('is key-order independent, so a reserialised artifact still matches', () => {
+    const reordered = {
+      components: committed.components,
+      generatedAt: committed.generatedAt,
+      version: committed.version,
+    };
+    expect(stableGeneratedAt(fresh, reordered)).toBe(committed.generatedAt);
   });
 });
