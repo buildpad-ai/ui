@@ -210,6 +210,25 @@ The Preview tab renders inline based on MIME type:
 | PDF | Embedded `<iframe>` |
 | Anything else | File icon + a download button |
 
+## RBAC behaviour
+
+- The gates come from `usePermissions().canPerform(collection, action)` on
+  `daas_files` (override with `filesCollection`). Administrators pass every
+  gate. The upload zone and **New Folder** need `create`; a folder's Rename, a
+  file's Edit, **Replace file** and the metadata form need `update`; Delete (a
+  file, a folder, the bulk bar) needs `delete`. Download and the preview are
+  read functionality and are never gated.
+- Until the permissions are known, no write control is drawn: no upload zone
+  (so nothing to drop a file on), no New Folder, no folder menu, no Edit or
+  Delete in a row menu, no bulk bar, no Delete or Replace on the detail page,
+  and a disabled metadata form. The controls appear when the answer is in, so
+  a user without a right does not see its button first. Reading does not wait:
+  the library, the file and its preview load at once. A later refresh of the
+  permissions (a renewed token, another scope) keeps the controls as they
+  were until its answer is in.
+- The gates only hide controls. The API enforces the same collection, so a
+  hidden button is not the protection.
+
 ## Prerequisites
 
 - The module must live under your authenticated layout so `DaaSProvider` is

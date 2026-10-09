@@ -163,7 +163,8 @@ export interface CronJobDetailProps {
  * - While the permissions are loading nothing that writes is offered: the
  *   form is covered and takes no edit, and no button is drawn. A new job's
  *   form is neither opened to a user who may not create nor refused to one
- *   who may before the answer is in. (ui-workflows is optimistic there.)
+ *   who may before the answer is in. (ui-workflows, ui-users and ui-files
+ *   wait in the same way.)
  * - After a create the editor is the stored job's: a second Save updates it.
  *   Nothing is created twice when the host is slow to navigate, or does not.
  * - What is typed while a save is in flight is kept as an unsaved edit; the

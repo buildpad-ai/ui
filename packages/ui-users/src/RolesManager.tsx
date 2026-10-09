@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Box,
@@ -71,6 +71,10 @@ export interface RolesManagerProps {
  *
  * No column sorting: the roles API ignores the `sort` param (hardcodes
  * name-asc), so a sort UI here would lie across pages (Req 20.6).
+ *
+ * Add Role, the row menus and the row click are drawn once the permissions
+ * are known; they do not flash for a user who has none of them. The list
+ * itself does not wait.
  */
 /**
  * Client-only gate. The body seeds its state from the URL in `useState`
@@ -111,9 +115,17 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
   const t = useBuildpadTranslations((d) => d.users, translations);
   const { formatCount } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown Add Role, the row menus and a row that opens the editor for the
+  // length of that request. Known once is known: a later refresh (a renewed
+  // token, another scope) answers from what was known until its own answer is
+  // in, so the controls do not blink.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'delete'));
 
   const headers = useMemo<HeaderRaw[]>(
     () => [
@@ -129,13 +141,33 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
-  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
   const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
   const [debouncedSearch] = useDebouncedValue(search, 300);
+
+  // A page belongs to the filters it was reached under: it is kept with them,
+  // and a page kept under other filters is page 1. The reset is decided while
+  // rendering, not in an effect after it, so the load below sees the new
+  // filter and page 1 as one change and sends one request. (An effect would
+  // run after the load had already asked for the old page of the new filter.)
+  // A page restored from the URL is kept: it is stored with the filters of
+  // the first render.
+  const filtersKey = JSON.stringify([debouncedSearch, limit]);
+  const [pageState, setPageState] = useState(() => ({
+    page: urlParams ? readUrlIntParam(param('page'), 1) : 1,
+    filtersKey,
+  }));
+  let page = pageState.page;
+  if (pageState.filtersKey !== filtersKey) {
+    page = 1;
+    setPageState({ page: 1, filtersKey });
+  }
+  const setPage = useCallback((next: number) => {
+    setPageState((current) => (current.page === next ? current : { ...current, page: next }));
+  }, []);
 
   // URL persistence — see useUrlListParams. Defaults serialize to null so they
   // stay off the URL; Back/Forward and bridge rewrites flow back in below.
@@ -154,9 +186,9 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
           const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
           return Number.isInteger(value) && value > 0 ? value : 1;
         })();
-        setPage((current) => (current === nextPage ? current : nextPage));
+        setPage(nextPage);
       },
-      [param],
+      [param, setPage],
     ),
   });
 
@@ -196,20 +228,6 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
   useEffect(() => {
     void load();
   }, [load]);
-
-  // Only on CHANGES — not mount, or a ?page= restored from the URL is clobbered.
-  // StrictMode-safe: compare against the previous values rather than "has
-  // mounted". StrictMode re-runs mount effects with refs intact, so a
-  // has-mounted flag fires setPage(1) on the second run and clobbers a
-  // ?page= restored from the URL in development.
-  const filtersKey = JSON.stringify([debouncedSearch, limit]);
-  const previousFiltersKeyRef = React.useRef<string | null>(null);
-  useEffect(() => {
-    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
-      setPage(1);
-    }
-    previousFiltersKeyRef.current = filtersKey;
-  }, [filtersKey]);
 
   const confirmDelete = useCallback(async () => {
     setDeleting(true);

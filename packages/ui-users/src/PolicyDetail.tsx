@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Button,
+  Fieldset,
   Grid,
   Group,
   LoadingOverlay,
@@ -113,7 +114,13 @@ export interface PolicyDetailProps {
   onBack?: () => void;
   /** Called after the policy is deleted. */
   onDeleted?: () => void;
-  /** Called after a successful create/update with the saved record. */
+  /**
+   * Called after a successful create/update with the saved record (a created
+   * one carries its new id). The component itself goes nowhere: after a create
+   * it becomes the editor of the policy it created (with its permissions
+   * matrix), so a further Save updates that policy whether or not the host
+   * has navigated yet.
+   */
   onSaved?: (policy: Policy) => void;
   /** DaaS collection used for RBAC checks. Default: 'daas_policies'. */
   policiesCollection?: string;
@@ -131,6 +138,17 @@ export interface PolicyDetailProps {
  * buildpad-daas `app/policies/[id]/page.tsx` with the `PermissionsTable`
  * family replaced by `SystemPermissions` and routing replaced by callback
  * props.
+ *
+ * Until the permissions are known nothing that writes is offered: the form is
+ * covered and takes no edit (nor do the matrix and the module-level grants), and no Save or Delete button is drawn. A new
+ * record's form is not opened to a user who may not create before the answer
+ * is in. The record itself loads at once.
+ *
+ * After a create the form is the stored policy's: a second Save updates it.
+ * Nothing is created twice when the host is slow to navigate, or does not.
+ * What is typed while a save is in flight is kept as an unsaved edit, and a
+ * save answered after the host opened another policy in the same form is not
+ * drawn over that policy.
  */
 export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   id,
@@ -140,7 +158,13 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   policiesCollection = 'daas_policies',
   translations,
 }) => {
-  const isNew = id === 'new' || id === '+';
+  const newRoute = id === 'new' || id === '+';
+  // The policy this form created while `id` still says "new". From then on it
+  // edits that policy: a second Save must update it, not create it once more,
+  // whether or not the host has navigated to its own route yet.
+  const [created, setCreated] = useState<Policy | null>(null);
+  const isNew = newRoute && !created;
+  const policyId = newRoute && created ? created.id : id;
   const { getPolicy, createPolicy, updatePolicy, deletePolicy } = usePolicies();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [policiesCollection],
@@ -149,14 +173,23 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatDateTime, formatCount } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'delete');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save, Delete or an open form for the
+  // length of that request. Known once is known: a later refresh (a renewed
+  // token, another scope) answers from what was known until its own answer is
+  // in, so the form does not close under a user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(policiesCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(policiesCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(policiesCollection, 'delete'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
 
   const [policy, setPolicy] = useState<Policy | null>(null);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(!newRoute);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const [initialValues, setInitialValues] = useState<PolicyFormValues>(EMPTY_FORM);
@@ -174,11 +207,36 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   const hasPermissionEdits = hasAlterations(alterations);
   const isDirty = hasFormEdits || hasPermissionEdits;
 
+  // The texts of the load's failure notice, read when it is raised. They are
+  // not dependencies of the load: a change of language would run it again,
+  // and on the new route that empties the form (and lets go of a record the
+  // form has just created).
+  const textsRef = useRef({ t, common });
+  textsRef.current = { t, common };
+
+  // Only the answer for the policy on screen may be drawn: neither a slow
+  // load of the one opened before, nor a save that was sent for it.
+  const requestRef = useRef(0);
+
+  // Keyed on the `id` it is given, not on the policy a create adopted: the
+  // load runs when the host opens another policy (or a new one), and not for
+  // the policy that was just created here.
   const load = useCallback(async () => {
-    if (isNew) return;
+    const request = ++requestRef.current;
+    setCreated(null);
+    // Matrix edits belong to the policy they were made on
+    setAlterations(null);
+    if (newRoute) {
+      setPolicy(null);
+      setInitialValues(EMPTY_FORM);
+      setValues(EMPTY_FORM);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const fetched = await getPolicy(id);
+      if (request !== requestRef.current) return;
       setPolicy(fetched);
       const formValues: PolicyFormValues = {
         name: fetched.name,
@@ -192,21 +250,24 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
       setInitialValues(formValues);
       setValues(formValues);
     } catch (err) {
+      if (request !== requestRef.current) return;
+      const texts = textsRef.current;
       notifications.show({
-        title: common.error,
-        message: err instanceof Error ? err.message : t.policyDetail.notifications.fetchFailed,
+        title: texts.common.error,
+        message: err instanceof Error ? err.message : texts.t.policyDetail.notifications.fetchFailed,
         color: 'red',
       });
     } finally {
-      setLoading(false);
+      if (request === requestRef.current) setLoading(false);
     }
-  }, [getPolicy, id, isNew, t, common]);
+  }, [getPolicy, id, newRoute]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const handleSave = useCallback(async () => {
+    if (savingRef.current) return;
     if (!values.name.trim()) {
       notifications.show({
         title: t.validationErrorTitle,
@@ -216,17 +277,25 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
+    // The answer belongs to the policy on screen now. When the host has opened
+    // another one by the time it arrives, it must not be drawn over that
+    // policy.
+    const shown = requestRef.current;
+    const stillShown = () => shown === requestRef.current;
     try {
       let saved: Policy;
       if (isNew) {
         saved = await createPolicy({ ...values, name: values.name });
       } else {
-        saved = hasFormEdits ? await updatePolicy(id, values) : (policy as Policy);
+        saved = hasFormEdits ? await updatePolicy(policyId, values) : (policy as Policy);
         if (alterations && hasPermissionEdits) {
-          await applyPermissionAlterations(id, alterations);
-          setAlterations(null);
-          setPermissionsVersion((v) => v + 1);
+          await applyPermissionAlterations(policyId, alterations);
+          if (stillShown()) {
+            setAlterations(null);
+            setPermissionsVersion((v) => v + 1);
+          }
         }
       }
       notifications.show({
@@ -234,8 +303,16 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
         message: isNew ? t.policyDetail.notifications.created : t.policyDetail.notifications.updated,
         color: 'green',
       });
-      setInitialValues(values);
-      setPolicy(saved);
+      if (stillShown()) {
+        // What was sent is what is stored now. `values` is the form as it was
+        // when the request left: an edit made since then (the request takes a
+        // while, and the inputs stay open) differs from it, and stays unsaved.
+        setInitialValues(values);
+        setPolicy(saved);
+        // A created policy is the one on screen from here on, so the next
+        // Save updates it; where to go next is the host's to say
+        if (isNew) setCreated(saved);
+      }
       onSaved?.(saved);
     } catch (err) {
       notifications.show({
@@ -244,6 +321,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
         color: 'red',
       });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }, [
@@ -251,7 +329,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
     isNew,
     createPolicy,
     updatePolicy,
-    id,
+    policyId,
     policy,
     hasFormEdits,
     alterations,
@@ -263,7 +341,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
 
   const confirmDelete = useCallback(async () => {
     try {
-      await deletePolicy(id);
+      await deletePolicy(policyId);
       notifications.show({
         title: common.success,
         message: t.policyDetail.notifications.deleted,
@@ -278,7 +356,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
         color: 'red',
       });
     }
-  }, [deletePolicy, id, onDeleted, t, common]);
+  }, [deletePolicy, policyId, onDeleted, t, common]);
 
   const userCount = policy?.userCount ?? 0;
   const roleCount = policy?.roleCount ?? 0;
@@ -325,65 +403,74 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
       <Grid>
         <Grid.Col span={{ base: 12, md: 8 }}>
           <Paper shadow="xs" p="md" withBorder pos="relative">
-            <LoadingOverlay visible={loading} />
+            <LoadingOverlay visible={loading || !permsKnown} />
 
-            <Stack gap="md">
-              <Title order={4}>{t.basicInformation}</Title>
+            {/* Takes no edit until the permissions are known (the overlay only covers it) */}
+            <Fieldset
+              variant="unstyled"
+              disabled={!permsKnown}
+              m={0}
+              miw={0}
+              data-testid="policy-detail-form"
+            >
+              <Stack gap="md">
+                <Title order={4}>{t.basicInformation}</Title>
 
-              <TextInput
-                label={t.fields.name}
-                placeholder={t.policyDetail.fields.namePlaceholder}
-                required
-                value={values.name}
-                onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
-                data-testid="policy-detail-name"
-              />
+                <TextInput
+                  label={t.fields.name}
+                  placeholder={t.policyDetail.fields.namePlaceholder}
+                  required
+                  value={values.name}
+                  onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
+                  data-testid="policy-detail-name"
+                />
 
-              <SelectIcon
-                label={t.fields.icon}
-                value={values.icon}
-                onChange={(icon) => setValues((prev) => ({ ...prev, icon: icon || 'security' }))}
-                placeholder="security"
-              />
+                <SelectIcon
+                  label={t.fields.icon}
+                  value={values.icon}
+                  onChange={(icon) => setValues((prev) => ({ ...prev, icon: icon || 'security' }))}
+                  placeholder="security"
+                />
 
-              <Textarea
-                label={t.fields.description}
-                placeholder={t.policyDetail.fields.descriptionPlaceholder}
-                value={values.description}
-                onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
-                rows={4}
-              />
+                <Textarea
+                  label={t.fields.description}
+                  placeholder={t.policyDetail.fields.descriptionPlaceholder}
+                  value={values.description}
+                  onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
+                  rows={4}
+                />
 
-              <Title order={4} mt="md">
-                {t.policyDetail.accessControl}
-              </Title>
+                <Title order={4} mt="md">
+                  {t.policyDetail.accessControl}
+                </Title>
 
-              <Switch
-                label={t.policyDetail.appAccess.label}
-                description={t.policyDetail.appAccess.description}
-                checked={values.app_access}
-                onChange={(e) => setValues((prev) => ({ ...prev, app_access: e.currentTarget.checked }))}
-                data-testid="policy-detail-app-access"
-              />
+                <Switch
+                  label={t.policyDetail.appAccess.label}
+                  description={t.policyDetail.appAccess.description}
+                  checked={values.app_access}
+                  onChange={(e) => setValues((prev) => ({ ...prev, app_access: e.currentTarget.checked }))}
+                  data-testid="policy-detail-app-access"
+                />
 
-              <Switch
-                label={t.policyDetail.adminAccess.label}
-                description={t.policyDetail.adminAccess.description}
-                checked={values.admin_access}
-                onChange={(e) => setValues((prev) => ({ ...prev, admin_access: e.currentTarget.checked }))}
-                data-testid="policy-detail-admin-access"
-              />
+                <Switch
+                  label={t.policyDetail.adminAccess.label}
+                  description={t.policyDetail.adminAccess.description}
+                  checked={values.admin_access}
+                  onChange={(e) => setValues((prev) => ({ ...prev, admin_access: e.currentTarget.checked }))}
+                  data-testid="policy-detail-admin-access"
+                />
 
-              <Switch
-                label={t.policyDetail.delegateAccess.label}
-                description={t.policyDetail.delegateAccess.description}
-                checked={values.delegate_access}
-                onChange={(e) =>
-                  setValues((prev) => ({ ...prev, delegate_access: e.currentTarget.checked }))
-                }
-                data-testid="policy-detail-delegate-access"
-              />
-            </Stack>
+                <Switch
+                  label={t.policyDetail.delegateAccess.label}
+                  description={t.policyDetail.delegateAccess.description}
+                  checked={values.delegate_access}
+                  onChange={(e) =>
+                    setValues((prev) => ({ ...prev, delegate_access: e.currentTarget.checked }))
+                  }
+                  data-testid="policy-detail-delegate-access"
+                />
+              </Stack>
+            </Fieldset>
           </Paper>
 
           {/*
@@ -407,9 +494,10 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
                 <Tabs.Panel value="record-level">
                   <SystemPermissions
                     key={`permissions-${permissionsVersion}`}
-                    primaryKey={id}
+                    primaryKey={policyId}
                     value={alterations}
                     onChange={setAlterations}
+                    disabled={!permsKnown}
                     appAccess={values.app_access}
                     adminAccess={values.admin_access}
                     label={t.policyDetail.permissions.label}
@@ -423,14 +511,16 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
                     <Text size="sm" c="dimmed">
                       {t.policyDetail.moduleLevelIntro}
                     </Text>
-                    <ModuleAccessPanel
-                      value={values.module_access}
-                      onChange={(module_access) =>
-                        setValues((prev) => ({ ...prev, module_access }))
-                      }
-                      adminAccess={values.admin_access}
-                      translations={translations}
-                    />
+                    <Fieldset variant="unstyled" disabled={!permsKnown} m={0} miw={0}>
+                      <ModuleAccessPanel
+                        value={values.module_access}
+                        onChange={(module_access) =>
+                          setValues((prev) => ({ ...prev, module_access }))
+                        }
+                        adminAccess={values.admin_access}
+                        translations={translations}
+                      />
+                    </Fieldset>
                   </Stack>
                 </Tabs.Panel>
               </Tabs>

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Button,
+  Fieldset,
   Grid,
   Group,
   LoadingOverlay,
@@ -137,7 +138,12 @@ export interface UserDetailProps {
   onBack?: () => void;
   /** Called after the user is deleted. */
   onDeleted?: () => void;
-  /** Called after a successful create/update with the saved record. */
+  /**
+   * Called after a successful create/update with the saved record (a created
+   * one carries its new id). The component itself goes nowhere: after a create
+   * it becomes the editor of the user it created, so a further Save updates
+   * that user whether or not the host has navigated yet.
+   */
   onSaved?: (user: User) => void;
   /** Called when a policy row's "open" action is clicked in the Policies tab. */
   onPolicyClick?: (policy: Policy) => void;
@@ -154,6 +160,17 @@ export interface UserDetailProps {
  * `app/users/[id]/page.tsx` — schema-driven `DynamicForm` replaced with
  * explicit fields so the component is self-contained after a CLI copy, and
  * routing replaced with `onBack`/`onDeleted`/`onSaved` props.
+ *
+ * Until the permissions are known nothing that writes is offered: the form is
+ * covered and takes no edit, and no Save or Delete button is drawn. A new
+ * record's form is not opened to a user who may not create before the answer
+ * is in. The record itself loads at once.
+ *
+ * After a create the form is the stored user's: a second Save updates it.
+ * Nothing is created twice when the host is slow to navigate, or does not.
+ * What is typed while a save is in flight is kept as an unsaved edit, and a
+ * save answered after the host opened another user in the same form is not
+ * drawn over that user.
  */
 export const UserDetail: React.FC<UserDetailProps> = ({
   id,
@@ -164,7 +181,13 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   usersCollection = 'daas_users',
   translations,
 }) => {
-  const isNew = id === 'new' || id === '+';
+  const newRoute = id === 'new' || id === '+';
+  // The user this form created while `id` still says "new". From then on it
+  // edits that user: a second Save must update it, not create it once more,
+  // whether or not the host has navigated to its own route yet.
+  const [created, setCreated] = useState<User | null>(null);
+  const isNew = newRoute && !created;
+  const userId = newRoute && created ? created.id : id;
   const { getUser, createUser, updateUser, deleteUser } = useUsers();
   const { fetchRoles } = useRoles();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
@@ -174,9 +197,17 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatDateTime, formatCount } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'delete');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save, Delete or an open form for the
+  // length of that request. Known once is known: a later refresh (a renewed
+  // token, another scope) answers from what was known until its own answer is
+  // in, so the form does not close under a user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'delete'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
 
   const statusOptions = useMemo<Array<{ value: UserStatus; label: string }>>(
@@ -189,8 +220,9 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   );
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(!newRoute);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [activeTab, setActiveTab] = useState<string | null>('basic');
   const [policyCount, setPolicyCount] = useState(0);
   const [roleOptions, setRoleOptions] = useState<
@@ -210,28 +242,56 @@ export const UserDetail: React.FC<UserDetailProps> = ({
     setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
   }, []);
 
+  // The texts of the load's failure notice, read when it is raised. They are
+  // not dependencies of the load: a change of language would run it again,
+  // and on the new route that empties the form (and lets go of a record the
+  // form has just created).
+  const textsRef = useRef({ t, common });
+  textsRef.current = { t, common };
+
+  // Only the answer for the user on screen may be drawn: neither a slow load
+  // of the one opened before, nor a save that was sent for it.
+  const requestRef = useRef(0);
+
+  // Keyed on the `id` it is given, not on the user a create adopted: the load
+  // runs when the host opens another user (or a new one), and not for the
+  // user that was just created here.
   const load = useCallback(async () => {
-    if (isNew) return;
+    const request = ++requestRef.current;
+    setCreated(null);
+    if (newRoute) {
+      setUser(null);
+      setPolicyCount(0);
+      setInitialValues(EMPTY_FORM);
+      setValues(EMPTY_FORM);
+      setFieldErrors((errors) => (Object.keys(errors).length > 0 ? {} : errors));
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       // Without a fields param the API returns `roles` as bare junction-row
       // IDs; `roles.*` expands them to junction rows carrying `role_id`.
       const fetched = await getUser(id, { fields: '*,roles.*' });
+      if (request !== requestRef.current) return;
       setUser(fetched);
       setPolicyCount(fetched.policyCount ?? 0);
       const formValues = toFormValues(fetched);
       setInitialValues(formValues);
       setValues(formValues);
+      setFieldErrors({});
     } catch (err) {
+      if (request !== requestRef.current) return;
+      const texts = textsRef.current;
       notifications.show({
-        title: common.error,
-        message: err instanceof Error ? err.message : t.userDetail.notifications.fetchFailed,
+        title: texts.common.error,
+        message: err instanceof Error ? err.message : texts.t.userDetail.notifications.fetchFailed,
         color: 'red',
       });
     } finally {
-      setLoading(false);
+      if (request === requestRef.current) setLoading(false);
     }
-  }, [getUser, id, isNew, t, common]);
+  }, [getUser, id, newRoute]);
 
   useEffect(() => {
     void load();
@@ -256,14 +316,16 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   /** Refresh sidebar counts after policy attach/detach without resetting the form. */
   const refreshCounts = useCallback(async () => {
     if (isNew) return;
+    const shown = requestRef.current;
     try {
-      const fetched = await getUser(id);
+      const fetched = await getUser(userId);
+      if (shown !== requestRef.current) return;
       setUser(fetched);
       setPolicyCount(fetched.policyCount ?? 0);
     } catch {
       // sidebar refresh is best-effort
     }
-  }, [getUser, id, isNew]);
+  }, [getUser, userId, isNew]);
 
   const validate = useCallback((): boolean => {
     const errors: Partial<Record<keyof UserFormValues, string>> = {};
@@ -277,6 +339,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   }, [values.email, values.password, isNew, t]);
 
   const handleSave = useCallback(async () => {
+    if (savingRef.current) return;
     if (!isNew && !isDirty) return;
     if (!validate()) {
       notifications.show({
@@ -287,23 +350,41 @@ export const UserDetail: React.FC<UserDetailProps> = ({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
+    // The answer belongs to the user on screen now. When the host has opened
+    // another one by the time it arrives, it must not be drawn over that user.
+    const shown = requestRef.current;
+    const stillShown = () => shown === requestRef.current;
     try {
       let saved: User;
       if (isNew) {
         saved = await createUser({ ...edits, email: values.email, password: values.password });
       } else {
-        saved = await updateUser(id, edits);
+        saved = await updateUser(userId, edits);
       }
       notifications.show({
         title: common.success,
         message: isNew ? t.userDetail.notifications.created : t.userDetail.notifications.updated,
         color: 'green',
       });
-      // Keep local state consistent in case the host app stays on this view.
-      const formValues = { ...values, password: '' };
-      setInitialValues(formValues);
-      setValues(formValues);
+      if (stillShown()) {
+        // What was sent is what is stored now. `values` is the form as it was
+        // when the request left: an edit made since then (the request takes a
+        // while, and the inputs stay open) differs from it, and stays unsaved.
+        // The password that was sent is taken out of its field.
+        setInitialValues({ ...values, password: '' });
+        setValues((current) =>
+          current.password === values.password ? { ...current, password: '' } : current,
+        );
+        if (isNew) {
+          // A created user is the one on screen from here on, so the next
+          // Save updates it; where to go next is the host's to say
+          setCreated(saved);
+          setUser(saved);
+          setPolicyCount(saved.policyCount ?? 0);
+        }
+      }
       onSaved?.(saved);
     } catch (err) {
       notifications.show({
@@ -312,13 +393,14 @@ export const UserDetail: React.FC<UserDetailProps> = ({
         color: 'red',
       });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
-  }, [isNew, isDirty, validate, createUser, updateUser, id, edits, values, onSaved, t, common]);
+  }, [isNew, isDirty, validate, createUser, updateUser, userId, edits, values, onSaved, t, common]);
 
   const confirmDelete = useCallback(async () => {
     try {
-      await deleteUser(id);
+      await deleteUser(userId);
       notifications.show({
         title: common.success,
         message: t.userDetail.notifications.deleted,
@@ -333,7 +415,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
         color: 'red',
       });
     }
-  }, [deleteUser, id, onDeleted, t, common]);
+  }, [deleteUser, userId, onDeleted, t, common]);
 
   // `formatDateTime` returns '' for an empty or invalid value.
   const dateTime = (value?: string | null) =>
@@ -394,141 +476,150 @@ export const UserDetail: React.FC<UserDetailProps> = ({
 
             <Tabs.Panel value="basic" pt="md">
               <Paper shadow="xs" p="md" withBorder pos="relative">
-                <LoadingOverlay visible={loading} />
+                <LoadingOverlay visible={loading || !permsKnown} />
 
-                <Stack gap="md">
-                  <Group grow>
+                {/* Takes no edit until the permissions are known (the overlay only covers it) */}
+                <Fieldset
+                  variant="unstyled"
+                  disabled={!permsKnown}
+                  m={0}
+                  miw={0}
+                  data-testid="user-detail-form"
+                >
+                  <Stack gap="md">
+                    <Group grow>
+                      <TextInput
+                        label={t.userDetail.fields.firstName}
+                        placeholder={t.userDetail.fields.firstNamePlaceholder}
+                        value={values.first_name}
+                        onChange={(e) => setField('first_name', e.currentTarget.value)}
+                        data-testid="user-detail-first-name"
+                      />
+                      <TextInput
+                        label={t.userDetail.fields.lastName}
+                        placeholder={t.userDetail.fields.lastNamePlaceholder}
+                        value={values.last_name}
+                        onChange={(e) => setField('last_name', e.currentTarget.value)}
+                        data-testid="user-detail-last-name"
+                      />
+                    </Group>
+
                     <TextInput
-                      label={t.userDetail.fields.firstName}
-                      placeholder={t.userDetail.fields.firstNamePlaceholder}
-                      value={values.first_name}
-                      onChange={(e) => setField('first_name', e.currentTarget.value)}
-                      data-testid="user-detail-first-name"
+                      label={t.userDetail.fields.email}
+                      placeholder={t.userDetail.fields.emailPlaceholder}
+                      required
+                      type="email"
+                      value={values.email}
+                      onChange={(e) => setField('email', e.currentTarget.value)}
+                      error={fieldErrors.email}
+                      data-testid="user-detail-email"
                     />
-                    <TextInput
-                      label={t.userDetail.fields.lastName}
-                      placeholder={t.userDetail.fields.lastNamePlaceholder}
-                      value={values.last_name}
-                      onChange={(e) => setField('last_name', e.currentTarget.value)}
-                      data-testid="user-detail-last-name"
+
+                    <PasswordInput
+                      label={t.userDetail.fields.password}
+                      placeholder={
+                        isNew
+                          ? t.userDetail.fields.passwordPlaceholderNew
+                          : t.userDetail.fields.passwordPlaceholderEdit
+                      }
+                      required={isNew}
+                      value={values.password}
+                      onChange={(e) => setField('password', e.currentTarget.value)}
+                      error={fieldErrors.password}
+                      autoComplete="new-password"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      data-testid="user-detail-password"
                     />
-                  </Group>
 
-                  <TextInput
-                    label={t.userDetail.fields.email}
-                    placeholder={t.userDetail.fields.emailPlaceholder}
-                    required
-                    type="email"
-                    value={values.email}
-                    onChange={(e) => setField('email', e.currentTarget.value)}
-                    error={fieldErrors.email}
-                    data-testid="user-detail-email"
-                  />
-
-                  <PasswordInput
-                    label={t.userDetail.fields.password}
-                    placeholder={
-                      isNew
-                        ? t.userDetail.fields.passwordPlaceholderNew
-                        : t.userDetail.fields.passwordPlaceholderEdit
-                    }
-                    required={isNew}
-                    value={values.password}
-                    onChange={(e) => setField('password', e.currentTarget.value)}
-                    error={fieldErrors.password}
-                    autoComplete="new-password"
-                    data-lpignore="true"
-                    data-1p-ignore="true"
-                    data-testid="user-detail-password"
-                  />
-
-                  <MultiSelect
-                    label={t.userDetail.fields.roles}
-                    placeholder={values.roles.length === 0 ? t.userDetail.fields.rolesPlaceholder : undefined}
-                    data={roleOptions}
-                    value={values.roles}
-                    onChange={(roles) => setField('roles', roles)}
-                    searchable
-                    clearable
-                    data-testid="user-detail-roles"
-                  />
-
-                  <Group grow>
-                    <Select
-                      label={t.userDetail.fields.status}
-                      data={statusOptions}
-                      value={values.status}
-                      onChange={(status) => setField('status', (status as UserStatus) ?? 'active')}
-                      allowDeselect={false}
-                      data-testid="user-detail-status"
-                    />
-                    <TextInput
-                      label={t.userDetail.fields.title}
-                      placeholder={t.userDetail.fields.titlePlaceholder}
-                      value={values.title}
-                      onChange={(e) => setField('title', e.currentTarget.value)}
-                    />
-                  </Group>
-
-                  <Textarea
-                    label={t.fields.description}
-                    placeholder={t.userDetail.fields.descriptionPlaceholder}
-                    value={values.description}
-                    onChange={(e) => setField('description', e.currentTarget.value)}
-                    rows={3}
-                  />
-
-                  <Group grow>
-                    <TextInput
-                      label={t.userDetail.fields.location}
-                      placeholder={t.userDetail.fields.locationPlaceholder}
-                      value={values.location}
-                      onChange={(e) => setField('location', e.currentTarget.value)}
-                    />
-                    <TagsInput
-                      label={t.userDetail.fields.tags}
-                      placeholder={t.userDetail.fields.tagsPlaceholder}
-                      value={values.tags}
-                      onChange={(tags) => setField('tags', tags)}
-                    />
-                  </Group>
-
-                  <Group grow>
-                    <Select
-                      label={t.userDetail.fields.language}
-                      placeholder={t.userDetail.fields.languagePlaceholder}
-                      data={LANGUAGE_OPTIONS}
-                      value={values.language}
-                      onChange={(language) => setField('language', language)}
+                    <MultiSelect
+                      label={t.userDetail.fields.roles}
+                      placeholder={values.roles.length === 0 ? t.userDetail.fields.rolesPlaceholder : undefined}
+                      data={roleOptions}
+                      value={values.roles}
+                      onChange={(roles) => setField('roles', roles)}
                       searchable
                       clearable
+                      data-testid="user-detail-roles"
                     />
-                    <Select
-                      label={t.userDetail.fields.theme}
-                      placeholder={t.userDetail.fields.themePlaceholder}
-                      data={themeOptions}
-                      value={values.theme}
-                      onChange={(theme) => setField('theme', theme)}
-                      clearable
-                    />
-                  </Group>
 
-                  <TokenInput
-                    label={t.userDetail.fields.token}
-                    description={t.userDetail.fields.tokenDescription}
-                    value={values.token || null}
-                    onChange={(token) => setField('token', token ?? '')}
-                    data-testid="user-detail-token"
-                    translations={translations}
-                  />
-                </Stack>
+                    <Group grow>
+                      <Select
+                        label={t.userDetail.fields.status}
+                        data={statusOptions}
+                        value={values.status}
+                        onChange={(status) => setField('status', (status as UserStatus) ?? 'active')}
+                        allowDeselect={false}
+                        data-testid="user-detail-status"
+                      />
+                      <TextInput
+                        label={t.userDetail.fields.title}
+                        placeholder={t.userDetail.fields.titlePlaceholder}
+                        value={values.title}
+                        onChange={(e) => setField('title', e.currentTarget.value)}
+                      />
+                    </Group>
+
+                    <Textarea
+                      label={t.fields.description}
+                      placeholder={t.userDetail.fields.descriptionPlaceholder}
+                      value={values.description}
+                      onChange={(e) => setField('description', e.currentTarget.value)}
+                      rows={3}
+                    />
+
+                    <Group grow>
+                      <TextInput
+                        label={t.userDetail.fields.location}
+                        placeholder={t.userDetail.fields.locationPlaceholder}
+                        value={values.location}
+                        onChange={(e) => setField('location', e.currentTarget.value)}
+                      />
+                      <TagsInput
+                        label={t.userDetail.fields.tags}
+                        placeholder={t.userDetail.fields.tagsPlaceholder}
+                        value={values.tags}
+                        onChange={(tags) => setField('tags', tags)}
+                      />
+                    </Group>
+
+                    <Group grow>
+                      <Select
+                        label={t.userDetail.fields.language}
+                        placeholder={t.userDetail.fields.languagePlaceholder}
+                        data={LANGUAGE_OPTIONS}
+                        value={values.language}
+                        onChange={(language) => setField('language', language)}
+                        searchable
+                        clearable
+                      />
+                      <Select
+                        label={t.userDetail.fields.theme}
+                        placeholder={t.userDetail.fields.themePlaceholder}
+                        data={themeOptions}
+                        value={values.theme}
+                        onChange={(theme) => setField('theme', theme)}
+                        clearable
+                      />
+                    </Group>
+
+                    <TokenInput
+                      label={t.userDetail.fields.token}
+                      description={t.userDetail.fields.tokenDescription}
+                      value={values.token || null}
+                      onChange={(token) => setField('token', token ?? '')}
+                      data-testid="user-detail-token"
+                      translations={translations}
+                    />
+                  </Stack>
+                </Fieldset>
               </Paper>
             </Tabs.Panel>
 
             {!isNew && (
               <Tabs.Panel value="policies" pt="md">
                 <UserPoliciesManager
-                  userId={id}
+                  userId={userId}
                   onUpdate={() => void refreshCounts()}
                   onPolicyClick={onPolicyClick}
                   translations={translations}

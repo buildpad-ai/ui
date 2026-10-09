@@ -513,12 +513,24 @@ importers:
       '@tabler/icons-react':
         specifier: ^3.0.0
         version: 3.35.0(react@19.2.0)
+      '@testing-library/jest-dom':
+        specifier: ^6.0.0
+        version: 6.9.1
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.3.1(@testing-library/dom@10.4.0)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@types/react':
         specifier: ^19.1.6
         version: 19.2.7
       '@types/react-dom':
         specifier: ^19.1.5
         version: 19.2.3(@types/react@19.2.7)
+      '@vitest/coverage-v8':
+        specifier: 2.1.9
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.2)(jsdom@25.0.1)(lightningcss@1.30.2)(sugarss@5.0.1(postcss@8.5.28)))
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
       next:
         specifier: ^16.0.0
         version: 16.1.6(@babel/core@7.29.7)(@playwright/test@1.58.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)

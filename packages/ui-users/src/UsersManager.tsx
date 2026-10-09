@@ -3,7 +3,7 @@
 import './UsersManager.css';
 import './ManagerTable.css';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Box,
@@ -191,6 +191,10 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
  * and a row menu for edit/delete. Ported from the buildpad-daas reference
  * `app/users/page.tsx` to `useUsers`/`useRoles` + `usePermissions` and
  * routing-agnostic navigation via `onUserClick`/`onCreateUser` props.
+ *
+ * Add User, the row menus, the selection column and the row click are drawn
+ * once the permissions are known; they do not flash for a user who has none
+ * of them. The list itself does not wait.
  */
 /** Accept only real statuses from the URL; anything else means "no filter". */
 function parseStatusParam(raw: string | null): UserStatus | null {
@@ -247,10 +251,18 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatDate, formatCount } = useBuildpadI18n();
 
-  // Optimistic while permissions resolve, then enforce; admins bypass.
-  const createAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown Add User, the row menus, the selection column and a row that opens
+  // the editor for the length of that request. Known once is known: a later
+  // refresh (a renewed token, another scope) answers from what was known until
+  // its own answer is in, so the controls do not blink and a selection is not
+  // dropped. Admins bypass.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'delete'));
   const selectable = updateAllowed || deleteAllowed;
 
   const statusOptions = useMemo<Array<{ value: UserStatus; label: string }>>(
@@ -277,7 +289,6 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
   // once, so a shared /users?search=ann&status=active&page=2 link restores the
   // exact view; invalid values fall back to the defaults.
   const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
-  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -294,6 +305,27 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
   const [sort, setSort] = useState<Sort | null>(() =>
     urlParams ? parseSortParam(readUrlParam(param('sort'))) : null,
   );
+
+  // A page belongs to the filters it was reached under: it is kept with them,
+  // and a page kept under other filters is page 1. The reset is decided while
+  // rendering, not in an effect after it, so the load below sees the new
+  // filter and page 1 as one change and sends one request. (An effect would
+  // run after the load had already asked for the old page of the new filter.)
+  // A page restored from the URL is kept: it is stored with the filters of
+  // the first render.
+  const filtersKey = JSON.stringify([debouncedSearch, selectedRole, selectedStatus, sort, limit]);
+  const [pageState, setPageState] = useState(() => ({
+    page: urlParams ? readUrlIntParam(param('page'), 1) : 1,
+    filtersKey,
+  }));
+  let page = pageState.page;
+  if (pageState.filtersKey !== filtersKey) {
+    page = 1;
+    setPageState({ page: 1, filtersKey });
+  }
+  const setPage = useCallback((next: number) => {
+    setPageState((current) => (current.page === next ? current : { ...current, page: next }));
+  }, []);
 
   const { selection, setSelection, clearSelection, selectionCount } = useSelection<string>();
 
@@ -343,9 +375,9 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
           const value = raw ? Number.parseInt(raw, 10) : 1;
           return Number.isInteger(value) && value > 0 ? value : 1;
         })();
-        setPage((current) => (current === nextPage ? current : nextPage));
+        setPage(nextPage);
       },
-      [param],
+      [param, setPage],
     ),
   });
 
@@ -384,21 +416,6 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
   useEffect(() => {
     void load();
   }, [load]);
-
-  // Reset to page 1 whenever a filter, the sort, or the page size CHANGES —
-  // not on mount, or a ?page=3 restored from the URL would be clobbered.
-  // StrictMode-safe: compare against the previous values rather than "has
-  // mounted". StrictMode re-runs mount effects with refs intact, so a
-  // has-mounted flag fires setPage(1) on the second run and clobbers a
-  // ?page= restored from the URL in development.
-  const filtersKey = JSON.stringify([debouncedSearch, selectedRole, selectedStatus, sort, limit]);
-  const previousFiltersKeyRef = React.useRef<string | null>(null);
-  useEffect(() => {
-    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
-      setPage(1);
-    }
-    previousFiltersKeyRef.current = filtersKey;
-  }, [filtersKey]);
 
   // Selection survives page changes but not a change of what's being listed.
   useEffect(() => {

@@ -20,7 +20,7 @@ const Interactive: React.FC<{ totalCount: number }> = ({ totalCount }) => {
       <ListFooter
         shown={Math.min(limit, totalCount)}
         totalCount={totalCount}
-        itemsLabel="users"
+        itemsLabel={{ one: 'user', other: 'users' }}
         page={page}
         totalPages={totalPages}
         onPageChange={setPage}

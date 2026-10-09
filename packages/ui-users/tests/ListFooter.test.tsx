@@ -46,6 +46,33 @@ describe('ListFooter', () => {
     expect(screen.getByRole('button', { name: '2' })).toBeInTheDocument();
   });
 
+  describe('the noun', () => {
+    const forms = { one: 'user', other: 'users' };
+
+    it('names one row in the singular: the noun follows the total', () => {
+      renderFooter({ itemsLabel: forms, shown: 1, totalCount: 1, totalPages: 1 });
+      expect(screen.getByText('Showing 1 of 1 user')).toBeInTheDocument();
+      expect(screen.queryByText('Showing 1 of 1 users')).not.toBeInTheDocument();
+    });
+
+    it('keeps the plural for the one row of a last page', () => {
+      renderFooter({ itemsLabel: forms, shown: 1, totalCount: 26, page: 2, totalPages: 2 });
+      expect(screen.getByText('Showing 1 of 26 users')).toBeInTheDocument();
+    });
+
+    it('uses the one form a noun has in a language without plurals', () => {
+      renderFooter({ itemsLabel: { other: 'pengguna' }, shown: 1, totalCount: 1, totalPages: 1 });
+      expect(screen.getByText('Showing 1 of 1 pengguna')).toBeInTheDocument();
+    });
+
+    // A host that renders the exported footer itself, or a dictionary written
+    // when the entry was one string
+    it('shows a noun given as one string as it is', () => {
+      renderFooter({ itemsLabel: 'people', shown: 1, totalCount: 1, totalPages: 1 });
+      expect(screen.getByText('Showing 1 of 1 people')).toBeInTheDocument();
+    });
+  });
+
   it('emits onLimitChange with the numeric size', async () => {
     const onLimitChange = vi.fn();
     renderFooter({ onLimitChange });

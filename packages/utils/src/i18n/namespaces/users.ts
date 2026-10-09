@@ -90,7 +90,10 @@ export interface UsersTranslations {
     ariaLabel: string;
   };
   listFooter: {
-    /** "Showing {shown} of {totalCount} {itemsLabel}" — `itemsLabel` is the manager's plural noun */
+    /**
+     * "Showing {shown} of {totalCount} {itemsLabel}" — `itemsLabel` is the
+     * manager's noun in the form `totalCount` takes ("1 user", "26 users")
+     */
     showing: string;
     /** "{n} / page" — page-size option label */
     perPage: string;
@@ -246,8 +249,11 @@ export interface UsersTranslations {
     subtitle: string;
     addUser: string;
     searchPlaceholder: string;
-    /** Plural noun for the footer's "Showing N of M {itemsLabel}" */
-    itemsLabel: string;
+    /**
+     * The noun of the footer's "Showing N of M {itemsLabel}", one form per
+     * plural category of M: "Showing 1 of 1 user", "Showing 25 of 26 users"
+     */
+    itemsLabel: PluralForms;
     columns: {
       user: string;
       email: string;
@@ -312,8 +318,11 @@ export interface UsersTranslations {
     subtitle: string;
     addRole: string;
     searchPlaceholder: string;
-    /** Plural noun for the footer's "Showing N of M {itemsLabel}" */
-    itemsLabel: string;
+    /**
+     * The noun of the footer's "Showing N of M {itemsLabel}", one form per
+     * plural category of M: "Showing 1 of 1 role", "Showing 25 of 26 roles"
+     */
+    itemsLabel: PluralForms;
     emptyState: {
       /** "Failed to load roles — {error}" */
       loadError: string;
@@ -334,8 +343,11 @@ export interface UsersTranslations {
     subtitle: string;
     addPolicy: string;
     searchPlaceholder: string;
-    /** Plural noun for the footer's "Showing N of M {itemsLabel}" */
-    itemsLabel: string;
+    /**
+     * The noun of the footer's "Showing N of M {itemsLabel}", one form per
+     * plural category of M: "Showing 1 of 1 policy", "Showing 25 of 26 policies"
+     */
+    itemsLabel: PluralForms;
     emptyState: {
       /** "Failed to load policies — {error}" */
       loadError: string;
@@ -739,7 +751,7 @@ export const usersDefaults: UsersTranslations = {
     subtitle: 'Manage user accounts, roles, and access permissions',
     addUser: 'Add User',
     searchPlaceholder: 'Search users...',
-    itemsLabel: 'users',
+    itemsLabel: { one: 'user', other: 'users' },
     columns: {
       user: 'User',
       email: 'Email',
@@ -805,7 +817,7 @@ export const usersDefaults: UsersTranslations = {
     subtitle: 'Define roles to group users and assign permissions',
     addRole: 'Add Role',
     searchPlaceholder: 'Search roles...',
-    itemsLabel: 'roles',
+    itemsLabel: { one: 'role', other: 'roles' },
     emptyState: {
       loadError: 'Failed to load roles — {error}',
       search: 'No roles found — try a different search term',
@@ -826,7 +838,7 @@ export const usersDefaults: UsersTranslations = {
     subtitle: 'Define policies that grant access and permissions to users and roles',
     addPolicy: 'Add Policy',
     searchPlaceholder: 'Search policies...',
-    itemsLabel: 'policies',
+    itemsLabel: { one: 'policy', other: 'policies' },
     emptyState: {
       loadError: 'Failed to load policies — {error}',
       search: 'No policies found — try a different search term',
@@ -1230,7 +1242,7 @@ export const usersId: UsersTranslations = {
     subtitle: 'Kelola akun pengguna, peran, dan izin akses',
     addUser: 'Tambah Pengguna',
     searchPlaceholder: 'Cari pengguna...',
-    itemsLabel: 'pengguna',
+    itemsLabel: { other: 'pengguna' },
     columns: {
       user: 'Pengguna',
       email: 'Email',
@@ -1292,7 +1304,7 @@ export const usersId: UsersTranslations = {
     subtitle: 'Tentukan peran untuk mengelompokkan pengguna dan memberikan izin',
     addRole: 'Tambah Peran',
     searchPlaceholder: 'Cari peran...',
-    itemsLabel: 'peran',
+    itemsLabel: { other: 'peran' },
     emptyState: {
       loadError: 'Gagal memuat peran — {error}',
       search: 'Tidak ada peran ditemukan — coba kata kunci pencarian lain',
@@ -1312,7 +1324,7 @@ export const usersId: UsersTranslations = {
     subtitle: 'Tentukan kebijakan yang memberikan akses dan izin kepada pengguna dan peran',
     addPolicy: 'Tambah Kebijakan',
     searchPlaceholder: 'Cari kebijakan...',
-    itemsLabel: 'kebijakan',
+    itemsLabel: { other: 'kebijakan' },
     emptyState: {
       loadError: 'Gagal memuat kebijakan — {error}',
       search: 'Tidak ada kebijakan ditemukan — coba kata kunci pencarian lain',

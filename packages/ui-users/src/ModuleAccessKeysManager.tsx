@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
   Alert,
@@ -127,9 +127,18 @@ export const ModuleAccessKeysManager: React.FC<ModuleAccessKeysManagerProps> = (
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [keysCollection],
   });
-  const createAllowed = permsLoading || isAdmin || canPerform(keysCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(keysCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(keysCollection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown Add Folder / Add Key and the row menus (and through them the form
+  // drawer) for the length of that request. Known once is known: a later
+  // refresh (a renewed token, another scope) answers from what was known until
+  // its own answer is in, so the controls do not blink. The registry itself
+  // does not wait.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(keysCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(keysCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(keysCollection, 'delete'));
 
   const { fetchKeys, createKey, updateKey, deleteKey } = useModuleAccessKeys();
   const t = useBuildpadTranslations((d) => d.users, translations);
