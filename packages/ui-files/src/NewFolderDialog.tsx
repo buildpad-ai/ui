@@ -21,7 +21,8 @@ export interface NewFolderDialogProps {
 }
 
 /**
- * Dialog for creating (or renaming) a folder.
+ * Dialog for creating (or renaming) a folder. Submits once per save: neither
+ * the button nor Enter submits while `loading`.
  */
 export const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   opened,
@@ -44,7 +45,9 @@ export const NewFolderDialog: React.FC<NewFolderDialogProps> = ({
   const trimmed = name.trim();
 
   const handleSubmit = () => {
-    if (!trimmed) return;
+    // Not while the save is out: the button is disabled then, and Enter in
+    // the field must not send the same name a second time
+    if (!trimmed || loading) return;
     onSubmit(trimmed);
   };
 

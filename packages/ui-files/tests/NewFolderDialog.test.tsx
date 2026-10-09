@@ -39,4 +39,20 @@ describe('NewFolderDialog', () => {
     expect(screen.getByText('Rename Folder')).toBeInTheDocument();
     expect(screen.getByTestId('new-folder-submit')).toHaveTextContent('Rename');
   });
+
+  // The button is disabled while the save is out; Enter was not
+  it('Enter pressed again while the save is in flight does not submit a second time', () => {
+    const onSubmit = vi.fn();
+    const view = render(ui({ onSubmit }));
+    fireEvent.change(nameInput(), { target: { value: 'Campaigns' } });
+    fireEvent.keyDown(nameInput(), { key: 'Enter' });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    // The host is saving now
+    view.rerender(ui({ onSubmit, loading: true }));
+    fireEvent.keyDown(nameInput(), { key: 'Enter' });
+    fireEvent.keyDown(nameInput(), { key: 'Enter' });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('new-folder-submit')).toBeDisabled();
+  });
 });

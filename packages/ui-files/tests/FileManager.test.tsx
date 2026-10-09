@@ -8,7 +8,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { FileUpload } from '@buildpad/hooks';
+import type { FileUpload, Folder } from '@buildpad/hooks';
 import { FileManager } from '../src/FileManager';
 import { mockFiles, mockFolders } from '../src/_fixtures';
 
@@ -146,6 +146,25 @@ describe('FileManager', () => {
       fireEvent.change(await screen.findByTestId('new-folder-name'), { target: { value: 'Campaigns' } });
       fireEvent.click(screen.getByTestId('new-folder-submit'));
       await waitFor(() => expect(mocks.createFolder).toHaveBeenCalledWith({ name: 'Campaigns', parent: null }));
+    });
+
+    it('Enter pressed again while the folder is being created does not create it twice', async () => {
+      let finish!: (folder: Folder) => void;
+      mocks.createFolder.mockReturnValue(new Promise<Folder>((resolve) => (finish = resolve)));
+      render(ui());
+      await listed();
+      fireEvent.click(screen.getByTestId('files-new-folder'));
+      const name = await screen.findByTestId('new-folder-name');
+      fireEvent.change(name, { target: { value: 'Campaigns' } });
+      fireEvent.keyDown(name, { key: 'Enter' });
+      await waitFor(() => expect(mocks.createFolder).toHaveBeenCalledTimes(1));
+
+      // The request is out, and the key is pressed again (or held)
+      fireEvent.keyDown(name, { key: 'Enter' });
+      fireEvent.keyDown(name, { key: 'Enter' });
+      await act(async () => finish({ id: 'f-new', name: 'Campaigns', parent: null }));
+      await waitFor(() => expect(mocks.fetchFiles).toHaveBeenCalledTimes(2));
+      expect(mocks.createFolder).toHaveBeenCalledTimes(1);
     });
 
     it('says there is nothing, and how to add, in an empty library', async () => {

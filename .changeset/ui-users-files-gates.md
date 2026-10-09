@@ -32,6 +32,11 @@ Users and Files modules: the fixes that were made in `@buildpad/ui-cron` and `@b
 - The empty library says "No files here yet." alone until the permissions are known; the hint after it ("Drag files above…" or "No files are available.") follows.
 - For a browser test: wait for `upload-dropzone`, `files-new-folder`, `file-detail-delete` or `file-detail-replace` instead of acting as soon as the library or the file is drawn.
 
+**Files: Enter in the New Folder dialog no longer makes a second folder** (`NewFolderDialog`, `FileManager`)
+
+- The dialog's button is disabled while the folder is being created or renamed, but Enter in its field was not: pressed again (or held) while the request was out, it sent the same name once more, and the backend stored a second folder with that name. Enter now waits like the button.
+- Upload, import from URL, Replace file, the metadata Save and the delete confirmations could not be sent twice by a second click and are unchanged. A second DROP on the upload zone while an upload is in flight still starts a second upload; that is `Upload` in `@buildpad/ui-interfaces`, and is left as it is.
+
 **A search, filter, sort or page-size change on a later page is one request** (`UsersManager`, `RolesManager`, `PoliciesManager`)
 
 - On page 2 or later, typing a search, clearing one, picking a role or status filter, sorting a column or picking another page size sent two requests: the new filter for the old page, then the same filter for page 1. The answers could arrive in either order (the lists draw whichever comes last), and a backend that refuses a page past the end of the list answered the first with an error. The list now sends the one request for page 1. A page restored from the URL is kept as before.
