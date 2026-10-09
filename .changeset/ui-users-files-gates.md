@@ -4,6 +4,16 @@
 
 Users and Files modules: the fixes that were made in `@buildpad/ui-cron` and `@buildpad/ui-workflows` first.
 
+**A second click on Create or Save no longer makes a second record** (`UserDetail`, `RoleDetail`, `PolicyDetail`)
+
+- After a successful create the component goes on as the editor of the record it created: the title is Edit User / Edit Role / Edit Policy, Delete, the tabs of a stored record and the info panel are drawn (for a policy, the permissions matrix), `UserDetail`'s and `PolicyDetail`'s button reads Save and waits for an edit, and a further Save is an update of that record. The components kept `id="new"` and an enabled Create / Save, so a host that did not navigate in `onSaved` (or was slow to) created a duplicate role or policy on the next click. (For a user the second create was refused by the form, which wanted the password again, and with the password typed again by the backend, which has one user per email.)
+- `RoleDetail`: after a create with **Save & Add New** the form is emptied for the next role instead of staying filled with the role just created; a second pick of a Save action while the first is in flight is ignored.
+- `onSaved` is called as before: with the stored record (and for a role the chosen action) after a create and after an update. A host no longer has to navigate after a create to stay correct; navigate so the URL names the record (a reload of `/…/new` opens an empty form). A host that compares its own `id` with `'new'` inside `onSaved` sees `'new'` for every save until it navigates. The generated pages are unchanged.
+- What is typed while a save is in flight is kept as an unsaved edit. `UserDetail` wrote the values it had sent back into the form, and `RoleDetail`'s Save & Stay reloaded the role over them.
+- A save (or a create) answered after the host gave the component another `id` is no longer drawn over that record, and neither is a slow load of the record opened before. `onSaved` is still called with the record that was saved. A policy's unsaved matrix edits are dropped when another policy is opened in the same component; they were applied to that policy on its next Save.
+- An `id` that changes to `'new'` in place opens an empty form; it kept the values of the record shown before.
+- A change of language (or of a `translations` override) no longer loads the record again; the reload reset a form with unsaved edits.
+
 **No write control, and no open form, until the permissions are known** (`UsersManager`, `RolesManager`, `PoliciesManager`, `ModuleAccessKeysManager`, `UserDetail`, `RoleDetail`, `PolicyDetail`)
 
 - The gates were optimistic while the permissions request ran: for its length a reader was shown Add User / Add Role / Add Policy / Add Folder / Add Key, full row menus, the selection column with its bulk actions, rows that open the editor, Save, Delete and an open form, and `/…/new` showed Create. These controls are now drawn when the permissions are known. Meanwhile the three forms are covered by their loading overlay and take no edit (the fields are disabled, and so are the permissions matrix and the module-level grants of a policy).

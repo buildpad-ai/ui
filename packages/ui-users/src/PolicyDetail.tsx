@@ -114,7 +114,13 @@ export interface PolicyDetailProps {
   onBack?: () => void;
   /** Called after the policy is deleted. */
   onDeleted?: () => void;
-  /** Called after a successful create/update with the saved record. */
+  /**
+   * Called after a successful create/update with the saved record (a created
+   * one carries its new id). The component itself goes nowhere: after a create
+   * it becomes the editor of the policy it created (with its permissions
+   * matrix), so a further Save updates that policy whether or not the host
+   * has navigated yet.
+   */
   onSaved?: (policy: Policy) => void;
   /** DaaS collection used for RBAC checks. Default: 'daas_policies'. */
   policiesCollection?: string;
@@ -137,6 +143,12 @@ export interface PolicyDetailProps {
  * covered and takes no edit (nor do the matrix and the module-level grants), and no Save or Delete button is drawn. A new
  * record's form is not opened to a user who may not create before the answer
  * is in. The record itself loads at once.
+ *
+ * After a create the form is the stored policy's: a second Save updates it.
+ * Nothing is created twice when the host is slow to navigate, or does not.
+ * What is typed while a save is in flight is kept as an unsaved edit, and a
+ * save answered after the host opened another policy in the same form is not
+ * drawn over that policy.
  */
 export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   id,
@@ -146,7 +158,13 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   policiesCollection = 'daas_policies',
   translations,
 }) => {
-  const isNew = id === 'new' || id === '+';
+  const newRoute = id === 'new' || id === '+';
+  // The policy this form created while `id` still says "new". From then on it
+  // edits that policy: a second Save must update it, not create it once more,
+  // whether or not the host has navigated to its own route yet.
+  const [created, setCreated] = useState<Policy | null>(null);
+  const isNew = newRoute && !created;
+  const policyId = newRoute && created ? created.id : id;
   const { getPolicy, createPolicy, updatePolicy, deletePolicy } = usePolicies();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [policiesCollection],
@@ -169,8 +187,9 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   const saveAllowed = isNew ? createAllowed : updateAllowed;
 
   const [policy, setPolicy] = useState<Policy | null>(null);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(!newRoute);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const [initialValues, setInitialValues] = useState<PolicyFormValues>(EMPTY_FORM);
@@ -188,11 +207,36 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   const hasPermissionEdits = hasAlterations(alterations);
   const isDirty = hasFormEdits || hasPermissionEdits;
 
+  // The texts of the load's failure notice, read when it is raised. They are
+  // not dependencies of the load: a change of language would run it again,
+  // and on the new route that empties the form (and lets go of a record the
+  // form has just created).
+  const textsRef = useRef({ t, common });
+  textsRef.current = { t, common };
+
+  // Only the answer for the policy on screen may be drawn: neither a slow
+  // load of the one opened before, nor a save that was sent for it.
+  const requestRef = useRef(0);
+
+  // Keyed on the `id` it is given, not on the policy a create adopted: the
+  // load runs when the host opens another policy (or a new one), and not for
+  // the policy that was just created here.
   const load = useCallback(async () => {
-    if (isNew) return;
+    const request = ++requestRef.current;
+    setCreated(null);
+    // Matrix edits belong to the policy they were made on
+    setAlterations(null);
+    if (newRoute) {
+      setPolicy(null);
+      setInitialValues(EMPTY_FORM);
+      setValues(EMPTY_FORM);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const fetched = await getPolicy(id);
+      if (request !== requestRef.current) return;
       setPolicy(fetched);
       const formValues: PolicyFormValues = {
         name: fetched.name,
@@ -206,21 +250,24 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
       setInitialValues(formValues);
       setValues(formValues);
     } catch (err) {
+      if (request !== requestRef.current) return;
+      const texts = textsRef.current;
       notifications.show({
-        title: common.error,
-        message: err instanceof Error ? err.message : t.policyDetail.notifications.fetchFailed,
+        title: texts.common.error,
+        message: err instanceof Error ? err.message : texts.t.policyDetail.notifications.fetchFailed,
         color: 'red',
       });
     } finally {
-      setLoading(false);
+      if (request === requestRef.current) setLoading(false);
     }
-  }, [getPolicy, id, isNew, t, common]);
+  }, [getPolicy, id, newRoute]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const handleSave = useCallback(async () => {
+    if (savingRef.current) return;
     if (!values.name.trim()) {
       notifications.show({
         title: t.validationErrorTitle,
@@ -230,17 +277,25 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
+    // The answer belongs to the policy on screen now. When the host has opened
+    // another one by the time it arrives, it must not be drawn over that
+    // policy.
+    const shown = requestRef.current;
+    const stillShown = () => shown === requestRef.current;
     try {
       let saved: Policy;
       if (isNew) {
         saved = await createPolicy({ ...values, name: values.name });
       } else {
-        saved = hasFormEdits ? await updatePolicy(id, values) : (policy as Policy);
+        saved = hasFormEdits ? await updatePolicy(policyId, values) : (policy as Policy);
         if (alterations && hasPermissionEdits) {
-          await applyPermissionAlterations(id, alterations);
-          setAlterations(null);
-          setPermissionsVersion((v) => v + 1);
+          await applyPermissionAlterations(policyId, alterations);
+          if (stillShown()) {
+            setAlterations(null);
+            setPermissionsVersion((v) => v + 1);
+          }
         }
       }
       notifications.show({
@@ -248,8 +303,16 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
         message: isNew ? t.policyDetail.notifications.created : t.policyDetail.notifications.updated,
         color: 'green',
       });
-      setInitialValues(values);
-      setPolicy(saved);
+      if (stillShown()) {
+        // What was sent is what is stored now. `values` is the form as it was
+        // when the request left: an edit made since then (the request takes a
+        // while, and the inputs stay open) differs from it, and stays unsaved.
+        setInitialValues(values);
+        setPolicy(saved);
+        // A created policy is the one on screen from here on, so the next
+        // Save updates it; where to go next is the host's to say
+        if (isNew) setCreated(saved);
+      }
       onSaved?.(saved);
     } catch (err) {
       notifications.show({
@@ -258,6 +321,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
         color: 'red',
       });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }, [
@@ -265,7 +329,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
     isNew,
     createPolicy,
     updatePolicy,
-    id,
+    policyId,
     policy,
     hasFormEdits,
     alterations,
@@ -277,7 +341,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
 
   const confirmDelete = useCallback(async () => {
     try {
-      await deletePolicy(id);
+      await deletePolicy(policyId);
       notifications.show({
         title: common.success,
         message: t.policyDetail.notifications.deleted,
@@ -292,7 +356,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
         color: 'red',
       });
     }
-  }, [deletePolicy, id, onDeleted, t, common]);
+  }, [deletePolicy, policyId, onDeleted, t, common]);
 
   const userCount = policy?.userCount ?? 0;
   const roleCount = policy?.roleCount ?? 0;
@@ -430,7 +494,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
                 <Tabs.Panel value="record-level">
                   <SystemPermissions
                     key={`permissions-${permissionsVersion}`}
-                    primaryKey={id}
+                    primaryKey={policyId}
                     value={alterations}
                     onChange={setAlterations}
                     disabled={!permsKnown}

@@ -236,4 +236,193 @@ describe('UserDetail', () => {
       expect(overlay()).not.toBeInTheDocument();
     });
   });
+
+  describe('after a create', () => {
+    const created: User = {
+      ...stored,
+      id: 'user-new',
+      email: 'new.user@example.com',
+      first_name: null,
+      last_name: null,
+      roles: [],
+      policyCount: 0,
+    };
+
+    /** A promise the test settles when it chooses to. */
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((res) => {
+        resolve = res;
+      });
+      return { promise, resolve };
+    }
+
+    function fillNewUser() {
+      fireEvent.change(input('user-detail-email'), { target: { value: created.email } });
+      fireEvent.change(input('user-detail-password'), { target: { value: 'secret-1' } });
+    }
+
+    it('goes on as the editor of the user it created: a further Save updates that user', async () => {
+      mocks.createUser.mockResolvedValue(created);
+      mocks.updateUser.mockResolvedValue({ ...created, first_name: 'Nina' });
+      // A host that does not navigate
+      const onSaved = vi.fn();
+      render(ui({ id: 'new', onSaved }));
+      expect(screen.getByRole('heading', { name: 'New User' })).toBeInTheDocument();
+      fillNewUser();
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+
+      // The stored user's editor: its title, its sidebar, its Policies tab, Delete, and a Save that waits for an edit
+      expect(await screen.findByRole('heading', { name: 'Edit User' })).toBeInTheDocument();
+      expect(screen.getByText(created.id)).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /Policies/ })).toBeInTheDocument();
+      expect(screen.getByTestId('user-detail-delete-btn')).toBeInTheDocument();
+      expect(saveButton()).toHaveTextContent('Save');
+      expect(saveButton()).toBeDisabled();
+      expect(input('user-detail-password').value).toBe('');
+      await waitFor(() => expect(mocks.fetchUserPolicies).toHaveBeenCalledWith(created.id));
+
+      fireEvent.change(input('user-detail-first-name'), { target: { value: 'Nina' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith(created.id, { first_name: 'Nina' }));
+      expect(mocks.createUser).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2));
+      // It was never loaded: the create's answer is the record
+      expect(mocks.getUser).not.toHaveBeenCalled();
+    });
+
+    it('a second click, with the password typed again, does not create a second user', async () => {
+      mocks.createUser.mockResolvedValue(created);
+      mocks.updateUser.mockResolvedValue(created);
+      const onSaved = vi.fn();
+      render(ui({ id: 'new', onSaved }));
+      fillNewUser();
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+
+      fireEvent.change(input('user-detail-password'), { target: { value: 'secret-1' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2));
+      expect(mocks.createUser).toHaveBeenCalledTimes(1);
+      expect(mocks.updateUser).toHaveBeenCalledWith(created.id, { password: 'secret-1' });
+    });
+
+    it('keeps what was typed while the create was in flight, as an unsaved edit', async () => {
+      const answer = deferred<User>();
+      mocks.createUser.mockReturnValue(answer.promise);
+      mocks.updateUser.mockResolvedValue({ ...created, first_name: 'Typed later' });
+      const onSaved = vi.fn();
+      render(ui({ id: 'new', onSaved }));
+      fillNewUser();
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.createUser).toHaveBeenCalledTimes(1));
+
+      fireEvent.change(input('user-detail-first-name'), { target: { value: 'Typed later' } });
+      answer.resolve(created);
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+
+      expect(input('user-detail-first-name').value).toBe('Typed later');
+      expect(input('user-detail-password').value).toBe('');
+      await waitFor(() => expect(saveButton()).not.toBeDisabled());
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updateUser).toHaveBeenCalledWith(created.id, { first_name: 'Typed later' }),
+      );
+      expect(mocks.createUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps what was typed while an update was in flight', async () => {
+      const answer = deferred<User>();
+      mocks.updateUser.mockReturnValue(answer.promise);
+      const onSaved = vi.fn();
+      render(ui({ onSaved }));
+      await loaded();
+      fireEvent.change(input('user-detail-first-name'), { target: { value: 'Samuel' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledWith(stored.id, { first_name: 'Samuel' }));
+
+      fireEvent.change(input('user-detail-last-name'), { target: { value: 'Typed later' } });
+      answer.resolve({ ...stored, first_name: 'Samuel' });
+      await waitFor(() => expect(onSaved).toHaveBeenCalled());
+
+      expect(input('user-detail-last-name').value).toBe('Typed later');
+      await waitFor(() => expect(saveButton()).not.toBeDisabled());
+      mocks.updateUser.mockResolvedValue({ ...stored, first_name: 'Samuel', last_name: 'Typed later' });
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updateUser).toHaveBeenLastCalledWith(stored.id, { last_name: 'Typed later' }),
+      );
+    });
+
+    it('a save answered after the host opened another user is not drawn over that user', async () => {
+      const other = mockUsers[3];
+      const answer = deferred<User>();
+      mocks.updateUser.mockReturnValue(answer.promise);
+      mocks.getUser.mockImplementation(async (id: string) => (id === other.id ? other : stored));
+      const onSaved = vi.fn();
+      const view = render(ui({ onSaved }));
+      await loaded();
+      fireEvent.change(input('user-detail-first-name'), { target: { value: 'Samuel' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.updateUser).toHaveBeenCalledTimes(1));
+
+      // The host opens another user in the same component while the request is out
+      view.rerender(ui({ id: other.id, onSaved }));
+      await waitFor(() => expect(input('user-detail-email').value).toBe(other.email));
+      const saved = { ...stored, first_name: 'Samuel' };
+      answer.resolve(saved);
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved));
+
+      expect(input('user-detail-email').value).toBe(other.email);
+      expect(input('user-detail-first-name').value).toBe('Alex');
+      expect(screen.getByText(other.id)).toBeInTheDocument();
+      // Nothing of the first user is an unsaved edit of the second
+      await waitFor(() => expect(saveButton()).toBeDisabled());
+    });
+
+    it('the new route opened in the same component is an empty form', async () => {
+      const view = render(ui());
+      await loaded();
+      view.rerender(ui({ id: 'new' }));
+      await waitFor(() => expect(input('user-detail-email').value).toBe(''));
+      expect(input('user-detail-first-name').value).toBe('');
+      expect(screen.getByRole('heading', { name: 'New User' })).toBeInTheDocument();
+      expect(saveButton()).toHaveTextContent('Create');
+    });
+
+    it('a change of language does not empty a new form, or let go of the user it created', async () => {
+      mocks.createUser.mockResolvedValue(created);
+      const onSaved = vi.fn();
+      const view = render(ui({ id: 'new', onSaved }));
+      fillNewUser();
+      // Other texts arrive (a language switch, a new `translations` override)
+      view.rerender(ui({ id: 'new', onSaved, translations: { userDetail: { titleNew: 'Add a user' } } }));
+      expect(screen.getByRole('heading', { name: 'Add a user' })).toBeInTheDocument();
+      expect(input('user-detail-email').value).toBe(created.email);
+      expect(input('user-detail-password').value).toBe('secret-1');
+
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+      view.rerender(ui({ id: 'new', onSaved, translations: { userDetail: { titleEdit: 'Change the user' } } }));
+      expect(await screen.findByRole('heading', { name: 'Change the user' })).toBeInTheDocument();
+      expect(input('user-detail-email').value).toBe(created.email);
+      expect(screen.getByText(created.id)).toBeInTheDocument();
+    });
+
+    it('a record opened after a create is loaded, not taken for the created one', async () => {
+      mocks.createUser.mockResolvedValue(created);
+      const onSaved = vi.fn();
+      const view = render(ui({ id: 'new', onSaved }));
+      fillNewUser();
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+
+      // The host navigates to the stored user's own route
+      mocks.getUser.mockResolvedValue({ ...created, first_name: 'From the server' });
+      view.rerender(ui({ id: created.id, onSaved }));
+      await waitFor(() => expect(input('user-detail-first-name').value).toBe('From the server'));
+      expect(mocks.getUser).toHaveBeenCalledWith(created.id, { fields: '*,roles.*' });
+    });
+  });
 });

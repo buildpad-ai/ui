@@ -138,7 +138,12 @@ export interface UserDetailProps {
   onBack?: () => void;
   /** Called after the user is deleted. */
   onDeleted?: () => void;
-  /** Called after a successful create/update with the saved record. */
+  /**
+   * Called after a successful create/update with the saved record (a created
+   * one carries its new id). The component itself goes nowhere: after a create
+   * it becomes the editor of the user it created, so a further Save updates
+   * that user whether or not the host has navigated yet.
+   */
   onSaved?: (user: User) => void;
   /** Called when a policy row's "open" action is clicked in the Policies tab. */
   onPolicyClick?: (policy: Policy) => void;
@@ -160,6 +165,12 @@ export interface UserDetailProps {
  * covered and takes no edit, and no Save or Delete button is drawn. A new
  * record's form is not opened to a user who may not create before the answer
  * is in. The record itself loads at once.
+ *
+ * After a create the form is the stored user's: a second Save updates it.
+ * Nothing is created twice when the host is slow to navigate, or does not.
+ * What is typed while a save is in flight is kept as an unsaved edit, and a
+ * save answered after the host opened another user in the same form is not
+ * drawn over that user.
  */
 export const UserDetail: React.FC<UserDetailProps> = ({
   id,
@@ -170,7 +181,13 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   usersCollection = 'daas_users',
   translations,
 }) => {
-  const isNew = id === 'new' || id === '+';
+  const newRoute = id === 'new' || id === '+';
+  // The user this form created while `id` still says "new". From then on it
+  // edits that user: a second Save must update it, not create it once more,
+  // whether or not the host has navigated to its own route yet.
+  const [created, setCreated] = useState<User | null>(null);
+  const isNew = newRoute && !created;
+  const userId = newRoute && created ? created.id : id;
   const { getUser, createUser, updateUser, deleteUser } = useUsers();
   const { fetchRoles } = useRoles();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
@@ -203,8 +220,9 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   );
 
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(!newRoute);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [activeTab, setActiveTab] = useState<string | null>('basic');
   const [policyCount, setPolicyCount] = useState(0);
   const [roleOptions, setRoleOptions] = useState<
@@ -224,28 +242,56 @@ export const UserDetail: React.FC<UserDetailProps> = ({
     setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
   }, []);
 
+  // The texts of the load's failure notice, read when it is raised. They are
+  // not dependencies of the load: a change of language would run it again,
+  // and on the new route that empties the form (and lets go of a record the
+  // form has just created).
+  const textsRef = useRef({ t, common });
+  textsRef.current = { t, common };
+
+  // Only the answer for the user on screen may be drawn: neither a slow load
+  // of the one opened before, nor a save that was sent for it.
+  const requestRef = useRef(0);
+
+  // Keyed on the `id` it is given, not on the user a create adopted: the load
+  // runs when the host opens another user (or a new one), and not for the
+  // user that was just created here.
   const load = useCallback(async () => {
-    if (isNew) return;
+    const request = ++requestRef.current;
+    setCreated(null);
+    if (newRoute) {
+      setUser(null);
+      setPolicyCount(0);
+      setInitialValues(EMPTY_FORM);
+      setValues(EMPTY_FORM);
+      setFieldErrors((errors) => (Object.keys(errors).length > 0 ? {} : errors));
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       // Without a fields param the API returns `roles` as bare junction-row
       // IDs; `roles.*` expands them to junction rows carrying `role_id`.
       const fetched = await getUser(id, { fields: '*,roles.*' });
+      if (request !== requestRef.current) return;
       setUser(fetched);
       setPolicyCount(fetched.policyCount ?? 0);
       const formValues = toFormValues(fetched);
       setInitialValues(formValues);
       setValues(formValues);
+      setFieldErrors({});
     } catch (err) {
+      if (request !== requestRef.current) return;
+      const texts = textsRef.current;
       notifications.show({
-        title: common.error,
-        message: err instanceof Error ? err.message : t.userDetail.notifications.fetchFailed,
+        title: texts.common.error,
+        message: err instanceof Error ? err.message : texts.t.userDetail.notifications.fetchFailed,
         color: 'red',
       });
     } finally {
-      setLoading(false);
+      if (request === requestRef.current) setLoading(false);
     }
-  }, [getUser, id, isNew, t, common]);
+  }, [getUser, id, newRoute]);
 
   useEffect(() => {
     void load();
@@ -270,14 +316,16 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   /** Refresh sidebar counts after policy attach/detach without resetting the form. */
   const refreshCounts = useCallback(async () => {
     if (isNew) return;
+    const shown = requestRef.current;
     try {
-      const fetched = await getUser(id);
+      const fetched = await getUser(userId);
+      if (shown !== requestRef.current) return;
       setUser(fetched);
       setPolicyCount(fetched.policyCount ?? 0);
     } catch {
       // sidebar refresh is best-effort
     }
-  }, [getUser, id, isNew]);
+  }, [getUser, userId, isNew]);
 
   const validate = useCallback((): boolean => {
     const errors: Partial<Record<keyof UserFormValues, string>> = {};
@@ -291,6 +339,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   }, [values.email, values.password, isNew, t]);
 
   const handleSave = useCallback(async () => {
+    if (savingRef.current) return;
     if (!isNew && !isDirty) return;
     if (!validate()) {
       notifications.show({
@@ -301,23 +350,41 @@ export const UserDetail: React.FC<UserDetailProps> = ({
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
+    // The answer belongs to the user on screen now. When the host has opened
+    // another one by the time it arrives, it must not be drawn over that user.
+    const shown = requestRef.current;
+    const stillShown = () => shown === requestRef.current;
     try {
       let saved: User;
       if (isNew) {
         saved = await createUser({ ...edits, email: values.email, password: values.password });
       } else {
-        saved = await updateUser(id, edits);
+        saved = await updateUser(userId, edits);
       }
       notifications.show({
         title: common.success,
         message: isNew ? t.userDetail.notifications.created : t.userDetail.notifications.updated,
         color: 'green',
       });
-      // Keep local state consistent in case the host app stays on this view.
-      const formValues = { ...values, password: '' };
-      setInitialValues(formValues);
-      setValues(formValues);
+      if (stillShown()) {
+        // What was sent is what is stored now. `values` is the form as it was
+        // when the request left: an edit made since then (the request takes a
+        // while, and the inputs stay open) differs from it, and stays unsaved.
+        // The password that was sent is taken out of its field.
+        setInitialValues({ ...values, password: '' });
+        setValues((current) =>
+          current.password === values.password ? { ...current, password: '' } : current,
+        );
+        if (isNew) {
+          // A created user is the one on screen from here on, so the next
+          // Save updates it; where to go next is the host's to say
+          setCreated(saved);
+          setUser(saved);
+          setPolicyCount(saved.policyCount ?? 0);
+        }
+      }
       onSaved?.(saved);
     } catch (err) {
       notifications.show({
@@ -326,13 +393,14 @@ export const UserDetail: React.FC<UserDetailProps> = ({
         color: 'red',
       });
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
-  }, [isNew, isDirty, validate, createUser, updateUser, id, edits, values, onSaved, t, common]);
+  }, [isNew, isDirty, validate, createUser, updateUser, userId, edits, values, onSaved, t, common]);
 
   const confirmDelete = useCallback(async () => {
     try {
-      await deleteUser(id);
+      await deleteUser(userId);
       notifications.show({
         title: common.success,
         message: t.userDetail.notifications.deleted,
@@ -347,7 +415,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
         color: 'red',
       });
     }
-  }, [deleteUser, id, onDeleted, t, common]);
+  }, [deleteUser, userId, onDeleted, t, common]);
 
   // `formatDateTime` returns '' for an empty or invalid value.
   const dateTime = (value?: string | null) =>
@@ -551,7 +619,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({
             {!isNew && (
               <Tabs.Panel value="policies" pt="md">
                 <UserPoliciesManager
-                  userId={id}
+                  userId={userId}
                   onUpdate={() => void refreshCounts()}
                   onPolicyClick={onPolicyClick}
                   translations={translations}

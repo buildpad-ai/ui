@@ -237,6 +237,20 @@ export default function RoleDetailPage({
 }
 ```
 
+<Callout type="info">
+**Navigate after a create.** A detail component does not navigate. After a
+successful create it goes on as the editor of the stored record: a further
+Save updates that record, and does not create a second one (`PolicyDetail`
+shows the permissions matrix from then on). The URL still says `/roles/new`,
+though, and a reload would open an empty form. `onSaved` receives the saved
+record with its new id. Navigate there to the list or to the record's own
+route, as the generated pages do: `/users` after a user is saved,
+`/roles/${role.id}` after **Save & Stay**, `/policies/${policy.id}` after a
+policy is created. After **Save & Add New** on a new role, `RoleDetail` becomes
+an empty form for the next role, so a page that is already on `/roles/new`
+has nowhere to go.
+</Callout>
+
 `onRoleClick` powers the sidebar's hierarchy links (parent role and Child Roles
 card). Omit it and the hierarchy renders as plain text. Children are derived
 client-side from the fetched roles list — the DaaS API has no reverse

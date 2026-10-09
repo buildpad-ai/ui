@@ -262,3 +262,211 @@ describe('RoleDetail — permissions', () => {
     });
   });
 });
+
+describe('RoleDetail — after a create', () => {
+  const created: Role = {
+    id: 'role-new',
+    name: 'Reviewer',
+    icon: 'supervised_user_circle',
+    description: '',
+    parent: null,
+    scope_config: null,
+    created_at: new Date('2026-07-01T09:00:00Z').toISOString(),
+    updated_at: new Date('2026-07-01T09:00:00Z').toISOString(),
+  };
+
+  /** A promise the test settles when it chooses to. */
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((res) => {
+      resolve = res;
+    });
+    return { promise, resolve };
+  }
+
+  /** Opens the Save menu and picks one of its actions. */
+  async function save(label: 'Save & Stay' | 'Save & Quit' | 'Save & Add New') {
+    fireEvent.click(screen.getByTestId('role-detail-save-btn'));
+    fireEvent.click(await screen.findByText(label));
+  }
+
+  it('goes on as the editor of the role it created: a second Save & Stay updates that role', async () => {
+    createRoleMock.mockResolvedValue(created);
+    updateRoleMock.mockResolvedValue(created);
+    getRoleMock.mockResolvedValue(created);
+    // A host that does not navigate
+    const onSaved = vi.fn();
+    renderDetail({ id: 'new', onSaved });
+    expect(screen.getByRole('heading', { name: 'New Role' })).toBeInTheDocument();
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Reviewer' } });
+    await save('Save & Stay');
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created, 'stay'));
+
+    // The stored role's editor: its title, its sidebar, its Users and Policies tabs, Delete
+    expect(await screen.findByRole('heading', { name: 'Edit Role' })).toBeInTheDocument();
+    expect(screen.getByText(created.id)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Users (0)' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Policies (0)' })).toBeInTheDocument();
+    expect(screen.getByTestId('role-detail-delete-btn')).toBeInTheDocument();
+    expect(screen.queryByText('Unsaved Changes')).not.toBeInTheDocument();
+    await waitFor(() => expect(fetchUsersMock).toHaveBeenCalledWith({ role: created.id, limit: 1000 }));
+
+    await save('Save & Stay');
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2));
+    expect(createRoleMock).toHaveBeenCalledTimes(1);
+    expect(updateRoleMock).toHaveBeenCalledWith(created.id, expect.objectContaining({ name: 'Reviewer' }));
+  });
+
+  it('Save & Add New on a new role starts an empty form, and does not create the role twice', async () => {
+    createRoleMock.mockResolvedValue(created);
+    // The page is already on the new route: its navigation to it changes nothing
+    const onSaved = vi.fn();
+    renderDetail({ id: 'new', onSaved });
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Reviewer' } });
+    await save('Save & Add New');
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created, 'addNew'));
+
+    await waitFor(() => expect(input('role-detail-name').value).toBe(''));
+    expect(screen.getByRole('heading', { name: 'New Role' })).toBeInTheDocument();
+    expect(screen.queryByText('Unsaved Changes')).not.toBeInTheDocument();
+
+    // A second click has no name to save
+    await save('Save & Add New');
+    await waitFor(() =>
+      expect(show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Name is required', color: 'red' })),
+    );
+    expect(createRoleMock).toHaveBeenCalledTimes(1);
+
+    // The next role is a create of its own
+    createRoleMock.mockResolvedValue({ ...created, id: 'role-next', name: 'Approver' });
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Approver' } });
+    await save('Save & Add New');
+    await waitFor(() => expect(createRoleMock).toHaveBeenCalledTimes(2));
+    expect(createRoleMock).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Approver' }));
+    expect(updateRoleMock).not.toHaveBeenCalled();
+  });
+
+  it('Save & Add New on the role it created saves that role, then starts an empty form', async () => {
+    createRoleMock.mockResolvedValue(created);
+    updateRoleMock.mockResolvedValue({ ...created, name: 'Reviewers' });
+    const onSaved = vi.fn();
+    renderDetail({ id: 'new', onSaved });
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Reviewer' } });
+    await save('Save & Stay');
+    expect(await screen.findByRole('heading', { name: 'Edit Role' })).toBeInTheDocument();
+
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Reviewers' } });
+    await save('Save & Add New');
+    await waitFor(() => expect(onSaved).toHaveBeenLastCalledWith({ ...created, name: 'Reviewers' }, 'addNew'));
+    expect(updateRoleMock).toHaveBeenCalledWith(created.id, expect.objectContaining({ name: 'Reviewers' }));
+    expect(createRoleMock).toHaveBeenCalledTimes(1);
+
+    expect(await screen.findByRole('heading', { name: 'New Role' })).toBeInTheDocument();
+    expect(input('role-detail-name').value).toBe('');
+    expect(screen.queryByTestId('role-detail-delete-btn')).not.toBeInTheDocument();
+  });
+
+  it('a second pick while the create is in flight does not create a second role', async () => {
+    const answer = deferred<Role>();
+    createRoleMock.mockReturnValue(answer.promise);
+    const onSaved = vi.fn();
+    renderDetail({ id: 'new', onSaved });
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Reviewer' } });
+    fireEvent.click(screen.getByTestId('role-detail-save-btn'));
+    const item = await screen.findByText('Save & Stay');
+    // A double click lands twice on the item before the menu has closed
+    fireEvent.click(item);
+    fireEvent.click(item);
+    answer.resolve(created);
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    expect(createRoleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps what was typed while Save & Stay was in flight, as an unsaved edit', async () => {
+    const answer = deferred<Role>();
+    updateRoleMock.mockReturnValue(answer.promise);
+    const onSaved = vi.fn();
+    renderDetail({ id: stored.id, onSaved });
+    await loaded();
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Editors' } });
+    await save('Save & Stay');
+    await waitFor(() => expect(updateRoleMock).toHaveBeenCalledWith(stored.id, expect.objectContaining({ name: 'Editors' })));
+
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Typed later' } });
+    // The role as stored now, which the form reloads after Save & Stay
+    getRoleMock.mockResolvedValue({ ...stored, name: 'Editors' });
+    answer.resolve({ ...stored, name: 'Editors' });
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+
+    expect(input('role-detail-name').value).toBe('Typed later');
+    expect(screen.getByText('Unsaved Changes')).toBeInTheDocument();
+  });
+
+  it('Save & Stay shows the role as it is stored when nothing was typed meanwhile', async () => {
+    updateRoleMock.mockResolvedValue({ ...stored, name: 'Editors' });
+    const onSaved = vi.fn();
+    renderDetail({ id: stored.id, onSaved });
+    await loaded();
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Editors' } });
+    // The server trims what it stores
+    getRoleMock.mockResolvedValue({ ...stored, name: 'Editors', description: 'As stored' });
+    await save('Save & Stay');
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+
+    expect(input('role-detail-name').value).toBe('Editors');
+    expect(screen.getByDisplayValue('As stored')).toBeInTheDocument();
+    expect(screen.queryByText('Unsaved Changes')).not.toBeInTheDocument();
+  });
+
+  it('a save answered after the host opened another role is not drawn over that role', async () => {
+    const other = mockRoles[2];
+    const answer = deferred<Role>();
+    updateRoleMock.mockReturnValue(answer.promise);
+    getRoleMock.mockImplementation(async (id: string) => (id === other.id ? other : stored));
+    const onSaved = vi.fn();
+    const view = renderDetail({ id: stored.id, onSaved });
+    await loaded();
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Editors' } });
+    await save('Save & Quit');
+    await waitFor(() => expect(updateRoleMock).toHaveBeenCalledTimes(1));
+
+    // The host opens another role in the same component while the request is out
+    view.rerender(ui({ id: other.id, onSaved }));
+    await waitFor(() => expect(input('role-detail-name').value).toBe(other.name));
+    const saved = { ...stored, name: 'Editors' };
+    answer.resolve(saved);
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved, 'quit'));
+
+    expect(input('role-detail-name').value).toBe(other.name);
+    expect(screen.getByText(other.id)).toBeInTheDocument();
+    // Nothing of the first role is an unsaved edit of the second
+    expect(screen.queryByText('Unsaved Changes')).not.toBeInTheDocument();
+  });
+
+  it('the new route opened in the same component is an empty form', async () => {
+    const view = renderDetail({ id: stored.id });
+    await loaded();
+    view.rerender(ui({ id: 'new' }));
+    await waitFor(() => expect(input('role-detail-name').value).toBe(''));
+    expect(screen.getByRole('heading', { name: 'New Role' })).toBeInTheDocument();
+    expect(screen.queryByTestId('role-detail-scope-pattern-0')).not.toBeInTheDocument();
+  });
+
+  it('a change of language does not empty a new form, or let go of the role it created', async () => {
+    createRoleMock.mockResolvedValue(created);
+    const onSaved = vi.fn();
+    const view = renderDetail({ id: 'new', onSaved });
+    fireEvent.change(input('role-detail-name'), { target: { value: 'Reviewer' } });
+    // Other texts arrive (a language switch, a new `translations` override)
+    view.rerender(ui({ id: 'new', onSaved, translations: { roleDetail: { titleNew: 'Add a role' } } }));
+    expect(screen.getByRole('heading', { name: 'Add a role' })).toBeInTheDocument();
+    expect(input('role-detail-name').value).toBe('Reviewer');
+
+    await save('Save & Stay');
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created, 'stay'));
+    view.rerender(ui({ id: 'new', onSaved, translations: { roleDetail: { titleEdit: 'Change the role' } } }));
+    expect(await screen.findByRole('heading', { name: 'Change the role' })).toBeInTheDocument();
+    expect(input('role-detail-name').value).toBe('Reviewer');
+    expect(screen.getByText(created.id)).toBeInTheDocument();
+  });
+});

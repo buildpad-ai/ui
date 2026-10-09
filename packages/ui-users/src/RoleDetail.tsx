@@ -58,6 +58,16 @@ const EMPTY_FORM: RoleFormValues = {
   scope_config: null,
 };
 
+function toFormValues(role: Role): RoleFormValues {
+  return {
+    name: role.name,
+    icon: role.icon || 'supervised_user_circle',
+    description: role.description || '',
+    parent: role.parent ?? null,
+    scope_config: role.scope_config ?? null,
+  };
+}
+
 /** What to do after a successful save — mirrors the buildpad-daas Save menu. */
 export type RoleSaveAction = 'stay' | 'quit' | 'addNew';
 
@@ -72,7 +82,13 @@ export interface RoleDetailProps {
    * Called after a successful save with the saved record and the chosen
    * action: `'quit'` → navigate back to the list, `'addNew'` → navigate to a
    * fresh create view, `'stay'` → stay (the component refreshes itself; for a
-   * create the host should navigate to the new role's route).
+   * create the host should navigate to the new role's route, so the URL names
+   * the role).
+   *
+   * The component itself goes nowhere. After a create it becomes the editor
+   * of the role it created, so a further Save updates that role whether or
+   * not the host has navigated yet; after a create with `'addNew'` it becomes
+   * an empty form for the next role.
    */
   onSaved?: (role: Role, action: RoleSaveAction) => void;
   /** Called when a user row's "open" action is clicked in the Users tab. */
@@ -104,6 +120,12 @@ export interface RoleDetailProps {
  * covered and takes no edit, and no Save or Delete button is drawn. A new
  * record's form is not opened to a user who may not create before the answer
  * is in. The record itself loads at once.
+ *
+ * After a create the form is the stored role's: a second Save updates it.
+ * Nothing is created twice when the host is slow to navigate, or does not.
+ * What is typed while a save is in flight is kept as an unsaved edit, and a
+ * save answered after the host opened another role in the same form is not
+ * drawn over that role.
  */
 export const RoleDetail: React.FC<RoleDetailProps> = ({
   id,
@@ -117,7 +139,13 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   rolesCollection = 'daas_roles',
   translations,
 }) => {
-  const isNew = id === 'new' || id === '+';
+  const newRoute = id === 'new' || id === '+';
+  // The role this form created while `id` still says "new". From then on it
+  // edits that role: a second Save must update it, not create it once more,
+  // whether or not the host has navigated to its own route yet.
+  const [created, setCreated] = useState<Role | null>(null);
+  const isNew = newRoute && !created;
+  const roleId = newRoute && created ? created.id : id;
   const { getRole, createRole, updateRole, deleteRole, fetchRoles } = useRoles();
   const { canPerform, isAdmin, loading: permsLoading } = usePermissions({
     collections: [rolesCollection],
@@ -141,8 +169,9 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
   const [role, setRole] = useState<Role | null>(null);
   const [allRoles, setAllRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(!newRoute);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [activeTab, setActiveTab] = useState<string | null>('basic');
   const [userCount, setUserCount] = useState(0);
   const [policyCount, setPolicyCount] = useState(0);
@@ -163,33 +192,70 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
     [values.scope_config]
   );
 
+  // The texts of the load's failure notice, read when it is raised. They are
+  // not dependencies of the load: a change of language would run it again,
+  // and on the new route that empties the form (and lets go of a record the
+  // form has just created).
+  const textsRef = useRef({ t, common });
+  textsRef.current = { t, common };
+
+  // Only the answer for the role on screen may be drawn: neither a slow load
+  // of the one opened before, nor a save that was sent for it.
+  const requestRef = useRef(0);
+
+  /**
+   * Fetches a role and draws it, unless another one is on screen by then.
+   * `sent` is the form as a save sent it: the form is replaced by the stored
+   * values only while it still holds what was sent, so an edit made while the
+   * request was out stays, as an unsaved one.
+   */
+  const fetchRole = useCallback(
+    async (target: string, request: number, sent?: RoleFormValues) => {
+      setLoading(true);
+      try {
+        const fetched = await getRole(target, { includePolicies: true });
+        if (request !== requestRef.current) return;
+        setRole(fetched);
+        setUserCount(fetched.users?.[0]?.count ?? 0);
+        setPolicyCount(fetched.policies?.length ?? 0);
+        const formValues = toFormValues(fetched);
+        setInitialValues(formValues);
+        const sentKey = sent ? JSON.stringify(sent) : null;
+        setValues((current) =>
+          sentKey === null || JSON.stringify(current) === sentKey ? formValues : current,
+        );
+      } catch (err) {
+        if (request !== requestRef.current) return;
+        const texts = textsRef.current;
+        notifications.show({
+          title: texts.common.error,
+          message: err instanceof Error ? err.message : texts.t.roleDetail.notifications.fetchFailed,
+          color: 'red',
+        });
+      } finally {
+        if (request === requestRef.current) setLoading(false);
+      }
+    },
+    [getRole],
+  );
+
+  // Keyed on the `id` it is given, not on the role a create adopted: the load
+  // runs when the host opens another role (or a new one), and not for the
+  // role that was just created here.
   const load = useCallback(async () => {
-    if (isNew) return;
-    setLoading(true);
-    try {
-      const fetched = await getRole(id, { includePolicies: true });
-      setRole(fetched);
-      setUserCount(fetched.users?.[0]?.count ?? 0);
-      setPolicyCount(fetched.policies?.length ?? 0);
-      const formValues: RoleFormValues = {
-        name: fetched.name,
-        icon: fetched.icon || 'supervised_user_circle',
-        description: fetched.description || '',
-        parent: fetched.parent ?? null,
-        scope_config: fetched.scope_config ?? null,
-      };
-      setInitialValues(formValues);
-      setValues(formValues);
-    } catch (err) {
-      notifications.show({
-        title: common.error,
-        message: err instanceof Error ? err.message : t.roleDetail.notifications.fetchFailed,
-        color: 'red',
-      });
-    } finally {
+    const request = ++requestRef.current;
+    setCreated(null);
+    if (newRoute) {
+      setRole(null);
+      setUserCount(0);
+      setPolicyCount(0);
+      setInitialValues(EMPTY_FORM);
+      setValues(EMPTY_FORM);
       setLoading(false);
+      return;
     }
-  }, [getRole, id, isNew, t, common]);
+    await fetchRole(id, request);
+  }, [fetchRole, id, newRoute]);
 
   useEffect(() => {
     void load();
@@ -210,15 +276,17 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   /** Refresh sidebar counts after users/policies tab changes without resetting the form. */
   const refreshCounts = useCallback(async () => {
     if (isNew) return;
+    const shown = requestRef.current;
     try {
-      const fetched = await getRole(id, { includePolicies: true });
+      const fetched = await getRole(roleId, { includePolicies: true });
+      if (shown !== requestRef.current) return;
       setRole(fetched);
       setUserCount(fetched.users?.[0]?.count ?? 0);
       setPolicyCount(fetched.policies?.length ?? 0);
     } catch {
       // sidebar refresh is best-effort
     }
-  }, [getRole, id, isNew]);
+  }, [getRole, roleId, isNew]);
 
   const setScopeConfig = useCallback((scope_config: RoleScopeConfig | null) => {
     setValues((prev) => ({ ...prev, scope_config }));
@@ -226,6 +294,9 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
   const handleSave = useCallback(
     async (action: RoleSaveAction = 'quit') => {
+      // A second pick while the first is out (a double click reaches the menu
+      // item twice before the menu has closed) must not send it again
+      if (savingRef.current) return;
       if (!values.name.trim()) {
         notifications.show({
           title: t.validationErrorTitle,
@@ -243,19 +314,51 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
         return;
       }
 
+      savingRef.current = true;
       setSaving(true);
+      // The answer belongs to the role on screen now. When the host has opened
+      // another one by the time it arrives, it must not be drawn over that
+      // role.
+      const shown = requestRef.current;
+      const stillShown = () => shown === requestRef.current;
       try {
         const saved = isNew
           ? await createRole({ ...values, name: values.name })
-          : await updateRole(id, values);
+          : await updateRole(roleId, values);
         notifications.show({
           title: common.success,
           message: isNew ? t.roleDetail.notifications.created : t.roleDetail.notifications.updated,
           color: 'green',
         });
-        setInitialValues(values);
-        if (action === 'stay' && !isNew) {
-          await load();
+        if (stillShown()) {
+          if (newRoute && action === 'addNew') {
+            // The next role: an empty form. The page is already on the new
+            // route, so its navigation there changes nothing; left filled in,
+            // the form would create the same role again on the next Save (or,
+            // having adopted the role it created, go on editing that one).
+            setCreated(null);
+            setRole(null);
+            setUserCount(0);
+            setPolicyCount(0);
+            setInitialValues(EMPTY_FORM);
+            setValues(EMPTY_FORM);
+          } else {
+            // What was sent is what is stored now. `values` is the form as it
+            // was when the request left: an edit made since then (the request
+            // takes a while, and the inputs stay open) differs from it, and
+            // stays unsaved.
+            setInitialValues(values);
+            if (isNew) {
+              // A created role is the one on screen from here on, so the next
+              // Save updates it; where to go next is the host's to say
+              setCreated(saved);
+              setRole(saved);
+              setUserCount(saved.users?.[0]?.count ?? 0);
+              setPolicyCount(saved.policies?.length ?? 0);
+            } else if (action === 'stay') {
+              await fetchRole(roleId, shown, values);
+            }
+          }
         }
         onSaved?.(saved, action);
       } catch (err) {
@@ -265,10 +368,11 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
           color: 'red',
         });
       } finally {
+        savingRef.current = false;
         setSaving(false);
       }
     },
-    [values, scopePatternsValid, isNew, createRole, updateRole, id, load, onSaved, t, common]
+    [values, scopePatternsValid, isNew, newRoute, createRole, updateRole, roleId, fetchRole, onSaved, t, common]
   );
 
   const handleDiscard = useCallback(() => {
@@ -290,7 +394,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
   const confirmDelete = useCallback(async () => {
     try {
-      await deleteRole(id);
+      await deleteRole(roleId);
       notifications.show({
         title: common.success,
         message: t.roleDetail.notifications.deleted,
@@ -305,7 +409,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
         color: 'red',
       });
     }
-  }, [deleteRole, id, onDeleted, t, common]);
+  }, [deleteRole, roleId, onDeleted, t, common]);
 
   const scopePatterns = values.scope_config?.allowed_scopes ?? [];
 
@@ -330,8 +434,8 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
     [allRoles, role]
   );
   const childRoles = useMemo(
-    () => (isNew ? [] : childRolesOf(allRoles, id)),
-    [allRoles, id, isNew]
+    () => (isNew ? [] : childRolesOf(allRoles, roleId)),
+    [allRoles, roleId, isNew]
   );
 
   /** Parent/child link, or plain text when the host provides no `onRoleClick`. */
@@ -466,7 +570,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
                     <Select
                       label={t.roleDetail.fields.parentRole}
                       placeholder={t.roleDetail.fields.parentRolePlaceholder}
-                      data={parentRoleOptions(allRoles, isNew ? null : id)}
+                      data={parentRoleOptions(allRoles, isNew ? null : roleId)}
                       value={values.parent}
                       onChange={(parent) => setValues((prev) => ({ ...prev, parent }))}
                       clearable
@@ -577,7 +681,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
               <>
                 <Tabs.Panel value="users" pt="md">
                   <RoleUsersManager
-                    roleId={id}
+                    roleId={roleId}
                     roleName={role?.name || ''}
                     onUpdate={() => void refreshCounts()}
                     onUserClick={onUserClick}
@@ -588,7 +692,7 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
                 <Tabs.Panel value="policies" pt="md">
                   <RolePoliciesManager
-                    roleId={id}
+                    roleId={roleId}
                     onUpdate={() => void refreshCounts()}
                     onPolicyClick={onPolicyClick}
                     translations={translations}

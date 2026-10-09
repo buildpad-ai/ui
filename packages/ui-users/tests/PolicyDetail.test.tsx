@@ -34,8 +34,24 @@ vi.mock('@buildpad/hooks', () => ({
 }));
 
 vi.mock('@buildpad/ui-interfaces/system-permissions', () => ({
-  SystemPermissions: ({ primaryKey, disabled }: { primaryKey: string; disabled?: boolean }) => (
-    <div data-testid="policy-detail-permissions" data-policy={primaryKey} data-disabled={disabled ? 'true' : 'false'} />
+  SystemPermissions: ({
+    primaryKey,
+    disabled,
+    onChange,
+  }: {
+    primaryKey: string;
+    disabled?: boolean;
+    onChange: (alterations: { create: unknown[]; update: unknown[]; delete: unknown[] }) => void;
+  }) => (
+    <div data-testid="policy-detail-permissions" data-policy={primaryKey} data-disabled={disabled ? 'true' : 'false'}>
+      <button
+        type="button"
+        data-testid="matrix-grant"
+        onClick={() => onChange({ create: [{ collection: 'articles', action: 'read' }], update: [], delete: [] })}
+      >
+        grant
+      </button>
+    </div>
   ),
 }));
 
@@ -247,6 +263,189 @@ describe('PolicyDetail', () => {
       expect(screen.getByTestId('policy-detail-delete-btn')).toBeInTheDocument();
       expect(matrix()).toHaveAttribute('data-disabled', 'false');
       expect(overlay()).not.toBeInTheDocument();
+    });
+  });
+
+  describe('after a create', () => {
+    const created: Policy = {
+      id: 'policy-new',
+      name: 'Reviewers',
+      icon: 'security',
+      description: '',
+      admin_access: false,
+      app_access: false,
+      delegate_access: false,
+      userCount: 0,
+      roleCount: 0,
+      created_at: stamp,
+      updated_at: stamp,
+    };
+
+    /** A promise the test settles when it chooses to. */
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((res) => {
+        resolve = res;
+      });
+      return { promise, resolve };
+    }
+
+    it('goes on as the editor of the policy it created: a further Save updates that policy', async () => {
+      mocks.createPolicy.mockResolvedValue(created);
+      mocks.updatePolicy.mockResolvedValue({ ...created, name: 'Reviewers 2' });
+      // A host that does not navigate
+      const onSaved = vi.fn();
+      render(ui({ id: 'new', onSaved }));
+      expect(screen.getByRole('heading', { name: 'New Policy' })).toBeInTheDocument();
+      expect(screen.queryByTestId('policy-detail-permissions')).not.toBeInTheDocument();
+      fireEvent.change(input('policy-detail-name'), { target: { value: 'Reviewers' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+
+      // The stored policy's editor: its title, its sidebar, its matrix, Delete, and a Save that waits for an edit
+      expect(await screen.findByRole('heading', { name: 'Edit Policy' })).toBeInTheDocument();
+      expect(screen.getByText(created.id)).toBeInTheDocument();
+      expect(matrix()).toHaveAttribute('data-policy', created.id);
+      expect(screen.getByTestId('policy-detail-delete-btn')).toBeInTheDocument();
+      expect(saveButton()).toHaveTextContent('Save');
+      expect(saveButton()).toBeDisabled();
+
+      fireEvent.change(input('policy-detail-name'), { target: { value: 'Reviewers 2' } });
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updatePolicy).toHaveBeenCalledWith(created.id, expect.objectContaining({ name: 'Reviewers 2' })),
+      );
+      expect(mocks.createPolicy).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(2));
+      // It was never loaded: the create's answer is the record
+      expect(mocks.getPolicy).not.toHaveBeenCalled();
+    });
+
+    it('a second click does not create a second policy', async () => {
+      mocks.createPolicy.mockResolvedValue(created);
+      const onSaved = vi.fn();
+      render(ui({ id: 'new', onSaved }));
+      fireEvent.change(input('policy-detail-name'), { target: { value: 'Reviewers' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(saveButton());
+      fireEvent.click(saveButton());
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(mocks.createPolicy).toHaveBeenCalledTimes(1);
+      expect(mocks.updatePolicy).not.toHaveBeenCalled();
+    });
+
+    it('keeps what was typed while the create was in flight, as an unsaved edit', async () => {
+      const answer = deferred<Policy>();
+      mocks.createPolicy.mockReturnValue(answer.promise);
+      mocks.updatePolicy.mockResolvedValue({ ...created, name: 'Typed later' });
+      const onSaved = vi.fn();
+      render(ui({ id: 'new', onSaved }));
+      fireEvent.change(input('policy-detail-name'), { target: { value: 'Reviewers' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.createPolicy).toHaveBeenCalledTimes(1));
+
+      fireEvent.change(input('policy-detail-name'), { target: { value: 'Typed later' } });
+      answer.resolve(created);
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+
+      expect(input('policy-detail-name').value).toBe('Typed later');
+      expect(screen.getByText('Unsaved Changes')).toBeInTheDocument();
+      await waitFor(() => expect(saveButton()).not.toBeDisabled());
+      fireEvent.click(saveButton());
+      await waitFor(() =>
+        expect(mocks.updatePolicy).toHaveBeenCalledWith(created.id, expect.objectContaining({ name: 'Typed later' })),
+      );
+      expect(mocks.createPolicy).toHaveBeenCalledTimes(1);
+    });
+
+    it('a save answered after the host opened another policy is not drawn over that policy', async () => {
+      const other = mockPolicies[1];
+      const answer = deferred<Policy>();
+      mocks.updatePolicy.mockReturnValue(answer.promise);
+      mocks.getPolicy.mockImplementation(async (id: string) => (id === other.id ? other : stored));
+      const onSaved = vi.fn();
+      const view = render(ui({ onSaved }));
+      await loaded();
+      fireEvent.change(input('policy-detail-name'), { target: { value: 'Content Editors' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(mocks.updatePolicy).toHaveBeenCalledTimes(1));
+
+      // The host opens another policy in the same component while the request is out
+      view.rerender(ui({ id: other.id, onSaved }));
+      await waitFor(() => expect(input('policy-detail-name').value).toBe(other.name));
+      const saved = { ...stored, name: 'Content Editors' };
+      answer.resolve(saved);
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved));
+
+      expect(input('policy-detail-name').value).toBe(other.name);
+      expect(screen.getByText(other.id)).toBeInTheDocument();
+      expect(matrix()).toHaveAttribute('data-policy', other.id);
+      // Nothing of the first policy is an unsaved edit of the second
+      expect(screen.queryByText('Unsaved Changes')).not.toBeInTheDocument();
+      await waitFor(() => expect(saveButton()).toBeDisabled());
+    });
+
+    it('matrix edits made on one policy are not carried to the next one opened in the same component', async () => {
+      const other = mockPolicies[1];
+      mocks.getPolicy.mockImplementation(async (id: string) => (id === other.id ? other : stored));
+      const view = render(ui());
+      await loaded();
+      fireEvent.click(screen.getByTestId('matrix-grant'));
+      expect(screen.getByText('Unsaved Changes')).toBeInTheDocument();
+      expect(saveButton()).not.toBeDisabled();
+
+      view.rerender(ui({ id: other.id }));
+      await waitFor(() => expect(input('policy-detail-name').value).toBe(other.name));
+      // A Save here would have written the first policy's grant to the second
+      expect(screen.queryByText('Unsaved Changes')).not.toBeInTheDocument();
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('the new route opened in the same component is an empty form', async () => {
+      const view = render(ui());
+      await loaded();
+      view.rerender(ui({ id: 'new' }));
+      await waitFor(() => expect(input('policy-detail-name').value).toBe(''));
+      expect(screen.getByRole('heading', { name: 'New Policy' })).toBeInTheDocument();
+      expect(input('policy-detail-app-access')).not.toBeChecked();
+      expect(screen.queryByTestId('policy-detail-permissions')).not.toBeInTheDocument();
+      expect(saveButton()).toHaveTextContent('Create');
+    });
+
+    it('a change of language does not empty a new form, or let go of the policy it created', async () => {
+      mocks.createPolicy.mockResolvedValue(created);
+      const onSaved = vi.fn();
+      const view = render(ui({ id: 'new', onSaved }));
+      fireEvent.change(input('policy-detail-name'), { target: { value: 'Reviewers' } });
+      // Other texts arrive (a language switch, a new `translations` override)
+      view.rerender(ui({ id: 'new', onSaved, translations: { policyDetail: { titleNew: 'Add a policy' } } }));
+      expect(screen.getByRole('heading', { name: 'Add a policy' })).toBeInTheDocument();
+      expect(input('policy-detail-name').value).toBe('Reviewers');
+
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+      view.rerender(ui({ id: 'new', onSaved, translations: { policyDetail: { titleEdit: 'Change the policy' } } }));
+      expect(await screen.findByRole('heading', { name: 'Change the policy' })).toBeInTheDocument();
+      expect(input('policy-detail-name').value).toBe('Reviewers');
+      expect(matrix()).toHaveAttribute('data-policy', created.id);
+    });
+
+    it('a record opened after a create is loaded, not taken for the created one', async () => {
+      mocks.createPolicy.mockResolvedValue(created);
+      const onSaved = vi.fn();
+      const view = render(ui({ id: 'new', onSaved }));
+      fireEvent.change(input('policy-detail-name'), { target: { value: 'Reviewers' } });
+      fireEvent.click(saveButton());
+      await waitFor(() => expect(onSaved).toHaveBeenCalledWith(created));
+
+      // The host navigates to the stored policy's own route (as the generated page does)
+      mocks.getPolicy.mockResolvedValue({ ...created, description: 'From the server' });
+      view.rerender(ui({ id: created.id, onSaved }));
+      expect(await screen.findByDisplayValue('From the server')).toBeInTheDocument();
+      expect(mocks.getPolicy).toHaveBeenCalledWith(created.id);
+      expect(matrix()).toHaveAttribute('data-policy', created.id);
     });
   });
 });

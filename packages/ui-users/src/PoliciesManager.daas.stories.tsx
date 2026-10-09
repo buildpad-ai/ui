@@ -47,7 +47,8 @@ const PoliciesPlayground: React.FC = () => {
             onBack={() => setSelectedId(null)}
             onDeleted={() => setSelectedId(null)}
             onSaved={(policy) => {
-              // Stay on the detail after create so the permissions matrix appears.
+              // After a create, open the stored policy by its own id (as a page
+              // would go to its route); the form already shows its matrix.
               if (selectedId === 'new') setSelectedId(policy.id);
             }}
           />
