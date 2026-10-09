@@ -53,7 +53,10 @@ export interface WorkflowsTranslations {
     ariaLabel: string;
   };
   listFooter: {
-    /** "Showing {shown} of {totalCount} {itemsLabel}" — `itemsLabel` is the manager's plural noun */
+    /**
+     * "Showing {shown} of {totalCount} {itemsLabel}" — `itemsLabel` is the
+     * manager's noun in the form `totalCount` takes ("1 workflow", "26 workflows")
+     */
     showing: string;
     /** "{n} / page" — page-size option label */
     perPage: string;
@@ -69,8 +72,11 @@ export interface WorkflowsTranslations {
     subtitle: string;
     addWorkflow: string;
     searchPlaceholder: string;
-    /** Plural noun for the footer's "Showing N of M {itemsLabel}" */
-    itemsLabel: string;
+    /**
+     * The noun of the footer's "Showing N of M {itemsLabel}", one form per
+     * plural category of M: "Showing 1 of 1 workflow", "Showing 25 of 26 workflows"
+     */
+    itemsLabel: PluralForms;
     /** Marker shown for a definition without an initial state or a description ("-") */
     emptyValue: string;
     columns: {
@@ -262,8 +268,11 @@ export interface WorkflowsTranslations {
     subtitle: string;
     newAssignment: string;
     searchPlaceholder: string;
-    /** Plural noun for the footer's "Showing N of M {itemsLabel}" */
-    itemsLabel: string;
+    /**
+     * The noun of the footer's "Showing N of M {itemsLabel}", one form per
+     * plural category of M: "Showing 1 of 1 assignment", "Showing 25 of 26 assignments"
+     */
+    itemsLabel: PluralForms;
     columns: {
       collection: string;
       workflow: string;
@@ -337,8 +346,11 @@ export interface WorkflowsTranslations {
     title: string;
     subtitle: string;
     searchPlaceholder: string;
-    /** Plural noun for the footer's "Showing N of M {itemsLabel}" */
-    itemsLabel: string;
+    /**
+     * The noun of the footer's "Showing N of M {itemsLabel}", one form per
+     * plural category of M: "Showing 1 of 1 instance", "Showing 25 of 26 instances"
+     */
+    itemsLabel: PluralForms;
     columns: {
       workflow: string;
       collection: string;
@@ -437,7 +449,7 @@ export const workflowsDefaults: WorkflowsTranslations = {
     subtitle: 'Define and manage state-based workflows for your collections.',
     addWorkflow: 'Add Workflow',
     searchPlaceholder: 'Search workflows by name or description...',
-    itemsLabel: 'workflows',
+    itemsLabel: { one: 'workflow', other: 'workflows' },
     emptyValue: '-',
     columns: {
       name: 'Name',
@@ -608,7 +620,7 @@ export const workflowsDefaults: WorkflowsTranslations = {
     subtitle: 'Assign workflows to collections with optional filter rules',
     newAssignment: 'New Assignment',
     searchPlaceholder: 'Search by collection name...',
-    itemsLabel: 'assignments',
+    itemsLabel: { one: 'assignment', other: 'assignments' },
     columns: {
       collection: 'Collection',
       workflow: 'Workflow',
@@ -677,7 +689,7 @@ export const workflowsDefaults: WorkflowsTranslations = {
     title: 'Workflow Instances',
     subtitle: 'Active workflow instances tracking current state for items',
     searchPlaceholder: 'Search by collection, state, or item ID...',
-    itemsLabel: 'instances',
+    itemsLabel: { one: 'instance', other: 'instances' },
     columns: {
       workflow: 'Workflow',
       collection: 'Collection',
@@ -772,7 +784,7 @@ export const workflowsId: WorkflowsTranslations = {
     subtitle: 'Tentukan dan kelola alur kerja berbasis status untuk koleksi Anda.',
     addWorkflow: 'Tambah Alur Kerja',
     searchPlaceholder: 'Cari alur kerja berdasarkan nama atau deskripsi...',
-    itemsLabel: 'alur kerja',
+    itemsLabel: { other: 'alur kerja' },
     emptyValue: '-',
     columns: {
       name: 'Nama',
@@ -944,7 +956,7 @@ export const workflowsId: WorkflowsTranslations = {
     subtitle: 'Tetapkan alur kerja ke koleksi dengan aturan filter opsional',
     newAssignment: 'Penugasan Baru',
     searchPlaceholder: 'Cari berdasarkan nama koleksi...',
-    itemsLabel: 'penugasan',
+    itemsLabel: { other: 'penugasan' },
     columns: {
       collection: 'Koleksi',
       workflow: 'Alur Kerja',
@@ -1014,7 +1026,7 @@ export const workflowsId: WorkflowsTranslations = {
     title: 'Instans Alur Kerja',
     subtitle: 'Instans alur kerja aktif yang melacak status item saat ini',
     searchPlaceholder: 'Cari berdasarkan koleksi, status, atau ID item...',
-    itemsLabel: 'instans',
+    itemsLabel: { other: 'instans' },
     columns: {
       workflow: 'Alur Kerja',
       collection: 'Koleksi',

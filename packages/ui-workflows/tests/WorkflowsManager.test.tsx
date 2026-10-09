@@ -100,6 +100,17 @@ afterEach(() => {
 
 describe('WorkflowsManager', () => {
   describe('the list', () => {
+    it('names the rows in its footer by their number: one workflow, three workflows', async () => {
+      const { unmount } = renderManager();
+      expect(await screen.findByText('Showing 3 of 3 workflows')).toBeInTheDocument();
+      unmount();
+
+      fetchDefinitionsMock.mockResolvedValue(pageOf(mockWorkflows.slice(0, 1)));
+      renderManager();
+      expect(await screen.findByText('Showing 1 of 1 workflow')).toBeInTheDocument();
+      expect(screen.getByTestId('workflows-manager-count')).toHaveTextContent('1 workflow');
+    });
+
     it('lists the definitions with their initial state, number of states and description', async () => {
       renderManager();
       await waitFor(() => expect(screen.getByText('Article review')).toBeInTheDocument());

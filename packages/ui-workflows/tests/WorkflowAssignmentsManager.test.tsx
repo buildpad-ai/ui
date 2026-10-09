@@ -105,6 +105,17 @@ afterEach(() => {
 
 describe('WorkflowAssignmentsManager', () => {
   describe('the list', () => {
+    it('names the rows in its footer by their number: one assignment, three assignments', async () => {
+      const { unmount } = renderManager();
+      expect(await screen.findByText('Showing 3 of 3 assignments')).toBeInTheDocument();
+      unmount();
+
+      fetchAssignmentsMock.mockResolvedValue(pageOf(mockAssignments.slice(0, 1)));
+      renderManager();
+      expect(await screen.findByText('Showing 1 of 1 assignment')).toBeInTheDocument();
+      expect(screen.getByTestId('workflow-assignments-manager-count')).toHaveTextContent('1 assignment');
+    });
+
     it('lists the assignments with their workflow, filter indicator and creation date', async () => {
       renderManager();
       await waitFor(() => expect(screen.getByText('articles')).toBeInTheDocument());

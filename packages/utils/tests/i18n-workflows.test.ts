@@ -78,11 +78,44 @@ describe('workflows namespace', () => {
     expect(formatCount('id', 3, workflowsId.count.transitions)).toBe('3 transisi');
   });
 
+  it("the footer's noun follows the total: one workflow, many workflows", () => {
+    type List = 'workflowsManager' | 'assignmentsManager' | 'instancesManager';
+    /** The footer line, as WorkflowListFooter composes it. */
+    const showing = (locale: string, catalog: typeof workflowsDefaults, list: List, shown: number, totalCount: number) =>
+      interpolate(catalog.listFooter.showing, {
+        shown,
+        totalCount,
+        itemsLabel: formatCount(locale, totalCount, catalog[list].itemsLabel),
+      });
+
+    expect(showing('en', workflowsDefaults, 'workflowsManager', 1, 1)).toBe('Showing 1 of 1 workflow');
+    expect(showing('en', workflowsDefaults, 'assignmentsManager', 1, 1)).toBe('Showing 1 of 1 assignment');
+    expect(showing('en', workflowsDefaults, 'instancesManager', 1, 1)).toBe('Showing 1 of 1 instance');
+    // The noun is the total's, not the shown rows': one row of 26 is still "workflows"
+    expect(showing('en', workflowsDefaults, 'workflowsManager', 1, 26)).toBe('Showing 1 of 26 workflows');
+    expect(showing('en', workflowsDefaults, 'assignmentsManager', 2, 2)).toBe('Showing 2 of 2 assignments');
+    expect(showing('en', workflowsDefaults, 'instancesManager', 50, 120)).toBe('Showing 50 of 120 instances');
+    // Indonesian nouns have one form for every number
+    expect(workflowsId.workflowsManager.itemsLabel).toEqual({ other: 'alur kerja' });
+    expect(workflowsId.assignmentsManager.itemsLabel).toEqual({ other: 'penugasan' });
+    expect(workflowsId.instancesManager.itemsLabel).toEqual({ other: 'instans' });
+    expect(showing('id', workflowsId, 'workflowsManager', 1, 1)).toBe('Menampilkan 1 dari 1 alur kerja');
+    expect(showing('id', workflowsId, 'instancesManager', 50, 120)).toBe('Menampilkan 50 dari 120 instans');
+    // A noun, not a count: it carries no {count} of its own
+    for (const list of ['workflowsManager', 'assignmentsManager', 'instancesManager'] as const) {
+      expect(Object.values(workflowsDefaults[list].itemsLabel).some((form) => hasPlaceholders(form))).toBe(false);
+    }
+  });
+
   it('fills the placeholders of its templates', () => {
     const t = workflowsDefaults;
-    expect(interpolate(t.listFooter.showing, { shown: 25, totalCount: 26, itemsLabel: t.workflowsManager.itemsLabel })).toBe(
-      'Showing 25 of 26 workflows',
-    );
+    expect(
+      interpolate(t.listFooter.showing, {
+        shown: 25,
+        totalCount: 26,
+        itemsLabel: formatCount('en', 26, t.workflowsManager.itemsLabel),
+      }),
+    ).toBe('Showing 25 of 26 workflows');
     expect(interpolate(t.commandModal.tabs.actions, { count: 2 })).toBe('Actions (2)');
     expect(interpolate(t.commandModal.tabs.policies, { count: 0 })).toBe('Policies (0)');
     expect(interpolate(t.commandModal.general.endStateOption, { name: 'Published' })).toBe('Published (End State)');

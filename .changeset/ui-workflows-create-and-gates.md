@@ -1,5 +1,6 @@
 ---
 "@buildpad/ui-workflows": minor
+"@buildpad/utils": minor
 ---
 
 Workflows module: four fixes that were made in `@buildpad/ui-cron` first.
@@ -23,3 +24,8 @@ Workflows module: four fixes that were made in `@buildpad/ui-cron` first.
 **A search or a page-size change on a later page is one request** (`WorkflowsManager`, `WorkflowAssignmentsManager`, `WorkflowInstancesManager`)
 
 - On page 2 or later, typing a search, clearing one or picking another page size sent two requests: the new filter for the old page, then the same filter for page 1. The first answer was dropped, so nothing showed on screen, but a backend that refuses a page past the end of the list answered it with an error. The list now sends the one request for page 1. A page restored from the URL is kept as before.
+
+**The footer names one row in the singular** (`@buildpad/utils` `workflows` namespace, the three lists)
+
+- A list of one read "Showing 1 of 1 workflows" / "assignments" / "instances". `workflowsManager.itemsLabel`, `assignmentsManager.itemsLabel` and `instancesManager.itemsLabel` are now plural forms (`{ one: 'workflow', other: 'workflows' }`), as the namespace's `count` entries are, and the footer picks the form the locale's plural rules give the TOTAL: "Showing 1 of 1 workflow", "Showing 1 of 26 workflows". Indonesian nouns have one form: `{ other: 'alur kerja' }`.
+- An override of one of these three keys (a `translations` prop, a provider dictionary) is now typed as plural forms. A dictionary that still holds one string there keeps working: the footer shows the string as it is.
