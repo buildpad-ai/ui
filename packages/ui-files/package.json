@@ -23,6 +23,7 @@
     "clean": "rimraf dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --passWithNoTests --coverage",
     "storybook": "storybook dev -p 6009",
     "build-storybook": "storybook build"
   },
@@ -54,8 +55,11 @@
     "@storybook/nextjs-vite": "^10.2.8",
     "@storybook/react": "^10.2.8",
     "@tabler/icons-react": "^3.0.0",
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^16.0.0",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
+    "jsdom": "^25.0.0",
     "next": "^16.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -64,7 +68,8 @@
     "tsup": "^8.4.0",
     "typescript": "^5.8.3",
     "vite": "^6.0.0",
-    "vitest": "^2.0.0"
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "2.1.9"
   },
   "private": true,
   "keywords": [
