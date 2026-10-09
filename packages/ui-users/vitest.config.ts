@@ -19,6 +19,11 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       reportOnFailure: true,
+      // Measure this package's own source only. Without an include, the v8
+      // provider counts whatever build output happens to sit in the package
+      // directory (storybook-static/, dist/), so the floors below fail for
+      // reasons that have nothing to do with the source.
+      include: ['src/**'],
       // Floors just under the coverage measured when they were added
       // (39.69 / 71.45 / 47.74 / 39.69); raise them as tests are added.
       thresholds: { statements: 38, branches: 70, functions: 46, lines: 38 },
