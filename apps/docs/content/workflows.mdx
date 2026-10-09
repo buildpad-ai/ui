@@ -243,12 +243,13 @@ export default function WorkflowDetailPage({
 }
 ```
 
-<Callout type="warning">
-**Navigate after a create.** A detail component does not change its own `id`.
-After a successful create it still holds `id="new"`, and a second Save would
-create a second record. `onSaved` receives the saved record with its new id.
-Navigate there to the list (as the generated pages do) or to
-`/workflows/${workflow.id}`.
+<Callout type="info">
+**Navigate after a create.** A detail component does not navigate. After a
+successful create it goes on as the editor of the stored record: a further
+Save updates that record, and does not create a second one. The URL still says
+`/workflows/new`, though, and a reload would open an empty form. `onSaved`
+receives the saved record with its new id. Navigate there to the list (as the
+generated pages do) or to `/workflows/${workflow.id}`.
 </Callout>
 
 The generated pages follow the reference admin UI: the definition editor
