@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-09T01:59:53.874Z",
+  "generatedAt": "2026-10-09T08:19:28.040Z",
   "version": "3.1.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -264,7 +264,7 @@
         {
           "source": "utils/src/i18n/namespaces/workflows.ts",
           "target": "lib/buildpad/i18n/namespaces/workflows.ts",
-          "sourceSha256": "4461b63423ff1b430af4aff07386bb8e22704b4fe580c0da41719aa0c6b68e69"
+          "sourceSha256": "f17199227763bd1679cd52bf7875d5287c7b243135012482428ac8edb7eb2572"
         },
         {
           "source": "utils/src/i18n/namespaces/cron.ts",
@@ -1316,7 +1316,7 @@
         {
           "source": "cli/templates/app/workflows/[id]/page.tsx",
           "target": "app/[lang]/(authenticated)/workflows/[id]/page.tsx",
-          "sourceSha256": "1ff922482ba3effd8dccc2ae6d9fc11e815bd7fb7bcb6ba03a64e696ffe93ce4"
+          "sourceSha256": "7b866c2c15ecb66f3fcb7e213dce28597d9c84923356e885eb36f2301b7ffb66"
         },
         {
           "source": "cli/templates/app/workflow-assignments/page.tsx",
@@ -1326,7 +1326,7 @@
         {
           "source": "cli/templates/app/workflow-assignments/[id]/page.tsx",
           "target": "app/[lang]/(authenticated)/workflow-assignments/[id]/page.tsx",
-          "sourceSha256": "fe9819afe193396a7a09d2f99949feb4fc988f59763ba3cf34ab87b9980f4ffc"
+          "sourceSha256": "7a4e9ca0e243262196d06bfa53a90c60055c7c2418dbeac94b18880b34d4052f"
         },
         {
           "source": "cli/templates/app/workflow-instances/page.tsx",
@@ -1374,7 +1374,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "3.1.0",
-      "lastChangedIn": "3.0.0"
+      "lastChangedIn": "3.1.0"
     },
     "cron-routes": {
       "name": "cron-routes",
@@ -4120,12 +4120,12 @@
         {
           "source": "ui-workflows/src/WorkflowsManager.tsx",
           "target": "components/ui/workflow-management/workflows-manager.tsx",
-          "sourceSha256": "87b8e0a41c15ff9da625eeaa460f1a2e3df150af128abb25d5b766ef150c9450"
+          "sourceSha256": "d9f41b5b15423de42a689c74b786bc5b155e6c516663db009ec34d68fb5e59f5"
         },
         {
           "source": "ui-workflows/src/WorkflowDetail.tsx",
           "target": "components/ui/workflow-management/workflow-detail.tsx",
-          "sourceSha256": "5a2c012cba51145ecee15f31db2d987961c2645d7c2586d7ecd191e6676b393a"
+          "sourceSha256": "3ebf2ee6a9e0d90d140e5714dbf8a33309bf0d11c0219128b74fc0d84e33b9b2"
         },
         {
           "source": "ui-workflows/src/WorkflowDiagram.tsx",
@@ -4155,12 +4155,12 @@
         {
           "source": "ui-workflows/src/WorkflowAssignmentsManager.tsx",
           "target": "components/ui/workflow-management/workflow-assignments-manager.tsx",
-          "sourceSha256": "ffcb1b8fd7398bfc4ad4609371717ffb5abd40afbef91e8835b9dfbf6e68c2dd"
+          "sourceSha256": "7360b69e195b7af19d51adfb5ea178952fe2840bd314b57b4b1538c8c176d64c"
         },
         {
           "source": "ui-workflows/src/WorkflowAssignmentDetail.tsx",
           "target": "components/ui/workflow-management/workflow-assignment-detail.tsx",
-          "sourceSha256": "2aa87c586d84d55067b8639116abe31fee95bd1e24746a41121b4f9cba758ea3"
+          "sourceSha256": "ecf2a069a289159830c09e0d451c2d89c5da39490881b6764d242fb811b82c14"
         },
         {
           "source": "ui-workflows/src/workflowAssignmentOptions.ts",
@@ -4185,7 +4185,7 @@
         {
           "source": "ui-workflows/src/useWorkflowList.ts",
           "target": "components/ui/workflow-management/use-workflow-list.ts",
-          "sourceSha256": "d1d765101c911f1fe1d2b881169beba929b93a3efe9c65bdfa63b9948d3af92c"
+          "sourceSha256": "bfa11bcffaae158f03af7d2be9e4ac74374ab191a8ba185e73d0529de8f701ca"
         },
         {
           "source": "ui-workflows/src/WorkflowPageState.tsx",
@@ -4205,7 +4205,7 @@
         {
           "source": "ui-workflows/src/WorkflowListFooter.tsx",
           "target": "components/ui/workflow-management/workflow-list-footer.tsx",
-          "sourceSha256": "d88089a8c3249eac1e40274ff361cbd6d693e3b3ec889a3a736f0ced5a79ecf9"
+          "sourceSha256": "882234bbd0d19e54ac0e8de650dbdc295996fc49a562a31f7cf0dc2cdea199d9"
         },
         {
           "source": "ui-workflows/src/WorkflowListEmptyState.tsx",
@@ -4246,7 +4246,7 @@
       ],
       "sourcePackage": "@buildpad/ui-workflows",
       "version": "3.1.0",
-      "lastChangedIn": "3.0.0"
+      "lastChangedIn": "3.1.0"
     },
     {
       "name": "cron-management",
