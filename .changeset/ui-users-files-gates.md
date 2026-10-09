@@ -21,3 +21,9 @@ Users and Files modules: the fixes that were made in `@buildpad/ui-cron` and `@b
 - A later refresh of the permissions (a renewed token, another scope) keeps the controls, the selection and the open form as they were until its answer is in.
 - For a browser test: wait for the control (`users-manager-add-btn`, a row menu, `user-detail-save-btn`, …) instead of clicking as soon as the list or the form is drawn; a row click that opens a record works once the permissions are known. The forms have a wrapper with `data-testid` `user-detail-form` / `role-detail-form` / `policy-detail-form`, disabled until then.
 - `RoleUsersManager`, `RolePoliciesManager`, `UserPoliciesManager`, `PolicyAttachmentManager` and `ModuleAccessPanel` have no permission gate and are unchanged.
+
+**A search, filter, sort or page-size change on a later page is one request** (`UsersManager`, `RolesManager`, `PoliciesManager`)
+
+- On page 2 or later, typing a search, clearing one, picking a role or status filter, sorting a column or picking another page size sent two requests: the new filter for the old page, then the same filter for page 1. The answers could arrive in either order (the lists draw whichever comes last), and a backend that refuses a page past the end of the list answered the first with an error. The list now sends the one request for page 1. A page restored from the URL is kept as before.
+- `ModuleAccessKeysManager` (one request for the whole tree, searched in the browser), `RoleUsersManager` and the policy picker do not page and are unchanged.
+
