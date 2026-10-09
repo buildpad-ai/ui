@@ -144,6 +144,10 @@
           "target": "lib/buildpad/list-page.ts"
         },
         {
+          "source": "utils/src/cron.ts",
+          "target": "lib/buildpad/cron.ts"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts"
         },
@@ -178,6 +182,10 @@
         {
           "source": "utils/src/i18n/namespaces/workflows.ts",
           "target": "lib/buildpad/i18n/namespaces/workflows.ts"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/cron.ts",
+          "target": "lib/buildpad/i18n/namespaces/cron.ts"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -425,6 +433,10 @@
           "target": "lib/buildpad/types/workflow.ts"
         },
         {
+          "source": "types/src/cron.ts",
+          "target": "lib/buildpad/types/cron.ts"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts"
         }
@@ -655,6 +667,14 @@
         {
           "source": "hooks/src/useWorkflowInstances.ts",
           "target": "lib/buildpad/hooks/useWorkflowInstances.ts"
+        },
+        {
+          "source": "hooks/src/useCronJobs.ts",
+          "target": "lib/buildpad/hooks/useCronJobs.ts"
+        },
+        {
+          "source": "hooks/src/useCronRuns.ts",
+          "target": "lib/buildpad/hooks/useCronRuns.ts"
         },
         {
           "source": "hooks/src/useUrlListParams.ts",
@@ -1061,6 +1081,37 @@
           "icon": "IconListCheck",
           "section": "Automation",
           "labelKey": "app.nav.workflowInstances",
+          "sectionKey": "app.nav.automation"
+        }
+      ]
+    },
+    "cron-routes": {
+      "name": "cron-routes",
+      "description": "Cron jobs administration module pages — /cron (the jobs list with its row actions, and the run history of every job on a second tab) and /cron/[id] (the job editor: code beside settings, Run Now, Activate or Deactivate, and the job's own run history; /cron/new creates). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the cron-management component.",
+      "files": [
+        {
+          "source": "cli/templates/app/cron/page.tsx",
+          "target": "app/[lang]/(authenticated)/cron/page.tsx"
+        },
+        {
+          "source": "cli/templates/app/cron/[id]/page.tsx",
+          "target": "app/[lang]/(authenticated)/cron/[id]/page.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "cron-management"
+      ],
+      "navItems": [
+        {
+          "label": "Cron Jobs",
+          "href": "/cron",
+          "icon": "IconClock",
+          "section": "Automation",
+          "labelKey": "app.nav.cron",
           "sectionKey": "app.nav.automation"
         }
       ]
@@ -3522,6 +3573,115 @@
       "registryDependencies": [
         "vtable"
       ]
+    },
+    {
+      "name": "cron-management",
+      "title": "CronManagement",
+      "excludeFromAll": true,
+      "description": "Cron jobs administration — the jobs list (search, row actions: edit, run now, activate or deactivate, clone, delete) with the run history of every job on a second tab, the job editor (code beside name, description, schedule, timezone, timeout, memory limit and status, with Run Now and Activate or Deactivate) with the job's own run history, the run log dialog, and the job status, run status and trigger badges. Composes the useCronJobs/useCronRuns hooks; the built-in code editor is InputCode, replaceable through the editor's renderCodeEditor slot.",
+      "category": "admin",
+      "files": [
+        {
+          "source": "ui-cron/src/CronJobsManager.tsx",
+          "target": "components/ui/cron-management/cron-jobs-manager.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronJobDetail.tsx",
+          "target": "components/ui/cron-management/cron-job-detail.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronCodeEditor.tsx",
+          "target": "components/ui/cron-management/cron-code-editor.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronIntegerInput.tsx",
+          "target": "components/ui/cron-management/cron-integer-input.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronRunsTable.tsx",
+          "target": "components/ui/cron-management/cron-runs-table.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronRunLogModal.tsx",
+          "target": "components/ui/cron-management/cron-run-log-modal.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronJobStatusBadge.tsx",
+          "target": "components/ui/cron-management/cron-job-status-badge.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronRunStatusBadge.tsx",
+          "target": "components/ui/cron-management/cron-run-status-badge.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronTriggerBadge.tsx",
+          "target": "components/ui/cron-management/cron-trigger-badge.tsx"
+        },
+        {
+          "source": "ui-cron/src/cronFormat.ts",
+          "target": "components/ui/cron-management/cron-format.ts"
+        },
+        {
+          "source": "ui-cron/src/cronTableColumns.ts",
+          "target": "components/ui/cron-management/cron-table-columns.ts"
+        },
+        {
+          "source": "ui-cron/src/CronManagerTable.css",
+          "target": "components/ui/cron-management/cron-manager-table.css"
+        },
+        {
+          "source": "ui-cron/src/useCronList.ts",
+          "target": "components/ui/cron-management/use-cron-list.ts"
+        },
+        {
+          "source": "ui-cron/src/CronPageState.tsx",
+          "target": "components/ui/cron-management/cron-page-state.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronRichText.tsx",
+          "target": "components/ui/cron-management/cron-rich-text.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronSearchInput.tsx",
+          "target": "components/ui/cron-management/cron-search-input.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronListFooter.tsx",
+          "target": "components/ui/cron-management/cron-list-footer.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronListEmptyState.tsx",
+          "target": "components/ui/cron-management/cron-list-empty-state.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronRowActionsMenu.tsx",
+          "target": "components/ui/cron-management/cron-row-actions-menu.tsx"
+        },
+        {
+          "source": "ui-cron/src/CronDeleteConfirmModal.tsx",
+          "target": "components/ui/cron-management/cron-delete-confirm-modal.tsx"
+        },
+        {
+          "source": "ui-cron/src/index.ts",
+          "target": "components/ui/cron-management/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services",
+        "utils"
+      ],
+      "registryDependencies": [
+        "vtable",
+        "input-code"
+      ]
     }
   ],
   "categories": [
@@ -3578,7 +3738,7 @@
     {
       "name": "admin",
       "title": "Administration",
-      "description": "Users, roles, and policies administration components"
+      "description": "Administration modules: users, roles and policies, and cron jobs"
     }
   ]
 }

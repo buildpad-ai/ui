@@ -643,6 +643,83 @@ describe("rewriteBuildpadSpecifiers — import forms and fail-closed", () => {
     expect(out).not.toMatch(/(from|import)\s+['"]@buildpad\//);
   });
 
+  test("ui-cron maps to the cron-management component, subpaths kebab-cased", () => {
+    expect(
+      rewriteBuildpadSpecifiers(
+        [
+          `import { CronJobsManager } from '@buildpad/ui-cron';`,
+          `import type { CronJobDetailProps, CronCodeEditorProps } from "@buildpad/ui-cron";`,
+          `import { CronRunsTable } from '@buildpad/ui-cron/CronRunsTable';`,
+          `import { useCronList } from '@buildpad/ui-cron/useCronList';`,
+          `const Detail = lazy(() => import('@buildpad/ui-cron/CronJobDetail'));`,
+        ].join("\n"),
+        config,
+      ),
+    ).toBe(
+      [
+        `import { CronJobsManager } from '@/components/ui/cron-management';`,
+        `import type { CronJobDetailProps, CronCodeEditorProps } from '@/components/ui/cron-management';`,
+        `import { CronRunsTable } from '@/components/ui/cron-management/cron-runs-table';`,
+        `import { useCronList } from '@/components/ui/cron-management/use-cron-list';`,
+        `const Detail = lazy(() => import('@/components/ui/cron-management/cron-job-detail'));`,
+      ].join("\n"),
+    );
+  });
+
+  test("ui-cron follows a custom components alias", () => {
+    expect(
+      rewriteBuildpadSpecifiers(`export * from '@buildpad/ui-cron';`, {
+        ...config,
+        aliases: { ...config.aliases, components: "~/ui" },
+      }),
+    ).toBe(`export * from '~/ui/cron-management';`);
+  });
+
+  test("a cron-management file gets the installed InputCode and VTable, and sibling paths", () => {
+    const files = [
+      { source: "ui-cron/src/CronJobDetail.tsx", target: "components/ui/cron-management/cron-job-detail.tsx" },
+      { source: "ui-cron/src/CronCodeEditor.tsx", target: "components/ui/cron-management/cron-code-editor.tsx" },
+      { source: "ui-cron/src/cronFormat.ts", target: "components/ui/cron-management/cron-format.ts" },
+      { source: "ui-cron/src/cronTableColumns.ts", target: "components/ui/cron-management/cron-table-columns.ts" },
+      { source: "ui-cron/src/useCronList.ts", target: "components/ui/cron-management/use-cron-list.ts" },
+      { source: "ui-cron/src/CronManagerTable.css", target: "components/ui/cron-management/cron-manager-table.css" },
+    ];
+    const out = transformRegistryFile(
+      [
+        `"use client";`,
+        `import { InputCode } from '@buildpad/ui-interfaces/input-code';`,
+        `import { VTable } from '@buildpad/ui-table';`,
+        `import type { Header, HeaderRaw, Item } from '@buildpad/ui-table';`,
+        `import { useCronJobs, usePermissions } from '@buildpad/hooks';`,
+        `import { CRON_JOBS_COLLECTION, type CronJobRecord } from '@buildpad/types';`,
+        `import { interpolate, type CronTranslations } from '@buildpad/utils';`,
+        `import { CronCodeEditor, type CronCodeEditorProps } from './CronCodeEditor';`,
+        `import { CRON_DATE_TIME_FORMAT } from './cronFormat';`,
+        `import { CRON_JOBS_COLUMNS, cronGridStyle } from './cronTableColumns';`,
+        `import { useCronList } from './useCronList';`,
+        `import './CronManagerTable.css';`,
+        ``,
+      ].join("\n"),
+      files[0],
+      { kind: "component", name: "cron-management", files, sourcePackage: "@buildpad/ui-cron" },
+      config,
+      "3.0.0",
+    );
+    expect(out).toContain("@buildpad-origin @buildpad/ui-cron/cron-management");
+    expect(out).toContain(`import { InputCode } from '@/components/ui/input-code';`);
+    expect(out).toContain(`import { VTable } from '@/components/ui/vtable';`);
+    expect(out).toContain(`import type { Header, HeaderRaw, Item } from '@/components/ui/vtable-types';`);
+    expect(out).toContain(`import { useCronJobs, usePermissions } from '@/lib/buildpad/hooks';`);
+    expect(out).toContain(`import { CRON_JOBS_COLLECTION, type CronJobRecord } from '@/lib/buildpad/types';`);
+    expect(out).toContain(`import { interpolate, type CronTranslations } from '@/lib/buildpad/utils';`);
+    expect(out).toContain(`import { CronCodeEditor, type CronCodeEditorProps } from './cron-code-editor';`);
+    expect(out).toContain(`import { CRON_DATE_TIME_FORMAT } from './cron-format';`);
+    expect(out).toContain(`import { CRON_JOBS_COLUMNS, cronGridStyle } from './cron-table-columns';`);
+    expect(out).toContain(`import { useCronList } from './use-cron-list';`);
+    expect(out).toContain(`import './cron-manager-table.css';`);
+    expect(out).not.toMatch(/(from|import)\s+['"]@buildpad\//);
+  });
+
   test("ui-collections / ui-files / ui-users subpaths are kebab-cased like their targets", () => {
     expect(
       rewriteBuildpadSpecifiers(

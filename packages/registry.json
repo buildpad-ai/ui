@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T10:35:58.632Z",
+  "generatedAt": "2026-10-08T18:30:29.851Z",
   "version": "3.0.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -121,6 +121,10 @@
       "version": "3.0.0",
       "changelogUrl": "ui-workflows/CHANGELOG.md"
     },
+    "@buildpad/ui-cron": {
+      "version": "3.0.0",
+      "changelogUrl": "ui-cron/CHANGELOG.md"
+    },
     "@buildpad/hooks": {
       "version": "3.0.0",
       "changelogUrl": "hooks/CHANGELOG.md"
@@ -213,6 +217,11 @@
           "sourceSha256": "9f00a6b9cfcbfa4927e7caa9442c3b81c31e4f5ea8145e49c6b60c68af9aa1fa"
         },
         {
+          "source": "utils/src/cron.ts",
+          "target": "lib/buildpad/cron.ts",
+          "sourceSha256": "b89b5ddd8b228a5b4b644bb9c07dcf8b1518621b35c0fd3fac9ff15b0cf36229"
+        },
+        {
           "source": "utils/src/i18n/primitives.ts",
           "target": "lib/buildpad/i18n/primitives.ts",
           "sourceSha256": "ed12f01cfca2ffe0f9b7fdd5987617cf776c9425c444e4edfc553ff647db2afd"
@@ -256,6 +265,11 @@
           "source": "utils/src/i18n/namespaces/workflows.ts",
           "target": "lib/buildpad/i18n/namespaces/workflows.ts",
           "sourceSha256": "4461b63423ff1b430af4aff07386bb8e22704b4fe580c0da41719aa0c6b68e69"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/cron.ts",
+          "target": "lib/buildpad/i18n/namespaces/cron.ts",
+          "sourceSha256": "04b4fee0ec14fabe0c70ef7186a8ca0382ee306a0b7684ca09416362b215fa12"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -455,12 +469,12 @@
         {
           "source": "utils/src/i18n/types.ts",
           "target": "lib/buildpad/i18n/types.ts",
-          "sourceSha256": "eb71916377a0dc1fdeed371ad1b176374170afe4bd51b60240243099caf1d535"
+          "sourceSha256": "88af8d32b48aad2443e0c17fca79ff03eedd2af843b45328f1de6d04d4be6e6c"
         },
         {
           "source": "utils/src/i18n/defaults.ts",
           "target": "lib/buildpad/i18n/defaults.ts",
-          "sourceSha256": "7340d129f972f16cc45e81c339cbeda8be47fc10627a780aa1ff4e34a81d6652"
+          "sourceSha256": "ccf40eaf26a7f6d8df73e7ce364243a41db2dd31622199fe9d1e0e75343cd2db"
         },
         {
           "source": "utils/src/i18n/merge.ts",
@@ -485,7 +499,7 @@
         {
           "source": "utils/src/i18n/locales/id.ts",
           "target": "lib/buildpad/i18n/locales/id.ts",
-          "sourceSha256": "ce435d70db578730e9454b8a531e8bfc82a0486c3b3628b2e7d4b599fb24c69b"
+          "sourceSha256": "277358e036036a04118da30bac37b56b1231645f0f09ef6aaae46a547398d050"
         },
         {
           "source": "utils/src/i18n/locales/index.ts",
@@ -495,12 +509,12 @@
         {
           "source": "utils/src/i18n/index.ts",
           "target": "lib/buildpad/i18n/index.ts",
-          "sourceSha256": "d1a8ea3b3e596a54c05a99fdd5dc7da6133c5098566621d84b227de972aa5dc3"
+          "sourceSha256": "54af8e2cc7d45f8a8bfee1be4c443ad4911101b822262cfd0e38636b86928f1b"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "d3342ab918b1fd25fb73b178c54f6f54029665f4e1ccf8fe405e756a358cb42f"
+          "sourceSha256": "3c95943caa79524a296faadf461fc10d44158f3b5699446acf813b82a5543b6c"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -565,9 +579,14 @@
           "sourceSha256": "330fe73b3cfc645f53e6db8a12741a23daf98127e62077ac709b707edf8aa41a"
         },
         {
+          "source": "types/src/cron.ts",
+          "target": "lib/buildpad/types/cron.ts",
+          "sourceSha256": "42e2f79409e084f2b272cfb816a4b400ca8c74de0f474c31f68ae2673e5079b0"
+        },
+        {
           "source": "cli/templates/lib/types/index.ts",
           "target": "lib/buildpad/types/index.ts",
-          "sourceSha256": "714b4d34fafe2b60b5f1f915d7801e8c1460d86179e4d54354cfcfe746e06677"
+          "sourceSha256": "350c9819e7aa9e3ec53d21bec6eebcd4b6f1115fe51b69ebbf5ca29a133d1f25"
         }
       ],
       "sourcePackage": "@buildpad/types",
@@ -856,6 +875,16 @@
           "sourceSha256": "83cd7c79827953a4e3a58ad16c9abcb8e55fa6a826a8162dc4b446609eb68d7d"
         },
         {
+          "source": "hooks/src/useCronJobs.ts",
+          "target": "lib/buildpad/hooks/useCronJobs.ts",
+          "sourceSha256": "744d4ff8e3d3c656a52d36c7863b15dad1593134e6104b06449328f574e4618a"
+        },
+        {
+          "source": "hooks/src/useCronRuns.ts",
+          "target": "lib/buildpad/hooks/useCronRuns.ts",
+          "sourceSha256": "bb61aae802dd5001e64cd4a95d38bad8467d3d3bcd4a3b6c77239562c9750ab4"
+        },
+        {
           "source": "hooks/src/useUrlListParams.ts",
           "target": "lib/buildpad/hooks/useUrlListParams.ts",
           "sourceSha256": "5b5e69610ac34b7c5fc2d6cf27c6d16419e962754fe2bbafe75e22ec4f5d4ed8"
@@ -868,7 +897,7 @@
         {
           "source": "cli/templates/lib/hooks/index.ts",
           "target": "lib/buildpad/hooks/index.ts",
-          "sourceSha256": "6bc796ac99d22e82487b9fcfa72ddbb10c84aa3ff6613a679f451a9daca9ce60"
+          "sourceSha256": "fa230a06ca4f6f3a18aaaa7478d0ec9def182dbcf97ae1999ef69915a7adcdb1"
         }
       ],
       "internalDependencies": [
@@ -913,7 +942,7 @@
         {
           "source": "cli/templates/lib/i18n/dictionaries/en.json",
           "target": "lib/i18n/dictionaries/en.json",
-          "sourceSha256": "bd730e69ca0dfe343f83bd104f87f70ed53973873aa835f8337a644bb2bf0ae1"
+          "sourceSha256": "6950633fb74a5c05ad4852f215ba1b76a138596263ae9b8b497b5cc7064beaeb"
         },
         {
           "source": "cli/templates/lib/i18n/provider.tsx",
@@ -1340,6 +1369,42 @@
           "icon": "IconListCheck",
           "section": "Automation",
           "labelKey": "app.nav.workflowInstances",
+          "sectionKey": "app.nav.automation"
+        }
+      ],
+      "sourcePackage": "@buildpad/cli",
+      "version": "3.0.0",
+      "lastChangedIn": "3.0.0"
+    },
+    "cron-routes": {
+      "name": "cron-routes",
+      "description": "Cron jobs administration module pages — /cron (the jobs list with its row actions, and the run history of every job on a second tab) and /cron/[id] (the job editor: code beside settings, Run Now, Activate or Deactivate, and the job's own run history; /cron/new creates). Installs under the (authenticated) route group so the pages inherit DaaSProviderWrapper and the AuthenticatedShell. Requires the cron-management component.",
+      "files": [
+        {
+          "source": "cli/templates/app/cron/page.tsx",
+          "target": "app/[lang]/(authenticated)/cron/page.tsx",
+          "sourceSha256": "5b3b9af8fbd33e7ce9d736ffaf8e318e1904c593bb972d0e32a2f1aebfd12892"
+        },
+        {
+          "source": "cli/templates/app/cron/[id]/page.tsx",
+          "target": "app/[lang]/(authenticated)/cron/[id]/page.tsx",
+          "sourceSha256": "b480c5d6cec0a5e5a4db3a13af00bc268c8d630a1eb7b40fa0172902469f68ea"
+        }
+      ],
+      "internalDependencies": [
+        "api-routes",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "cron-management"
+      ],
+      "navItems": [
+        {
+          "label": "Cron Jobs",
+          "href": "/cron",
+          "icon": "IconClock",
+          "section": "Automation",
+          "labelKey": "app.nav.cron",
           "sectionKey": "app.nav.automation"
         }
       ],
@@ -4182,6 +4247,139 @@
       "sourcePackage": "@buildpad/ui-workflows",
       "version": "3.0.0",
       "lastChangedIn": "3.0.0"
+    },
+    {
+      "name": "cron-management",
+      "title": "CronManagement",
+      "excludeFromAll": true,
+      "description": "Cron jobs administration — the jobs list (search, row actions: edit, run now, activate or deactivate, clone, delete) with the run history of every job on a second tab, the job editor (code beside name, description, schedule, timezone, timeout, memory limit and status, with Run Now and Activate or Deactivate) with the job's own run history, the run log dialog, and the job status, run status and trigger badges. Composes the useCronJobs/useCronRuns hooks; the built-in code editor is InputCode, replaceable through the editor's renderCodeEditor slot.",
+      "category": "admin",
+      "files": [
+        {
+          "source": "ui-cron/src/CronJobsManager.tsx",
+          "target": "components/ui/cron-management/cron-jobs-manager.tsx",
+          "sourceSha256": "82c8555cc6451fec1215cd3bb382c1130fbd740ea980a02cdb6a70d795bd570c"
+        },
+        {
+          "source": "ui-cron/src/CronJobDetail.tsx",
+          "target": "components/ui/cron-management/cron-job-detail.tsx",
+          "sourceSha256": "e925a2bcb85027c939146aa711145a270fe7cd4656a0b73be4d52c404e4b1e93"
+        },
+        {
+          "source": "ui-cron/src/CronCodeEditor.tsx",
+          "target": "components/ui/cron-management/cron-code-editor.tsx",
+          "sourceSha256": "01b7856c14ff54c3ea2e6234d317090c2b2d35dc2b2179bab34104fc06e7143e"
+        },
+        {
+          "source": "ui-cron/src/CronIntegerInput.tsx",
+          "target": "components/ui/cron-management/cron-integer-input.tsx",
+          "sourceSha256": "ccc8c46e89dd407ebce01b045b6850d3e3bdc7cfd517c49668b075febfaa0226"
+        },
+        {
+          "source": "ui-cron/src/CronRunsTable.tsx",
+          "target": "components/ui/cron-management/cron-runs-table.tsx",
+          "sourceSha256": "f0267fb00de1832b6d1c087bc131707e868b425698213957d6abb4845ea1cec0"
+        },
+        {
+          "source": "ui-cron/src/CronRunLogModal.tsx",
+          "target": "components/ui/cron-management/cron-run-log-modal.tsx",
+          "sourceSha256": "82acbff60b792ca4b1c7d7a7e22872db35fe0b0558d9123bdb192665f63b37d2"
+        },
+        {
+          "source": "ui-cron/src/CronJobStatusBadge.tsx",
+          "target": "components/ui/cron-management/cron-job-status-badge.tsx",
+          "sourceSha256": "a6e3fd2369f0a2e42c049766b2cced0bdfb5770d5d056b7666f9f4be5135aa14"
+        },
+        {
+          "source": "ui-cron/src/CronRunStatusBadge.tsx",
+          "target": "components/ui/cron-management/cron-run-status-badge.tsx",
+          "sourceSha256": "a2eea253089311e3aa5f3d616b229b2c13430a10ddbb937a31513907b261f03f"
+        },
+        {
+          "source": "ui-cron/src/CronTriggerBadge.tsx",
+          "target": "components/ui/cron-management/cron-trigger-badge.tsx",
+          "sourceSha256": "09402a6fb60d73b820ed49e2baeb06a2fd678baa78a7c7fae7486d194b16732b"
+        },
+        {
+          "source": "ui-cron/src/cronFormat.ts",
+          "target": "components/ui/cron-management/cron-format.ts",
+          "sourceSha256": "6fdd9a38f052cfdba09384eaf51e40c446cce5e0fb685faacf80ae46561636ae"
+        },
+        {
+          "source": "ui-cron/src/cronTableColumns.ts",
+          "target": "components/ui/cron-management/cron-table-columns.ts",
+          "sourceSha256": "22fd84e230660019d590490149b48381a9d734580114e3f3cc523dbde154d7c9"
+        },
+        {
+          "source": "ui-cron/src/CronManagerTable.css",
+          "target": "components/ui/cron-management/cron-manager-table.css",
+          "sourceSha256": "d713ab487889cc2237421cca74c3c28cad4094b7cac86fb0a28e2f8299afec8a"
+        },
+        {
+          "source": "ui-cron/src/useCronList.ts",
+          "target": "components/ui/cron-management/use-cron-list.ts",
+          "sourceSha256": "ab49f85c4b005e187aebfea49721f4d1e84f25629bc0509253e56854d24907b8"
+        },
+        {
+          "source": "ui-cron/src/CronPageState.tsx",
+          "target": "components/ui/cron-management/cron-page-state.tsx",
+          "sourceSha256": "1a41f1d64a4bce43e1735646c23ab1c5da5e97bb58c4450448ad8e2a07e7a97d"
+        },
+        {
+          "source": "ui-cron/src/CronRichText.tsx",
+          "target": "components/ui/cron-management/cron-rich-text.tsx",
+          "sourceSha256": "b185cdd23b0999bee936b480ae2fe5017140a2687f1fb4080029b9cc47a569b3"
+        },
+        {
+          "source": "ui-cron/src/CronSearchInput.tsx",
+          "target": "components/ui/cron-management/cron-search-input.tsx",
+          "sourceSha256": "7567d8e174aa1351f4ca91ad3b54667567ef03ddd7146a9a22b59b84b48d89a4"
+        },
+        {
+          "source": "ui-cron/src/CronListFooter.tsx",
+          "target": "components/ui/cron-management/cron-list-footer.tsx",
+          "sourceSha256": "12c8ec66ec7e6a2fa9e426301277a313f73316bb0706b54e44c0fd2eace9a77f"
+        },
+        {
+          "source": "ui-cron/src/CronListEmptyState.tsx",
+          "target": "components/ui/cron-management/cron-list-empty-state.tsx",
+          "sourceSha256": "885ed5e1e1c178301050de5a987ea1634ac020f6f9417aca2e7196ab46bc2668"
+        },
+        {
+          "source": "ui-cron/src/CronRowActionsMenu.tsx",
+          "target": "components/ui/cron-management/cron-row-actions-menu.tsx",
+          "sourceSha256": "5ad295613d8ae2c58cd10e11ac087e9bb70951f97394c58b700f4d36b931d767"
+        },
+        {
+          "source": "ui-cron/src/CronDeleteConfirmModal.tsx",
+          "target": "components/ui/cron-management/cron-delete-confirm-modal.tsx",
+          "sourceSha256": "3b84c6a5e035e3229893c950d4100fa17a7869b96eb7f255aad6921956710bf3"
+        },
+        {
+          "source": "ui-cron/src/index.ts",
+          "target": "components/ui/cron-management/index.ts",
+          "sourceSha256": "61ec003fc197e02611e8279dfc86ec5c46206579bbb831c6ff0cf552248e3b53"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@mantine/notifications",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "types",
+        "hooks",
+        "services",
+        "utils"
+      ],
+      "registryDependencies": [
+        "vtable",
+        "input-code"
+      ],
+      "sourcePackage": "@buildpad/ui-cron",
+      "version": "3.0.0",
+      "lastChangedIn": "3.0.0"
     }
   ],
   "categories": [
@@ -4238,7 +4436,7 @@
     {
       "name": "admin",
       "title": "Administration",
-      "description": "Users, roles, and policies administration components"
+      "description": "Administration modules: users, roles and policies, and cron jobs"
     }
   ]
 }

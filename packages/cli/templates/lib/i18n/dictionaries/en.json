@@ -28,6 +28,7 @@
       "workflows": "Workflows",
       "workflowAssignments": "Workflow Assignments",
       "workflowInstances": "Workflow Instances",
+      "cron": "Cron Jobs",
       "mainMenu": "Main Menu",
       "administration": "Administration",
       "automation": "Automation"

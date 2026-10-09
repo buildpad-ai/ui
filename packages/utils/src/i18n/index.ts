@@ -14,6 +14,7 @@ export type {
   FilesTranslations,
   UsersTranslations,
   WorkflowsTranslations,
+  CronTranslations,
   FormsTranslations,
   HooksTranslations,
   DateTimeTranslations,
