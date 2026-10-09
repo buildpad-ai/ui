@@ -323,6 +323,14 @@ the editor. The field lists come from `app/api/fields/*` and
   (admins bypass): the Add buttons, row menus, and Save/Delete buttons hide
   when the current user lacks the corresponding permission on `daas_users`,
   `daas_roles`, or `daas_policies`.
+- Until the permissions are known, no write control is drawn and the forms
+  take no edit: no Add button, no row menu, no selection column, a row that
+  does not open its record, no Save or Delete button, and a covered form. The
+  controls appear when the answer is in, so a user without a right does not
+  see its button first. A `new` route does not open its form before then.
+  Reading does not wait: the lists and the records load at once. A later
+  refresh of the permissions (a renewed token, another scope) keeps the
+  controls as they were until its answer is in.
 - Bulk selection follows the same gates: the checkbox column only renders with
   `update` or `delete` permission, and within the toolbar "Update roles…" /
   "Set status" are update-gated while "Delete" is delete-gated. Column sorting

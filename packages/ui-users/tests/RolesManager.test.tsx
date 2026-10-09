@@ -148,4 +148,77 @@ describe('RolesManager', () => {
     expect(screen.getByTestId('users-delete-confirm-modal')).toBeInTheDocument();
     show.mockRestore();
   });
+
+  describe('while the permissions are not known', () => {
+    const rerender = (
+      view: ReturnType<typeof renderManager>,
+      props: Partial<React.ComponentProps<typeof RolesManager>>,
+    ) =>
+      view.rerender(
+        <MantineProvider>
+          <RolesManager {...props} />
+        </MantineProvider>,
+      );
+
+    it('draws no write control while permissions load, and the allowed ones once they are known', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      const onClick = vi.fn();
+      const props = { onRoleClick: onClick, onCreateRole: vi.fn() };
+      const view = renderManager(props);
+      await waitFor(() => expect(screen.getByText('Administrator')).toBeInTheDocument());
+
+      expect(screen.queryByTestId('roles-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+      // A row opens the editor for a user who may update: not before that is known
+      fireEvent.click(screen.getByText('Administrator'));
+      expect(onClick).not.toHaveBeenCalled();
+      // Reading does not wait: the rows are there, and counted
+      expect(screen.getByText(`${mockRoles.length} roles`)).toBeInTheDocument();
+
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: false });
+      rerender(view, props);
+      expect(await screen.findByTestId('roles-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('Row actions')).toHaveLength(mockRoles.length);
+      fireEvent.click(screen.getByText('Administrator'));
+      expect(onClick).toHaveBeenCalledWith(mockRoles[0]);
+      // The list was loaded once: the permissions arriving do not fetch it again
+      expect(fetchRolesMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never shown a write control, not even while permissions load', async () => {
+      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
+      const onClick = vi.fn();
+      const props = { onRoleClick: onClick, onCreateRole: vi.fn() };
+      const view = renderManager(props);
+      await waitFor(() => expect(screen.getByText('Administrator')).toBeInTheDocument());
+      expect(screen.queryByTestId('roles-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+
+      usePermissionsMock.mockReturnValue({
+        canPerform: (_collection: string, action: string) => action === 'read',
+        isAdmin: false,
+        loading: false,
+      });
+      rerender(view, props);
+      expect(screen.getByText('Administrator')).toBeInTheDocument();
+      expect(screen.queryByTestId('roles-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByText('Administrator'));
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it('a later refresh of the permissions does not take the controls away meanwhile', async () => {
+      const props = { onRoleClick: vi.fn(), onCreateRole: vi.fn() };
+      const view = renderManager(props);
+      await waitFor(() => expect(screen.getByText('Administrator')).toBeInTheDocument());
+      expect(screen.getByTestId('roles-manager-add-btn')).toBeInTheDocument();
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      rerender(view, props);
+      expect(screen.getByTestId('roles-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('Row actions')).toHaveLength(mockRoles.length);
+    });
+  });
 });

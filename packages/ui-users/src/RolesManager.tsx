@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Box,
@@ -71,6 +71,10 @@ export interface RolesManagerProps {
  *
  * No column sorting: the roles API ignores the `sort` param (hardcodes
  * name-asc), so a sort UI here would lie across pages (Req 20.6).
+ *
+ * Add Role, the row menus and the row click are drawn once the permissions
+ * are known; they do not flash for a user who has none of them. The list
+ * itself does not wait.
  */
 /**
  * Client-only gate. The body seeds its state from the URL in `useState`
@@ -111,9 +115,17 @@ const RolesManagerBody: React.FC<RolesManagerProps> = ({
   const t = useBuildpadTranslations((d) => d.users, translations);
   const { formatCount } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown Add Role, the row menus and a row that opens the editor for the
+  // length of that request. Known once is known: a later refresh (a renewed
+  // token, another scope) answers from what was known until its own answer is
+  // in, so the controls do not blink.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'delete'));
 
   const headers = useMemo<HeaderRaw[]>(
     () => [

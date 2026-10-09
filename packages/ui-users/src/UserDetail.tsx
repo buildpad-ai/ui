@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Button,
+  Fieldset,
   Grid,
   Group,
   LoadingOverlay,
@@ -154,6 +155,11 @@ export interface UserDetailProps {
  * `app/users/[id]/page.tsx` — schema-driven `DynamicForm` replaced with
  * explicit fields so the component is self-contained after a CLI copy, and
  * routing replaced with `onBack`/`onDeleted`/`onSaved` props.
+ *
+ * Until the permissions are known nothing that writes is offered: the form is
+ * covered and takes no edit, and no Save or Delete button is drawn. A new
+ * record's form is not opened to a user who may not create before the answer
+ * is in. The record itself loads at once.
  */
 export const UserDetail: React.FC<UserDetailProps> = ({
   id,
@@ -174,9 +180,17 @@ export const UserDetail: React.FC<UserDetailProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatDateTime, formatCount } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'delete');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save, Delete or an open form for the
+  // length of that request. Known once is known: a later refresh (a renewed
+  // token, another scope) answers from what was known until its own answer is
+  // in, so the form does not close under a user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'delete'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
 
   const statusOptions = useMemo<Array<{ value: UserStatus; label: string }>>(
@@ -394,134 +408,143 @@ export const UserDetail: React.FC<UserDetailProps> = ({
 
             <Tabs.Panel value="basic" pt="md">
               <Paper shadow="xs" p="md" withBorder pos="relative">
-                <LoadingOverlay visible={loading} />
+                <LoadingOverlay visible={loading || !permsKnown} />
 
-                <Stack gap="md">
-                  <Group grow>
+                {/* Takes no edit until the permissions are known (the overlay only covers it) */}
+                <Fieldset
+                  variant="unstyled"
+                  disabled={!permsKnown}
+                  m={0}
+                  miw={0}
+                  data-testid="user-detail-form"
+                >
+                  <Stack gap="md">
+                    <Group grow>
+                      <TextInput
+                        label={t.userDetail.fields.firstName}
+                        placeholder={t.userDetail.fields.firstNamePlaceholder}
+                        value={values.first_name}
+                        onChange={(e) => setField('first_name', e.currentTarget.value)}
+                        data-testid="user-detail-first-name"
+                      />
+                      <TextInput
+                        label={t.userDetail.fields.lastName}
+                        placeholder={t.userDetail.fields.lastNamePlaceholder}
+                        value={values.last_name}
+                        onChange={(e) => setField('last_name', e.currentTarget.value)}
+                        data-testid="user-detail-last-name"
+                      />
+                    </Group>
+
                     <TextInput
-                      label={t.userDetail.fields.firstName}
-                      placeholder={t.userDetail.fields.firstNamePlaceholder}
-                      value={values.first_name}
-                      onChange={(e) => setField('first_name', e.currentTarget.value)}
-                      data-testid="user-detail-first-name"
+                      label={t.userDetail.fields.email}
+                      placeholder={t.userDetail.fields.emailPlaceholder}
+                      required
+                      type="email"
+                      value={values.email}
+                      onChange={(e) => setField('email', e.currentTarget.value)}
+                      error={fieldErrors.email}
+                      data-testid="user-detail-email"
                     />
-                    <TextInput
-                      label={t.userDetail.fields.lastName}
-                      placeholder={t.userDetail.fields.lastNamePlaceholder}
-                      value={values.last_name}
-                      onChange={(e) => setField('last_name', e.currentTarget.value)}
-                      data-testid="user-detail-last-name"
+
+                    <PasswordInput
+                      label={t.userDetail.fields.password}
+                      placeholder={
+                        isNew
+                          ? t.userDetail.fields.passwordPlaceholderNew
+                          : t.userDetail.fields.passwordPlaceholderEdit
+                      }
+                      required={isNew}
+                      value={values.password}
+                      onChange={(e) => setField('password', e.currentTarget.value)}
+                      error={fieldErrors.password}
+                      autoComplete="new-password"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      data-testid="user-detail-password"
                     />
-                  </Group>
 
-                  <TextInput
-                    label={t.userDetail.fields.email}
-                    placeholder={t.userDetail.fields.emailPlaceholder}
-                    required
-                    type="email"
-                    value={values.email}
-                    onChange={(e) => setField('email', e.currentTarget.value)}
-                    error={fieldErrors.email}
-                    data-testid="user-detail-email"
-                  />
-
-                  <PasswordInput
-                    label={t.userDetail.fields.password}
-                    placeholder={
-                      isNew
-                        ? t.userDetail.fields.passwordPlaceholderNew
-                        : t.userDetail.fields.passwordPlaceholderEdit
-                    }
-                    required={isNew}
-                    value={values.password}
-                    onChange={(e) => setField('password', e.currentTarget.value)}
-                    error={fieldErrors.password}
-                    autoComplete="new-password"
-                    data-lpignore="true"
-                    data-1p-ignore="true"
-                    data-testid="user-detail-password"
-                  />
-
-                  <MultiSelect
-                    label={t.userDetail.fields.roles}
-                    placeholder={values.roles.length === 0 ? t.userDetail.fields.rolesPlaceholder : undefined}
-                    data={roleOptions}
-                    value={values.roles}
-                    onChange={(roles) => setField('roles', roles)}
-                    searchable
-                    clearable
-                    data-testid="user-detail-roles"
-                  />
-
-                  <Group grow>
-                    <Select
-                      label={t.userDetail.fields.status}
-                      data={statusOptions}
-                      value={values.status}
-                      onChange={(status) => setField('status', (status as UserStatus) ?? 'active')}
-                      allowDeselect={false}
-                      data-testid="user-detail-status"
-                    />
-                    <TextInput
-                      label={t.userDetail.fields.title}
-                      placeholder={t.userDetail.fields.titlePlaceholder}
-                      value={values.title}
-                      onChange={(e) => setField('title', e.currentTarget.value)}
-                    />
-                  </Group>
-
-                  <Textarea
-                    label={t.fields.description}
-                    placeholder={t.userDetail.fields.descriptionPlaceholder}
-                    value={values.description}
-                    onChange={(e) => setField('description', e.currentTarget.value)}
-                    rows={3}
-                  />
-
-                  <Group grow>
-                    <TextInput
-                      label={t.userDetail.fields.location}
-                      placeholder={t.userDetail.fields.locationPlaceholder}
-                      value={values.location}
-                      onChange={(e) => setField('location', e.currentTarget.value)}
-                    />
-                    <TagsInput
-                      label={t.userDetail.fields.tags}
-                      placeholder={t.userDetail.fields.tagsPlaceholder}
-                      value={values.tags}
-                      onChange={(tags) => setField('tags', tags)}
-                    />
-                  </Group>
-
-                  <Group grow>
-                    <Select
-                      label={t.userDetail.fields.language}
-                      placeholder={t.userDetail.fields.languagePlaceholder}
-                      data={LANGUAGE_OPTIONS}
-                      value={values.language}
-                      onChange={(language) => setField('language', language)}
+                    <MultiSelect
+                      label={t.userDetail.fields.roles}
+                      placeholder={values.roles.length === 0 ? t.userDetail.fields.rolesPlaceholder : undefined}
+                      data={roleOptions}
+                      value={values.roles}
+                      onChange={(roles) => setField('roles', roles)}
                       searchable
                       clearable
+                      data-testid="user-detail-roles"
                     />
-                    <Select
-                      label={t.userDetail.fields.theme}
-                      placeholder={t.userDetail.fields.themePlaceholder}
-                      data={themeOptions}
-                      value={values.theme}
-                      onChange={(theme) => setField('theme', theme)}
-                      clearable
-                    />
-                  </Group>
 
-                  <TokenInput
-                    label={t.userDetail.fields.token}
-                    description={t.userDetail.fields.tokenDescription}
-                    value={values.token || null}
-                    onChange={(token) => setField('token', token ?? '')}
-                    data-testid="user-detail-token"
-                    translations={translations}
-                  />
-                </Stack>
+                    <Group grow>
+                      <Select
+                        label={t.userDetail.fields.status}
+                        data={statusOptions}
+                        value={values.status}
+                        onChange={(status) => setField('status', (status as UserStatus) ?? 'active')}
+                        allowDeselect={false}
+                        data-testid="user-detail-status"
+                      />
+                      <TextInput
+                        label={t.userDetail.fields.title}
+                        placeholder={t.userDetail.fields.titlePlaceholder}
+                        value={values.title}
+                        onChange={(e) => setField('title', e.currentTarget.value)}
+                      />
+                    </Group>
+
+                    <Textarea
+                      label={t.fields.description}
+                      placeholder={t.userDetail.fields.descriptionPlaceholder}
+                      value={values.description}
+                      onChange={(e) => setField('description', e.currentTarget.value)}
+                      rows={3}
+                    />
+
+                    <Group grow>
+                      <TextInput
+                        label={t.userDetail.fields.location}
+                        placeholder={t.userDetail.fields.locationPlaceholder}
+                        value={values.location}
+                        onChange={(e) => setField('location', e.currentTarget.value)}
+                      />
+                      <TagsInput
+                        label={t.userDetail.fields.tags}
+                        placeholder={t.userDetail.fields.tagsPlaceholder}
+                        value={values.tags}
+                        onChange={(tags) => setField('tags', tags)}
+                      />
+                    </Group>
+
+                    <Group grow>
+                      <Select
+                        label={t.userDetail.fields.language}
+                        placeholder={t.userDetail.fields.languagePlaceholder}
+                        data={LANGUAGE_OPTIONS}
+                        value={values.language}
+                        onChange={(language) => setField('language', language)}
+                        searchable
+                        clearable
+                      />
+                      <Select
+                        label={t.userDetail.fields.theme}
+                        placeholder={t.userDetail.fields.themePlaceholder}
+                        data={themeOptions}
+                        value={values.theme}
+                        onChange={(theme) => setField('theme', theme)}
+                        clearable
+                      />
+                    </Group>
+
+                    <TokenInput
+                      label={t.userDetail.fields.token}
+                      description={t.userDetail.fields.tokenDescription}
+                      value={values.token || null}
+                      onChange={(token) => setField('token', token ?? '')}
+                      data-testid="user-detail-token"
+                      translations={translations}
+                    />
+                  </Stack>
+                </Fieldset>
               </Paper>
             </Tabs.Panel>
 

@@ -7,6 +7,7 @@ import {
   Badge,
   Button,
   Code,
+  Fieldset,
   Grid,
   Group,
   LoadingOverlay,
@@ -98,6 +99,11 @@ export interface RoleDetailProps {
  * menu (Save & Stay / & Quit / & Add New / Discard), an unsaved-changes
  * guard on Cancel, and an info sidebar. Ported from the buildpad-daas
  * `app/roles/[id]/page.tsx` with routing replaced by callback props.
+ *
+ * Until the permissions are known nothing that writes is offered: the form is
+ * covered and takes no edit, and no Save or Delete button is drawn. A new
+ * record's form is not opened to a user who may not create before the answer
+ * is in. The record itself loads at once.
  */
 export const RoleDetail: React.FC<RoleDetailProps> = ({
   id,
@@ -120,9 +126,17 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatDateTime, formatCount } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(rolesCollection, 'delete');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save, Delete or an open form for the
+  // length of that request. Known once is known: a later refresh (a renewed
+  // token, another scope) answers from what was known until its own answer is
+  // in, so the form does not close under a user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(rolesCollection, 'delete'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
 
   const [role, setRole] = useState<Role | null>(null);
@@ -412,141 +426,150 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({
 
             <Tabs.Panel value="basic" pt="md">
               <Paper shadow="xs" p="md" withBorder pos="relative">
-                <LoadingOverlay visible={loading} />
+                <LoadingOverlay visible={loading || !permsKnown} />
 
-                <Stack gap="md">
-                  <TextInput
-                    label={t.fields.name}
-                    placeholder={t.roleDetail.fields.namePlaceholder}
-                    required
-                    value={values.name}
-                    onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
-                    data-testid="role-detail-name"
-                  />
-
-                  <SelectIcon
-                    label={t.fields.icon}
-                    value={values.icon}
-                    onChange={(icon) =>
-                      setValues((prev) => ({ ...prev, icon: icon || 'supervised_user_circle' }))
-                    }
-                    placeholder="supervised_user_circle"
-                  />
-
-                  <Textarea
-                    label={t.fields.description}
-                    placeholder={t.roleDetail.fields.descriptionPlaceholder}
-                    value={values.description}
-                    onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
-                    rows={4}
-                  />
-
-                  <Select
-                    label={t.roleDetail.fields.parentRole}
-                    placeholder={t.roleDetail.fields.parentRolePlaceholder}
-                    data={parentRoleOptions(allRoles, isNew ? null : id)}
-                    value={values.parent}
-                    onChange={(parent) => setValues((prev) => ({ ...prev, parent }))}
-                    clearable
-                    searchable
-                    data-testid="role-detail-parent"
-                  />
-
-                  <Stack gap="xs">
-                    <Switch
-                      label={t.roleDetail.scope.label}
-                      description={t.roleDetail.scope.description}
-                      checked={values.scope_config !== null}
-                      onChange={(e) => {
-                        setScopeConfig(
-                          e.currentTarget.checked
-                            ? { allowed_scopes: [], validation_message: '' }
-                            : null
-                        );
-                      }}
-                      data-testid="role-detail-scope-switch"
+                {/* Takes no edit until the permissions are known (the overlay only covers it) */}
+                <Fieldset
+                  variant="unstyled"
+                  disabled={!permsKnown}
+                  m={0}
+                  miw={0}
+                  data-testid="role-detail-form"
+                >
+                  <Stack gap="md">
+                    <TextInput
+                      label={t.fields.name}
+                      placeholder={t.roleDetail.fields.namePlaceholder}
+                      required
+                      value={values.name}
+                      onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
+                      data-testid="role-detail-name"
                     />
 
-                    {values.scope_config !== null && (
-                      <Paper p="sm" withBorder>
-                        <Stack gap="sm">
-                          <Text size="sm" fw={500}>
-                            {t.roleDetail.scope.patternsTitle}
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            {t.roleDetail.scope.patternsHint}
-                          </Text>
+                    <SelectIcon
+                      label={t.fields.icon}
+                      value={values.icon}
+                      onChange={(icon) =>
+                        setValues((prev) => ({ ...prev, icon: icon || 'supervised_user_circle' }))
+                      }
+                      placeholder="supervised_user_circle"
+                    />
 
-                          {scopePatterns.map((pattern, idx) => (
-                            <Group key={patternKeysRef.current[idx]} gap="xs">
-                              <Code style={{ flex: 0, minWidth: 28, textAlign: 'center' }}>
-                                {idx + 1}
-                              </Code>
-                              <TextInput
-                                style={{ flex: 1 }}
-                                placeholder={t.roleDetail.scope.patternPlaceholder}
-                                value={pattern}
-                                onChange={(e) => {
-                                  const updated = [...scopePatterns];
-                                  updated[idx] = e.target.value;
-                                  setScopeConfig({ ...values.scope_config!, allowed_scopes: updated });
-                                }}
-                                error={
-                                  pattern && !isValidRegex(pattern)
-                                    ? t.roleDetail.scope.invalidRegex
-                                    : undefined
-                                }
-                                data-testid={`role-detail-scope-pattern-${idx}`}
-                              />
-                              <ActionIcon
-                                variant="subtle"
-                                color="red"
-                                onClick={() => {
-                                  const updated = scopePatterns.filter((_, i) => i !== idx);
-                                  patternKeysRef.current = patternKeysRef.current.filter((_, i) => i !== idx);
-                                  setScopeConfig({ ...values.scope_config!, allowed_scopes: updated });
-                                }}
-                                aria-label={interpolate(t.roleDetail.scope.removePatternAriaLabel, {
-                                  index: idx + 1,
-                                })}
-                              >
-                                <IconX size={16} />
-                              </ActionIcon>
-                            </Group>
-                          ))}
+                    <Textarea
+                      label={t.fields.description}
+                      placeholder={t.roleDetail.fields.descriptionPlaceholder}
+                      value={values.description}
+                      onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
+                      rows={4}
+                    />
 
-                          <Button
-                            variant="light"
-                            size="xs"
-                            leftSection={<IconPlus size={14} />}
-                            onClick={() =>
-                              setScopeConfig({
-                                ...values.scope_config!,
-                                allowed_scopes: [...scopePatterns, ''],
-                              })
-                            }
-                            data-testid="role-detail-scope-add-pattern"
-                          >
-                            {t.roleDetail.scope.addPattern}
-                          </Button>
+                    <Select
+                      label={t.roleDetail.fields.parentRole}
+                      placeholder={t.roleDetail.fields.parentRolePlaceholder}
+                      data={parentRoleOptions(allRoles, isNew ? null : id)}
+                      value={values.parent}
+                      onChange={(parent) => setValues((prev) => ({ ...prev, parent }))}
+                      clearable
+                      searchable
+                      data-testid="role-detail-parent"
+                    />
 
-                          <TextInput
-                            label={t.roleDetail.scope.validationMessage.label}
-                            description={t.roleDetail.scope.validationMessage.description}
-                            placeholder={t.roleDetail.scope.validationMessage.placeholder}
-                            value={values.scope_config?.validation_message || ''}
-                            onChange={(e) =>
-                              setScopeConfig({
-                                ...values.scope_config!,
-                                validation_message: e.target.value,
-                              })
-                            }
-                          />
-                        </Stack>
-                      </Paper>
-                    )}
+                    <Stack gap="xs">
+                      <Switch
+                        label={t.roleDetail.scope.label}
+                        description={t.roleDetail.scope.description}
+                        checked={values.scope_config !== null}
+                        onChange={(e) => {
+                          setScopeConfig(
+                            e.currentTarget.checked
+                              ? { allowed_scopes: [], validation_message: '' }
+                              : null
+                          );
+                        }}
+                        data-testid="role-detail-scope-switch"
+                      />
+
+                      {values.scope_config !== null && (
+                        <Paper p="sm" withBorder>
+                          <Stack gap="sm">
+                            <Text size="sm" fw={500}>
+                              {t.roleDetail.scope.patternsTitle}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              {t.roleDetail.scope.patternsHint}
+                            </Text>
+
+                            {scopePatterns.map((pattern, idx) => (
+                              <Group key={patternKeysRef.current[idx]} gap="xs">
+                                <Code style={{ flex: 0, minWidth: 28, textAlign: 'center' }}>
+                                  {idx + 1}
+                                </Code>
+                                <TextInput
+                                  style={{ flex: 1 }}
+                                  placeholder={t.roleDetail.scope.patternPlaceholder}
+                                  value={pattern}
+                                  onChange={(e) => {
+                                    const updated = [...scopePatterns];
+                                    updated[idx] = e.target.value;
+                                    setScopeConfig({ ...values.scope_config!, allowed_scopes: updated });
+                                  }}
+                                  error={
+                                    pattern && !isValidRegex(pattern)
+                                      ? t.roleDetail.scope.invalidRegex
+                                      : undefined
+                                  }
+                                  data-testid={`role-detail-scope-pattern-${idx}`}
+                                />
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="red"
+                                  onClick={() => {
+                                    const updated = scopePatterns.filter((_, i) => i !== idx);
+                                    patternKeysRef.current = patternKeysRef.current.filter((_, i) => i !== idx);
+                                    setScopeConfig({ ...values.scope_config!, allowed_scopes: updated });
+                                  }}
+                                  aria-label={interpolate(t.roleDetail.scope.removePatternAriaLabel, {
+                                    index: idx + 1,
+                                  })}
+                                >
+                                  <IconX size={16} />
+                                </ActionIcon>
+                              </Group>
+                            ))}
+
+                            <Button
+                              variant="light"
+                              size="xs"
+                              leftSection={<IconPlus size={14} />}
+                              onClick={() =>
+                                setScopeConfig({
+                                  ...values.scope_config!,
+                                  allowed_scopes: [...scopePatterns, ''],
+                                })
+                              }
+                              data-testid="role-detail-scope-add-pattern"
+                            >
+                              {t.roleDetail.scope.addPattern}
+                            </Button>
+
+                            <TextInput
+                              label={t.roleDetail.scope.validationMessage.label}
+                              description={t.roleDetail.scope.validationMessage.description}
+                              placeholder={t.roleDetail.scope.validationMessage.placeholder}
+                              value={values.scope_config?.validation_message || ''}
+                              onChange={(e) =>
+                                setScopeConfig({
+                                  ...values.scope_config!,
+                                  validation_message: e.target.value,
+                                })
+                              }
+                            />
+                          </Stack>
+                        </Paper>
+                      )}
+                    </Stack>
                   </Stack>
-                </Stack>
+                </Fieldset>
               </Paper>
             </Tabs.Panel>
 

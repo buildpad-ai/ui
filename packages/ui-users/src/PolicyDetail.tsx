@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Button,
+  Fieldset,
   Grid,
   Group,
   LoadingOverlay,
@@ -131,6 +132,11 @@ export interface PolicyDetailProps {
  * buildpad-daas `app/policies/[id]/page.tsx` with the `PermissionsTable`
  * family replaced by `SystemPermissions` and routing replaced by callback
  * props.
+ *
+ * Until the permissions are known nothing that writes is offered: the form is
+ * covered and takes no edit (nor do the matrix and the module-level grants), and no Save or Delete button is drawn. A new
+ * record's form is not opened to a user who may not create before the answer
+ * is in. The record itself loads at once.
  */
 export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   id,
@@ -149,9 +155,17 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatDateTime, formatCount } = useBuildpadI18n();
 
-  const createAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(policiesCollection, 'delete');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save, Delete or an open form for the
+  // length of that request. Known once is known: a later refresh (a renewed
+  // token, another scope) answers from what was known until its own answer is
+  // in, so the form does not close under a user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(policiesCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(policiesCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(policiesCollection, 'delete'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
 
   const [policy, setPolicy] = useState<Policy | null>(null);
@@ -325,65 +339,74 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
       <Grid>
         <Grid.Col span={{ base: 12, md: 8 }}>
           <Paper shadow="xs" p="md" withBorder pos="relative">
-            <LoadingOverlay visible={loading} />
+            <LoadingOverlay visible={loading || !permsKnown} />
 
-            <Stack gap="md">
-              <Title order={4}>{t.basicInformation}</Title>
+            {/* Takes no edit until the permissions are known (the overlay only covers it) */}
+            <Fieldset
+              variant="unstyled"
+              disabled={!permsKnown}
+              m={0}
+              miw={0}
+              data-testid="policy-detail-form"
+            >
+              <Stack gap="md">
+                <Title order={4}>{t.basicInformation}</Title>
 
-              <TextInput
-                label={t.fields.name}
-                placeholder={t.policyDetail.fields.namePlaceholder}
-                required
-                value={values.name}
-                onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
-                data-testid="policy-detail-name"
-              />
+                <TextInput
+                  label={t.fields.name}
+                  placeholder={t.policyDetail.fields.namePlaceholder}
+                  required
+                  value={values.name}
+                  onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
+                  data-testid="policy-detail-name"
+                />
 
-              <SelectIcon
-                label={t.fields.icon}
-                value={values.icon}
-                onChange={(icon) => setValues((prev) => ({ ...prev, icon: icon || 'security' }))}
-                placeholder="security"
-              />
+                <SelectIcon
+                  label={t.fields.icon}
+                  value={values.icon}
+                  onChange={(icon) => setValues((prev) => ({ ...prev, icon: icon || 'security' }))}
+                  placeholder="security"
+                />
 
-              <Textarea
-                label={t.fields.description}
-                placeholder={t.policyDetail.fields.descriptionPlaceholder}
-                value={values.description}
-                onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
-                rows={4}
-              />
+                <Textarea
+                  label={t.fields.description}
+                  placeholder={t.policyDetail.fields.descriptionPlaceholder}
+                  value={values.description}
+                  onChange={(e) => setValues((prev) => ({ ...prev, description: e.target.value }))}
+                  rows={4}
+                />
 
-              <Title order={4} mt="md">
-                {t.policyDetail.accessControl}
-              </Title>
+                <Title order={4} mt="md">
+                  {t.policyDetail.accessControl}
+                </Title>
 
-              <Switch
-                label={t.policyDetail.appAccess.label}
-                description={t.policyDetail.appAccess.description}
-                checked={values.app_access}
-                onChange={(e) => setValues((prev) => ({ ...prev, app_access: e.currentTarget.checked }))}
-                data-testid="policy-detail-app-access"
-              />
+                <Switch
+                  label={t.policyDetail.appAccess.label}
+                  description={t.policyDetail.appAccess.description}
+                  checked={values.app_access}
+                  onChange={(e) => setValues((prev) => ({ ...prev, app_access: e.currentTarget.checked }))}
+                  data-testid="policy-detail-app-access"
+                />
 
-              <Switch
-                label={t.policyDetail.adminAccess.label}
-                description={t.policyDetail.adminAccess.description}
-                checked={values.admin_access}
-                onChange={(e) => setValues((prev) => ({ ...prev, admin_access: e.currentTarget.checked }))}
-                data-testid="policy-detail-admin-access"
-              />
+                <Switch
+                  label={t.policyDetail.adminAccess.label}
+                  description={t.policyDetail.adminAccess.description}
+                  checked={values.admin_access}
+                  onChange={(e) => setValues((prev) => ({ ...prev, admin_access: e.currentTarget.checked }))}
+                  data-testid="policy-detail-admin-access"
+                />
 
-              <Switch
-                label={t.policyDetail.delegateAccess.label}
-                description={t.policyDetail.delegateAccess.description}
-                checked={values.delegate_access}
-                onChange={(e) =>
-                  setValues((prev) => ({ ...prev, delegate_access: e.currentTarget.checked }))
-                }
-                data-testid="policy-detail-delegate-access"
-              />
-            </Stack>
+                <Switch
+                  label={t.policyDetail.delegateAccess.label}
+                  description={t.policyDetail.delegateAccess.description}
+                  checked={values.delegate_access}
+                  onChange={(e) =>
+                    setValues((prev) => ({ ...prev, delegate_access: e.currentTarget.checked }))
+                  }
+                  data-testid="policy-detail-delegate-access"
+                />
+              </Stack>
+            </Fieldset>
           </Paper>
 
           {/*
@@ -410,6 +433,7 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
                     primaryKey={id}
                     value={alterations}
                     onChange={setAlterations}
+                    disabled={!permsKnown}
                     appAccess={values.app_access}
                     adminAccess={values.admin_access}
                     label={t.policyDetail.permissions.label}
@@ -423,14 +447,16 @@ export const PolicyDetail: React.FC<PolicyDetailProps> = ({
                     <Text size="sm" c="dimmed">
                       {t.policyDetail.moduleLevelIntro}
                     </Text>
-                    <ModuleAccessPanel
-                      value={values.module_access}
-                      onChange={(module_access) =>
-                        setValues((prev) => ({ ...prev, module_access }))
-                      }
-                      adminAccess={values.admin_access}
-                      translations={translations}
-                    />
+                    <Fieldset variant="unstyled" disabled={!permsKnown} m={0} miw={0}>
+                      <ModuleAccessPanel
+                        value={values.module_access}
+                        onChange={(module_access) =>
+                          setValues((prev) => ({ ...prev, module_access }))
+                        }
+                        adminAccess={values.admin_access}
+                        translations={translations}
+                      />
+                    </Fieldset>
                   </Stack>
                 </Tabs.Panel>
               </Tabs>

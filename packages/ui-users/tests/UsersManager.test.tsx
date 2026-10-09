@@ -288,4 +288,88 @@ describe('UsersManager', () => {
     );
     show.mockRestore();
   });
+
+  describe('while the permissions are not known', () => {
+    const rerender = (
+      view: ReturnType<typeof renderManager>,
+      props: Partial<React.ComponentProps<typeof UsersManager>>,
+    ) =>
+      view.rerender(
+        <MantineProvider>
+          <UsersManager {...props} />
+        </MantineProvider>,
+      );
+
+    it('draws no write control while permissions load, and the allowed ones once they are known', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      const onUserClick = vi.fn();
+      const props = { onUserClick, onCreateUser: vi.fn() };
+      const view = renderManager(props);
+      await waitFor(() => expect(screen.getByText('jane.doe@example.com')).toBeInTheDocument());
+
+      expect(screen.queryByTestId('users-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Select all')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Select row')).not.toBeInTheDocument();
+      // A row opens the editor for a user who may update: not before that is known
+      fireEvent.click(screen.getByText('jane.doe@example.com'));
+      expect(onUserClick).not.toHaveBeenCalled();
+      // Reading does not wait: the rows are there, and counted
+      expect(screen.getByText(`${mockUsers.length} users`)).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
+
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: false });
+      rerender(view, props);
+      expect(await screen.findByTestId('users-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('Row actions')).toHaveLength(mockUsers.length);
+      expect(screen.getAllByLabelText('Select row')).toHaveLength(mockUsers.length);
+      fireEvent.click(screen.getByText('jane.doe@example.com'));
+      expect(onUserClick).toHaveBeenCalledWith(mockUsers[0]);
+      // The list was loaded once: the permissions arriving do not fetch it again
+      expect(fetchUsersMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never shown a write control, not even while permissions load', async () => {
+      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
+      const onUserClick = vi.fn();
+      const props = { onUserClick, onCreateUser: vi.fn() };
+      const view = renderManager(props);
+      await waitFor(() => expect(screen.getByText('jane.doe@example.com')).toBeInTheDocument());
+      expect(screen.queryByTestId('users-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Select row')).not.toBeInTheDocument();
+
+      usePermissionsMock.mockReturnValue({
+        canPerform: (_collection: string, action: string) => action === 'read',
+        isAdmin: false,
+        loading: false,
+      });
+      rerender(view, props);
+      expect(screen.getByText('jane.doe@example.com')).toBeInTheDocument();
+      expect(screen.queryByTestId('users-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Select row')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByText('jane.doe@example.com'));
+      expect(onUserClick).not.toHaveBeenCalled();
+    });
+
+    it('a later refresh of the permissions does not take the controls away meanwhile', async () => {
+      const props = { onUserClick: vi.fn(), onCreateUser: vi.fn() };
+      const view = renderManager(props);
+      await waitFor(() => expect(screen.getByText('jane.doe@example.com')).toBeInTheDocument());
+      fireEvent.click(screen.getAllByLabelText('Select row')[0]);
+      expect(screen.getByTestId('users-manager-bulk-roles')).toBeInTheDocument();
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      rerender(view, props);
+      expect(screen.getByTestId('users-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('Row actions')).toHaveLength(mockUsers.length);
+      // The selection and its bulk actions stay as well
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+      expect(screen.getByTestId('users-manager-bulk-roles')).toBeInTheDocument();
+      expect(screen.getByTestId('users-manager-bulk-delete')).toBeInTheDocument();
+    });
+  });
 });

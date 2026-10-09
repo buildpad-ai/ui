@@ -3,7 +3,7 @@
 import './UsersManager.css';
 import './ManagerTable.css';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Badge,
   Box,
@@ -191,6 +191,10 @@ const BulkRolesModal: React.FC<BulkRolesModalProps> = ({
  * and a row menu for edit/delete. Ported from the buildpad-daas reference
  * `app/users/page.tsx` to `useUsers`/`useRoles` + `usePermissions` and
  * routing-agnostic navigation via `onUserClick`/`onCreateUser` props.
+ *
+ * Add User, the row menus, the selection column and the row click are drawn
+ * once the permissions are known; they do not flash for a user who has none
+ * of them. The list itself does not wait.
  */
 /** Accept only real statuses from the URL; anything else means "no filter". */
 function parseStatusParam(raw: string | null): UserStatus | null {
@@ -247,10 +251,18 @@ const UsersManagerBody: React.FC<UsersManagerProps> = ({
   const common = useBuildpadTranslations((d) => d.common);
   const { formatDate, formatCount } = useBuildpadI18n();
 
-  // Optimistic while permissions resolve, then enforce; admins bypass.
-  const createAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(usersCollection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown Add User, the row menus, the selection column and a row that opens
+  // the editor for the length of that request. Known once is known: a later
+  // refresh (a renewed token, another scope) answers from what was known until
+  // its own answer is in, so the controls do not blink and a selection is not
+  // dropped. Admins bypass.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(usersCollection, 'delete'));
   const selectable = updateAllowed || deleteAllowed;
 
   const statusOptions = useMemo<Array<{ value: UserStatus; label: string }>>(
