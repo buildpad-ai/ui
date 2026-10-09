@@ -155,6 +155,12 @@ export interface WorkflowDetailProps {
  *   or does not.
  * - A save answered after the host opened another definition in the same
  *   editor is not drawn over that definition.
+ * - Until the permissions are known nothing that writes is offered: the
+ *   editor is covered and takes no edit, the diagram has no edit affordance
+ *   (so neither dialog can open), and no Save button is drawn. A new
+ *   definition's form is neither opened to a user who may not create nor
+ *   refused to one who may before the answer is in. The definition itself
+ *   loads at once.
  */
 export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   id,
@@ -183,10 +189,22 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   const t = useBuildpadTranslations((d) => d.workflows, translations);
   const common = useBuildpadTranslations((d) => d.common);
 
-  const createAllowed = permsLoading || isAdmin || canPerform(workflowsCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(workflowsCollection, 'update');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save, an open form or a diagram that
+  // can be edited for the length of that request. Known once is known: a
+  // later refresh (a renewed token, another scope) answers from what was
+  // known until its own answer is in, so the form does not close under a
+  // user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(workflowsCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(workflowsCollection, 'update'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
   const viewOnly = readOnly || !saveAllowed;
+  // Who is told there is nothing to cancel: nobody is called a reader before
+  // the permissions are known
+  const reader = readOnly || (permsKnown && !saveAllowed);
 
   const [record, setRecord] = useState<WorkflowDefinitionRecord | null>(null);
   // The definition was answered without its document: the caller's grant
@@ -443,7 +461,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
   );
 
   // Nothing to edit: say which of the three it is, and offer the way out
-  const refusedCreate = isNew && !createAllowed;
+  const refusedCreate = isNew && permsKnown && !createAllowed;
   if (failure || refusedCreate) {
     let state: React.ReactNode;
     if (refusedCreate || failure?.kind === 'accessDenied') {
@@ -493,7 +511,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
 
   return (
     <Box pos="relative" data-testid="workflow-detail">
-      <LoadingOverlay visible={loading} />
+      <LoadingOverlay visible={loading || !permsKnown} />
 
       <Stack gap="md">
         <Breadcrumbs>
@@ -513,7 +531,7 @@ export const WorkflowDetail: React.FC<WorkflowDetailProps> = ({
           <Group>
             {onBack && (
               <Button variant="light" onClick={onBack} data-testid="workflow-detail-cancel-btn">
-                {viewOnly ? common.back : common.cancel}
+                {reader ? common.back : common.cancel}
               </Button>
             )}
             {!viewOnly && (

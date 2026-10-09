@@ -514,6 +514,15 @@ from `@/lib/buildpad/types` as `WORKFLOW_COLLECTIONS`.
 
 - The gates come from `usePermissions().canPerform(collection, action)`.
   Administrators pass every gate.
+- Until the permissions are known, no write control is drawn and the editors
+  take no edit: no Add or New button, no row menu, no Save button, a covered
+  form, and a diagram without its edit controls. The controls appear when the
+  answer is in, so a user without a right does not see its button first. A
+  `new` route does not open its form and does not draw access-denied before
+  then. Reading does not wait: the lists and the records load at once. A later
+  refresh of the permissions (a renewed token, another scope) keeps the
+  controls as they were until its answer is in.
+- A row menu with no allowed action is not drawn.
 - The gates only hide controls. The API enforces the same collections, so a
   hidden button is not the protection.
 - Gate your navigation links too, so a user without read access to

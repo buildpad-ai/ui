@@ -272,10 +272,64 @@ describe('WorkflowsManager', () => {
       expect(screen.queryByText('Edit')).not.toBeInTheDocument();
     });
 
-    it('stays optimistic while permissions load', async () => {
-      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
-      renderManager({ onCreateWorkflow: vi.fn() });
+    it('draws no write control while permissions load, and the allowed ones once they are known', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      const onWorkflowClick = vi.fn();
+      const view = renderManager({ onWorkflowClick, onCreateWorkflow: vi.fn() });
+      await waitFor(() => expect(screen.getByText('Article review')).toBeInTheDocument());
+
+      expect(screen.queryByTestId('workflows-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+      // Reading does not wait: the rows are there, counted, and open
+      expect(screen.getByTestId('workflows-manager-count')).toHaveTextContent('3 workflows');
+      fireEvent.click(screen.getByText('Article review'));
+      expect(onWorkflowClick).toHaveBeenCalledWith(mockWorkflows[0]);
+
+      grant([], true);
+      view.rerender(
+        <MantineProvider>
+          <WorkflowsManager urlParams={false} onWorkflowClick={onWorkflowClick} onCreateWorkflow={vi.fn()} />
+        </MantineProvider>,
+      );
       expect(await screen.findByTestId('workflows-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('Row actions')).toHaveLength(3);
+      // The list was loaded once: the permissions arriving do not fetch it again
+      expect(fetchDefinitionsMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never shown a write control, not even while permissions load', async () => {
+      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
+      const view = renderManager({ onWorkflowClick: vi.fn(), onCreateWorkflow: vi.fn() });
+      await waitFor(() => expect(screen.getByText('Article review')).toBeInTheDocument());
+      expect(screen.queryByTestId('workflows-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+
+      grant(['read']);
+      view.rerender(
+        <MantineProvider>
+          <WorkflowsManager urlParams={false} onWorkflowClick={vi.fn()} onCreateWorkflow={vi.fn()} />
+        </MantineProvider>,
+      );
+      expect(screen.getByText('Article review')).toBeInTheDocument();
+      expect(screen.queryByTestId('workflows-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+    });
+
+    it('a later refresh of the permissions does not take the controls away meanwhile', async () => {
+      const view = renderManager({ onWorkflowClick: vi.fn(), onCreateWorkflow: vi.fn() });
+      await waitFor(() => expect(screen.getByText('Article review')).toBeInTheDocument());
+      expect(screen.getByTestId('workflows-manager-add-btn')).toBeInTheDocument();
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      view.rerender(
+        <MantineProvider>
+          <WorkflowsManager urlParams={false} onWorkflowClick={vi.fn()} onCreateWorkflow={vi.fn()} />
+        </MantineProvider>,
+      );
+      expect(screen.getByTestId('workflows-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('Row actions')).toHaveLength(3);
     });
   });
 

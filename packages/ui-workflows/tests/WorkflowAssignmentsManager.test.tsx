@@ -301,10 +301,68 @@ describe('WorkflowAssignmentsManager', () => {
       expect(screen.queryByText('Edit')).not.toBeInTheDocument();
     });
 
-    it('stays optimistic while permissions load', async () => {
-      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
-      renderManager({ onCreateAssignment: vi.fn() });
+    it('draws no write control while permissions load, and the allowed ones once they are known', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      const onAssignmentClick = vi.fn();
+      const view = renderManager({ onAssignmentClick, onCreateAssignment: vi.fn() });
+      await waitFor(() => expect(screen.getByText('articles')).toBeInTheDocument());
+
+      expect(screen.queryByTestId('workflow-assignments-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+      // Reading does not wait: the rows are there, counted, and open
+      expect(screen.getByTestId('workflow-assignments-manager-count')).toHaveTextContent('3 assignments');
+      fireEvent.click(screen.getByText('articles'));
+      expect(onAssignmentClick).toHaveBeenCalledWith(mockAssignments[0]);
+
+      grant([], true);
+      view.rerender(
+        <MantineProvider>
+          <WorkflowAssignmentsManager
+            urlParams={false}
+            onAssignmentClick={onAssignmentClick}
+            onCreateAssignment={vi.fn()}
+          />
+        </MantineProvider>,
+      );
       expect(await screen.findByTestId('workflow-assignments-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('Row actions')).toHaveLength(3);
+      // The list was loaded once: the permissions arriving do not fetch it again
+      expect(fetchAssignmentsMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never shown a write control, not even while permissions load', async () => {
+      usePermissionsMock.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
+      const view = renderManager({ onAssignmentClick: vi.fn(), onCreateAssignment: vi.fn() });
+      await waitFor(() => expect(screen.getByText('articles')).toBeInTheDocument());
+      expect(screen.queryByTestId('workflow-assignments-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+
+      grant(['read']);
+      view.rerender(
+        <MantineProvider>
+          <WorkflowAssignmentsManager urlParams={false} onAssignmentClick={vi.fn()} onCreateAssignment={vi.fn()} />
+        </MantineProvider>,
+      );
+      expect(screen.getByText('articles')).toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-assignments-manager-add-btn')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Row actions')).not.toBeInTheDocument();
+    });
+
+    it('a later refresh of the permissions does not take the controls away meanwhile', async () => {
+      const view = renderManager({ onAssignmentClick: vi.fn(), onCreateAssignment: vi.fn() });
+      await waitFor(() => expect(screen.getByText('articles')).toBeInTheDocument());
+      expect(screen.getByTestId('workflow-assignments-manager-add-btn')).toBeInTheDocument();
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      usePermissionsMock.mockReturnValue({ canPerform: () => true, isAdmin: true, loading: true });
+      view.rerender(
+        <MantineProvider>
+          <WorkflowAssignmentsManager urlParams={false} onAssignmentClick={vi.fn()} onCreateAssignment={vi.fn()} />
+        </MantineProvider>,
+      );
+      expect(screen.getByTestId('workflow-assignments-manager-add-btn')).toBeInTheDocument();
+      expect(screen.getAllByLabelText('Row actions')).toHaveLength(3);
     });
   });
 

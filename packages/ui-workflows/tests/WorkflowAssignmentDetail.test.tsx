@@ -1015,12 +1015,109 @@ describe('WorkflowAssignmentDetail', () => {
       expect(saveButton()).toHaveTextContent('Save Changes');
     });
 
-    it('stays optimistic while permissions load, and waits for them before asking for options', async () => {
-      mocks.usePermissions.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
-      renderDetail();
+  });
+
+  describe('while the permissions are not known', () => {
+    const overlay = () => document.querySelector('.mantine-LoadingOverlay-root');
+    const permissionsLoading = (isAdmin: boolean) =>
+      mocks.usePermissions.mockReturnValue({ canPerform: () => isAdmin, isAdmin, loading: true });
+
+    it('offers nothing that writes: no Save, a covered form that takes no edit, and no option requests', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      permissionsLoading(true);
+      const { rerender, onBack, onSaved } = renderDetail();
       await loaded();
-      expect(saveButton()).toBeInTheDocument();
+
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+      expect(workflowInput()).toHaveAttribute('readonly');
+      expect(collectionInput()).toHaveAttribute('readonly');
+      expect(ruleInput()).toHaveAttribute('readonly');
+      expect(overlay()).toBeInTheDocument();
+      // Reading does not wait: the assignment is there
+      expect(collectionInput().value).toBe('articles');
       expect(mocks.fetchAllDefinitions).not.toHaveBeenCalled();
+      expect(mocks.apiRequest).not.toHaveBeenCalled();
+      // Nobody is called a reader before the answer is in: the way out is still Cancel
+      expect(screen.getByTestId('workflow-assignment-detail-cancel-btn')).toHaveTextContent('Cancel');
+
+      grant([], true);
+      reopen(rerender, { id: mockAssignment.id, onBack, onSaved });
+      expect(await screen.findByTestId('workflow-assignment-detail-save-btn')).toHaveTextContent('Save Changes');
+      expect(collectionInput()).not.toHaveAttribute('readonly');
+      expect(ruleInput()).not.toHaveAttribute('readonly');
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      await optionsLoaded();
+      // The assignment was loaded once: the permissions arriving do not fetch it again
+      expect(mocks.getAssignment).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never offered the form, and is called one only when the answer is in', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail();
+      await loaded();
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+      expect(ruleInput()).toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-assignment-detail-cancel-btn')).toHaveTextContent('Cancel');
+
+      grant(['read']);
+      reopen(rerender, { id: mockAssignment.id, onBack });
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+      expect(ruleInput()).toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-assignment-detail-cancel-btn')).toHaveTextContent('Back');
+      expect(mocks.fetchAllDefinitions).not.toHaveBeenCalled();
+    });
+
+    it('a later refresh of the permissions does not close the form under the user', async () => {
+      const { rerender, onBack, onSaved } = renderDetail();
+      await loaded();
+      await optionsLoaded();
+      typeRule('{"status":{"_eq":"review"}}');
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      permissionsLoading(true);
+      reopen(rerender, { id: mockAssignment.id, onBack, onSaved });
+      expect(ruleInput()).not.toHaveAttribute('readonly');
+      expect(ruleInput().value).toBe('{"status":{"_eq":"review"}}');
+      expect(collectionInput()).not.toHaveAttribute('readonly');
+      expect(saveButton()).not.toBeDisabled();
+      expect(screen.getByTestId('workflow-assignment-detail-unsaved-badge')).toBeInTheDocument();
+      expect(overlay()).not.toBeInTheDocument();
+    });
+
+    it('a new assignment is neither opened nor refused', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail({ id: 'new' });
+
+      // Not refused yet: this user may turn out to be allowed
+      expect(screen.queryByTestId('workflow-assignment-detail-access-denied')).not.toBeInTheDocument();
+      // Not opened yet either: no Create, and the form takes no edit
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+      expect(workflowInput()).toHaveAttribute('readonly');
+      expect(ruleInput()).toHaveAttribute('readonly');
+      expect(overlay()).toBeInTheDocument();
+      expect(mocks.fetchAllDefinitions).not.toHaveBeenCalled();
+
+      // A user who may not create is refused, without ever having had the form
+      grant(['read', 'update']);
+      reopen(rerender, { id: 'new', onBack });
+      expect(await screen.findByTestId('workflow-assignment-detail-access-denied')).toBeInTheDocument();
+      expect(mocks.createAssignment).not.toHaveBeenCalled();
+      expect(mocks.fetchAllDefinitions).not.toHaveBeenCalled();
+    });
+
+    it('a new assignment opens for a user who may create once the permissions are known', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail({ id: 'new' });
+      expect(screen.queryByTestId('workflow-assignment-detail-save-btn')).not.toBeInTheDocument();
+
+      grant(['read', 'create']);
+      reopen(rerender, { id: 'new', onBack });
+      expect(await screen.findByTestId('workflow-assignment-detail-save-btn')).toHaveTextContent('Create Assignment');
+      expect(saveButton()).not.toBeDisabled();
+      expect(ruleInput()).not.toHaveAttribute('readonly');
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      await optionsLoaded();
     });
   });
 });

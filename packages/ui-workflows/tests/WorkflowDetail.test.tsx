@@ -924,11 +924,115 @@ describe('WorkflowDetail', () => {
       expect(screen.queryByLabelText('Actions for state Draft')).not.toBeInTheDocument();
     });
 
-    it('stays editable while permissions load', async () => {
-      mocks.usePermissions.mockReturnValue({ canPerform: () => false, isAdmin: false, loading: true });
-      renderDetail();
+  });
+
+  describe('while the permissions are not known', () => {
+    const overlay = () => document.querySelector('.mantine-LoadingOverlay-root');
+    const permissionsLoading = (isAdmin: boolean) =>
+      mocks.usePermissions.mockReturnValue({ canPerform: () => isAdmin, isAdmin, loading: true });
+
+    it('offers nothing that writes: no Save, a covered form that takes no edit, a diagram without edit affordances', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      permissionsLoading(true);
+      const { rerender, onBack, onSaved } = renderDetail();
       await loaded();
-      expect(screen.getByTestId('workflow-detail-save-btn')).toBeInTheDocument();
+
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(descriptionInput()).toHaveAttribute('readonly');
+      expect(overlay()).toBeInTheDocument();
+      // The diagram is drawn (reading does not wait), without anything to edit it with
+      expect(screen.getAllByTestId('workflow-diagram-state')).toHaveLength(3);
+      expect(screen.queryByTestId('workflow-detail-diagram-hint')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-diagram-add-state')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Actions for state Draft')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Delete command Reject')).not.toBeInTheDocument();
+      // Neither dialog can be opened: a command is text, not a button to its dialog
+      fireEvent.click(within(card('Review')).getByText('Reject'));
+      expect(screen.queryByTestId('workflow-command-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('workflow-state-name')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      // Nobody is called a reader before the answer is in: the way out is still Cancel
+      expect(screen.getByTestId('workflow-detail-cancel-btn')).toHaveTextContent('Cancel');
+
+      grant([], true);
+      reopen(rerender, { id: mockWorkflow.id, onBack, onSaved });
+      expect(await screen.findByTestId('workflow-detail-save-btn')).toBeInTheDocument();
+      expect(nameInput()).not.toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-detail-diagram-hint')).toBeInTheDocument();
+      expect(await screen.findByLabelText('Actions for state Draft')).toBeInTheDocument();
+      expect(screen.getByTestId('workflow-diagram-add-state')).toBeInTheDocument();
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      // The definition was loaded once: the permissions arriving do not fetch it again
+      expect(mocks.getDefinition).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never offered the editor, and is called one only when the answer is in', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail();
+      await loaded();
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(screen.queryByLabelText('Actions for state Draft')).not.toBeInTheDocument();
+      expect(screen.getByTestId('workflow-detail-cancel-btn')).toHaveTextContent('Cancel');
+
+      grant(['read']);
+      reopen(rerender, { id: mockWorkflow.id, onBack });
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(screen.queryByLabelText('Actions for state Draft')).not.toBeInTheDocument();
+      expect(screen.getByTestId('workflow-detail-cancel-btn')).toHaveTextContent('Back');
+    });
+
+    it('a later refresh of the permissions does not close the form under the user', async () => {
+      const { rerender, onBack, onSaved } = renderDetail();
+      await loaded();
+      fireEvent.change(descriptionInput(), { target: { value: 'still typing' } });
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      permissionsLoading(true);
+      reopen(rerender, { id: mockWorkflow.id, onBack, onSaved });
+      expect(descriptionInput()).not.toHaveAttribute('readonly');
+      expect(descriptionInput().value).toBe('still typing');
+      expect(saveButton()).not.toBeDisabled();
+      expect(screen.getByTestId('workflow-detail-unsaved-badge')).toBeInTheDocument();
+      expect(screen.getByLabelText('Actions for state Draft')).toBeInTheDocument();
+      expect(screen.getByTestId('workflow-diagram-add-state')).toBeInTheDocument();
+      expect(overlay()).not.toBeInTheDocument();
+    });
+
+    it('a new definition is neither opened nor refused', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail({ id: 'new' });
+
+      // Not refused yet: this user may turn out to be allowed
+      expect(screen.queryByTestId('workflow-detail-access-denied')).not.toBeInTheDocument();
+      // Not opened yet either: no Create, the form takes no edit, the diagram offers no first state
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+      expect(nameInput()).toHaveAttribute('readonly');
+      expect(screen.queryByTestId('workflow-diagram-add-first-state')).not.toBeInTheDocument();
+      expect(overlay()).toBeInTheDocument();
+
+      // A user who may not create is refused, without ever having had the form
+      grant(['read', 'update']);
+      reopen(rerender, { id: 'new', onBack });
+      expect(await screen.findByTestId('workflow-detail-access-denied')).toBeInTheDocument();
+      expect(mocks.createDefinition).not.toHaveBeenCalled();
+    });
+
+    it('a new definition opens for a user who may create once the permissions are known', async () => {
+      permissionsLoading(false);
+      const { rerender, onBack } = renderDetail({ id: 'new' });
+      expect(screen.queryByTestId('workflow-detail-save-btn')).not.toBeInTheDocument();
+
+      grant(['read', 'create']);
+      reopen(rerender, { id: 'new', onBack });
+      expect(await screen.findByTestId('workflow-detail-save-btn')).toHaveTextContent('Create Workflow');
+      expect(saveButton()).not.toBeDisabled();
+      expect(nameInput()).not.toHaveAttribute('readonly');
+      expect(screen.getByTestId('workflow-diagram-add-first-state')).toBeInTheDocument();
+      await waitFor(() => expect(overlay()).not.toBeInTheDocument());
     });
   });
 

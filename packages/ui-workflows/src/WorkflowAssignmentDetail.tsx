@@ -179,6 +179,11 @@ export interface WorkflowAssignmentDetailProps {
  * - What is typed while a save is in flight is kept as an unsaved edit, and a
  *   save answered after the host opened another assignment in the same form
  *   is not drawn over that assignment.
+ * - Until the permissions are known nothing that writes is offered: the form
+ *   is covered and takes no edit, and no Save button is drawn. A new
+ *   assignment's form is neither opened to a user who may not create nor
+ *   refused to one who may before the answer is in. The assignment itself
+ *   loads at once.
  */
 export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> = ({
   id,
@@ -207,10 +212,21 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
   const t = useBuildpadTranslations((d) => d.workflows, translations);
   const common = useBuildpadTranslations((d) => d.common);
 
-  const createAllowed = permsLoading || isAdmin || canPerform(assignmentsCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(assignmentsCollection, 'update');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Save or an open form for the length
+  // of that request. Known once is known: a later refresh (a renewed token,
+  // another scope) answers from what was known until its own answer is in, so
+  // the form does not close under a user who is typing.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(assignmentsCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(assignmentsCollection, 'update'));
   const saveAllowed = isNew ? createAllowed : updateAllowed;
   const viewOnly = readOnly || !saveAllowed;
+  // Who is told there is nothing to cancel: nobody is called a reader before
+  // the permissions are known
+  const reader = readOnly || (permsKnown && !saveAllowed);
 
   const [record, setRecord] = useState<WorkflowAssignmentRecord | null>(null);
   const [loading, setLoading] = useState(!newRoute);
@@ -298,8 +314,9 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
   });
   const [collectionOptions, setCollectionOptions] = useState<Options<string>>({ status: 'idle', items: [] });
   // Not before the assignment is here either: a form that turns out to be a
-  // not-found state has no use for them, nor for the notification of their failure
-  const editable = !viewOnly && !permsLoading && !loading && !failure;
+  // not-found state has no use for them, nor for the notification of their
+  // failure. (Not before the permissions are known: `viewOnly` until then.)
+  const editable = !viewOnly && !loading && !failure;
   const workflowsAskedRef = useRef(false);
   const collectionsAskedRef = useRef(false);
 
@@ -490,7 +507,7 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
   );
 
   // Nothing to edit: say which of the three it is, and offer the way out
-  const refusedCreate = isNew && !createAllowed;
+  const refusedCreate = isNew && permsKnown && !createAllowed;
   if (failure || refusedCreate) {
     let state: React.ReactNode;
     if (refusedCreate || failure?.kind === 'accessDenied') {
@@ -555,7 +572,7 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
       </Group>
 
       <Paper shadow="xs" radius="md" p="xl" withBorder pos="relative" maw={720}>
-        <LoadingOverlay visible={loading} />
+        <LoadingOverlay visible={loading || !permsKnown} />
 
         <Stack gap="md">
           <Select
@@ -636,11 +653,11 @@ export const WorkflowAssignmentDetail: React.FC<WorkflowAssignmentDetailProps> =
             {onBack && (
               <Button
                 variant="light"
-                leftSection={viewOnly ? undefined : <IconX size={16} />}
+                leftSection={reader ? undefined : <IconX size={16} />}
                 onClick={onBack}
                 data-testid="workflow-assignment-detail-cancel-btn"
               >
-                {viewOnly ? common.back : common.cancel}
+                {reader ? common.back : common.cancel}
               </Button>
             )}
             {!viewOnly && (
