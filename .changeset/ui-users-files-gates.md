@@ -1,5 +1,6 @@
 ---
 "@buildpad/ui-users": minor
+"@buildpad/ui-files": minor
 "@buildpad/utils": minor
 ---
 
@@ -22,6 +23,14 @@ Users and Files modules: the fixes that were made in `@buildpad/ui-cron` and `@b
 - A later refresh of the permissions (a renewed token, another scope) keeps the controls, the selection and the open form as they were until its answer is in.
 - For a browser test: wait for the control (`users-manager-add-btn`, a row menu, `user-detail-save-btn`, …) instead of clicking as soon as the list or the form is drawn; a row click that opens a record works once the permissions are known. The forms have a wrapper with `data-testid` `user-detail-form` / `role-detail-form` / `policy-detail-form`, disabled until then.
 - `RoleUsersManager`, `RolePoliciesManager`, `UserPoliciesManager`, `PolicyAttachmentManager` and `ModuleAccessPanel` have no permission gate and are unchanged.
+
+**Files: no write control until the permissions are known** (`FileManager`, `FileDetail`)
+
+- The same optimistic gates: for the length of the permissions request a reader was shown the upload zone (and could drop a file on it), New Folder, the folder menus, Edit / Delete in the list's row menu, the bulk bar, and on the detail page Delete, Replace file and an enabled metadata form. They are now drawn (and the form enabled) when the permissions are known. `FilesToolbar`, `BulkActionsBar`, `FilesGrid`, `FilesList`, `NewFolderDialog` and `FileMetadataForm` take their gates from these two and need no change.
+- Reading does not wait: the library, the file, its preview and its downloads load at once, and are not loaded again when the permissions arrive. A file still opens on a click, and a selection made meanwhile gets its bulk bar when the answer is in.
+- A later refresh of the permissions keeps the controls, an upload in flight and a half-typed metadata form as they were.
+- The empty library says "No files here yet." alone until the permissions are known; the hint after it ("Drag files above…" or "No files are available.") follows.
+- For a browser test: wait for `upload-dropzone`, `files-new-folder`, `file-detail-delete` or `file-detail-replace` instead of acting as soon as the library or the file is drawn.
 
 **A search, filter, sort or page-size change on a later page is one request** (`UsersManager`, `RolesManager`, `PoliciesManager`)
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActionIcon,
   Button,
@@ -57,7 +57,10 @@ export interface FileDetailProps {
 /**
  * File detail surface: Preview/Details tabs + a read-only info panel and
  * actions (replace, download, open, delete). Metadata edits, folder moves,
- * focal point, and destructive actions are gated by DaaS permissions.
+ * focal point, and destructive actions are gated by DaaS permissions: Delete
+ * and Replace are drawn, and the metadata form is enabled, once the
+ * permissions are known. The file itself, its preview and its downloads do
+ * not wait.
  */
 export const FileDetail: React.FC<FileDetailProps> = ({
   id,
@@ -74,9 +77,17 @@ export const FileDetail: React.FC<FileDetailProps> = ({
     collections: [filesCollection],
   });
 
-  // Optimistic while permissions resolve, then enforce; admins bypass.
-  const updateAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'delete');
+  // Nothing that writes is offered until the permissions are known: a user
+  // without the right must not be shown Delete, Replace or an editable
+  // metadata form for the length of that request. Known once is known: a later
+  // refresh (a renewed token, another scope) answers from what was known until
+  // its own answer is in, so the form does not close under a user who is
+  // typing. Admins bypass.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const updateAllowed = permsKnown && (isAdmin || canPerform(filesCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(filesCollection, 'delete'));
 
   const [file, setFile] = useState<FileUpload | null>(null);
   const [folderOptions, setFolderOptions] = useState<FolderOption[]>([]);

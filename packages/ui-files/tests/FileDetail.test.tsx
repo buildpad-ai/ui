@@ -112,4 +112,62 @@ describe('FileDetail', () => {
     expect(titleInput()).toBeDisabled();
     expect(saveButton()).toBeDisabled();
   });
+
+  describe('while the permissions are not known', () => {
+    it('offers nothing that writes: no Delete, no Replace, a form that takes no edit', async () => {
+      // What a user who will turn out to be an administrator gets meanwhile
+      grant([], true, true);
+      const view = render(ui());
+      await loaded();
+
+      expect(screen.queryByTestId('file-detail-delete')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('file-detail-replace')).not.toBeInTheDocument();
+      expect(titleInput()).toBeDisabled();
+      expect(saveButton()).toBeDisabled();
+      // Reading does not wait: the file, its info and its downloads are there
+      expect(screen.getByRole('heading', { name: 'annual-report.pdf' })).toBeInTheDocument();
+      expect(screen.getByTestId('file-detail-download')).toBeInTheDocument();
+      expect(screen.getByText('Open in new tab')).toBeInTheDocument();
+
+      grant([], true);
+      view.rerender(ui());
+      expect(await screen.findByTestId('file-detail-delete')).toBeInTheDocument();
+      expect(screen.getByTestId('file-detail-replace')).toBeInTheDocument();
+      expect(titleInput()).not.toBeDisabled();
+      expect(saveButton()).not.toBeDisabled();
+      // The file was loaded once: the permissions arriving do not fetch it again
+      expect(mocks.getFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('a reader is never offered Delete, Replace or an editable form', async () => {
+      grant([], false, true);
+      const view = render(ui());
+      await loaded();
+      expect(screen.queryByTestId('file-detail-delete')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('file-detail-replace')).not.toBeInTheDocument();
+      expect(titleInput()).toBeDisabled();
+
+      grant(['read']);
+      view.rerender(ui());
+      expect(screen.queryByTestId('file-detail-delete')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('file-detail-replace')).not.toBeInTheDocument();
+      expect(titleInput()).toBeDisabled();
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('a later refresh of the permissions does not close the form under the user', async () => {
+      const view = render(ui());
+      await loaded();
+      fireEvent.change(titleInput(), { target: { value: 'still typing' } });
+
+      // The hook loads again (a renewed token, another scope) and answers from what it knew meanwhile
+      grant([], true, true);
+      view.rerender(ui());
+      expect(titleInput()).not.toBeDisabled();
+      expect(titleInput().value).toBe('still typing');
+      expect(saveButton()).not.toBeDisabled();
+      expect(screen.getByTestId('file-detail-delete')).toBeInTheDocument();
+      expect(screen.getByTestId('file-detail-replace')).toBeInTheDocument();
+    });
+  });
 });

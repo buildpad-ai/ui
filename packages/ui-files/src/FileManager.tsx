@@ -2,7 +2,7 @@
 
 import './FileManager.css';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Center,
@@ -69,7 +69,10 @@ export interface FileManagerProps {
  * folder navigation, grid/list views, search, selection, and bulk delete.
  * Composes the existing `Upload` interface for the upload affordance and
  * the `useFiles` / `useFolders` hooks for data. Actions are gated by DaaS
- * permissions via `usePermissions`.
+ * permissions via `usePermissions`: the upload zone, New Folder, the folder
+ * menus, Edit / Delete in a row menu and the bulk bar are drawn once the
+ * permissions are known, so they do not flash for a user who has none of
+ * them. The library itself does not wait.
  */
 /**
  * Client-only gate. The body seeds its state from the URL in `useState`
@@ -110,10 +113,19 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
     collections: [filesCollection],
   });
 
-  // Optimistic while permissions resolve, then enforce; admins bypass.
-  const createAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'create');
-  const updateAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'update');
-  const deleteAllowed = permsLoading || isAdmin || canPerform(filesCollection, 'delete');
+  // No write control until the permissions are known: a reader must not be
+  // shown the upload zone (and be able to drop a file on it), New Folder, the
+  // folder menus, Edit / Delete in a row menu and the bulk bar for the length
+  // of that request. Known once is known: a later refresh (a renewed token,
+  // another scope) answers from what was known until its own answer is in, so
+  // the controls do not blink and an upload in flight keeps its zone. Admins
+  // bypass.
+  const permsKnownRef = useRef(false);
+  if (!permsLoading) permsKnownRef.current = true;
+  const permsKnown = permsKnownRef.current;
+  const createAllowed = permsKnown && (isAdmin || canPerform(filesCollection, 'create'));
+  const updateAllowed = permsKnown && (isAdmin || canPerform(filesCollection, 'update'));
+  const deleteAllowed = permsKnown && (isAdmin || canPerform(filesCollection, 'delete'));
 
   const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
 
@@ -527,10 +539,14 @@ const FileManagerBody: React.FC<FileManagerProps> = ({
       ) : isEmpty ? ( // NOSONAR: idiomatic loading/empty/view-mode JSX ladder, not confusing nesting
         <Center mih={200}>
           <Text c="dimmed" size="sm">
-            {t.fileManager.emptyState.title}{' '}
-            {createAllowed
-              ? t.fileManager.emptyState.uploadHint
-              : t.fileManager.emptyState.readOnlyHint}
+            {t.fileManager.emptyState.title}
+            {/* Neither hint before the permissions are known: nobody is
+                promised an upload, or called a reader, before the answer */}
+            {permsKnown && ' '}
+            {permsKnown &&
+              (createAllowed
+                ? t.fileManager.emptyState.uploadHint
+                : t.fileManager.emptyState.readOnlyHint)}
           </Text>
         </Center>
       ) : view === 'grid' ? ( // NOSONAR: idiomatic loading/empty/view-mode JSX ladder, not confusing nesting
