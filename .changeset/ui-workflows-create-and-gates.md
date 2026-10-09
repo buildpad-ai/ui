@@ -19,3 +19,7 @@ Workflows module: four fixes that were made in `@buildpad/ui-cron` first.
 - A later refresh of the permissions (a renewed token, another scope) keeps the controls and the open form as they were until its answer is in.
 - The Cancel / Back button keeps its wording: it reads Back only for `readOnly` or once the permissions say the user may not save.
 - `WorkflowInstancesManager` and `WorkflowInstanceDetail` have no permission gate and are unchanged.
+
+**A search or a page-size change on a later page is one request** (`WorkflowsManager`, `WorkflowAssignmentsManager`, `WorkflowInstancesManager`)
+
+- On page 2 or later, typing a search, clearing one or picking another page size sent two requests: the new filter for the old page, then the same filter for page 1. The first answer was dropped, so nothing showed on screen, but a backend that refuses a page past the end of the list answered it with an error. The list now sends the one request for page 1. A page restored from the URL is kept as before.

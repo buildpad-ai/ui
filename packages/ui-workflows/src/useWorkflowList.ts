@@ -57,7 +57,8 @@ export interface WorkflowListState<T> {
  * assignments and instances managers share:
  *
  * - search is debounced (300 ms) and, like a page-size change, returns to
- *   page 1;
+ *   page 1 — in one request: the new search and the page reset reach the
+ *   load together, so no request goes out for the old page of the new search;
  * - search and page are kept in the URL (`useUrlListParams`) when asked;
  * - only the answer to the latest request is drawn;
  * - an answer that puts the page past the end of the list loads the last page
@@ -79,13 +80,33 @@ export function useWorkflowList<T>({
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState<WorkflowListFailure | null>(null);
   const param = useCallback((name: string) => urlParamPrefix + name, [urlParamPrefix]);
-  const [page, setPage] = useState(() => (urlParams ? readUrlIntParam(param('page'), 1) : 1));
   const [limit, setLimit] = useState(pageSize);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
   const [search, setSearch] = useState(() => (urlParams ? (readUrlParam(param('search')) ?? '') : ''));
   const [debouncedSearch] = useDebouncedValue(search, 300);
+
+  // A page belongs to the search and the page size it was reached under: it is
+  // kept with them, and a page kept under other filters is page 1. The reset
+  // is decided while rendering, not in an effect after it, so the load below
+  // sees the new search and page 1 as one change and sends one request. (An
+  // effect would run after the load had already asked for the old page of the
+  // new search.) A page restored from the URL is kept: it is stored with the
+  // filters of the first render.
+  const filtersKey = JSON.stringify([debouncedSearch, limit]);
+  const [pageState, setPageState] = useState(() => ({
+    page: urlParams ? readUrlIntParam(param('page'), 1) : 1,
+    filtersKey,
+  }));
+  let page = pageState.page;
+  if (pageState.filtersKey !== filtersKey) {
+    page = 1;
+    setPageState({ page: 1, filtersKey });
+  }
+  const setPage = useCallback((next: number) => {
+    setPageState((current) => (current.page === next ? current : { ...current, page: next }));
+  }, []);
 
   // URL persistence — see useUrlListParams. Defaults serialize to null so they
   // stay off the URL; Back/Forward and bridge rewrites flow back in below.
@@ -102,9 +123,9 @@ export function useWorkflowList<T>({
         const rawPage = get(param('page'));
         const value = rawPage ? Number.parseInt(rawPage, 10) : 1;
         const nextPage = Number.isInteger(value) && value > 0 ? value : 1;
-        setPage((current) => (current === nextPage ? current : nextPage));
+        setPage(nextPage);
       },
-      [param],
+      [param, setPage],
     ),
   });
 
@@ -151,23 +172,11 @@ export function useWorkflowList<T>({
         notifications.show({ title: loadFailedMessage, message, color: 'red' });
       }
     }
-  }, [fetchPage, page, limit, debouncedSearch, loadFailedMessage]);
+  }, [fetchPage, page, limit, debouncedSearch, setPage, loadFailedMessage]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
-
-  // Only on CHANGES — not mount, or a ?page= restored from the URL is clobbered.
-  // StrictMode-safe: compare against the previous values rather than "has
-  // mounted" (StrictMode re-runs mount effects with refs intact).
-  const filtersKey = JSON.stringify([debouncedSearch, limit]);
-  const previousFiltersKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (previousFiltersKeyRef.current !== null && previousFiltersKeyRef.current !== filtersKey) {
-      setPage(1);
-    }
-    previousFiltersKeyRef.current = filtersKey;
-  }, [filtersKey]);
 
   return {
     rows,
