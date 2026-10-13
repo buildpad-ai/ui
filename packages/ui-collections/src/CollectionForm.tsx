@@ -193,6 +193,67 @@ function isM2MChangesItem(value: unknown): value is {
   );
 }
 
+/** Past this depth two values are called different, which is the safe answer. */
+const SAME_CONTENT_MAX_DEPTH = 20;
+
+/**
+ * Whether two prop values hold the same content. Arrays and plain objects are
+ * compared member by member and dates by their time; anything else must be
+ * the same value (`Object.is`).
+ */
+function sameContent(a: unknown, b: unknown, depth = 0): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) {
+    return false;
+  }
+  if (depth >= SAME_CONTENT_MAX_DEPTH) return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((item, index) => sameContent(item, b[index], depth + 1))
+    );
+  }
+  if (a instanceof Date || b instanceof Date) {
+    return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
+  }
+  const prototype = Object.getPrototypeOf(a);
+  if (
+    prototype !== Object.getPrototypeOf(b) ||
+    (prototype !== Object.prototype && prototype !== null)
+  ) {
+    return false;
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = Object.keys(left);
+  return (
+    keys.length === Object.keys(right).length &&
+    keys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(right, key) &&
+        sameContent(left[key], right[key], depth + 1),
+    )
+  );
+}
+
+/**
+ * The previous reference for as long as the value's content is unchanged.
+ *
+ * Hosts pass `defaultValues`, `excludeFields`, `includeFields` and
+ * `definition` as inline literals, a new identity on every render, and the
+ * load effect depends on all four. Keyed on identity, every render of the
+ * host while the form was loading ran the load again.
+ */
+function useContentStable<T>(value: T): T {
+  const ref = useRef(value);
+  if (!sameContent(ref.current, value)) {
+    ref.current = value;
+  }
+  return ref.current;
+}
+
 /**
  * CollectionForm - Dynamic form for creating/editing collection items
  */
@@ -216,23 +277,19 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   // Strings: component prop > provider dictionary > English defaults.
   const t = useBuildpadTranslations((d) => d.collections, translations);
 
+  // Stable references for the optional props the load depends on: each keeps
+  // its identity until its content changes (see useContentStable).
+  const stableDefinition = useContentStable(definition);
+  const stableDefaultValues = useContentStable(defaultValues || EMPTY_OBJECT);
+  const stableExcludeFields = useContentStable(excludeFields || EMPTY_ARRAY);
+  const stableIncludeFields = useContentStable(includeFields);
+
   // Stable signature so the load effect re-runs when the definition changes
   // (e.g. live preview in the builder) without depending on object identity.
   const definitionSignature = useMemo(
-    () => (definition ? JSON.stringify(definition) : ""),
-    [definition],
+    () => (stableDefinition ? JSON.stringify(stableDefinition) : ""),
+    [stableDefinition],
   );
-
-  // Use stable references for optional props
-  const stableDefaultValues = useMemo(
-    () => defaultValues || EMPTY_OBJECT,
-    [defaultValues],
-  );
-  const stableExcludeFields = useMemo(
-    () => excludeFields || EMPTY_ARRAY,
-    [excludeFields],
-  );
-  const stableIncludeFields = useMemo(() => includeFields, [includeFields]);
 
   const [fields, setFields] = useState<Field[]>([]);
   // PK column resolved from field metadata (schema.is_primary_key); collections
@@ -271,7 +328,8 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  // Track if data has been loaded to prevent re-fetching
+  // Track if data has been loaded to prevent re-fetching. It is false from the
+  // moment a load starts until that load has applied its result.
   const dataLoadedRef = useRef(false);
   const lastLoadKey = useRef<string>("");
 
@@ -283,6 +341,17 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     if (dataLoadedRef.current && lastLoadKey.current === loadKey) {
       return;
     }
+
+    // A load that is superseded must not apply its result. The effect runs
+    // again when the inputs change in content, and twice on mount under React
+    // strict mode; without this each run's load finished on its own, and the
+    // one that answered last reset the form — over what the user had typed
+    // since the first one drew it, or with the item of an `id` no longer shown.
+    let cancelled = false;
+    // What is drawn stops being "the loaded state of `lastLoadKey`" here, so a
+    // load cancelled halfway is never mistaken for a finished one when the
+    // inputs return to the key loaded before it.
+    dataLoadedRef.current = false;
 
     const loadData = async () => {
       try {
@@ -296,6 +365,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           fieldsService.readAll(collection),
           PermissionsService.getMyCollectionAccess().catch(() => ({} as CollectionAccess)),
         ]);
+        if (cancelled) return;
 
         // Does the target collection expose the `extras` jsonb tail column?
         setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
@@ -427,8 +497,8 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // Overlay the form definition (order, width, sections, per-field
         // overrides, conditions) onto the permission-filtered schema fields.
         // Applied last so it cannot bypass read/write permission filtering.
-        if (definition) {
-          editableFields = buildFieldsFromDefinition(editableFields, definition);
+        if (stableDefinition) {
+          editableFields = buildFieldsFromDefinition(editableFields, stableDefinition);
         }
 
         setFields(editableFields);
@@ -452,6 +522,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 } | null;
               }>;
             }>("/api/relations");
+            if (cancelled) return;
             const relations = relationsResp.data ?? [];
             const junctionMap: Record<string, M2MJunctionInfo> = {};
             for (const m2mField of m2mAliasFields) {
@@ -489,10 +560,12 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 }
               }),
             );
+            if (cancelled) return;
             setM2mJunctionMap(junctionMap);
           } catch {
             // Non-fatal: M2M save falls back to including in PATCH body
           }
+          if (cancelled) return;
         }
 
         // Build initial form data
@@ -550,6 +623,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             fetchableFields.unshift(resolvedPkField);
           }
           const item = await itemsService.readOne(id, fetchableFields);
+          if (cancelled) return;
           initialData = { ...initialData, ...item };
         }
 
@@ -565,14 +639,19 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         dataLoadedRef.current = true;
         lastLoadKey.current = loadKey;
       } catch (err) {
+        if (cancelled) return;
         console.error("Error loading form data:", err);
         setError(err instanceof Error ? err.message : t.form.errors.loadFailed);
       } finally {
-        setLoading(false);
+        // The load that superseded this one owns the loading state now.
+        if (!cancelled) setLoading(false);
       }
     };
 
     loadData();
+    return () => {
+      cancelled = true;
+    };
   }, [
     collection,
     id,
@@ -580,7 +659,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     stableDefaultValues,
     stableExcludeFields,
     stableIncludeFields,
-    definition,
+    stableDefinition,
     definitionSignature,
     t,
   ]);

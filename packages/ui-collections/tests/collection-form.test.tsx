@@ -108,6 +108,7 @@ vi.mock("../src/SaveOptions", () => ({
 }));
 
 // Import component under test AFTER mocks
+import { apiRequest } from "@buildpad/services";
 import { CollectionForm } from "../src/CollectionForm";
 
 // -------------------------------------------------------------------
@@ -932,5 +933,277 @@ describe("submit containment through portals", () => {
 
     await waitFor(() => expect(mockItemsCreateOne).toHaveBeenCalled());
     expect(outerSubmit).not.toHaveBeenCalled();
+  });
+});
+
+// A load is superseded when the effect that started it runs again before it
+// has finished: on every mount under React strict mode, and whenever the host
+// changes `collection` / `id` / `mode`, or the content of `defaultValues` /
+// `excludeFields` / `includeFields` / `definition`, mid-flight. Each of those
+// loads used to finish on its own and apply its result, so the last one to
+// ANSWER won.
+describe("superseded loads", () => {
+  /** A promise the test settles by hand. */
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (reason: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  }
+
+  /**
+   * Strict mode has to be the outermost element: React runs the effects of a
+   * newly mounted tree twice only when the tree's top element is inside it,
+   * so a `<StrictMode>` under the `wrapper` option would do nothing.
+   */
+  function renderStrict(ui: React.ReactElement) {
+    return render(
+      <React.StrictMode>
+        <MantineProvider>{ui}</MantineProvider>
+      </React.StrictMode>,
+    );
+  }
+
+  /** Lets the awaits of a load whose request was just answered run. */
+  async function settle() {
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+  }
+
+  const title = () => (screen.getByTestId("field-title") as HTMLInputElement).value;
+  const typeTitle = (value: string) =>
+    fireEvent.change(screen.getByTestId("field-title"), { target: { value } });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  afterEach(() => {
+    mockItemsReadOne.mockReset();
+    vi.mocked(apiRequest).mockReset();
+  });
+
+  describe("under React strict mode", () => {
+    /** One hand-settled fields request per load: [superseded, standing]. */
+    function twoFieldLoads() {
+      const loads = [deferred<typeof SAMPLE_FIELDS>(), deferred<typeof SAMPLE_FIELDS>()];
+      let call = 0;
+      mockFieldsReadAll.mockImplementation(() => loads[call++].promise);
+      return { superseded: loads[0], standing: loads[1] };
+    }
+
+    it("keeps what was typed when the load the remount superseded answers late", async () => {
+      const { superseded, standing } = twoFieldLoads();
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 7, title: "Typed" });
+
+      renderStrict(<CollectionForm collection="posts" mode="create" />);
+      // Strict mode ran the load effect twice, so two loads are in flight.
+      await waitFor(() => expect(mockFieldsReadAll).toHaveBeenCalledTimes(2));
+
+      standing.resolve(SAMPLE_FIELDS);
+      await waitFor(() => expect(screen.getByTestId("field-title")).toBeInTheDocument());
+      typeTitle("Typed");
+
+      superseded.resolve(SAMPLE_FIELDS);
+      await settle();
+
+      expect(title()).toBe("Typed");
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+      await waitFor(() => expect(mockItemsCreateOne).toHaveBeenCalledTimes(1));
+      expect(mockItemsCreateOne.mock.calls[0][0]).toMatchObject({ title: "Typed" });
+    });
+
+    it("draws nothing from the superseded load and leaves the loading overlay up", async () => {
+      const { superseded, standing } = twoFieldLoads();
+
+      renderStrict(<CollectionForm collection="posts" mode="create" />);
+      await waitFor(() => expect(mockFieldsReadAll).toHaveBeenCalledTimes(2));
+
+      superseded.resolve(SAMPLE_FIELDS);
+      await settle();
+      expect(screen.queryByTestId("field-title")).not.toBeInTheDocument();
+      // The overlay belongs to the load still in flight: the superseded one
+      // must not take it down and show a form with no fields.
+      expect(screen.getByTestId("loading-overlay")).toBeInTheDocument();
+      expect(screen.queryByTestId("collection-form")).not.toBeInTheDocument();
+
+      standing.resolve(SAMPLE_FIELDS);
+      await waitFor(() => expect(screen.getByTestId("field-title")).toBeInTheDocument());
+      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+    });
+
+    it("reports no error when the superseded load fails after the form was drawn", async () => {
+      const { superseded, standing } = twoFieldLoads();
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      renderStrict(<CollectionForm collection="posts" mode="create" />);
+      await waitFor(() => expect(mockFieldsReadAll).toHaveBeenCalledTimes(2));
+
+      standing.resolve(SAMPLE_FIELDS);
+      await waitFor(() => expect(screen.getByTestId("field-title")).toBeInTheDocument());
+      typeTitle("Typed");
+
+      superseded.reject(new Error("late failure"));
+      await settle();
+
+      expect(screen.queryByTestId("form-error")).not.toBeInTheDocument();
+      expect(errorLog).not.toHaveBeenCalledWith("Error loading form data:", expect.anything());
+      expect(title()).toBe("Typed");
+      errorLog.mockRestore();
+    });
+  });
+
+  describe("when the id changes", () => {
+    it("shows the item of the current id when the item opened before it answers last", async () => {
+      const first = deferred<Record<string, unknown>>();
+      const second = deferred<Record<string, unknown>>();
+      mockItemsReadOne.mockImplementation((id: number) => (id === 1 ? first.promise : second.promise));
+
+      const { rerender } = render(<CollectionForm collection="posts" mode="edit" id={1} />, { wrapper });
+      await waitFor(() => expect(mockItemsReadOne).toHaveBeenCalledWith(1, expect.any(Array)));
+
+      rerender(<CollectionForm collection="posts" mode="edit" id={2} />);
+      await waitFor(() => expect(mockItemsReadOne).toHaveBeenCalledWith(2, expect.any(Array)));
+
+      second.resolve({ id: 2, title: "Second", body: "" });
+      await waitFor(() => expect(title()).toBe("Second"));
+      first.resolve({ id: 1, title: "First", body: "" });
+      await settle();
+
+      expect(title()).toBe("Second");
+    });
+
+    it("loads an item again when the id returns to it while another item was loading", async () => {
+      const second = deferred<Record<string, unknown>>();
+      mockItemsReadOne.mockImplementation((id: number) =>
+        id === 1 ? Promise.resolve({ id: 1, title: "First", body: "" }) : second.promise,
+      );
+
+      const { rerender } = render(<CollectionForm collection="posts" mode="edit" id={1} />, { wrapper });
+      await waitFor(() => expect(title()).toBe("First"));
+
+      // Item 2 is opened and, before it has loaded, item 1 again.
+      rerender(<CollectionForm collection="posts" mode="edit" id={2} />);
+      await waitFor(() => expect(mockItemsReadOne).toHaveBeenCalledWith(2, expect.any(Array)));
+      rerender(<CollectionForm collection="posts" mode="edit" id={1} />);
+
+      second.resolve({ id: 2, title: "Second", body: "" });
+      await settle();
+
+      // Item 1 is drawn: the cancelled load of item 2 neither applied its item
+      // nor left the loading overlay up.
+      await waitFor(() => expect(title()).toBe("First"));
+      expect(mockItemsReadOne.mock.calls.filter(([id]) => id === 1)).toHaveLength(2);
+      expect(screen.queryByTestId("loading-overlay")).not.toBeInTheDocument();
+    });
+  });
+
+  // Hosts pass these props as inline literals: a new object on every render.
+  describe("when the host re-renders with new objects", () => {
+    it("does not start the load again while the content is the same", async () => {
+      const fieldLoad = deferred<typeof SAMPLE_FIELDS>();
+      mockFieldsReadAll.mockImplementation(() => fieldLoad.promise);
+      const form = () => (
+        <CollectionForm
+          collection="posts"
+          mode="create"
+          defaultValues={{ body: "Preset", meta: { tags: ["a", "b"] } }}
+          excludeFields={["secret"]}
+          includeFields={["title", "body"]}
+          definition={{ sections: [{ fields: [{ field: "title" }, { field: "body" }] }] } as never}
+        />
+      );
+
+      const { rerender } = render(form(), { wrapper });
+      await waitFor(() => expect(mockFieldsReadAll).toHaveBeenCalledTimes(1));
+
+      // Twice while the load is in flight.
+      rerender(form());
+      rerender(form());
+      await settle();
+      expect(mockFieldsReadAll).toHaveBeenCalledTimes(1);
+
+      fieldLoad.resolve(SAMPLE_FIELDS);
+      await waitFor(() => expect(screen.getByTestId("field-title")).toBeInTheDocument());
+      typeTitle("Typed");
+
+      // And once after it: nothing is loaded and nothing typed is lost.
+      rerender(form());
+      await settle();
+      expect(mockFieldsReadAll).toHaveBeenCalledTimes(1);
+      expect(title()).toBe("Typed");
+    });
+
+    it("starts the load again when a default value changes, and drops the first load's answer", async () => {
+      const loads = [deferred<typeof SAMPLE_FIELDS>(), deferred<typeof SAMPLE_FIELDS>()];
+      let call = 0;
+      mockFieldsReadAll.mockImplementation(() => loads[call++].promise);
+
+      const { rerender } = render(
+        <CollectionForm collection="posts" mode="create" defaultValues={{ title: "A" }} />,
+        { wrapper },
+      );
+      await waitFor(() => expect(mockFieldsReadAll).toHaveBeenCalledTimes(1));
+      rerender(<CollectionForm collection="posts" mode="create" defaultValues={{ title: "B" }} />);
+      await waitFor(() => expect(mockFieldsReadAll).toHaveBeenCalledTimes(2));
+
+      loads[1].resolve(SAMPLE_FIELDS);
+      await waitFor(() => expect(title()).toBe("B"));
+      typeTitle("Typed");
+
+      loads[0].resolve(SAMPLE_FIELDS);
+      await settle();
+      expect(title()).toBe("Typed");
+    });
+  });
+
+  // In create mode no item is read, so for a collection with an M2M field the
+  // relations request is the last step a load waits on.
+  describe("when the superseded load was waiting for the relations", () => {
+    const FIELDS_WITH_M2M = [
+      ...SAMPLE_FIELDS,
+      { field: "tags", type: "alias", meta: { interface: "list-m2m", special: ["m2m"], sort: 3 } },
+    ];
+    type Relations = { data: unknown[] };
+
+    /** Draws the form from a second load while the first still waits on `/api/relations`. */
+    async function supersedeAtRelations() {
+      mockFieldsReadAll.mockResolvedValue(FIELDS_WITH_M2M);
+      const relations = [deferred<Relations>(), deferred<Relations>()];
+      let call = 0;
+      vi.mocked(apiRequest).mockImplementation(() => relations[call++].promise as never);
+
+      const { rerender } = render(
+        <CollectionForm collection="posts" mode="create" defaultValues={{ title: "A" }} />,
+        { wrapper },
+      );
+      await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(1));
+      rerender(<CollectionForm collection="posts" mode="create" defaultValues={{ title: "B" }} />);
+      await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(2));
+
+      relations[1].resolve({ data: [] });
+      await waitFor(() => expect(title()).toBe("B"));
+      typeTitle("Typed");
+      return relations[0];
+    }
+
+    it("keeps what was typed when its relations request is answered", async () => {
+      const superseded = await supersedeAtRelations();
+      superseded.resolve({ data: [] });
+      await settle();
+      expect(title()).toBe("Typed");
+    });
+
+    it("keeps what was typed when its relations request fails", async () => {
+      const superseded = await supersedeAtRelations();
+      superseded.reject(new Error("relations down"));
+      await settle();
+      expect(title()).toBe("Typed");
+      expect(screen.queryByTestId("form-error")).not.toBeInTheDocument();
+    });
   });
 });
