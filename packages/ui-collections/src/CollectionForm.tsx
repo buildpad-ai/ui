@@ -1047,10 +1047,18 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       }
     } catch (err) {
       console.error("Error saving item:", err);
+      // apiRequest throws an ApiRequestError: its `errors` (DaaS validation
+      // errors) feed the per-field messages, and its `detail` is the
+      // backend's own sentence. The message alone was the raw response,
+      // "API error: 500 - {"error":"…"}", and parseValidationErrors never saw
+      // an `errors` array to read.
       const perFieldErrors = parseValidationErrors(err);
+      const detail = err && typeof err === "object" ? (err as { detail?: unknown }).detail : undefined;
       if (Object.keys(perFieldErrors).length > 0) {
         setFieldErrors(perFieldErrors);
         setError(t.form.errors.validationFailed);
+      } else if (typeof detail === "string" && detail.trim()) {
+        setError(detail);
       } else {
         setError(err instanceof Error ? err.message : t.form.errors.saveFailed);
       }

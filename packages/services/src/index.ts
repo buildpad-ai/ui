@@ -6,7 +6,7 @@
  * Authentication follows DaaS architecture with multiple auth methods.
  */
 
-export { apiRequest, type ApiRequestOptions } from "./api-request";
+export { apiRequest, ApiRequestError, type ApiRequestOptions } from "./api-request";
 export {
   CollectionsService,
   createCollectionsService,

@@ -116,7 +116,7 @@ vi.mock("../src/SaveOptions", () => ({
 }));
 
 // Import component under test AFTER mocks
-import { apiRequest } from "@buildpad/services";
+import { apiRequest, ApiRequestError } from "@buildpad/services";
 import { CollectionForm } from "../src/CollectionForm";
 
 // -------------------------------------------------------------------
@@ -447,6 +447,50 @@ describe("CollectionForm", () => {
       expect(copied).not.toHaveProperty("token");
       // The rest of the row still copies.
       expect(copied).toHaveProperty("title", "Row");
+    });
+  });
+
+  describe("save errors", () => {
+    it("shows the backend's sentence, not the raw response", async () => {
+      mockItemsCreateOne.mockRejectedValueOnce(
+        new ApiRequestError(500, '{"error":"null value in column \\"title\\" violates not-null constraint"}'),
+      );
+
+      renderForm({ mode: "create" });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-body")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-body"), { target: { value: "Body" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-error")).toHaveTextContent(
+          'null value in column "title" violates not-null constraint',
+        );
+      });
+      expect(screen.getByTestId("form-error")).not.toHaveTextContent("API error:");
+      expect(screen.getByTestId("form-error")).not.toHaveTextContent('{"error"');
+    });
+
+    it("shows DaaS validation errors per field", async () => {
+      mockItemsCreateOne.mockRejectedValueOnce(
+        new ApiRequestError(
+          400,
+          JSON.stringify({ errors: [{ message: "Must contain @", extensions: { code: "FAILED_VALIDATION", field: "title" } }] }),
+        ),
+      );
+
+      renderForm({ mode: "create" });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "bad" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-field-errors")).toHaveTextContent("title: Must contain @");
+      });
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Validation failed. Please fix the highlighted fields.");
     });
   });
 
