@@ -455,6 +455,25 @@ describe("CollectionList", () => {
         expect(mockApiRequest.mock.calls.length).toBeGreaterThan(callsBefore);
       });
     });
+
+    it("fetches the collection total again, so 'filtered from N' follows new rows", async () => {
+      renderList();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+      const aggregateCalls = () =>
+        mockApiRequest.mock.calls.filter(([url]) => String(url).includes("aggregate")).length;
+      await waitFor(() => {
+        expect(aggregateCalls()).toBe(1);
+      });
+
+      await userEvent.click(screen.getByTestId("collection-list-refresh"));
+
+      await waitFor(() => {
+        expect(aggregateCalls()).toBe(2);
+      });
+    });
   });
 
   // =====================================================================

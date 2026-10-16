@@ -1229,11 +1229,13 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
   // Manual refresh is the user saying "re-sync with the server" — which
   // includes rows other people added or removed since the pinned total was
-  // proven, so the pin goes first.
+  // proven, so the pin goes first. The collection's total (the "filtered
+  // from N" in the footer) is fetched again too; it went stale otherwise.
   const handleRefresh = useCallback(() => {
     exactTotalRef.current = null;
     loadItems();
-  }, [loadItems]);
+    getTotalCount();
+  }, [loadItems, getTotalCount]);
 
   const handleDeleteCancel = useCallback(() => {
     setDeleteConfirmOpen(false);
