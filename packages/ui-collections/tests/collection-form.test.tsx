@@ -529,6 +529,70 @@ describe("CollectionForm", () => {
     });
   });
 
+  describe("keyboard shortcuts", () => {
+    async function openEdited(props: Partial<React.ComponentProps<typeof CollectionForm>> = {}) {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old", body: "Body" });
+      mockItemsUpdateOne.mockResolvedValue({ id: 1 });
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true, ...props });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Old");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Keyed" } });
+    }
+
+    it("saves and stays on Ctrl+S or Cmd+S", async () => {
+      const onSuccess = vi.fn();
+      await openEdited({ onSuccess });
+
+      const ctrl = fireEvent.keyDown(screen.getByTestId("field-title"), { key: "s", ctrlKey: true });
+
+      expect(ctrl).toBe(false); // default prevented: no browser "Save page"
+      await waitFor(() => {
+        expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { title: "Keyed" });
+      });
+      expect(onSuccess).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Keyed 2" } });
+      fireEvent.keyDown(screen.getByTestId("field-title"), { key: "s", metaKey: true });
+      await waitFor(() => {
+        expect(mockItemsUpdateOne).toHaveBeenLastCalledWith(1, { title: "Keyed 2" });
+      });
+    });
+
+    it("saves and opens a new item on Ctrl+Shift+S", async () => {
+      const onNavigateToCreate = vi.fn();
+      await openEdited({ onNavigateToCreate });
+
+      fireEvent.keyDown(screen.getByTestId("field-title"), { key: "S", ctrlKey: true, shiftKey: true });
+
+      await waitFor(() => {
+        expect(onNavigateToCreate).toHaveBeenCalled();
+      });
+      expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { title: "Keyed" });
+    });
+
+    it("does nothing when there is nothing to save", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old" });
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Old");
+      });
+
+      fireEvent.keyDown(screen.getByTestId("field-title"), { key: "s", ctrlKey: true });
+
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("is off without the save options", async () => {
+      await openEdited({ showSaveOptions: false });
+
+      const notPrevented = fireEvent.keyDown(screen.getByTestId("field-title"), { key: "s", ctrlKey: true });
+
+      expect(notPrevented).toBe(true);
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+  });
+
   describe("save and stay", () => {
     it("saves an edited item without leaving it", async () => {
       mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old", body: "Body" });

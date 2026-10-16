@@ -1083,6 +1083,23 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     await handleSave();
   };
 
+  // Keyboard shortcuts drawn in the save options menu: Ctrl/⌘+S is Save and
+  // Stay, Ctrl/⌘+Shift+S is Save and Create New. Only for keys pressed in this
+  // form's own fields: a dialog portaled out of it (a relational field's form
+  // or picker) is not in its DOM, and its keys belong to that dialog.
+  const formRef = useRef<HTMLFormElement>(null);
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (!showSaveOptions) return;
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== "s") return;
+    if (!(e.target instanceof Node) || !formRef.current?.contains(e.target)) return;
+    // Never the browser's "Save page" dialog, even when there is nothing to save.
+    e.preventDefault();
+    e.stopPropagation();
+    const action: SaveAction = e.shiftKey ? "save-and-add-new" : "save-and-stay";
+    if (saving || disabledSaveOptions.includes(action)) return;
+    void handleSave(e.shiftKey ? "add-new" : "stay");
+  };
+
   // Discard changes
   const handleDiscard = useCallback(() => {
     setFormData(initialFormData);
@@ -1154,7 +1171,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
         <Stack gap="md">
           {fields.length === 0 ? (
             <Text c="dimmed" ta="center" py="xl">
