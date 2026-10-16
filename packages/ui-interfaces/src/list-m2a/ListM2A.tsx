@@ -167,8 +167,12 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
         textDecoration: isDeleted ? 'line-through' : undefined,
     };
 
+    // dnd-kit's sortable attributes (role="button", tabIndex, and
+    // aria-disabled="true" while dragging is off) belong on the drag handle.
+    // Spread on the row they made the whole row a disabled button, so its
+    // Remove / Undo buttons were announced as disabled.
     return (
-        <Table.Tr ref={setNodeRef} style={style} {...attributes} {...rest}>
+        <Table.Tr ref={setNodeRef} style={style} {...rest}>
             {showDragColumn && (
                 <Table.Td style={{ width: 50 }}>
                     {dragEnabled ? (
@@ -178,6 +182,7 @@ const SortableTableRow: React.FC<SortableTableRowProps> = ({
                             size="sm"
                             style={{ cursor: 'grab', touchAction: 'none' }}
                             data-testid={`m2a-drag-handle-${id}`}
+                            {...attributes}
                             {...listeners}
                         >
                             <IconGripVertical size={14} />
@@ -219,8 +224,12 @@ const SortableListItem: React.FC<SortableListItemProps> = ({
         gap: 4,
     };
 
+    // dnd-kit's sortable attributes go on the drag handle, not the row: on
+    // the row (role="button", aria-disabled="true" while dragging is off) they
+    // made every row a disabled button, and its Remove / Undo buttons were
+    // announced as disabled.
     return (
-        <Box ref={setNodeRef} style={style} {...attributes}>
+        <Box ref={setNodeRef} style={style}>
             {dragEnabled && (
                 <Box
                     style={{
@@ -231,6 +240,7 @@ const SortableListItem: React.FC<SortableListItemProps> = ({
                         padding: '0 4px',
                     }}
                     data-testid={`m2a-drag-handle-${id}`}
+                    {...attributes}
                     role="button"
                     aria-label={reorderLabel}
                     {...listeners}

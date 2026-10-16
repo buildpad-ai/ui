@@ -577,6 +577,44 @@ describe("ListM2A drag gating — paginated sets", () => {
     });
 });
 
+describe("ListM2A row accessibility", () => {
+    const rows = (n: number) =>
+        Array.from({ length: n }, (_, i) => ({
+            id: `j${i}`,
+            collection: "headings",
+            item: `u${i}`,
+            sort: i + 1,
+        }));
+
+    // dnd-kit's sortable attributes (role="button", aria-disabled while
+    // dragging is off) used to sit on the row wrapper: the row read as a
+    // disabled button and so did the Remove button inside it.
+    it.each([
+        ["drag disabled", 30, 15],
+        ["drag enabled", 3, 3],
+    ])("keeps the row's own buttons enabled (%s)", (_label, totalCount, shown) => {
+        setItemsHook({ totalCount, displayItems: rows(shown) });
+
+        render(wrap(<ListM2A {...(BASE_PROPS as any)} />));
+
+        const remove = screen.getByTestId("m2a-list-remove-j0");
+        expect(remove).toBeEnabled();
+        expect(remove.closest('[aria-disabled="true"]')).toBeNull();
+        expect(remove.closest('[aria-roledescription="sortable"]')).toBeNull();
+    });
+
+    it("puts the sortable attributes on the drag handle", () => {
+        setItemsHook({ totalCount: 3, displayItems: rows(3) });
+
+        render(wrap(<ListM2A {...(BASE_PROPS as any)} />));
+
+        const handle = screen.getByTestId("m2a-drag-handle-j0");
+        expect(handle).toHaveAttribute("aria-roledescription", "sortable");
+        expect(handle).toHaveAttribute("role", "button");
+        expect(handle).toHaveAccessibleName("Reorder item");
+    });
+});
+
 describe("ListM2A — Add Existing picker count mode", () => {
     it("renders the picker with exactCount so the pager reflects real rows", async () => {
         // Same rationale as the M2M/O2M pickers: a small related collection
