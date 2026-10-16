@@ -69,7 +69,7 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
 // `handleFormUpdate` from a replacing one.
 vi.mock("@buildpad/ui-form", () => ({
   VForm: vi.fn(({ fields, modelValue, initialValues, onUpdate, disabled }: {
-    fields: Array<{ field: string }>;
+    fields: Array<{ field: string; meta?: { required?: boolean } }>;
     modelValue: Record<string, unknown>;
     initialValues?: Record<string, unknown>;
     onUpdate: (values: Record<string, unknown>) => void;
@@ -82,6 +82,7 @@ vi.mock("@buildpad/ui-form", () => ({
           data-testid={`field-${f.field}`}
           value={String(modelValue[f.field] ?? initialValues?.[f.field] ?? "")}
           disabled={disabled}
+          required={f.meta?.required === true}
           onChange={(e) => {
             const next = { ...modelValue, [f.field]: e.target.value };
             const initial = initialValues?.[f.field];
@@ -526,6 +527,52 @@ describe("CollectionForm", () => {
         expect(mockItemsCreateOne).toHaveBeenCalledTimes(2);
       });
       expect(mockItemsCreateOne).toHaveBeenLastCalledWith({ title: "B" });
+    });
+  });
+
+  describe("required fields and the save options", () => {
+    const REQUIRED_FIELDS = [
+      { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+      { field: "code", type: "string", meta: { interface: "input", sort: 2, required: true } },
+    ];
+
+    it("does not save with Save and Stay while a required field is empty", async () => {
+      mockFieldsReadAll.mockResolvedValue(REQUIRED_FIELDS);
+
+      renderForm({ mode: "create", showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-code")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Req" } });
+
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Validation failed");
+      expect(mockItemsCreateOne).not.toHaveBeenCalled();
+
+      // Filled in, the same option saves.
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 1 });
+      fireEvent.change(screen.getByTestId("field-code"), { target: { value: "C1" } });
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+      await waitFor(() => {
+        expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "Req", code: "C1" });
+      });
+    });
+
+    it("does not save with Ctrl+S while a required field is empty", async () => {
+      mockFieldsReadAll.mockResolvedValue(REQUIRED_FIELDS);
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "T", code: "C" });
+
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-code")).toHaveValue("C");
+      });
+      fireEvent.change(screen.getByTestId("field-code"), { target: { value: "" } });
+
+      fireEvent.keyDown(screen.getByTestId("field-code"), { key: "s", ctrlKey: true });
+
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Validation failed");
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
     });
   });
 

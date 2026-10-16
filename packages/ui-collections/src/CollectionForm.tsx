@@ -1083,11 +1083,27 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     await handleSave();
   };
 
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // The save options (and their shortcuts) call the save directly, so the
+  // browser's own check that the submit button gets (`required` and the other
+  // constraints the rendered inputs declare) never ran: Save and Stay sent a
+  // create without a required value. Run the same check first.
+  const saveWithOption = (afterSave: "stay" | "add-new" | "copy") => {
+    const form = formRef.current;
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
+      setSuccess(false);
+      setError(t.form.errors.validationFailed);
+      return;
+    }
+    void handleSave(afterSave);
+  };
+
   // Keyboard shortcuts drawn in the save options menu: Ctrl/⌘+S is Save and
   // Stay, Ctrl/⌘+Shift+S is Save and Create New. Only for keys pressed in this
   // form's own fields: a dialog portaled out of it (a relational field's form
   // or picker) is not in its DOM, and its keys belong to that dialog.
-  const formRef = useRef<HTMLFormElement>(null);
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (!showSaveOptions) return;
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== "s") return;
@@ -1097,7 +1113,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     e.stopPropagation();
     const action: SaveAction = e.shiftKey ? "save-and-add-new" : "save-and-stay";
     if (saving || disabledSaveOptions.includes(action)) return;
-    void handleSave(e.shiftKey ? "add-new" : "stay");
+    saveWithOption(e.shiftKey ? "add-new" : "stay");
   };
 
   // Discard changes
@@ -1270,9 +1286,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 <SaveOptions
                   disabledOptions={disabledSaveOptions}
                   disabled={saving}
-                  onSaveAndStay={() => handleSave("stay")}
-                  onSaveAndAddNew={() => handleSave("add-new")}
-                  onSaveAsCopy={() => handleSave("copy")}
+                  onSaveAndStay={() => saveWithOption("stay")}
+                  onSaveAndAddNew={() => saveWithOption("add-new")}
+                  onSaveAsCopy={() => saveWithOption("copy")}
                   onDiscardAndStay={handleDiscard}
                   translations={translations}
                 />
