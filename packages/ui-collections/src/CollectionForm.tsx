@@ -887,6 +887,30 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         return { scalar, m2m, extras };
       };
 
+      if (mode === "edit" && id && afterSave === "copy") {
+        // Save as Copy creates a new item from what the form shows and leaves
+        // the original as it was loaded. It used to PATCH the original with
+        // the edits (and flush its M2M changes) before creating the copy, so
+        // the original took the copy's values — and kept them when the copy
+        // then failed (a manual primary key has no value to copy).
+        const copyData: Record<string, unknown> = { ...initialFormData, ...dataToSave };
+        READ_ONLY_FIELDS.forEach((f) => {
+          if (!stableDefaultValues[f]) delete copyData[f];
+        });
+        delete copyData[resolvedPk];
+        // A concealed column reads back as a mask, never as the secret, and
+        // formData holds that mask verbatim. Copying it would write the
+        // literal asterisks into the new row — a guessable static token, or
+        // a password hashed from "**********". Omit those keys so the new
+        // record starts with no secret rather than a known one.
+        for (const [key, val] of Object.entries(copyData)) {
+          if (isConcealedValue(val)) delete copyData[key];
+        }
+        const copyResult = await itemsService.createOne(copyData);
+        onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
+        return;
+      }
+
       if (mode === "edit" && id) {
         // Collect only changed fields, excluding self-persisting interfaces
         // (e.g. "files" manages its own junction table independently)
@@ -950,22 +974,6 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         setSuccess(true);
         setFormData(clearedFormData);
         setInitialFormData(clearedFormData); // Reset "hasEdits" baseline
-
-        if (afterSave === "copy") {
-          const copyData = { ...dataToSave };
-          delete copyData[resolvedPk];
-          // A concealed column reads back as a mask, never as the secret, and
-          // formData holds that mask verbatim. Copying it would write the
-          // literal asterisks into the new row — a guessable static token, or
-          // a password hashed from "**********". Omit those keys so the new
-          // record starts with no secret rather than a known one.
-          for (const [key, val] of Object.entries(copyData)) {
-            if (isConcealedValue(val)) delete copyData[key];
-          }
-          const copyResult = await itemsService.createOne(copyData);
-          onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
-          return;
-        }
 
         if (afterSave === "add-new") {
           onNavigateToCreate?.();

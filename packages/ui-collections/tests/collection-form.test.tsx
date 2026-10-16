@@ -510,6 +510,50 @@ describe("CollectionForm", () => {
     });
   });
 
+  describe("save as copy of an edited item", () => {
+    it("creates the copy with the edits and leaves the original unchanged", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 7, title: "Orig", body: "Body" });
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 8 });
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "edit", id: 7, showSaveOptions: true, onSuccess });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Orig");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Copy" } });
+
+      fireEvent.click(screen.getByTestId("save-as-copy"));
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledWith({ title: "Copy", body: "Body", id: 8 });
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "Copy", body: "Body" });
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("leaves the original unchanged when the copy fails", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 7, title: "Orig", body: "Body" });
+      mockItemsCreateOne.mockRejectedValueOnce(new Error("copy refused"));
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "edit", id: 7, showSaveOptions: true, onSuccess });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Orig");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Copy" } });
+
+      fireEvent.click(screen.getByTestId("save-as-copy"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-error")).toHaveTextContent("copy refused");
+      });
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+      expect(onSuccess).not.toHaveBeenCalled();
+      // The edit is still there to save or discard.
+      expect(screen.getByTestId("field-title")).toHaveValue("Copy");
+    });
+  });
+
   describe("edit", () => {
     it("loads existing item data in edit mode", async () => {
       mockItemsReadOne.mockResolvedValue({
