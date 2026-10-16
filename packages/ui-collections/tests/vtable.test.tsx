@@ -6,11 +6,11 @@
  * double, so its behaviour that CollectionList relies on is pinned here.
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import React, { useState } from "react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { VTable } from "@buildpad/ui-table";
-import type { HeaderRaw } from "@buildpad/ui-table";
+import type { HeaderRaw, Sort } from "@buildpad/ui-table";
 
 type Row = { id: number; title: string };
 
@@ -94,6 +94,49 @@ describe("VTable", () => {
 
       expect(selectAll()).toHaveAttribute("data-indeterminate", "true");
       expect(selectAll()).not.toBeChecked();
+    });
+  });
+
+  describe("header clicks", () => {
+    function renderSortable() {
+      const onSortChange = vi.fn();
+      const onHeadersChange = vi.fn();
+      const view = render(
+        <VTable
+          headers={HEADERS}
+          items={PAGE_1}
+          itemKey="id"
+          sort={{ by: null, desc: false } as Sort}
+          showResize
+          allowHeaderReorder
+          onSortChange={onSortChange}
+          onHeadersChange={onHeadersChange}
+        />,
+      );
+      const header = view.container.querySelector("th.sortable") as HTMLElement;
+      return { onSortChange, onHeadersChange, header };
+    }
+
+    it("sorts on a click on the header", () => {
+      const { onSortChange, header } = renderSortable();
+
+      fireEvent.click(within(header).getByText("Title"));
+
+      expect(onSortChange).toHaveBeenCalledWith({ by: "title", desc: false });
+    });
+
+    it("does not sort when a resize is released inside the header", () => {
+      const { onSortChange, onHeadersChange, header } = renderSortable();
+      const handle = header.querySelector(".resize-handle") as HTMLElement;
+
+      fireEvent.pointerDown(handle, { pageX: 100 });
+      fireEvent.pointerMove(window, { pageX: 160 });
+      fireEvent.pointerUp(window, { pageX: 160 });
+      // The click the browser sends after a press and release inside the <th>.
+      fireEvent.click(header);
+
+      expect(onHeadersChange).toHaveBeenCalled();
+      expect(onSortChange).not.toHaveBeenCalled();
     });
   });
 });
