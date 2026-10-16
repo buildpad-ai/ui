@@ -259,6 +259,10 @@ describe("CollectionList", () => {
       await waitFor(() => {
         expect(screen.getByTestId("collection-list-error")).toBeInTheDocument();
       });
+      // The load error, with no developer hint (it named the Storybook host).
+      expect(screen.getByTestId("collection-list-error")).toHaveTextContent(
+        /^Failed to load collection fields\.$/,
+      );
     });
 
   });
