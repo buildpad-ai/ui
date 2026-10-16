@@ -149,14 +149,36 @@ const Tooltip = ({ children, label }: Record<string, unknown>) => (
   </div>
 );
 
-// Menu
+// Menu — like Mantine, its parts throw when rendered outside a <Menu>.
+const MenuContext = React.createContext(false);
+const useMenuPart = () => {
+  if (!React.useContext(MenuContext)) {
+    throw new Error("Menu component was not found in the tree");
+  }
+};
 const MenuComp = ({ children }: Record<string, unknown>) => (
-  <div data-component="Menu">{children as React.ReactNode}</div>
+  <MenuContext.Provider value>
+    <div data-component="Menu">{children as React.ReactNode}</div>
+  </MenuContext.Provider>
 );
-MenuComp.Target = ({ children }: Record<string, unknown>) => <div>{children as React.ReactNode}</div>;
-MenuComp.Dropdown = ({ children }: Record<string, unknown>) => <div>{children as React.ReactNode}</div>;
-MenuComp.Label = ({ children }: Record<string, unknown>) => <div data-component="Menu.Label">{children as React.ReactNode}</div>;
+MenuComp.Target = ({ children }: Record<string, unknown>) => {
+  useMenuPart();
+  return <div>{children as React.ReactNode}</div>;
+};
+MenuComp.Dropdown = ({ children }: Record<string, unknown>) => {
+  useMenuPart();
+  return <div>{children as React.ReactNode}</div>;
+};
+MenuComp.Label = ({ children }: Record<string, unknown>) => {
+  useMenuPart();
+  return <div data-component="Menu.Label">{children as React.ReactNode}</div>;
+};
+MenuComp.Divider = () => {
+  useMenuPart();
+  return <hr data-component="Menu.Divider" />;
+};
 MenuComp.Item = ({ children, onClick, ...props }: Record<string, unknown>) => {
+  useMenuPart();
   const testProps: Record<string, unknown> = {};
   for (const key of Object.keys(props)) {
     if (key.startsWith("data-")) testProps[key] = props[key];

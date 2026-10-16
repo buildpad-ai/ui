@@ -43,6 +43,10 @@
   min-width: 180px;
 }
 
+.collection-list-context-menu-label {
+  padding: 4px 12px;
+}
+
 .collection-list-context-menu-item {
   display: flex;
   align-items: center;

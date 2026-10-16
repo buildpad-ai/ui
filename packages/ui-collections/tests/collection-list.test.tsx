@@ -803,6 +803,20 @@ describe("CollectionList", () => {
   // Header context menu (sort / align / hide field)
   // =====================================================================
   describe("header context menu", () => {
+    // VTable draws the menu in its own popup, outside any Mantine <Menu>; a
+    // Menu.Label in it threw "Menu component was not found in the tree".
+    it("renders its section labels outside a Mantine Menu", async () => {
+      renderList();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("header-menu-title")).toBeInTheDocument();
+      });
+      const menu = screen.getByTestId("header-menu-title");
+      expect(within(menu).getByText("Sort")).toBeInTheDocument();
+      expect(within(menu).getByText("Alignment")).toBeInTheDocument();
+      expect(within(menu).getAllByRole("menuitem")).toHaveLength(6);
+    });
+
     it("calls onSortChange (ascending) on click and on Enter/Space", async () => {
       const onSortChange = vi.fn();
       renderList({ onSortChange });

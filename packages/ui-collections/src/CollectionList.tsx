@@ -813,10 +813,15 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   const renderHeaderContextMenu = useCallback(
     (header: Header) => {
       if (!enableHeaderMenu) return null;
+      // VTable draws this in its own popup, not inside a Mantine <Menu>, so
+      // no Menu.* part may be used here: Menu.Label threw "Menu component was
+      // not found in the tree" and took the page down on a right-click.
       return (
         <div className="collection-list-context-menu" role="menu">
           {/* Sort */}
-          <Menu.Label>{t.list.headerMenu.sort}</Menu.Label>
+          <Text size="xs" c="dimmed" fw={500} className="collection-list-context-menu-label">
+            {t.list.headerMenu.sort}
+          </Text>
           <div
             role="menuitem"
             tabIndex={0}
@@ -851,7 +856,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           <div className="collection-list-context-menu-divider" />
 
           {/* Alignment */}
-          <Menu.Label>{t.list.headerMenu.alignment}</Menu.Label>
+          <Text size="xs" c="dimmed" fw={500} className="collection-list-context-menu-label">
+            {t.list.headerMenu.alignment}
+          </Text>
           {[
             {
               align: "left" as Alignment,
