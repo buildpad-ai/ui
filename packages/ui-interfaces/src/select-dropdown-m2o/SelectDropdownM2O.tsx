@@ -46,7 +46,7 @@ import {
   IconSelector,
   IconTrash,
 } from "@tabler/icons-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Props for the SelectDropdownM2O component
@@ -218,10 +218,18 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     }
   }, [relationInfo, value, resolvedFields, loadItem, clearItem]);
 
+  // The newest list request. Loads are started by the dropdown, by each
+  // keystroke in the Select dialog's search and when that dialog opens; an
+  // answer that arrives after a newer request was sent is dropped, so a slow
+  // unfiltered list never replaces the results of the search typed since.
+  const loadRequestRef = useRef(0);
+
   // Load available items for dropdown
   const loadAvailableItems = useCallback(
     async (searchTerm?: string) => {
       if (!relationInfo) return;
+      const requestId = ++loadRequestRef.current;
+      const isStale = () => requestId !== loadRequestRef.current;
 
       try {
         setItemsLoading(true);
@@ -274,12 +282,14 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         const response = await apiRequest<{ data: M2OItem[] }>(
           `/api/items/${collection}${queryString ? `?${queryString}` : ""}`,
         );
+        if (isStale()) return;
         setAvailableItems(response.data || []);
       } catch (err) {
+        if (isStale()) return;
         console.error("Error loading available items:", err);
         setAvailableItems([]);
       } finally {
-        setItemsLoading(false);
+        if (!isStale()) setItemsLoading(false);
       }
     },
     [relationInfo, resolvedFields, filter],
@@ -296,6 +306,17 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     relationInfo,
     loadAvailableItems,
   ]);
+
+  // Load items when the modal layout's Select dialog opens, for the search it
+  // shows. It listed "No items found" until a search was typed: items loaded
+  // only for the dropdown and on search input. Typing reloads on its own
+  // (onChange below), so `search` is read, not a dependency.
+  useEffect(() => {
+    if (selectModalOpened && relationInfo) {
+      loadAvailableItems(search);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectModalOpened, relationInfo, loadAvailableItems]);
 
   // Format display value for an item using the resolved display template.
   // Uses the shared renderTemplate() from list-m2a/render-template.

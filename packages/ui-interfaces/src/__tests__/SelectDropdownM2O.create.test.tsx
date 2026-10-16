@@ -146,3 +146,35 @@ describe("SelectDropdownM2O search box", () => {
         expect(onChange).toHaveBeenCalledWith(1);
     });
 });
+
+describe("SelectDropdownM2O Select dialog (modal layout)", () => {
+    it("lists the related items when it opens", async () => {
+        render(wrap(<SelectDropdownM2O {...(BASE_PROPS as any)} layout="modal" value={null} onChange={jest.fn()} />));
+
+        fireEvent.click(screen.getByRole("button", { name: "Select Item" }));
+
+        const dialog = await screen.findByRole("dialog", { name: "Select authors" });
+        expect(within(dialog).getByPlaceholderText("Search...")).toHaveValue("");
+        expect(await within(dialog).findByText("Ada")).toBeInTheDocument();
+        expect(within(dialog).getByText("Grace")).toBeInTheDocument();
+        expect(within(dialog).queryByText("No items found")).not.toBeInTheDocument();
+    });
+
+    it("keeps the search results when the opening load answers after them", async () => {
+        let answerOpening: (value: unknown) => void = () => {};
+        (apiRequest as jest.Mock)
+            .mockImplementationOnce(() => new Promise((resolve) => { answerOpening = resolve; }))
+            .mockResolvedValueOnce({ data: [{ id: 2, name: "Grace" }] });
+        render(wrap(<SelectDropdownM2O {...(BASE_PROPS as any)} layout="modal" value={null} onChange={jest.fn()} />));
+
+        fireEvent.click(screen.getByRole("button", { name: "Select Item" }));
+        const dialog = await screen.findByRole("dialog", { name: "Select authors" });
+        fireEvent.change(within(dialog).getByPlaceholderText("Search..."), { target: { value: "Grace" } });
+        expect(await within(dialog).findByText("Grace")).toBeInTheDocument();
+
+        answerOpening({ data: [{ id: 1, name: "Ada" }, { id: 2, name: "Grace" }] });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(within(dialog).queryByText("Ada")).not.toBeInTheDocument();
+    });
+});
