@@ -111,3 +111,38 @@ describe("SelectDropdownM2O Create New", () => {
         expect(await screen.findByTestId("m2o-missing-relational-ui")).toHaveAttribute("data-missing", "CollectionForm");
     });
 });
+
+describe("SelectDropdownM2O search box", () => {
+    it("does not let Enter submit the form around the field", async () => {
+        const onSubmit = jest.fn((e: React.FormEvent) => e.preventDefault());
+        render(
+            wrap(
+                <form onSubmit={onSubmit}>
+                    <SelectDropdownM2O {...(BASE_PROPS as any)} value={null} onChange={jest.fn()} />
+                    <button type="submit">Save</button>
+                </form>,
+            ),
+        );
+
+        fireEvent.click(screen.getByTestId("m2o-select-author"));
+        const search = await screen.findByPlaceholderText("Search...");
+        fireEvent.change(search, { target: { value: "Ada" } });
+
+        // false = the default action (the form's implicit submission) is prevented.
+        expect(fireEvent.keyDown(search, { key: "Enter", code: "Enter" })).toBe(false);
+        expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("still picks a highlighted option with Enter", async () => {
+        const onChange = jest.fn();
+        render(wrap(<SelectDropdownM2O {...(BASE_PROPS as any)} value={null} onChange={onChange} />));
+
+        fireEvent.click(screen.getByTestId("m2o-select-author"));
+        const search = await screen.findByPlaceholderText("Search...");
+        await screen.findByText("Ada");
+        fireEvent.keyDown(search, { key: "ArrowDown", code: "ArrowDown" });
+        fireEvent.keyDown(search, { key: "Enter", code: "Enter" });
+
+        expect(onChange).toHaveBeenCalledWith(1);
+    });
+});

@@ -483,6 +483,14 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
               <Combobox.Search
                 value={search}
                 onChange={(event) => setSearch(event.currentTarget.value)}
+                // The dropdown is rendered in place (withinPortal={false}), so
+                // this input sits inside the item form. Mantine handles Enter
+                // only when an option is highlighted; otherwise the browser's
+                // implicit submission saved the whole item. Enter here never
+                // submits; with an option highlighted Mantine still picks it.
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.preventDefault();
+                }}
                 placeholder={t.searchPlaceholder}
                 leftSection={<IconSearch size={14} />}
               />
