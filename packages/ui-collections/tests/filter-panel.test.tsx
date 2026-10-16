@@ -116,4 +116,21 @@ describe("FilterPanel", () => {
       expect(onChange).toHaveBeenLastCalledWith({ _and: [{ title: { _contains: "abc" } }] });
     });
   });
+
+  describe("number values", () => {
+    it("sends an emptied number value as null, never as an empty string", () => {
+      const onChange = vi.fn();
+      render(<ControlledPanel onChange={onChange} />);
+
+      addRule("Quantity");
+      const input = () => within(rules()[0]).getByPlaceholderText("Value...");
+      fireEvent.change(input(), { target: { value: "5" } });
+      expect(onChange).toHaveBeenLastCalledWith({ _and: [{ quantity: { _eq: 5 } }] });
+
+      fireEvent.change(input(), { target: { value: "" } });
+
+      expect(onChange).toHaveBeenLastCalledWith({ _and: [{ quantity: { _eq: null } }] });
+      expect(input()).toHaveValue(null);
+    });
+  });
 });

@@ -324,7 +324,14 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                         return (
                             <NumberInput
                                 value={typeof rule.value === 'number' ? rule.value : undefined}
-                                onChange={(val) => onChange({ ...rule, value: val })}
+                                // Mantine reports an emptied input as '' (and a
+                                // half-typed "-" as a string). Sent as is, `_eq: ""`
+                                // failed the request on a numeric column; an empty
+                                // value is null, as on a newly added rule.
+                                onChange={(val) => {
+                                    const num = typeof val === 'number' ? val : Number(val);
+                                    onChange({ ...rule, value: val === '' || !Number.isFinite(num) ? null : num });
+                                }}
                                 placeholder={t.rule.valuePlaceholder}
                                 size="xs"
                                 style={{ minWidth: 100, flex: 1 }}
