@@ -451,6 +451,28 @@ describe("CollectionForm", () => {
     });
   });
 
+  describe("a user field named sort", () => {
+    it("renders it like any other field", async () => {
+      mockFieldsReadAll.mockResolvedValue([
+        { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+        { field: "sort", type: "integer", meta: { interface: "input", sort: 2 } },
+      ]);
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 1 });
+
+      renderForm({ mode: "create" });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-sort")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "S" } });
+      fireEvent.change(screen.getByTestId("field-sort"), { target: { value: "5" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "S", sort: "5" });
+      });
+    });
+  });
+
   describe("locale", () => {
     it("hands its locale to VForm, which labels the fields with it", async () => {
       const { VForm } = await import("@buildpad/ui-form");

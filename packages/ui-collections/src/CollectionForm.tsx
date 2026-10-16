@@ -145,14 +145,16 @@ export interface FormPermissionState {
   isSavable: boolean;
 }
 
-// System fields that should be auto-generated
+// System fields that should be auto-generated.
+// Not "sort": a field of that name is as often the user's own column, and
+// matching the name hid it from every form. The sort field DaaS manages for
+// manual ordering is hidden by its own meta.hidden, which VForm honours.
 const SYSTEM_FIELDS = new Set([
   "id",
   "user_created",
   "user_updated",
   "date_created",
   "date_updated",
-  "sort",
 ]);
 
 // Fields that are read-only by nature
