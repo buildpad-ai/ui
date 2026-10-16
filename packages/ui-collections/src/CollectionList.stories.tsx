@@ -309,7 +309,10 @@ const createMockApiDecorator = (permissionsPayload: Record<string, unknown> = {}
 
       // Mock permissions endpoint
       if (url.includes("/api/permissions/me")) {
-        return new Response(JSON.stringify({ data: permissionsPayload }), {
+        // The default mock (an empty map) is an administrator: an empty map
+        // grants a non-administrator nothing.
+        const isAdmin = Object.keys(permissionsPayload).length === 0;
+        return new Response(JSON.stringify({ data: permissionsPayload, isAdmin }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
@@ -448,7 +451,7 @@ const createMockApiDecorator = (permissionsPayload: Record<string, unknown> = {}
   return MockApiDecorator;
 };
 
-/** Default admin mock — empty access map → full access */
+/** Default admin mock — an administrator (isAdmin) with an empty access map */
 const withMockApi = createMockApiDecorator({});
 
 /** Read-only mock — only read access, no create/update/delete */

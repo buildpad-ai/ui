@@ -411,17 +411,18 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         const updateAccess: CollectionActionAccess | undefined = access.update;
         const deleteAccess: CollectionActionAccess | undefined = access.delete;
 
-        // Determine create/update/delete allowed
-        // Admin users get full access; empty map (failed fetch) also assumes full access
+        // Determine create/update/delete allowed. An administrator has full
+        // access; anyone else has exactly what the map grants. An empty map
+        // (no grants, or a failed /permissions/me) grants nothing: treating it
+        // as full access gave a user with no permissions an editable form.
         const isAdmin = PermissionsService.isAdmin;
-        const isEmptyAccess = Object.keys(collectionAccess || {}).length === 0;
-        setCreateAllowed(isAdmin || isEmptyAccess || !!createAccess);
-        setUpdateAllowed(isAdmin || isEmptyAccess || !!updateAccess);
-        setDeleteAllowed(isAdmin || isEmptyAccess || !!deleteAccess);
+        setCreateAllowed(isAdmin || !!createAccess);
+        setUpdateAllowed(isAdmin || !!updateAccess);
+        setDeleteAllowed(isAdmin || !!deleteAccess);
 
         // Compute readable field names
         let readFields: string[] | null = null;
-        if (!isAdmin && !isEmptyAccess && readAccess) {
+        if (!isAdmin && readAccess) {
           readFields = readAccess.fields || null; // null = wildcard
           if (readFields && readFields.includes("*")) readFields = null;
         }
@@ -429,7 +430,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // Compute writable field names for the current action
         const actionAccess = mode === "create" ? createAccess : updateAccess;
         let writeFields: string[] | null = null;
-        if (!isAdmin && !isEmptyAccess && actionAccess) {
+        if (!isAdmin && actionAccess) {
           writeFields = actionAccess.fields || null;
           if (writeFields && writeFields.includes("*")) writeFields = null;
         }

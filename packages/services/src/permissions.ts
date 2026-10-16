@@ -126,10 +126,10 @@ export class PermissionsService {
           "[PermissionsService] Failed to fetch /permissions/me:",
           err,
         );
-        // Collection access returns empty — callers treat empty as "unable to
-        // determine permissions" and fail OPEN, preserving existing behaviour.
-        // Module access must NOT inherit that: a capability flag is deny-by-
-        // default, so leave it null and let hasModuleAccess() return false.
+        // Collection access returns empty, which grants a non-administrator
+        // nothing (CollectionList / CollectionForm fail closed on it). Module
+        // access is deny-by-default too: leave it null and let
+        // hasModuleAccess() return false.
         _cachedModuleAccess = null;
         return {};
       } finally {

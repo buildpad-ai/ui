@@ -17,6 +17,7 @@ import { MantineProvider } from "@mantine/core";
 const {
   mockFieldsReadAll,
   mockPermissionsGetAccess,
+  permissionState,
   mockItemsReadOne,
   mockItemsCreateOne,
   mockItemsUpdateOne,
@@ -25,6 +26,10 @@ const {
 } = vi.hoisted(() => ({
   mockFieldsReadAll: vi.fn(),
   mockPermissionsGetAccess: vi.fn(),
+  // PermissionsService.isAdmin: true by default (each test starts as an
+  // administrator); a test that hands the form a role's access map sets it
+  // to false, as the real service does for a non-administrator.
+  permissionState: { isAdmin: true },
   mockItemsReadOne: vi.fn(),
   mockItemsCreateOne: vi.fn(),
   mockItemsUpdateOne: vi.fn(),
@@ -48,6 +53,9 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   })),
   PermissionsService: {
     getMyCollectionAccess: mockPermissionsGetAccess,
+    get isAdmin() {
+      return permissionState.isAdmin;
+    },
   },
   apiRequest: vi.fn(),
 }));
@@ -141,6 +149,11 @@ function renderForm(props: Partial<React.ComponentProps<typeof CollectionForm>> 
 // -------------------------------------------------------------------
 afterEach(() => {
   cleanup();
+});
+
+// Every test starts as an administrator (see permissionState).
+beforeEach(() => {
+  permissionState.isAdmin = true;
 });
 
 describe("CollectionForm", () => {
@@ -265,6 +278,7 @@ describe("CollectionForm", () => {
       mockFieldsReadAll.mockResolvedValue([
         { field: "status", type: "string", schema: { default_value: "'active'::character varying" }, meta: { interface: "input", sort: 1 } },
       ]);
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -287,6 +301,7 @@ describe("CollectionForm", () => {
         { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
         { field: "status", type: "string", schema: { default_value: "'active'::character varying" }, meta: { interface: "input", sort: 2 } },
       ]);
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: { read: { fields: ["*"] }, create: { fields: ["title"] } },
       });
@@ -313,6 +328,7 @@ describe("CollectionForm", () => {
         { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
         { field: "status", type: "string", schema: { default_value: "'active'::character varying" }, meta: { interface: "input", sort: 2 } },
       ]);
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: { read: { fields: ["*"] }, create: { fields: ["title"] } },
       });
@@ -594,6 +610,7 @@ describe("CollectionForm", () => {
   describe("permissions", () => {
     it("disables delete button when permission is denied", async () => {
       // Return permissions that deny delete
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -612,6 +629,50 @@ describe("CollectionForm", () => {
 
       // Delete button should NOT be shown because deleteAllowed = false
       expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+    });
+
+    // An empty access map is what /permissions/me returns for a user with no
+    // grants at all (and what a failed load turns into). It grants a
+    // non-administrator nothing; it used to grant everything.
+    it("gives a non-administrator with an empty access map a disabled create form", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+
+      renderForm({ mode: "create" });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      expect(screen.getByTestId("field-title")).toBeDisabled();
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+    });
+
+    it("gives a non-administrator no write control when the permissions fail to load", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item" });
+
+      renderForm({ mode: "edit", id: 1, showDelete: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Item");
+      });
+      expect(screen.getByTestId("field-title")).toBeDisabled();
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+      expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+    });
+
+    it("keeps full access for an administrator whose access map is empty", async () => {
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item" });
+
+      renderForm({ mode: "edit", id: 1 });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Item");
+      });
+      expect(screen.getByTestId("field-title")).toBeEnabled();
+      expect(screen.getByTestId("form-delete-btn")).toBeInTheDocument();
     });
   });
 });

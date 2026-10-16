@@ -18,11 +18,16 @@ import { MantineProvider } from "@mantine/core";
 const {
   mockFieldsReadAll,
   mockPermissionsGetAccess,
+  permissionState,
   mockItemsDeleteMany,
   mockApiRequest,
 } = vi.hoisted(() => ({
   mockFieldsReadAll: vi.fn(),
   mockPermissionsGetAccess: vi.fn(),
+  // PermissionsService.isAdmin: true by default (each test starts as an
+  // administrator); a test that hands the form a role's access map sets it
+  // to false, as the real service does for a non-administrator.
+  permissionState: { isAdmin: true },
   mockItemsDeleteMany: vi.fn(),
   mockApiRequest: vi.fn(),
 }));
@@ -40,6 +45,9 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   })),
   PermissionsService: {
     getMyCollectionAccess: mockPermissionsGetAccess,
+    get isAdmin() {
+      return permissionState.isAdmin;
+    },
   },
   apiRequest: mockApiRequest,
 }));
@@ -202,6 +210,11 @@ function renderList(props: Partial<React.ComponentProps<typeof CollectionList>> 
 // -------------------------------------------------------------------
 // Tests
 // -------------------------------------------------------------------
+// Every test starts as an administrator (see permissionState).
+beforeEach(() => {
+  permissionState.isAdmin = true;
+});
+
 describe("CollectionList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -449,6 +462,7 @@ describe("CollectionList", () => {
   // =====================================================================
   describe("permissions", () => {
     it("does not show create button when createAllowed is false", async () => {
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -467,6 +481,7 @@ describe("CollectionList", () => {
     });
 
     it("disables bulk delete when deleteAllowed is false", async () => {
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -497,6 +512,7 @@ describe("CollectionList", () => {
     });
 
     it("disables bulk action buttons based on requiredPermission", async () => {
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -546,6 +562,60 @@ describe("CollectionList", () => {
 
       // Export (no requiredPermission) - should be enabled
       expect(screen.getByTestId("bulk-action-2")).toBeEnabled();
+    });
+
+    // An empty access map is what /permissions/me returns for a user with no
+    // grants at all (and what a failed load turns into). It grants a
+    // non-administrator nothing; it used to grant everything.
+    it("grants a non-administrator with an empty access map nothing", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+      const onPermissionsLoaded = vi.fn();
+
+      renderList({ enableCreate: true, onCreate: vi.fn(), onPermissionsLoaded, archiveField: "status" });
+
+      await waitFor(() => {
+        expect(onPermissionsLoaded).toHaveBeenCalled();
+      });
+      expect(onPermissionsLoaded).toHaveBeenCalledWith({
+        createAllowed: false,
+        readAllowed: false,
+        updateAllowed: false,
+        deleteAllowed: false,
+        archiveAllowed: false,
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("collection-list-create")).toBeDisabled();
+      });
+    });
+
+    it("keeps Create and Delete disabled for a non-administrator when the permissions fail to load", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+
+      renderList({ enableCreate: true, onCreate: vi.fn(), enableSelection: true, enableDelete: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+      expect(screen.getByTestId("collection-list-create")).toBeDisabled();
+      fireEvent.click(screen.getByTestId("vtable-select-0"));
+      await waitFor(() => {
+        expect(screen.getByTestId("bulk-action-delete")).toBeDisabled();
+      });
+    });
+
+    it("keeps full access for an administrator whose access map is empty", async () => {
+      const onPermissionsLoaded = vi.fn();
+
+      renderList({ enableCreate: true, onCreate: vi.fn(), onPermissionsLoaded });
+
+      await waitFor(() => {
+        expect(onPermissionsLoaded).toHaveBeenCalledWith(
+          expect.objectContaining({ createAllowed: true, readAllowed: true, deleteAllowed: true }),
+        );
+      });
+      expect(screen.getByTestId("collection-list-create")).toBeEnabled();
     });
   });
 
