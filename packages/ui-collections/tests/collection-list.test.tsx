@@ -66,6 +66,7 @@ vi.mock("@buildpad/ui-table", () => ({
     noItemsText,
     renderCell,
     renderHeaderContextMenu,
+    onHeadersChange,
     itemKey,
     selectionUseKeys,
   }: {
@@ -80,10 +81,22 @@ vi.mock("@buildpad/ui-table", () => ({
     noItemsText?: string;
     renderCell?: (item: Record<string, unknown>, header: any) => React.ReactNode;
     renderHeaderContextMenu?: (header: any) => React.ReactNode;
+    onHeadersChange?: (headers: any[]) => void;
     itemKey?: string;
     selectionUseKeys?: boolean;
   }) => (
     <div data-testid="vtable-mock">
+      {/* What a column resize does on each pointer move: the same columns,
+          the first one wider. */}
+      <button
+        type="button"
+        data-testid="vtable-resize-first"
+        onClick={() =>
+          onHeadersChange?.(
+            headers.map((h: any, i) => (i === 0 ? { ...h, width: (h.width ?? 100) + 10 } : h)),
+          )
+        }
+      />
       {loading && <div data-testid="vtable-loading">Loading...</div>}
       {!loading && items.length === 0 && (
         <div data-testid="vtable-empty">{noItemsText || "No items"}</div>
@@ -440,6 +453,29 @@ describe("CollectionList", () => {
   // =====================================================================
   // Refresh
   // =====================================================================
+  describe("column resize", () => {
+    it("does not reload the rows when only a column width changes", async () => {
+      renderList();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+      const itemRequests = () =>
+        mockApiRequest.mock.calls.filter(([url]) => !String(url).includes("aggregate")).length;
+      const before = itemRequests();
+
+      for (let move = 0; move < 5; move++) {
+        fireEvent.click(screen.getByTestId("vtable-resize-first"));
+      }
+      // Let any refetch the moves would trigger start.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+
+      expect(itemRequests()).toBe(before);
+    });
+  });
+
   describe("refresh", () => {
     it("reloads items when refresh button is clicked", async () => {
       renderList();

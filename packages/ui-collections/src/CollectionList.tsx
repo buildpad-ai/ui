@@ -803,8 +803,15 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       if (h.align && h.align !== "left") overrides[h.value].align = h.align;
     });
     setHeaderOverrides((prev) => ({ ...prev, ...overrides }));
-    // Update visible field order
-    setVisibleFieldKeys(newHeaders.map((h) => h.value));
+    // Update visible field order — only when it changed. A resize calls this
+    // on every pointer move with the same columns; a new (equal) array each
+    // time re-created loadItems and refetched the page once per move.
+    const nextKeys = newHeaders.map((h) => h.value);
+    setVisibleFieldKeys((prev) =>
+      prev.length === nextKeys.length && prev.every((key, i) => key === nextKeys[i])
+        ? prev
+        : nextKeys,
+    );
   }, []);
 
   // =========================================================================
