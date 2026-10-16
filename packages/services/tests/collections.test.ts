@@ -101,3 +101,70 @@ describe('CollectionsService.createCollection baselines', () => {
     expect(lastBody().fields.map((f) => f.field)).toContain('title');
   });
 });
+
+describe('CollectionsService — answers with no collection', () => {
+  beforeEach(() => apiRequestMock.mockReset());
+
+  // These used to throw `Cannot read properties of null (reading 'data')`,
+  // which named neither the collection nor the operation. Worse, a body the
+  // unwrap accepted would have handed back `null` typed as a `Collection`,
+  // pushing the failure into whatever used the result next.
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['an empty envelope', { data: null }],
+  ])('createCollection throws a named error for %s', async (_label, response) => {
+    apiRequestMock.mockResolvedValueOnce(response);
+
+    await expect(
+      new CollectionsService().createCollection({ collection: 'orders' }),
+    ).rejects.toThrow(/Could not create collection fb_orders: the server returned no collection/);
+  });
+
+  it('names the normalized collection, not the name that was passed', async () => {
+    apiRequestMock.mockResolvedValueOnce(null);
+
+    await expect(
+      new CollectionsService().createCollection({ collection: 'orders' }),
+    ).rejects.toThrow(/fb_orders/);
+  });
+
+  it('still returns the collection of a { data } response', async () => {
+    apiRequestMock.mockResolvedValueOnce({ data: { collection: 'fb_orders', meta: null, schema: null } });
+
+    await expect(
+      new CollectionsService().createCollection({ collection: 'orders' }),
+    ).resolves.toMatchObject({ collection: 'fb_orders' });
+  });
+
+  it('still accepts a flat collection response', async () => {
+    apiRequestMock.mockResolvedValueOnce({ collection: 'fb_orders', meta: null, schema: null });
+
+    await expect(
+      new CollectionsService().createCollection({ collection: 'orders' }),
+    ).resolves.toMatchObject({ collection: 'fb_orders' });
+  });
+});
+
+describe('CollectionsService.readByQuery — a null body', () => {
+  beforeEach(() => apiRequestMock.mockReset());
+
+  // The method already swallows failures and resolves []. A bodiless answer
+  // now takes the same path directly, instead of throwing a TypeError into
+  // the catch and logging a misleading "Error fetching collections".
+  it('reads a null body as an empty list', async () => {
+    apiRequestMock.mockResolvedValueOnce(null);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(new CollectionsService().readByQuery()).resolves.toEqual([]);
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    errorSpy.mockRestore();
+  });
+
+  it('returns the collections of a { data } response', async () => {
+    apiRequestMock.mockResolvedValueOnce({ data: [{ collection: 'posts' }] });
+
+    await expect(new CollectionsService().readByQuery()).resolves.toEqual([{ collection: 'posts' }]);
+  });
+});

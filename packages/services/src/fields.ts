@@ -8,9 +8,25 @@ import type { Field, FieldSpec } from '@buildpad/types';
 import { fieldSpecToDaaSField } from '@buildpad/utils';
 import { apiRequest } from './api-request';
 
-/** Unwrap DaaS `{ data: Field }` or a flat `Field` response. */
-function unwrapField(response: { data: Field } | Field): Field {
-  return (response as { data: Field }).data ?? (response as Field);
+/**
+ * Unwrap DaaS `{ data: Field }` or a flat `Field` response.
+ *
+ * `response` is optional-chained because a DDL call can answer with no body
+ * at all (a 204, or a proxy that drops it). Reading `.data` off that threw
+ * `Cannot read properties of null`, which told the caller nothing about
+ * which field or which operation failed. A bodiless answer now raises the
+ * named error instead — and never returns `null` typed as a `Field`, which
+ * would push the failure into whatever used the result next.
+ */
+function unwrapField(response: { data: Field } | Field | null, context: string): Field {
+  const field = (response as { data: Field } | null)?.data ?? (response as Field | null);
+  // `?? response` falls back to the envelope itself, so `{ data: null }` would
+  // otherwise pass as a field. Require the one property that makes it one —
+  // the same check readOne applies.
+  if (!field?.field) {
+    throw new Error(`${context}: the server returned no field`);
+  }
+  return field;
 }
 
 /**
@@ -31,18 +47,22 @@ export class FieldsService {
       : '/api/fields';
 
     // Handle both { data: Field[] } (DaaS) and Field[] (DaaS flat) formats
-    const response = await apiRequest<{ data: Field[] } | Field[]>(path);
+    const response = await apiRequest<{ data: Field[] } | Field[] | null>(path);
     if (Array.isArray(response)) return response;
-    return response.data || [];
+    return response?.data || [];
   }
 
   /**
    * Read a single field
    */
   async readOne(collection: string, field: string): Promise<Field> {
-    const response = await apiRequest<{ data: Field } | Field>(`/api/fields/${collection}/${field}`);
-    // Handle both { data: Field } (DaaS) and flat Field (DaaS) formats
-    const fieldData = (response as { data: Field }).data ?? response;
+    const response = await apiRequest<{ data: Field } | Field | null>(
+      `/api/fields/${collection}/${field}`,
+    );
+    // Handle both { data: Field } (DaaS) and flat Field (DaaS) formats.
+    // Optional-chained: a bodiless answer must reach the named error below,
+    // not throw "Cannot read properties of null" on the way there.
+    const fieldData = (response as { data: Field } | null)?.data ?? response;
     if (!fieldData || !(fieldData as Field).field) {
       throw new Error(`Field not found: ${collection}.${field}`);
     }
@@ -62,7 +82,7 @@ export class FieldsService {
    */
   async createField(collection: string, spec: FieldSpec): Promise<Field> {
     const body = fieldSpecToDaaSField(collection, spec);
-    const response = await apiRequest<{ data: Field } | Field>(
+    const response = await apiRequest<{ data: Field } | Field | null>(
       `/api/fields/${collection}`,
       {
         method: 'POST',
@@ -70,7 +90,7 @@ export class FieldsService {
         body: JSON.stringify(body),
       },
     );
-    return unwrapField(response);
+    return unwrapField(response, `Could not create field ${collection}.${spec.field}`);
   }
 
   /**
@@ -82,7 +102,7 @@ export class FieldsService {
     field: string,
     patch: Partial<Pick<Field, 'type' | 'meta' | 'schema'>>,
   ): Promise<Field> {
-    const response = await apiRequest<{ data: Field } | Field>(
+    const response = await apiRequest<{ data: Field } | Field | null>(
       `/api/fields/${collection}/${field}`,
       {
         method: 'PATCH',
@@ -90,7 +110,7 @@ export class FieldsService {
         body: JSON.stringify(patch),
       },
     );
-    return unwrapField(response);
+    return unwrapField(response, `Could not update field ${collection}.${field}`);
   }
 
   /**

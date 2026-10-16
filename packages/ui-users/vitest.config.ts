@@ -15,6 +15,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
+    // These suites drive the list through searches, folder changes and paging,
+    // each settled with a real 500ms sleep — the longest test spends 2s of its
+    // budget asleep before anything renders. Against vitest's 5s default that
+    // left no room on a busy machine, and it timed out while passing in
+    // isolation. Same value as ui-cron, ui-interfaces and ui-workflows.
+    testTimeout: 20000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

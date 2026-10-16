@@ -209,8 +209,11 @@ export class CollectionsService {
    */
   async readByQuery(): Promise<Collection[]> {
     try {
-      const response = await apiRequest<{ data: Collection[] }>('/api/collections');
-      return response.data || [];
+      const response = await apiRequest<{ data: Collection[] } | null>('/api/collections');
+      // Optional-chained: a bodiless answer is an empty list, which is what
+      // the catch below already produced — minus a misleading
+      // "Error fetching collections" in the console.
+      return response?.data || [];
     } catch (error) {
       console.error('Error fetching collections:', error);
       // Return empty array on error
@@ -268,7 +271,7 @@ export class CollectionsService {
       fields: [...baseline, ...extraFields],
     };
 
-    const response = await apiRequest<{ data: Collection } | Collection>(
+    const response = await apiRequest<{ data: Collection } | Collection | null>(
       '/api/collections',
       {
         method: 'POST',
@@ -276,7 +279,16 @@ export class CollectionsService {
         body: JSON.stringify(body),
       },
     );
-    return (response as { data: Collection }).data ?? (response as Collection);
+    // A DDL call can answer with no body. Reading `.data` off that threw
+    // `Cannot read properties of null`; returning it would be worse still,
+    // handing back `null` typed as a `Collection`.
+    const created = (response as { data: Collection } | null)?.data ?? (response as Collection | null);
+    // `?? response` falls back to the envelope, so `{ data: null }` would
+    // otherwise pass. Require the property that makes it a collection.
+    if (!created?.collection) {
+      throw new Error(`Could not create collection ${collection}: the server returned no collection`);
+    }
+    return created;
   }
 
   /**

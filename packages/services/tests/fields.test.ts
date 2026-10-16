@@ -45,6 +45,12 @@ describe('FieldsService.readAll', () => {
 
     await expect(new FieldsService().readAll('posts')).rejects.toThrow('API error: 500');
   });
+
+  it('reads a null body as no fields rather than throwing', async () => {
+    apiRequestMock.mockResolvedValueOnce(null);
+
+    await expect(new FieldsService().readAll('posts')).resolves.toEqual([]);
+  });
 });
 
 
@@ -84,16 +90,22 @@ describe('FieldsService.readOne', () => {
     );
   });
 
-  // Documents a rough edge rather than endorsing it: the unwrap reads
-  // `response.data` before the guard runs, so a null body (a 204, say) throws
-  // a TypeError instead of the named "Field not found". Callers still see a
-  // rejection, so nothing is silently wrong — but the message is useless.
-  // Changing it is a behaviour change and belongs in its own changeset.
-  it('throws an unhelpful TypeError for a null body', async () => {
+  // A bodiless answer (a 204, or a proxy that drops the body) used to throw
+  // `Cannot read properties of null` from the unwrap, before the guard below
+  // could run — a rejection that named neither the field nor the operation.
+  it('reaches the named error for a null body, not a TypeError', async () => {
     apiRequestMock.mockResolvedValueOnce(null);
 
     await expect(new FieldsService().readOne('posts', 'title')).rejects.toThrow(
-      "Cannot read properties of null (reading 'data')",
+      'Field not found: posts.title',
+    );
+  });
+
+  it('reaches the named error for an undefined body', async () => {
+    apiRequestMock.mockResolvedValueOnce(undefined);
+
+    await expect(new FieldsService().readOne('posts', 'title')).rejects.toThrow(
+      'Field not found: posts.title',
     );
   });
 
@@ -199,5 +211,37 @@ describe('FieldsService.deleteField', () => {
 describe('createFieldsService', () => {
   it('returns a usable FieldsService', () => {
     expect(createFieldsService()).toBeInstanceOf(FieldsService);
+  });
+});
+
+
+describe('FieldsService — a DDL call that answers with no field', () => {
+  beforeEach(() => apiRequestMock.mockReset());
+
+  // Returning the empty body would hand back `null` typed as a `Field`, so
+  // the failure would surface somewhere else entirely. These name the field
+  // and the operation instead.
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['an empty envelope', { data: null }],
+  ])('createField throws a named error for %s', async (_label, response) => {
+    apiRequestMock.mockResolvedValueOnce(response);
+
+    await expect(
+      new FieldsService().createField('posts', { field: 'subtitle' }),
+    ).rejects.toThrow('Could not create field posts.subtitle: the server returned no field');
+  });
+
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['an empty envelope', { data: null }],
+  ])('updateField throws a named error for %s', async (_label, response) => {
+    apiRequestMock.mockResolvedValueOnce(response);
+
+    await expect(
+      new FieldsService().updateField('posts', 'title', {}),
+    ).rejects.toThrow('Could not update field posts.title: the server returned no field');
   });
 });

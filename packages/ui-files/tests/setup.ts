@@ -1,6 +1,11 @@
 import { afterEach } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+
+// `findBy…` and `waitFor` give up after one second by default. These suites
+// wait on list re-fetches that settle through several renders; under coverage
+// on a busy machine a second is not always enough.
+configure({ asyncUtilTimeout: 5000 });
 
 // Mantine components (Modal, Menu, etc.) render into a document.body portal.
 // Explicitly unmount + remove portal content after every test so assertions
