@@ -12,9 +12,9 @@ export default defineConfig({
       // directory (storybook-static/, dist/), so the floors below fail for
       // reasons that have nothing to do with the source.
       include: ['src/**'],
-      // Floors just under the coverage measured when they were added
-      // (67.27 / 96.2 / 85.05 / 67.27); raise them as tests are added.
-      thresholds: { statements: 66, branches: 95, functions: 84, lines: 66 },
+      // Floors just under the coverage measured when they were last raised
+      // (79.39 / 96.59 / 91.07 / 79.39); raise them as tests are added.
+      thresholds: { statements: 78, branches: 96, functions: 90, lines: 78 },
     },
   },
 });
