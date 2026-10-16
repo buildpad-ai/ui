@@ -676,7 +676,12 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     ]);
     for (const key of keys) {
       if (READ_ONLY_FIELDS.has(key) && key !== manualPrimaryKeyField) continue;
-      if (formData[key] !== initialFormData[key]) return true;
+      // VForm drops a key from the model when its value returns to the
+      // loaded one (see handleFormUpdate), so a missing key is "as loaded",
+      // not "emptied". Comparing it as undefined kept Save and Discard
+      // enabled after the user typed the original value back.
+      const current = key in formData ? formData[key] : initialFormData[key];
+      if (current !== initialFormData[key]) return true;
     }
     return false;
   }, [formData, initialFormData, manualPrimaryKeyField]);
@@ -957,7 +962,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // Clear M2M keys from form state so child interfaces (e.g. ListM2M)
         // receive value=undefined and reset their staged changes — prevents
         // stale "NEW" rows appearing alongside the just-fetched server records.
-        const clearedFormData: Record<string, unknown> = { ...formData };
+        // The saved state: the loaded values with the edits over them. A key
+        // VForm dropped because its value went back to the loaded one keeps
+        // the loaded value (formData alone would lose it from the baseline,
+        // and the field would show empty after the save).
+        const clearedFormData: Record<string, unknown> = { ...initialFormData, ...formData };
         for (const { junctionInfo: ji } of m2mEntries) {
           // find field name for this junction
           for (const [k, v] of Object.entries(m2mJunctionMap)) {

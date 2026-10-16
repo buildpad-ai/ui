@@ -554,6 +554,50 @@ describe("CollectionForm", () => {
     });
   });
 
+  describe("reverting an edit", () => {
+    it("disables Save again when the loaded value is typed back", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Rev", body: "Body" });
+
+      renderForm({ mode: "edit", id: 1 });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Rev");
+      });
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Y" } });
+      expect(screen.getByTestId("form-submit-btn")).toBeEnabled();
+
+      // The VForm double drops the key, as VForm does on a revert.
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Rev" } });
+
+      expect(screen.getByTestId("field-title")).toHaveValue("Rev");
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+    });
+
+    it("keeps a reverted field's value after saving another field", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Rev", body: "Body" });
+      mockItemsUpdateOne.mockResolvedValueOnce({ id: 1 });
+
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Rev");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Y" } });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Rev" } });
+      fireEvent.change(screen.getByTestId("field-body"), { target: { value: "Body 2" } });
+
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-success")).toBeInTheDocument();
+      });
+      expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { body: "Body 2" });
+      expect(screen.getByTestId("field-title")).toHaveValue("Rev");
+      expect(screen.getByTestId("field-body")).toHaveValue("Body 2");
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+    });
+  });
+
   describe("edit", () => {
     it("loads existing item data in edit mode", async () => {
       mockItemsReadOne.mockResolvedValue({
