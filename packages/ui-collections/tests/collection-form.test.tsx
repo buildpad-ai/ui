@@ -451,6 +451,19 @@ describe("CollectionForm", () => {
     });
   });
 
+  describe("locale", () => {
+    it("hands its locale to VForm, which labels the fields with it", async () => {
+      const { VForm } = await import("@buildpad/ui-form");
+
+      renderForm({ mode: "create", locale: "id" });
+      await waitFor(() => {
+        expect(screen.getByTestId("vform-mock")).toBeInTheDocument();
+      });
+
+      expect(vi.mocked(VForm).mock.lastCall?.[0]).toMatchObject({ locale: "id" });
+    });
+  });
+
   describe("save errors", () => {
     it("shows the backend's sentence, not the raw response", async () => {
       mockItemsCreateOne.mockRejectedValueOnce(

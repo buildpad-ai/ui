@@ -38,6 +38,7 @@ import {
   useBuildpadTranslations,
 } from "@buildpad/services";
 import {
+  getFieldDisplayName,
   interfaceRequiresChoices,
   interpolate,
   isNonFlatRelationalField,
@@ -189,6 +190,12 @@ export interface CollectionListProps {
    * far more than the marginal cost of a real count.
    */
   exactCount?: boolean;
+  /**
+   * Locale of the column headers (e.g. `'id'` or `'en-US'`), matched against
+   * each field's `meta.translations` the way CollectionForm labels its fields.
+   * A field without translations keeps its humanized name.
+   */
+  locale?: string;
 }
 
 // System fields to exclude from default display
@@ -243,6 +250,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   renderCell: consumerRenderCell,
   translations,
   exactCount = false,
+  locale,
 }) => {
   // ----- Strings & formatters (prop > provider dictionary > English defaults) -----
   const t = useBuildpadTranslations((d) => d.collections, translations);
@@ -714,8 +722,11 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       // Use field.meta?.field (display name) or humanize the key.
       // DaaS uses field `name` for display; DaaS uses meta.note as a tooltip.
       // The header text should be the humanized field name, not the note.
+      // A field with meta.translations is named by them, for `locale`, as
+      // its form label is (the headers ignored them).
       const label =
         (fieldMeta as Record<string, unknown> | undefined)?.name as string ||
+        (fieldMeta?.meta?.translations?.length ? getFieldDisplayName(fieldMeta, locale) : "") ||
         key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
       return {
@@ -730,7 +741,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         ...overrides,
       } as HeaderRaw;
     });
-  }, [visibleFieldKeys, permittedFields, headerOverrides, enableSort]);
+  }, [visibleFieldKeys, permittedFields, headerOverrides, enableSort, locale]);
 
   // =========================================================================
   // Derived / computed

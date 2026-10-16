@@ -113,6 +113,23 @@ describe('getFieldDisplayName', () => {
     expect(getFieldDisplayName(field, 'en-US')).toBe('Author Name');
   });
 
+  it('matches a locale without a region to a translation with one', () => {
+    const field = makeField('title', [
+      { language: 'en-US', translation: 'Headline' },
+      { language: 'id-ID', translation: 'Judul' },
+    ]);
+    expect(getFieldDisplayName(field, 'id')).toBe('Judul');
+    expect(getFieldDisplayName(field, 'en')).toBe('Headline');
+  });
+
+  it('matches a translation of the same language in another region', () => {
+    const field = makeField('title', [
+      { language: 'en-US', translation: 'Headline' },
+      { language: 'id-ID', translation: 'Judul' },
+    ]);
+    expect(getFieldDisplayName(field, 'en-GB')).toBe('Headline');
+  });
+
   it('falls back to formatFieldTitle when locale does not match (matching DaaS)', () => {
     const field = makeField('author_name', [
       { language: 'en-US', translation: 'Author Name' },

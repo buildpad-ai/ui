@@ -126,6 +126,13 @@ export interface CollectionFormProps {
    * Forwarded to the SaveOptions menu.
    */
   translations?: DeepPartial<CollectionsTranslations>;
+  /**
+   * Locale of the field labels (e.g. `'id'` or `'en-US'`), matched against
+   * each field's `meta.translations`: exactly, then by language
+   * (`'id'` ↔ `'id-ID'`). Forwarded to VForm. Without it a field is labelled
+   * with its first translation.
+   */
+  locale?: string;
 }
 
 /** Permission state exposed to parent components */
@@ -273,6 +280,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   definition,
   persist = true,
   translations,
+  locale,
 }) => {
   // Strings: component prop > provider dictionary > English defaults.
   const t = useBuildpadTranslations((d) => d.collections, translations);
@@ -1214,6 +1222,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                   initialValues={initialFormData}
                   onUpdate={handleFormUpdate}
                   primaryKey={primaryKey}
+                  locale={locale}
                   disabled={saving || !saveAllowed}
                   // NOT `loading={saving}`: VForm renders a skeleton while
                   // loading, which unmounts every field and remounts them when

@@ -457,6 +457,38 @@ describe("CollectionList", () => {
   // =====================================================================
   // Refresh
   // =====================================================================
+  describe("header labels", () => {
+    const TRANSLATED_FIELDS = [
+      { field: "id", type: "integer", meta: { interface: "input", sort: 0 } },
+      {
+        field: "title",
+        type: "string",
+        meta: {
+          interface: "input",
+          sort: 1,
+          translations: [
+            { language: "en-US", translation: "Headline" },
+            { language: "id-ID", translation: "Judul" },
+          ],
+        },
+      },
+      { field: "is_active", type: "boolean", meta: { interface: "boolean", sort: 2 } },
+    ];
+
+    it("names a column by its translation for the locale", async () => {
+      mockFieldsReadAll.mockResolvedValue(TRANSLATED_FIELDS);
+
+      renderList({ locale: "id" });
+
+      await waitFor(() => {
+        expect(screen.getByText("Judul")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Headline")).not.toBeInTheDocument();
+      // A field without translations keeps its humanized name.
+      expect(screen.getByText("Is Active")).toBeInTheDocument();
+    });
+  });
+
   describe("column resize", () => {
     it("does not reload the rows when only a column width changes", async () => {
       renderList();
