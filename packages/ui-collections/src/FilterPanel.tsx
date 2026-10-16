@@ -304,7 +304,12 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                 onChange={(val) => {
                     if (!val) return;
                     const op = operators.find((o) => o.value === val);
-                    onChange({ ...rule, operator: val, value: op?.needsValue ? rule.value : true });
+                    // A no-value operator (Is null, Is empty…) stores `true`;
+                    // switching from one to an operator that takes a value
+                    // starts that value empty instead of sending `true`.
+                    let nextValue: unknown = true;
+                    if (op?.needsValue) nextValue = currentOp?.needsValue ? rule.value : null;
+                    onChange({ ...rule, operator: val, value: nextValue });
                 }}
                 data={operatorData}
                 size="xs"

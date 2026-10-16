@@ -88,4 +88,32 @@ describe("FilterPanel", () => {
       });
     });
   });
+
+  describe("switching operators", () => {
+    it("starts the value empty when switching from Is null to a value operator", () => {
+      const onChange = vi.fn();
+      render(<ControlledPanel onChange={onChange} />);
+
+      addRule("Quantity");
+      const operator = () => within(rules()[0]).getAllByRole("combobox")[1];
+      fireEvent.change(operator(), { target: { value: "_null" } });
+      expect(onChange).toHaveBeenLastCalledWith({ _and: [{ quantity: { _null: true } }] });
+
+      fireEvent.change(operator(), { target: { value: "_gt" } });
+
+      expect(onChange).toHaveBeenLastCalledWith({ _and: [{ quantity: { _gt: null } }] });
+      expect(within(rules()[0]).getByPlaceholderText("Value...")).toHaveValue(null);
+    });
+
+    it("keeps the value when switching between two value operators", () => {
+      const onChange = vi.fn();
+      render(<ControlledPanel onChange={onChange} />);
+
+      addRule("Title");
+      fireEvent.change(within(rules()[0]).getByPlaceholderText("Value..."), { target: { value: "abc" } });
+      fireEvent.change(within(rules()[0]).getAllByRole("combobox")[1], { target: { value: "_contains" } });
+
+      expect(onChange).toHaveBeenLastCalledWith({ _and: [{ title: { _contains: "abc" } }] });
+    });
+  });
 });
