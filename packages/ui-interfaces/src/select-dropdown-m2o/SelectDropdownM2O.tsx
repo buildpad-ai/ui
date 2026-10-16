@@ -35,6 +35,7 @@ import {
   resolveDisplayTemplate,
   resolveRelationFields,
 } from "../list-m2a/render-template";
+import { MissingRelationalUIAlert, useRelationalSlots } from "../list-m2a/relational-slots";
 import {
   IconAlertCircle,
   IconEdit,
@@ -135,6 +136,10 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   const t = useBuildpadTranslations((d) => d.interfaces.selectDropdownM2O, translations, { placeholder });
   const relatedCollectionName = (collectionName?: string) =>
     interpolate(t.createModal.title, { collection: collectionName || t.itemFallback });
+  // The create form of the "Create New" dialog, from the relational UI
+  // context (CollectionForm supplies it to its own fields).
+  const { CollectionForm } = useRelationalSlots();
+
   // Use the custom hook for M2O relationship info
   const {
     relationInfo,
@@ -318,10 +323,36 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     setSearch("");
   }, [onChange]);
 
-  // Handle create new (placeholder - would open a modal to create item in related collection)
+  // Handle create new: a create form for the related collection, in a dialog
   const handleCreateNew = useCallback(() => {
     openCreateModal();
   }, [openCreateModal]);
+
+  // The new item is the selection. CollectionForm reports the item it created
+  // with its primary key as `id`; a relation keyed on another column reads
+  // that column instead.
+  const handleCreated = useCallback(
+    (data?: Record<string, unknown>) => {
+      const key = data?.[relationKeyField] ?? data?.id;
+      if (key !== undefined && key !== null) handleSelect(key as string | number);
+      closeCreateModal();
+    },
+    [relationKeyField, handleSelect, closeCreateModal],
+  );
+
+  // What the "Create New" dialog shows. It was a stub ("Create functionality
+  // will be available when CollectionForm component is implemented.").
+  const createModalBody =
+    CollectionForm && relationInfo ? (
+      <CollectionForm
+        collection={relationInfo.relatedCollection.collection}
+        mode="create"
+        onSuccess={handleCreated}
+        onCancel={closeCreateModal}
+      />
+    ) : (
+      <MissingRelationalUIAlert missing={["CollectionForm"]} data-testid="m2o-missing-relational-ui" />
+    );
 
   // Show relation error
   if (relationError) {
@@ -538,9 +569,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
           title={relatedCollectionName(relationInfo?.relatedCollection.collection)}
           size="lg"
         >
-          <Alert icon={<IconAlertCircle size={16} />} color="info">
-            {t.createModal.notImplemented}
-          </Alert>
+          {createModalBody}
         </Modal>
       </Stack>
     );
@@ -788,9 +817,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         title={relatedCollectionName(relationInfo?.relatedCollection.collection)}
         size="lg"
       >
-        <Alert icon={<IconAlertCircle size={16} />} color="info">
-          {t.createModal.notImplemented}
-        </Alert>
+        {createModalBody}
       </Modal>
     </Stack>
   );
