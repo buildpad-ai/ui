@@ -337,15 +337,6 @@ export const VTable: React.FC<VTableProps> = ({
     }
   }, [columnStyle]);
 
-  // Selection helpers
-  const allItemsSelected = useMemo(() => {
-    return !loading && items.length > 0 && value.length === items.length;
-  }, [loading, items.length, value.length]);
-
-  const someItemsSelected = useMemo(() => {
-    return value.length > 0 && !allItemsSelected;
-  }, [value.length, allItemsSelected]);
-
   // Get item key value
   const getItemKey = useCallback(
     (item: Item): string => {
@@ -399,6 +390,23 @@ export const VTable: React.FC<VTableProps> = ({
     [value, itemKey, selectionUseKeys],
   );
 
+  // Selection helpers. The header checkbox describes the rows on THIS page:
+  // the selection can hold rows of other pages (a list keeps it across page,
+  // search and filter changes), so comparing its length with the page's
+  // showed page 2 as partly selected when only a page-1 row was.
+  const selectedOnPage = useMemo(
+    () => items.filter((item) => isItemSelected(item)).length,
+    [items, isItemSelected],
+  );
+
+  const allItemsSelected = useMemo(() => {
+    return !loading && items.length > 0 && selectedOnPage === items.length;
+  }, [loading, items.length, selectedOnPage]);
+
+  const someItemsSelected = useMemo(() => {
+    return selectedOnPage > 0 && !allItemsSelected;
+  }, [selectedOnPage, allItemsSelected]);
+
   // Handle item selection
   const handleItemSelected = useCallback(
     (item: Item, selected: boolean) => {
@@ -445,22 +453,37 @@ export const VTable: React.FC<VTableProps> = ({
     ],
   );
 
-  // Handle select all toggle
+  // Handle select all toggle — adds or removes THIS page's rows and keeps
+  // whatever else is selected. It replaced the whole selection with the
+  // page, dropping rows selected on other pages.
   const handleToggleSelectAll = useCallback(
     (selectAll: boolean) => {
       if (disabled) return;
 
       if (selectAll) {
-        if (selectionUseKeys) {
-          onUpdate?.(items.map((item) => item[itemKey]));
-        } else {
-          onUpdate?.([...items]);
-        }
+        const toAdd = items.filter((item) => !isItemSelected(item));
+        onUpdate?.([
+          ...value,
+          ...toAdd.map((item) => (selectionUseKeys ? item[itemKey] : item)),
+        ]);
       } else {
-        onUpdate?.([]);
+        const pageKeys = new Set<unknown>(
+          items
+            .map((item) => item[itemKey])
+            .filter((key) => key !== undefined && key !== null),
+        );
+        onUpdate?.(
+          value.filter((selected) => {
+            const key =
+              !selectionUseKeys && typeof selected === "object" && selected !== null
+                ? (selected as Item)[itemKey]
+                : selected;
+            return !pageKeys.has(key);
+          }),
+        );
       }
     },
-    [disabled, items, itemKey, selectionUseKeys, onUpdate],
+    [disabled, items, value, itemKey, selectionUseKeys, isItemSelected, onUpdate],
   );
 
   // Handle sort change

@@ -29,3 +29,7 @@ export const IconSortAscending = makeIcon('IconSortAscending');
 export const IconSortDescending = makeIcon('IconSortDescending');
 export const IconTrash = makeIcon('IconTrash');
 export const IconX = makeIcon('IconX');
+export const IconArrowDown = makeIcon('IconArrowDown');
+export const IconArrowUp = makeIcon('IconArrowUp');
+export const IconArrowsSort = makeIcon('IconArrowsSort');
+export const IconGripVertical = makeIcon('IconGripVertical');

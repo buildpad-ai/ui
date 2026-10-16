@@ -117,6 +117,36 @@ const NumberInput = React.forwardRef<HTMLInputElement, Record<string, unknown>>(
 );
 NumberInput.displayName = "NumberInput";
 
+// Checkbox / Radio — a native input; Checkbox marks `indeterminate` the way
+// Mantine does, with data-indeterminate.
+const makeToggle = (type: "checkbox" | "radio", displayName: string) => {
+  const Comp = React.forwardRef<HTMLInputElement, Record<string, unknown>>(
+    ({ checked, indeterminate, onChange, disabled, ...props }, ref) => {
+      const testProps: Record<string, unknown> = {};
+      for (const key of Object.keys(props)) {
+        if (key.startsWith("data-") || key.startsWith("aria-") || key === "id" || key === "className") {
+          testProps[key] = props[key];
+        }
+      }
+      return (
+        <input
+          ref={ref}
+          type={type}
+          checked={!!checked}
+          data-indeterminate={indeterminate ? "true" : undefined}
+          onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
+          disabled={!!disabled}
+          {...testProps}
+        />
+      );
+    }
+  );
+  Comp.displayName = displayName;
+  return Comp;
+};
+const Checkbox = makeToggle("checkbox", "Checkbox");
+const Radio = makeToggle("radio", "Radio");
+
 const Select = React.forwardRef<HTMLSelectElement, Record<string, unknown>>(
   ({ value, onChange, data, placeholder, ...props }, ref) => {
     const testProps: Record<string, unknown> = {};
@@ -266,6 +296,7 @@ const PaginationComp = React.forwardRef<HTMLDivElement, Record<string, unknown>>
 );
 PaginationComp.displayName = "Pagination";
 const Paper = makeComponent("Paper");
+const Skeleton = makeComponent("Skeleton");
 const StackComp = makeComponent("Stack");
 const TextComp = makeComponent("Text");
 
@@ -274,6 +305,7 @@ export {
   Alert,
   Badge,
   Button,
+  Checkbox,
   Collapse,
   GroupComp as Group,
   LoadingOverlay,
@@ -283,7 +315,9 @@ export {
   NumberInput,
   PaginationComp as Pagination,
   Paper,
+  Radio,
   Select,
+  Skeleton,
   StackComp as Stack,
   TextComp as Text,
   TextInput,
