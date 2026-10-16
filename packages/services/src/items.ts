@@ -33,6 +33,15 @@ export interface ItemsResponse<T = AnyItem> {
 }
 
 /**
+ * A primary key as one URL path segment. A key may hold "/", "?", "#" or "%"
+ * (a manually entered string key such as "A/B-1"); unencoded, "A/B" was read
+ * as two segments and the request went to another route.
+ */
+function keySegment(id: PrimaryKey): string {
+  return encodeURIComponent(String(id));
+}
+
+/**
  * Items Service — CRUD for collection items
  */
 export class ItemsService {
@@ -102,7 +111,7 @@ export class ItemsService {
   async readOne(id: PrimaryKey, fields?: string[]): Promise<AnyItem> {
     const params = fields ? `?fields=${fields.join(",")}` : "";
     const response = await apiRequest<{ data: AnyItem } | AnyItem>(
-      `/api/items/${this.collection}/${id}${params}`
+      `/api/items/${this.collection}/${keySegment(id)}${params}`
     );
 
     // Handle both { data: item } and flat item formats
@@ -149,7 +158,7 @@ export class ItemsService {
     data: Partial<AnyItem>
   ): Promise<AnyItem> {
     const response = await apiRequest<{ data: AnyItem } | AnyItem>(
-      `/api/items/${this.collection}/${id}`,
+      `/api/items/${this.collection}/${keySegment(id)}`,
       {
         method: "PATCH",
         body: JSON.stringify(data),
@@ -172,7 +181,7 @@ export class ItemsService {
    * Delete a single item by primary key
    */
   async deleteOne(id: PrimaryKey): Promise<void> {
-    await apiRequest(`/api/items/${this.collection}/${id}`, {
+    await apiRequest(`/api/items/${this.collection}/${keySegment(id)}`, {
       method: "DELETE",
     });
   }
