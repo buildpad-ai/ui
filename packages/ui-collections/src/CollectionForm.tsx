@@ -972,6 +972,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           return;
         }
 
+        // Save and Stay: the item stays open, saved, with the success banner.
+        // It fell through to onSuccess, and a host that leaves the page there
+        // (the content item page goes to the list) left the item.
+        if (afterSave === "stay") return;
+
         onSuccess?.({ ...dataToSave, id });
       } else {
         // Create mode: split out M2M before creating the parent record.

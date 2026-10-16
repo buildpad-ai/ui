@@ -450,6 +450,31 @@ describe("CollectionForm", () => {
     });
   });
 
+  describe("save and stay", () => {
+    it("saves an edited item without leaving it", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old", body: "Body" });
+      mockItemsUpdateOne.mockResolvedValueOnce({ id: 1, title: "New", body: "Body" });
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true, onSuccess });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Old");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "New" } });
+
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-success")).toHaveTextContent("Item updated successfully!");
+      });
+      expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { title: "New" });
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(screen.getByTestId("field-title")).toHaveValue("New");
+      // Saved: nothing left to save.
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+    });
+  });
+
   describe("edit", () => {
     it("loads existing item data in edit mode", async () => {
       mockItemsReadOne.mockResolvedValue({
