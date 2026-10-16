@@ -200,3 +200,57 @@ export function useRelationalUI(overrides?: RelationalUIComponents): RelationalU
     [context, CollectionForm, CollectionList, FormRenderer],
   );
 }
+
+// ---------------------------------------------------------------------------
+// Item save host
+// ---------------------------------------------------------------------------
+
+/**
+ * The form that saves an item AND the junction rows of the item's
+ * self-persisting fields (the `files` interface) on its save. CollectionForm
+ * provides one for the item it creates or edits.
+ *
+ * A files field of that item (same collection and primary key) stages its
+ * changes and leaves the writing to the form's save, so Cancel undoes them
+ * and a new item gets its attachments when it is created. Anywhere else (a
+ * standalone field, a field of another item in a nested form) the files
+ * interface writes its junction rows at once, as it always has.
+ */
+export interface ItemSaveHost {
+  /** Collection of the item the form saves */
+  collection: string;
+  /** Its primary key as the form's fields receive it ('+' for a new item) */
+  primaryKey?: string | number;
+}
+
+const ItemSaveHostContext = createContext<ItemSaveHost | null>(null);
+ItemSaveHostContext.displayName = 'ItemSaveHostContext';
+
+export interface ItemSaveHostProviderProps {
+  host: ItemSaveHost;
+  children?: ReactNode;
+}
+
+/** Marks the fields below as saved by the form that renders them. */
+export function ItemSaveHostProvider({ host, children }: ItemSaveHostProviderProps) {
+  const { collection, primaryKey } = host;
+  const value = useMemo(() => ({ collection, primaryKey }), [collection, primaryKey]);
+  return <ItemSaveHostContext.Provider value={value}>{children}</ItemSaveHostContext.Provider>;
+}
+
+/**
+ * Whether the item `collection` / `primaryKey` is saved by an
+ * {@link ItemSaveHostProvider} above, which then writes the junction rows of
+ * its self-persisting fields.
+ */
+export function useSavedByItemHost(collection?: string, primaryKey?: string | number): boolean {
+  const host = useContext(ItemSaveHostContext);
+  return (
+    !!host &&
+    !!collection &&
+    host.collection === collection &&
+    primaryKey !== undefined &&
+    primaryKey !== null &&
+    String(host.primaryKey) === String(primaryKey)
+  );
+}

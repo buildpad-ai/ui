@@ -6,8 +6,10 @@ import { describe, expect, test } from 'vitest';
 import { createElement, type ComponentType, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  ItemSaveHostProvider,
   RELATIONAL_UI_SLOTS,
   RelationalUIProvider,
+  useSavedByItemHost,
   mergeRelationalUI,
   missingRelationalUI,
   useRelationalUI,
@@ -126,5 +128,35 @@ describe('RelationalUIProvider / useRelationalUI', () => {
 
   test('renders its children', () => {
     expect(renderToStaticMarkup(createElement(RelationalUIProvider, null, createElement('i', null, 'x')))).toBe('<i>x</i>');
+  });
+});
+
+describe('ItemSaveHostProvider / useSavedByItemHost', () => {
+  /** What useSavedByItemHost(collection, primaryKey) answers under `host` (or none). */
+  function savedBy(host: { collection: string; primaryKey?: string | number } | null, collection?: string, primaryKey?: string | number) {
+    let result: boolean | undefined;
+    const Probe = () => {
+      result = useSavedByItemHost(collection, primaryKey);
+      return null;
+    };
+    renderToStaticMarkup(
+      host ? createElement(ItemSaveHostProvider, { host }, createElement(Probe)) : createElement(Probe),
+    );
+    return result;
+  }
+
+  test('is true for the item the host saves', () => {
+    expect(savedBy({ collection: 'docs', primaryKey: 5 }, 'docs', 5)).toBe(true);
+    expect(savedBy({ collection: 'docs', primaryKey: '+' }, 'docs', '+')).toBe(true);
+    // The key may reach the field as a string.
+    expect(savedBy({ collection: 'docs', primaryKey: 5 }, 'docs', '5')).toBe(true);
+  });
+
+  test('is false without a host, or for another item', () => {
+    expect(savedBy(null, 'docs', 5)).toBe(false);
+    expect(savedBy({ collection: 'docs', primaryKey: 5 }, 'pages', 5)).toBe(false);
+    expect(savedBy({ collection: 'docs', primaryKey: 5 }, 'docs', 6)).toBe(false);
+    expect(savedBy({ collection: 'docs', primaryKey: 5 }, undefined, 5)).toBe(false);
+    expect(savedBy({ collection: 'docs', primaryKey: 5 }, 'docs', undefined)).toBe(false);
   });
 });

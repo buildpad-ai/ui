@@ -7,6 +7,7 @@ import { daasAPI, type DaaSFile } from '@buildpad/hooks';
 import { useFiles, useFolders } from '@buildpad/hooks';
 import { isNewItem, type DeepPartial, type InterfacesTranslations } from '@buildpad/utils';
 import { useBuildpadTranslations } from '@buildpad/services';
+import { useSavedByItemHost } from '@buildpad/services/relational-ui-context';
 
 /**
  * Convert DaaSFile to FileUpload type (adds fallback for nullable fields)
@@ -80,6 +81,12 @@ export const Files: React.FC<FilesProps> = ({
   // Accept either casing — @buildpad/ui-form passes camelCase `readOnly`.
   const readonly = readonlyProp || readOnlyProp;
   const t = useBuildpadTranslations((d) => d.interfaces.files, translations);
+  // Inside the CollectionForm that saves this item, changes are staged: the
+  // form writes the junction rows on Save (after creating a new item), and
+  // Cancel undoes them. Written at once here, an Add Existing or a removal
+  // could not be cancelled, and the picks on a new item were lost (there was
+  // no item to link them to, and the form left this field out of its POST).
+  const savedByHost = useSavedByItemHost(collection, primaryKey);
   // Local state for hydrated files
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [loading, setLoading] = useState(false);
@@ -399,8 +406,9 @@ export const Files: React.FC<FilesProps> = ({
 
   // Emit change to parent
   const emitChange = useCallback((newFiles: FileUpload[]) => {
-    // Sync junction table for M2M relationship (for existing records)
-    syncJunctionTable(newFiles);
+    // Sync junction table for M2M relationship (for existing records), unless
+    // the form that saves this item writes it on Save.
+    if (!savedByHost) syncJunctionTable(newFiles);
     
     // Update local state immediately
     setFiles(newFiles);
@@ -408,7 +416,7 @@ export const Files: React.FC<FilesProps> = ({
     hydratedIdsRef.current = new Set(newFiles.map(f => f.id));
     // Notify parent with just IDs
     onChange?.(newFiles.length > 0 ? newFiles.map(f => f.id) : null);
-  }, [onChange, syncJunctionTable]);
+  }, [onChange, syncJunctionTable, savedByHost]);
 
   // Remove a file
   const handleRemove = useCallback((id: string) => {

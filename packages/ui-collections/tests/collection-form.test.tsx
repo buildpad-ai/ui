@@ -25,6 +25,7 @@ const {
   mockItemsDeleteMany,
   mockJunctionCreateOne,
   mockJunctionDeleteOne,
+  mockJunctionReadByQuery,
 } = vi.hoisted(() => ({
   mockFieldsReadAll: vi.fn(),
   mockPermissionsGetAccess: vi.fn(),
@@ -41,6 +42,7 @@ const {
   // called with (collection, data | id).
   mockJunctionCreateOne: vi.fn(),
   mockJunctionDeleteOne: vi.fn(),
+  mockJunctionReadByQuery: vi.fn(),
 }));
 
 vi.mock("@buildpad/services", async (importOriginal) => ({
@@ -57,6 +59,7 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
         ? mockItemsCreateOne(data)
         : mockJunctionCreateOne(collection, data),
     updateOne: mockItemsUpdateOne,
+    readByQuery: (query: unknown) => mockJunctionReadByQuery(collection, query),
     deleteOne: (id: string | number) =>
       collection === "posts"
         ? mockItemsDeleteOne(id)
@@ -561,6 +564,94 @@ describe("CollectionForm", () => {
       expect(mockJunctionCreateOne.mock.calls.map(([, data]) => data.tags_id)).toEqual(["red", "blue", "blue"]);
       expect(mockItemsCreateOne).toHaveBeenCalledTimes(1);
       expect(mockItemsUpdateOne).toHaveBeenCalledWith(42, { title: "Dup 2" });
+    });
+  });
+
+  describe("files fields", () => {
+    const FILES_FIELDS = [
+      { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+      { field: "attachments", type: "alias", meta: { interface: "files", special: ["files"], sort: 2 } },
+    ];
+
+    it("writes the staged links of a saved item on Save, and only the difference", async () => {
+      mockFieldsReadAll.mockResolvedValue(FILES_FIELDS);
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Doc" });
+      mockJunctionReadByQuery.mockResolvedValue({
+        data: [
+          { id: 91, posts_id: 1, daas_files_id: "f1" },
+          { id: 92, posts_id: 1, daas_files_id: "f2" },
+        ],
+      });
+
+      renderForm({ mode: "edit", id: 1 });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Doc");
+      });
+      // The files interface stages: f2 removed, f3 picked.
+      fireEvent.change(screen.getByTestId("json-attachments"), { target: { value: '["f1","f3"]' } });
+      expect(mockJunctionCreateOne).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockJunctionCreateOne).toHaveBeenCalledWith("posts_daas_files", { posts_id: 1, daas_files_id: "f3" });
+      });
+      expect(mockJunctionReadByQuery).toHaveBeenCalledWith("posts_daas_files", {
+        filter: { posts_id: { _eq: 1 } },
+        limit: -1,
+      });
+      expect(mockJunctionDeleteOne).toHaveBeenCalledTimes(1);
+      expect(mockJunctionDeleteOne).toHaveBeenCalledWith("posts_daas_files", 92);
+      expect(mockJunctionCreateOne).toHaveBeenCalledTimes(1);
+      // Not a column: the item itself is not PATCHed for it.
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("links the files picked on a new item once it is created", async () => {
+      mockFieldsReadAll.mockResolvedValue(FILES_FIELDS);
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 42, title: "New doc" });
+      mockJunctionReadByQuery.mockResolvedValue({ data: [] });
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "create", onSuccess });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("json-attachments"), { target: { value: '["f1"]' } });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "New doc" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalled();
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "New doc" });
+      expect(mockJunctionCreateOne).toHaveBeenCalledWith("posts_daas_files", { posts_id: 42, daas_files_id: "f1" });
+    });
+
+    it("uses the junction named in the field's options", async () => {
+      mockFieldsReadAll.mockResolvedValue([
+        FILES_FIELDS[0],
+        {
+          ...FILES_FIELDS[1],
+          meta: {
+            ...FILES_FIELDS[1].meta,
+            options: { junction_collection: "post_files", junction_field_current: "post", junction_field_related: "file" },
+          },
+        },
+      ]);
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 7 });
+      mockJunctionReadByQuery.mockResolvedValue({ data: [] });
+
+      renderForm({ mode: "create" });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("json-attachments"), { target: { value: '["f9"]' } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockJunctionCreateOne).toHaveBeenCalledWith("post_files", { post: 7, file: "f9" });
+      });
     });
   });
 

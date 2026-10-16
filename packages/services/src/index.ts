@@ -118,10 +118,14 @@ export {
 // here for app code.
 export {
   RELATIONAL_UI_SLOTS,
+  ItemSaveHostProvider,
   RelationalUIProvider,
   mergeRelationalUI,
   missingRelationalUI,
   useRelationalUI,
+  useSavedByItemHost,
+  type ItemSaveHost,
+  type ItemSaveHostProviderProps,
   type RelationalBulkAction,
   type RelationalCollectionFormProps,
   type RelationalCollectionListProps,

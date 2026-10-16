@@ -24,6 +24,9 @@ jest.mock('@buildpad/hooks', () => ({
       uploaded_by: 'user-1',
     })),
     checkPermission: jest.fn(async () => true),
+    getItems: jest.fn(async () => []),
+    createItem: jest.fn(async () => ({})),
+    deleteItem: jest.fn(async () => undefined),
   },
 }));
 
@@ -34,9 +37,32 @@ jest.mock('../upload', () => ({
   FileThumbnail: ({ file }: any) => (
     <div data-testid={`thumb-${file?.id ?? 'unknown'}`} />
   ),
-  LibraryPickerModal: ({ opened }: any) =>
-    opened ? <div data-testid="library-picker" /> : null,
+  // Picking from the library: a button that selects file "lib-1".
+  LibraryPickerModal: ({ opened, onSelect }: any) =>
+    opened ? (
+      <div data-testid="library-picker">
+        <button
+          type="button"
+          onClick={() =>
+            onSelect({
+              id: 'lib-1',
+              filename_disk: 'lib-1',
+              filename_download: 'lib-1',
+              type: 'text/plain',
+              filesize: 1,
+              uploaded_on: '2024-01-01',
+              uploaded_by: 'u1',
+            })
+          }
+        >
+          pick lib-1
+        </button>
+      </div>
+    ) : null,
 }));
+
+import { daasAPI } from '@buildpad/hooks';
+import { ItemSaveHostProvider } from '@buildpad/services/relational-ui-context';
 
 const renderWithMantine = (ui: React.ReactElement) => render(<MantineProvider>{ui}</MantineProvider>);
 
@@ -87,5 +113,59 @@ describe('Files', () => {
     // onChange should emit remaining ids
     expect(onChange).toHaveBeenLastCalledWith(['f1']);
     expect(screen.queryByText('f2')).not.toBeInTheDocument();
+  });
+
+  // Inside the CollectionForm that saves the item, the form writes the
+  // junction rows on Save: picking a file must not write one at once (Cancel
+  // could not undo it), and on a new item there is nothing to link to yet.
+  describe('junction writes', () => {
+    beforeEach(() => {
+      (daasAPI.createItem as jest.Mock).mockClear();
+    });
+
+    const pickFromLibrary = async () => {
+      await userEvent.click(screen.getByRole('button', { name: 'Add Existing' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'pick lib-1' }));
+    };
+
+    test('stages a pick when the form that saves the item hosts the field', async () => {
+      const onChange = jest.fn();
+      await act(async () => {
+        renderWithMantine(
+          <ItemSaveHostProvider host={{ collection: 'docs', primaryKey: 5 }}>
+            <Files value={[]} onChange={onChange} collection="docs" field="attachments" primaryKey={5} />
+          </ItemSaveHostProvider>,
+        );
+      });
+
+      await pickFromLibrary();
+
+      expect(onChange).toHaveBeenLastCalledWith(['lib-1']);
+      expect(daasAPI.createItem).not.toHaveBeenCalled();
+    });
+
+    test('writes the link at once without a host (standalone field)', async () => {
+      await act(async () => {
+        renderWithMantine(<Files value={[]} onChange={jest.fn()} collection="docs" field="attachments" primaryKey={5} />);
+      });
+
+      await pickFromLibrary();
+
+      expect(daasAPI.createItem).toHaveBeenCalledWith('docs_daas_files', { docs_id: 5, daas_files_id: 'lib-1' });
+    });
+
+    test('writes the link at once for a field of another item than the host saves', async () => {
+      await act(async () => {
+        renderWithMantine(
+          <ItemSaveHostProvider host={{ collection: 'pages', primaryKey: 5 }}>
+            <Files value={[]} onChange={jest.fn()} collection="docs" field="attachments" primaryKey={5} />
+          </ItemSaveHostProvider>,
+        );
+      });
+
+      await pickFromLibrary();
+
+      expect(daasAPI.createItem).toHaveBeenCalledTimes(1);
+    });
   });
 });

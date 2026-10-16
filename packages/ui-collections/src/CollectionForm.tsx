@@ -53,6 +53,7 @@ import {
 } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import {
+  ItemSaveHostProvider,
   RelationalUIProvider,
   type RelationalUIComponents,
 } from "@buildpad/services/relational-ui-context";
@@ -200,6 +201,49 @@ function isM2MChangesItem(value: unknown): value is {
     "update" in (value as object) &&
     "delete" in (value as object)
   );
+}
+
+/** Junction of a `files` field (from DaaS's files interface options). */
+interface FilesJunctionInfo {
+  junctionCollection: string;
+  /** FK in the junction pointing back to this item */
+  junctionFieldCurrent: string;
+  /** FK in the junction pointing to daas_files */
+  junctionFieldRelated: string;
+}
+
+/**
+ * The junction a `files` field links through: its options' junction_* keys
+ * when it has them, else `<collection>_daas_files` — the same resolution the
+ * files interface uses to load the field (its `junctionConfig` prop, or its
+ * convention).
+ */
+function filesJunctionOf(collection: string, field: Field): FilesJunctionInfo {
+  const options = (field.meta?.options ?? {}) as Record<string, unknown>;
+  const junctionCollection = options.junction_collection as string | undefined;
+  const junctionFieldCurrent = options.junction_field_current as string | undefined;
+  if (junctionCollection && junctionFieldCurrent) {
+    return {
+      junctionCollection,
+      junctionFieldCurrent,
+      junctionFieldRelated: (options.junction_field_related as string | undefined) ?? "daas_files_id",
+    };
+  }
+  return {
+    junctionCollection: `${collection}_daas_files`,
+    junctionFieldCurrent: `${collection}_id`,
+    junctionFieldRelated: "daas_files_id",
+  };
+}
+
+/** A file's id from a files value entry or a junction FK (an id, or an object with one). */
+function fileIdOf(value: unknown): string | null {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value && typeof value === "object" && "id" in value) {
+    const id = (value as { id: unknown }).id;
+    if (typeof id === "string" || typeof id === "number") return String(id);
+  }
+  return null;
 }
 
 /** Past this depth two values are called different, which is the safe answer. */
@@ -867,6 +911,49 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   };
 
   // =========================================================================
+  // Files flush — the files interface stages its picks and removals while
+  // this form saves its item (see ItemSaveHostProvider below); they are
+  // written here, after the item. The junction is read first and only the
+  // difference is written, so a retry after a failure writes nothing twice.
+  // =========================================================================
+  const flushFilesChanges = async (
+    parentId: string | number,
+    filesEntries: Array<{ field: Field; value: unknown }>,
+  ) => {
+    for (const { field, value } of filesEntries) {
+      const { junctionCollection, junctionFieldCurrent, junctionFieldRelated } =
+        filesJunctionOf(collection, field);
+      const junctionService = new ItemsService(junctionCollection);
+      const wanted = new Set(
+        (Array.isArray(value) ? value : [])
+          .map(fileIdOf)
+          .filter((fileId): fileId is string => fileId !== null),
+      );
+      const { data: rows = [] } = await junctionService.readByQuery({
+        filter: { [junctionFieldCurrent]: { _eq: parentId } },
+        limit: -1,
+      });
+      const linked = new Set<string>();
+      for (const row of rows) {
+        const fileId = fileIdOf(row[junctionFieldRelated]);
+        if (fileId !== null && wanted.has(fileId)) {
+          linked.add(fileId);
+          continue;
+        }
+        const rowId = row.id as string | number | undefined;
+        if (rowId !== undefined && rowId !== null) await junctionService.deleteOne(rowId);
+      }
+      for (const fileId of wanted) {
+        if (linked.has(fileId)) continue;
+        await junctionService.createOne({
+          [junctionFieldCurrent]: parentId,
+          [junctionFieldRelated]: fileId,
+        });
+      }
+    }
+  };
+
+  // =========================================================================
   // Save handler
   // =========================================================================
   const handleSave = async (afterSave?: "stay" | "add-new" | "copy") => {
@@ -953,13 +1040,15 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       }
 
       if (mode === "edit" && id) {
-        // Collect only changed fields, excluding self-persisting interfaces
-        // (e.g. "files" manages its own junction table independently)
+        // Collect only changed fields. Self-persisting interfaces ("files")
+        // are not columns: their junction rows are written after the item.
         const allChanged: Record<string, unknown> = {};
+        const filesEntries: Array<{ field: Field; value: unknown }> = [];
         for (const [key, value] of Object.entries(dataToSave)) {
           if (initialFormData[key] === value) continue;
           const fieldDef = fields.find(f => f.field === key);
           if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
+            if (fieldDef) filesEntries.push({ field: fieldDef, value });
             continue;
           }
           allChanged[key] = value;
@@ -994,6 +1083,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
         // Flush M2M changes via junction collection APIs
         await flushM2MChanges(id, m2mEntries);
+        await flushFilesChanges(id, filesEntries);
         forgetPartialSave();
 
         // Clear M2M keys from form state so child interfaces (e.g. ListM2M)
@@ -1034,12 +1124,14 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         onSuccess?.({ ...dataToSave, id });
       } else {
         // Create mode: split out M2M before creating the parent record.
-        // Also strip self-persisting interfaces (e.g. "files") that manage
-        // their own junction table persistence.
+        // Self-persisting interfaces ("files") are not columns either: their
+        // junction rows are written once the item exists.
         const cleanedDataToSave: Record<string, unknown> = {};
+        const filesEntries: Array<{ field: Field; value: unknown }> = [];
         for (const [key, value] of Object.entries(dataToSave)) {
           const fieldDef = fields.find(f => f.field === key);
           if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
+            if (fieldDef) filesEntries.push({ field: fieldDef, value });
             continue;
           }
           cleanedDataToSave[key] = value;
@@ -1082,9 +1174,12 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           if (newId != null) createdItemRef.current = { id: newId, sent: scalarData };
         }
 
-        // Flush M2M changes now that we have the parent PK
+        // Flush M2M and files changes now that we have the parent PK
         if (newId != null && m2mEntries.length > 0) {
           await flushM2MChanges(newId, m2mEntries);
+        }
+        if (newId != null && filesEntries.length > 0) {
+          await flushFilesChanges(newId, filesEntries);
         }
         forgetPartialSave();
 
@@ -1264,22 +1359,26 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                   defaults: a provider above (e.g. CollectionsRelationalProvider
                   with custom components) wins. */}
               <RelationalUIProvider defaults={collectionsRelationalUI}>
-                <VForm
-                  collection={collection}
-                  fields={fields}
-                  modelValue={formData}
-                  initialValues={initialFormData}
-                  onUpdate={handleFormUpdate}
-                  primaryKey={primaryKey}
-                  locale={locale}
-                  disabled={saving || !saveAllowed}
-                  // NOT `loading={saving}`: VForm renders a skeleton while
-                  // loading, which unmounts every field and remounts them when
-                  // the save resolves — re-firing mount-time autofocus and
-                  // scrolling the user back to that field, losing their place.
-                  // `disabled` above already blocks input during the save.
-                  showNoVisibleFields={false}
-                />
+                {/* This form writes the junction rows of the item's "files"
+                    fields on save; the files interface stages its changes. */}
+                <ItemSaveHostProvider host={{ collection, primaryKey }}>
+                  <VForm
+                    collection={collection}
+                    fields={fields}
+                    modelValue={formData}
+                    initialValues={initialFormData}
+                    onUpdate={handleFormUpdate}
+                    primaryKey={primaryKey}
+                    locale={locale}
+                    disabled={saving || !saveAllowed}
+                    // NOT `loading={saving}`: VForm renders a skeleton while
+                    // loading, which unmounts every field and remounts them when
+                    // the save resolves — re-firing mount-time autofocus and
+                    // scrolling the user back to that field, losing their place.
+                    // `disabled` above already blocks input during the save.
+                    showNoVisibleFields={false}
+                  />
+                </ItemSaveHostProvider>
               </RelationalUIProvider>
               {/* Per-field validation errors */}
               {Object.keys(fieldErrors).length > 0 && (
