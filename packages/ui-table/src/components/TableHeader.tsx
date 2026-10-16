@@ -332,10 +332,13 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
           >
             <div className="header-content">
               {allowHeaderReorder && (
-                <div
+                // The grip only marks where a column is dragged from; a click
+                // on it must not reach the <th>, whose click sorts.
+                <div // NOSONAR: drag affordance; it has no click action of its own
                   className="reorder-handle"
                   role="button"
                   aria-label={t.reorderColumn}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <IconGripVertical size={14} />
                 </div>

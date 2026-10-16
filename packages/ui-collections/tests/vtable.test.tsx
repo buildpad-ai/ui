@@ -138,5 +138,13 @@ describe("VTable", () => {
       expect(onHeadersChange).toHaveBeenCalled();
       expect(onSortChange).not.toHaveBeenCalled();
     });
+
+    it("does not sort on a click on the Reorder column grip", () => {
+      const { onSortChange, header } = renderSortable();
+
+      fireEvent.click(within(header).getByRole("button", { name: "Reorder column" }));
+
+      expect(onSortChange).not.toHaveBeenCalled();
+    });
   });
 });
