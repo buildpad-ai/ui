@@ -1,5 +1,19 @@
 # @buildpad/ui-cron
 
+## 3.3.0
+
+### Patch Changes
+
+- Updated dependencies [54238ba]
+- Updated dependencies [6fbf23e]
+- Updated dependencies [0a2ed8a]
+  - @buildpad/services@3.3.0
+  - @buildpad/ui-table@3.3.0
+  - @buildpad/ui-interfaces@3.3.0
+  - @buildpad/hooks@3.3.0
+  - @buildpad/utils@3.3.0
+  - @buildpad/types@3.3.0
+
 ## 3.2.0
 
 ### Patch Changes
