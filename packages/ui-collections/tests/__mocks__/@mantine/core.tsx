@@ -88,6 +88,35 @@ const TextInput = React.forwardRef<HTMLInputElement, Record<string, unknown>>(
 );
 TextInput.displayName = "TextInput";
 
+// NumberInput — like Mantine, onChange receives a number, or '' when the
+// input is emptied.
+const NumberInput = React.forwardRef<HTMLInputElement, Record<string, unknown>>(
+  ({ value, onChange, placeholder, disabled, ...props }, ref) => {
+    const testProps: Record<string, unknown> = {};
+    for (const key of Object.keys(props)) {
+      if (key.startsWith("data-") || key === "role" || key === "id" || key === "className") {
+        testProps[key] = props[key];
+      }
+    }
+    return (
+      <input
+        ref={ref}
+        type="number"
+        value={value === undefined || value === null ? "" : String(value)}
+        onChange={(e) =>
+          (onChange as ((v: number | string) => void) | undefined)?.(
+            e.target.value === "" ? "" : Number(e.target.value),
+          )
+        }
+        placeholder={placeholder as string}
+        disabled={!!disabled}
+        {...testProps}
+      />
+    );
+  }
+);
+NumberInput.displayName = "NumberInput";
+
 const Select = React.forwardRef<HTMLSelectElement, Record<string, unknown>>(
   ({ value, onChange, data, placeholder, ...props }, ref) => {
     const testProps: Record<string, unknown> = {};
@@ -251,6 +280,7 @@ export {
   MantineProvider,
   MenuComp as Menu,
   Modal,
+  NumberInput,
   PaginationComp as Pagination,
   Paper,
   Select,
