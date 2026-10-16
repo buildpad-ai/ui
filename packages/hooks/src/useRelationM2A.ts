@@ -312,7 +312,11 @@ export function useRelationM2A(collection: string, field: string) {
                                     return {
                                         collection: name,
                                         meta: collInfo?.meta || {},
-                                        name: collInfo?.meta?.display_template || name,
+                                        // The collection's name, never its display
+                                        // template: that is how an ITEM is shown
+                                        // ("{{text}}"), and it labelled the rows and
+                                        // the Add Existing menu as such.
+                                        name: collInfo?.name || name,
                                         icon: collInfo?.meta?.icon || 'box',
                                     };
                                 })
@@ -397,7 +401,8 @@ export function useRelationM2A(collection: string, field: string) {
                                 return {
                                     collection: name,
                                     meta: collInfo?.meta || {},
-                                    name: collInfo?.meta?.display_template || name,
+                                    // The collection's name, not its display template.
+                                    name: collInfo?.name || name,
                                     icon: collInfo?.meta?.icon || 'box',
                                 };
                             })

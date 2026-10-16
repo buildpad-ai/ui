@@ -253,8 +253,7 @@ export const collectionsDefaults: CollectionsTranslations = {
     errors: {
       noVisibleFields:
         'No visible fields found for collection "{collection}". Verify the collection exists and has non-hidden fields.',
-      loadFieldsFailed:
-        'Failed to load collection fields. Make sure the Storybook Host app is running (pnpm dev:host) and connected at http://localhost:3000.',
+      loadFieldsFailed: 'Failed to load collection fields.',
       loadItemsFailed: 'Failed to load items',
       deleteFailed: 'Failed to delete items',
     },
@@ -441,8 +440,7 @@ export const collectionsId: CollectionsTranslations = {
     errors: {
       noVisibleFields:
         'Tidak ada kolom yang terlihat untuk koleksi "{collection}". Pastikan koleksi tersebut ada dan memiliki kolom yang tidak tersembunyi.',
-      loadFieldsFailed:
-        'Gagal memuat kolom koleksi. Pastikan aplikasi Storybook Host sedang berjalan (pnpm dev:host) dan terhubung di http://localhost:3000.',
+      loadFieldsFailed: 'Gagal memuat kolom koleksi.',
       loadItemsFailed: 'Gagal memuat item',
       deleteFailed: 'Gagal menghapus item',
     },

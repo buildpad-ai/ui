@@ -18,11 +18,16 @@ import { MantineProvider } from "@mantine/core";
 const {
   mockFieldsReadAll,
   mockPermissionsGetAccess,
+  permissionState,
   mockItemsDeleteMany,
   mockApiRequest,
 } = vi.hoisted(() => ({
   mockFieldsReadAll: vi.fn(),
   mockPermissionsGetAccess: vi.fn(),
+  // PermissionsService.isAdmin: true by default (each test starts as an
+  // administrator); a test that hands the form a role's access map sets it
+  // to false, as the real service does for a non-administrator.
+  permissionState: { isAdmin: true },
   mockItemsDeleteMany: vi.fn(),
   mockApiRequest: vi.fn(),
 }));
@@ -40,6 +45,9 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   })),
   PermissionsService: {
     getMyCollectionAccess: mockPermissionsGetAccess,
+    get isAdmin() {
+      return permissionState.isAdmin;
+    },
   },
   apiRequest: mockApiRequest,
 }));
@@ -58,6 +66,7 @@ vi.mock("@buildpad/ui-table", () => ({
     noItemsText,
     renderCell,
     renderHeaderContextMenu,
+    onHeadersChange,
     itemKey,
     selectionUseKeys,
   }: {
@@ -72,10 +81,22 @@ vi.mock("@buildpad/ui-table", () => ({
     noItemsText?: string;
     renderCell?: (item: Record<string, unknown>, header: any) => React.ReactNode;
     renderHeaderContextMenu?: (header: any) => React.ReactNode;
+    onHeadersChange?: (headers: any[]) => void;
     itemKey?: string;
     selectionUseKeys?: boolean;
   }) => (
     <div data-testid="vtable-mock">
+      {/* What a column resize does on each pointer move: the same columns,
+          the first one wider. */}
+      <button
+        type="button"
+        data-testid="vtable-resize-first"
+        onClick={() =>
+          onHeadersChange?.(
+            headers.map((h: any, i) => (i === 0 ? { ...h, width: (h.width ?? 100) + 10 } : h)),
+          )
+        }
+      />
       {loading && <div data-testid="vtable-loading">Loading...</div>}
       {!loading && items.length === 0 && (
         <div data-testid="vtable-empty">{noItemsText || "No items"}</div>
@@ -202,6 +223,11 @@ function renderList(props: Partial<React.ComponentProps<typeof CollectionList>> 
 // -------------------------------------------------------------------
 // Tests
 // -------------------------------------------------------------------
+// Every test starts as an administrator (see permissionState).
+beforeEach(() => {
+  permissionState.isAdmin = true;
+});
+
 describe("CollectionList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -233,6 +259,10 @@ describe("CollectionList", () => {
       await waitFor(() => {
         expect(screen.getByTestId("collection-list-error")).toBeInTheDocument();
       });
+      // The load error, with no developer hint (it named the Storybook host).
+      expect(screen.getByTestId("collection-list-error")).toHaveTextContent(
+        /^Failed to load collection fields\.$/,
+      );
     });
 
   });
@@ -427,6 +457,61 @@ describe("CollectionList", () => {
   // =====================================================================
   // Refresh
   // =====================================================================
+  describe("header labels", () => {
+    const TRANSLATED_FIELDS = [
+      { field: "id", type: "integer", meta: { interface: "input", sort: 0 } },
+      {
+        field: "title",
+        type: "string",
+        meta: {
+          interface: "input",
+          sort: 1,
+          translations: [
+            { language: "en-US", translation: "Headline" },
+            { language: "id-ID", translation: "Judul" },
+          ],
+        },
+      },
+      { field: "is_active", type: "boolean", meta: { interface: "boolean", sort: 2 } },
+    ];
+
+    it("names a column by its translation for the locale", async () => {
+      mockFieldsReadAll.mockResolvedValue(TRANSLATED_FIELDS);
+
+      renderList({ locale: "id" });
+
+      await waitFor(() => {
+        expect(screen.getByText("Judul")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Headline")).not.toBeInTheDocument();
+      // A field without translations keeps its humanized name.
+      expect(screen.getByText("Is Active")).toBeInTheDocument();
+    });
+  });
+
+  describe("column resize", () => {
+    it("does not reload the rows when only a column width changes", async () => {
+      renderList();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+      const itemRequests = () =>
+        mockApiRequest.mock.calls.filter(([url]) => !String(url).includes("aggregate")).length;
+      const before = itemRequests();
+
+      for (let move = 0; move < 5; move++) {
+        fireEvent.click(screen.getByTestId("vtable-resize-first"));
+      }
+      // Let any refetch the moves would trigger start.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+
+      expect(itemRequests()).toBe(before);
+    });
+  });
+
   describe("refresh", () => {
     it("reloads items when refresh button is clicked", async () => {
       renderList();
@@ -442,6 +527,25 @@ describe("CollectionList", () => {
         expect(mockApiRequest.mock.calls.length).toBeGreaterThan(callsBefore);
       });
     });
+
+    it("fetches the collection total again, so 'filtered from N' follows new rows", async () => {
+      renderList();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+      const aggregateCalls = () =>
+        mockApiRequest.mock.calls.filter(([url]) => String(url).includes("aggregate")).length;
+      await waitFor(() => {
+        expect(aggregateCalls()).toBe(1);
+      });
+
+      await userEvent.click(screen.getByTestId("collection-list-refresh"));
+
+      await waitFor(() => {
+        expect(aggregateCalls()).toBe(2);
+      });
+    });
   });
 
   // =====================================================================
@@ -449,6 +553,7 @@ describe("CollectionList", () => {
   // =====================================================================
   describe("permissions", () => {
     it("does not show create button when createAllowed is false", async () => {
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -467,6 +572,7 @@ describe("CollectionList", () => {
     });
 
     it("disables bulk delete when deleteAllowed is false", async () => {
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -497,6 +603,7 @@ describe("CollectionList", () => {
     });
 
     it("disables bulk action buttons based on requiredPermission", async () => {
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -546,6 +653,60 @@ describe("CollectionList", () => {
 
       // Export (no requiredPermission) - should be enabled
       expect(screen.getByTestId("bulk-action-2")).toBeEnabled();
+    });
+
+    // An empty access map is what /permissions/me returns for a user with no
+    // grants at all (and what a failed load turns into). It grants a
+    // non-administrator nothing; it used to grant everything.
+    it("grants a non-administrator with an empty access map nothing", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+      const onPermissionsLoaded = vi.fn();
+
+      renderList({ enableCreate: true, onCreate: vi.fn(), onPermissionsLoaded, archiveField: "status" });
+
+      await waitFor(() => {
+        expect(onPermissionsLoaded).toHaveBeenCalled();
+      });
+      expect(onPermissionsLoaded).toHaveBeenCalledWith({
+        createAllowed: false,
+        readAllowed: false,
+        updateAllowed: false,
+        deleteAllowed: false,
+        archiveAllowed: false,
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("collection-list-create")).toBeDisabled();
+      });
+    });
+
+    it("keeps Create and Delete disabled for a non-administrator when the permissions fail to load", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+
+      renderList({ enableCreate: true, onCreate: vi.fn(), enableSelection: true, enableDelete: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cell-0-title")).toBeInTheDocument();
+      });
+      expect(screen.getByTestId("collection-list-create")).toBeDisabled();
+      fireEvent.click(screen.getByTestId("vtable-select-0"));
+      await waitFor(() => {
+        expect(screen.getByTestId("bulk-action-delete")).toBeDisabled();
+      });
+    });
+
+    it("keeps full access for an administrator whose access map is empty", async () => {
+      const onPermissionsLoaded = vi.fn();
+
+      renderList({ enableCreate: true, onCreate: vi.fn(), onPermissionsLoaded });
+
+      await waitFor(() => {
+        expect(onPermissionsLoaded).toHaveBeenCalledWith(
+          expect.objectContaining({ createAllowed: true, readAllowed: true, deleteAllowed: true }),
+        );
+      });
+      expect(screen.getByTestId("collection-list-create")).toBeEnabled();
     });
   });
 
@@ -733,6 +894,20 @@ describe("CollectionList", () => {
   // Header context menu (sort / align / hide field)
   // =====================================================================
   describe("header context menu", () => {
+    // VTable draws the menu in its own popup, outside any Mantine <Menu>; a
+    // Menu.Label in it threw "Menu component was not found in the tree".
+    it("renders its section labels outside a Mantine Menu", async () => {
+      renderList();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("header-menu-title")).toBeInTheDocument();
+      });
+      const menu = screen.getByTestId("header-menu-title");
+      expect(within(menu).getByText("Sort")).toBeInTheDocument();
+      expect(within(menu).getByText("Alignment")).toBeInTheDocument();
+      expect(within(menu).getAllByRole("menuitem")).toHaveLength(6);
+    });
+
     it("calls onSortChange (ascending) on click and on Enter/Space", async () => {
       const onSortChange = vi.fn();
       renderList({ onSortChange });

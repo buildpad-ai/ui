@@ -6,7 +6,7 @@
  * Authentication follows DaaS architecture with multiple auth methods.
  */
 
-export { apiRequest, type ApiRequestOptions } from "./api-request";
+export { apiRequest, ApiRequestError, type ApiRequestOptions } from "./api-request";
 export {
   CollectionsService,
   createCollectionsService,
@@ -118,10 +118,14 @@ export {
 // here for app code.
 export {
   RELATIONAL_UI_SLOTS,
+  ItemSaveHostProvider,
   RelationalUIProvider,
   mergeRelationalUI,
   missingRelationalUI,
   useRelationalUI,
+  useSavedByItemHost,
+  type ItemSaveHost,
+  type ItemSaveHostProviderProps,
   type RelationalBulkAction,
   type RelationalCollectionFormProps,
   type RelationalCollectionListProps,

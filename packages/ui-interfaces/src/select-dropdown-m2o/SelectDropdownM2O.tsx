@@ -35,6 +35,7 @@ import {
   resolveDisplayTemplate,
   resolveRelationFields,
 } from "../list-m2a/render-template";
+import { MissingRelationalUIAlert, useRelationalSlots } from "../list-m2a/relational-slots";
 import {
   IconAlertCircle,
   IconEdit,
@@ -45,7 +46,7 @@ import {
   IconSelector,
   IconTrash,
 } from "@tabler/icons-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Props for the SelectDropdownM2O component
@@ -135,6 +136,10 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
   const t = useBuildpadTranslations((d) => d.interfaces.selectDropdownM2O, translations, { placeholder });
   const relatedCollectionName = (collectionName?: string) =>
     interpolate(t.createModal.title, { collection: collectionName || t.itemFallback });
+  // The create form of the "Create New" dialog, from the relational UI
+  // context (CollectionForm supplies it to its own fields).
+  const { CollectionForm } = useRelationalSlots();
+
   // Use the custom hook for M2O relationship info
   const {
     relationInfo,
@@ -213,10 +218,18 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     }
   }, [relationInfo, value, resolvedFields, loadItem, clearItem]);
 
+  // The newest list request. Loads are started by the dropdown, by each
+  // keystroke in the Select dialog's search and when that dialog opens; an
+  // answer that arrives after a newer request was sent is dropped, so a slow
+  // unfiltered list never replaces the results of the search typed since.
+  const loadRequestRef = useRef(0);
+
   // Load available items for dropdown
   const loadAvailableItems = useCallback(
     async (searchTerm?: string) => {
       if (!relationInfo) return;
+      const requestId = ++loadRequestRef.current;
+      const isStale = () => requestId !== loadRequestRef.current;
 
       try {
         setItemsLoading(true);
@@ -269,12 +282,14 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         const response = await apiRequest<{ data: M2OItem[] }>(
           `/api/items/${collection}${queryString ? `?${queryString}` : ""}`,
         );
+        if (isStale()) return;
         setAvailableItems(response.data || []);
       } catch (err) {
+        if (isStale()) return;
         console.error("Error loading available items:", err);
         setAvailableItems([]);
       } finally {
-        setItemsLoading(false);
+        if (!isStale()) setItemsLoading(false);
       }
     },
     [relationInfo, resolvedFields, filter],
@@ -291,6 +306,17 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     relationInfo,
     loadAvailableItems,
   ]);
+
+  // Load items when the modal layout's Select dialog opens, for the search it
+  // shows. It listed "No items found" until a search was typed: items loaded
+  // only for the dropdown and on search input. Typing reloads on its own
+  // (onChange below), so `search` is read, not a dependency.
+  useEffect(() => {
+    if (selectModalOpened && relationInfo) {
+      loadAvailableItems(search);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectModalOpened, relationInfo, loadAvailableItems]);
 
   // Format display value for an item using the resolved display template.
   // Uses the shared renderTemplate() from list-m2a/render-template.
@@ -318,10 +344,36 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
     setSearch("");
   }, [onChange]);
 
-  // Handle create new (placeholder - would open a modal to create item in related collection)
+  // Handle create new: a create form for the related collection, in a dialog
   const handleCreateNew = useCallback(() => {
     openCreateModal();
   }, [openCreateModal]);
+
+  // The new item is the selection. CollectionForm reports the item it created
+  // with its primary key as `id`; a relation keyed on another column reads
+  // that column instead.
+  const handleCreated = useCallback(
+    (data?: Record<string, unknown>) => {
+      const key = data?.[relationKeyField] ?? data?.id;
+      if (key !== undefined && key !== null) handleSelect(key as string | number);
+      closeCreateModal();
+    },
+    [relationKeyField, handleSelect, closeCreateModal],
+  );
+
+  // What the "Create New" dialog shows. It was a stub ("Create functionality
+  // will be available when CollectionForm component is implemented.").
+  const createModalBody =
+    CollectionForm && relationInfo ? (
+      <CollectionForm
+        collection={relationInfo.relatedCollection.collection}
+        mode="create"
+        onSuccess={handleCreated}
+        onCancel={closeCreateModal}
+      />
+    ) : (
+      <MissingRelationalUIAlert missing={["CollectionForm"]} data-testid="m2o-missing-relational-ui" />
+    );
 
   // Show relation error
   if (relationError) {
@@ -452,6 +504,14 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
               <Combobox.Search
                 value={search}
                 onChange={(event) => setSearch(event.currentTarget.value)}
+                // The dropdown is rendered in place (withinPortal={false}), so
+                // this input sits inside the item form. Mantine handles Enter
+                // only when an option is highlighted; otherwise the browser's
+                // implicit submission saved the whole item. Enter here never
+                // submits; with an option highlighted Mantine still picks it.
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.preventDefault();
+                }}
                 placeholder={t.searchPlaceholder}
                 leftSection={<IconSearch size={14} />}
               />
@@ -538,9 +598,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
           title={relatedCollectionName(relationInfo?.relatedCollection.collection)}
           size="lg"
         >
-          <Alert icon={<IconAlertCircle size={16} />} color="info">
-            {t.createModal.notImplemented}
-          </Alert>
+          {createModalBody}
         </Modal>
       </Stack>
     );
@@ -788,9 +846,7 @@ export const SelectDropdownM2O: React.FC<SelectDropdownM2OProps> = ({
         title={relatedCollectionName(relationInfo?.relatedCollection.collection)}
         size="lg"
       >
-        <Alert icon={<IconAlertCircle size={16} />} color="info">
-          {t.createModal.notImplemented}
-        </Alert>
+        {createModalBody}
       </Modal>
     </Stack>
   );

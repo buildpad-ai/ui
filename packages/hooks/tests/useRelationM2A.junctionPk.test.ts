@@ -22,8 +22,11 @@ import { useRelationM2A } from '../src/useRelationM2A';
 
 beforeEach(() => apiRequestMock.mockReset());
 
+let collectionMeta: Record<string, unknown> = {};
+
 describe('useRelationM2A junction primary key', () => {
-  it('detects the junction PK instead of assuming "id"', async () => {
+  beforeEach(() => {
+    collectionMeta = {};
     apiRequestMock.mockImplementation((url?: string) => {
       if (!url) return Promise.resolve({ data: [] });
       if (url.startsWith('/api/relations')) {
@@ -61,14 +64,28 @@ describe('useRelationM2A junction primary key', () => {
         return Promise.resolve({ data: [{ field: 'id', type: 'integer', schema: { is_primary_key: true } }] });
       }
       if (url.startsWith('/api/collections')) {
-        return Promise.resolve({ data: [{ collection: 'headings', meta: {} }] });
+        return Promise.resolve({ data: [{ collection: 'headings', meta: collectionMeta }] });
       }
       return Promise.resolve({ data: [] });
     });
+  });
 
+  it('detects the junction PK instead of assuming "id"', async () => {
     const { result } = renderHook(() => useRelationM2A('articles', 'blocks'));
 
     await waitFor(() => expect(result.current.relationInfo).not.toBeNull());
     expect(result.current.relationInfo?.junctionPrimaryKeyField?.field).toBe('row_uuid');
+  });
+
+  // The display template says how an item of the collection is shown; used
+  // as the collection's name it labelled rows and menus "{{text}}".
+  it('names an allowed collection by its name, not its display template', async () => {
+    collectionMeta = { display_template: '{{text}}' };
+    const { result } = renderHook(() => useRelationM2A('articles', 'blocks'));
+
+    await waitFor(() => expect(result.current.relationInfo).not.toBeNull());
+    expect(result.current.relationInfo?.allowedCollections.map((c) => c.name)).toEqual(['headings']);
+    // The template itself is still there, for rendering the items.
+    expect(result.current.relationInfo?.allowedCollections[0].meta?.display_template).toBe('{{text}}');
   });
 });

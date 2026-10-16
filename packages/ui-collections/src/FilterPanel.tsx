@@ -13,7 +13,7 @@
 
 "use client";
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
     Group,
     Stack,
@@ -226,6 +226,25 @@ function daasToRules(filter: Record<string, unknown>): (FilterRule | FilterGroup
     return [parseFieldRule(filter)];
 }
 
+/** The panel's model of a DaaS filter (an empty `_and` group for none). */
+function groupFromValue(value: Record<string, unknown> | null | undefined): FilterGroup {
+    if (value && Object.keys(value).length > 0) {
+        const key = Object.keys(value)[0];
+        const logical = key === '_or' ? '_or' : '_and';
+        return {
+            id: uid(),
+            logical,
+            rules: daasToRules(value),
+        };
+    }
+    return { id: uid(), logical: '_and', rules: [] };
+}
+
+/** A filter value as a comparable string; an empty filter is `null`. */
+function filterKey(value: Record<string, unknown> | null | undefined): string {
+    return JSON.stringify(value && Object.keys(value).length > 0 ? value : null);
+}
+
 function parseFieldRule(node: Record<string, unknown>): FilterRule {
     const field = Object.keys(node)[0];
     const opObj = node[field] as Record<string, unknown>;
@@ -285,7 +304,12 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                 onChange={(val) => {
                     if (!val) return;
                     const op = operators.find((o) => o.value === val);
-                    onChange({ ...rule, operator: val, value: op?.needsValue ? rule.value : true });
+                    // A no-value operator (Is null, Is empty…) stores `true`;
+                    // switching from one to an operator that takes a value
+                    // starts that value empty instead of sending `true`.
+                    let nextValue: unknown = true;
+                    if (op?.needsValue) nextValue = currentOp?.needsValue ? rule.value : null;
+                    onChange({ ...rule, operator: val, value: nextValue });
                 }}
                 data={operatorData}
                 size="xs"
@@ -300,7 +324,14 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
                         return (
                             <NumberInput
                                 value={typeof rule.value === 'number' ? rule.value : undefined}
-                                onChange={(val) => onChange({ ...rule, value: val })}
+                                // Mantine reports an emptied input as '' (and a
+                                // half-typed "-" as a string). Sent as is, `_eq: ""`
+                                // failed the request on a numeric column; an empty
+                                // value is null, as on a newly added rule.
+                                onChange={(val) => {
+                                    const num = typeof val === 'number' ? val : Number(val);
+                                    onChange({ ...rule, value: val === '' || !Number.isFinite(num) ? null : num });
+                                }}
                                 placeholder={t.rule.valuePlaceholder}
                                 size="xs"
                                 style={{ minWidth: 100, flex: 1 }}
@@ -370,28 +401,32 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
     // Parse incoming value into internal model
-    const [rootGroup, setRootGroup] = useState<FilterGroup>(() => {
-        if (value && Object.keys(value).length > 0) {
-            const key = Object.keys(value)[0];
-            const logical = key === '_or' ? '_or' : '_and';
-            return {
-                id: uid(),
-                logical,
-                rules: daasToRules(value),
-            };
-        }
-        return { id: uid(), logical: '_and', rules: [] };
-    });
+    const [rootGroup, setRootGroup] = useState<FilterGroup>(() => groupFromValue(value));
+
+    // The filter this panel last emitted, and the `value` prop it last saw.
+    // A `value` that changes to something the panel did not emit was changed
+    // outside it (CollectionList's own "Clear all", a reset, a URL), so the
+    // rules are rebuilt from it. Before, the rules were read from `value`
+    // once, on mount: after an outside clear the panel still showed the old
+    // rules and sent them again on the next edit. A host that never passes
+    // `value` (or passes back what was emitted) is unaffected.
+    const lastEmittedRef = useRef(filterKey(value));
+    const lastValueRef = useRef(filterKey(value));
+    useEffect(() => {
+        const key = filterKey(value);
+        if (key === lastValueRef.current) return;
+        lastValueRef.current = key;
+        if (key === lastEmittedRef.current) return;
+        lastEmittedRef.current = key;
+        setRootGroup(groupFromValue(value));
+    }, [value]);
 
     // Emit DaaS-style filter when rootGroup changes
     const emitChange = useCallback((group: FilterGroup) => {
         setRootGroup(group);
-        if (group.rules.length === 0) {
-            onChange?.(null);
-        } else {
-            const nodes = rulesToDaaS(group.rules);
-            onChange?.({ [group.logical]: nodes });
-        }
+        const filter = group.rules.length === 0 ? null : { [group.logical]: rulesToDaaS(group.rules) };
+        lastEmittedRef.current = filterKey(filter);
+        onChange?.(filter);
     }, [onChange]);
 
     // ----- Actions -----

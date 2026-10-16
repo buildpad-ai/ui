@@ -28,10 +28,13 @@ interface ExtendedFieldMeta {
  * @param translations  The `form` dictionary namespace (or just its
  *                      `systemDivider` part) used to name the synthetic
  *                      divider. Defaults to the English strings.
+ * @param locale        Locale of the field labels (`meta.translations`).
+ *                      Without one, a field takes its first translation.
  */
 export function getFormFields(
   fields: Field[],
   translations: Pick<FormTranslations, 'systemDivider'> = defaultTranslations.form,
+  locale?: string,
 ): FormField[] {
   const systemFields: FormField[] = [];
   const userFields: FormField[] = [];
@@ -73,7 +76,7 @@ export function getFormFields(
     const meta = field.meta as (ExtendedFieldMeta & typeof field.meta);
     const formField: FormField = {
       ...field,
-      name: meta?.name ?? getFieldDisplayName(field),
+      name: meta?.name ?? getFieldDisplayName(field, locale),
     };
 
     // Categorize as system or user field

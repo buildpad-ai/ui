@@ -88,6 +88,65 @@ const TextInput = React.forwardRef<HTMLInputElement, Record<string, unknown>>(
 );
 TextInput.displayName = "TextInput";
 
+// NumberInput — like Mantine, onChange receives a number, or '' when the
+// input is emptied.
+const NumberInput = React.forwardRef<HTMLInputElement, Record<string, unknown>>(
+  ({ value, onChange, placeholder, disabled, ...props }, ref) => {
+    const testProps: Record<string, unknown> = {};
+    for (const key of Object.keys(props)) {
+      if (key.startsWith("data-") || key === "role" || key === "id" || key === "className") {
+        testProps[key] = props[key];
+      }
+    }
+    return (
+      <input
+        ref={ref}
+        type="number"
+        value={value === undefined || value === null ? "" : String(value)}
+        onChange={(e) =>
+          (onChange as ((v: number | string) => void) | undefined)?.(
+            e.target.value === "" ? "" : Number(e.target.value),
+          )
+        }
+        placeholder={placeholder as string}
+        disabled={!!disabled}
+        {...testProps}
+      />
+    );
+  }
+);
+NumberInput.displayName = "NumberInput";
+
+// Checkbox / Radio — a native input; Checkbox marks `indeterminate` the way
+// Mantine does, with data-indeterminate.
+const makeToggle = (type: "checkbox" | "radio", displayName: string) => {
+  const Comp = React.forwardRef<HTMLInputElement, Record<string, unknown>>(
+    ({ checked, indeterminate, onChange, disabled, ...props }, ref) => {
+      const testProps: Record<string, unknown> = {};
+      for (const key of Object.keys(props)) {
+        if (key.startsWith("data-") || key.startsWith("aria-") || key === "id" || key === "className") {
+          testProps[key] = props[key];
+        }
+      }
+      return (
+        <input
+          ref={ref}
+          type={type}
+          checked={!!checked}
+          data-indeterminate={indeterminate ? "true" : undefined}
+          onChange={onChange as React.ChangeEventHandler<HTMLInputElement>}
+          disabled={!!disabled}
+          {...testProps}
+        />
+      );
+    }
+  );
+  Comp.displayName = displayName;
+  return Comp;
+};
+const Checkbox = makeToggle("checkbox", "Checkbox");
+const Radio = makeToggle("radio", "Radio");
+
 const Select = React.forwardRef<HTMLSelectElement, Record<string, unknown>>(
   ({ value, onChange, data, placeholder, ...props }, ref) => {
     const testProps: Record<string, unknown> = {};
@@ -149,14 +208,36 @@ const Tooltip = ({ children, label }: Record<string, unknown>) => (
   </div>
 );
 
-// Menu
+// Menu — like Mantine, its parts throw when rendered outside a <Menu>.
+const MenuContext = React.createContext(false);
+const useMenuPart = () => {
+  if (!React.useContext(MenuContext)) {
+    throw new Error("Menu component was not found in the tree");
+  }
+};
 const MenuComp = ({ children }: Record<string, unknown>) => (
-  <div data-component="Menu">{children as React.ReactNode}</div>
+  <MenuContext.Provider value>
+    <div data-component="Menu">{children as React.ReactNode}</div>
+  </MenuContext.Provider>
 );
-MenuComp.Target = ({ children }: Record<string, unknown>) => <div>{children as React.ReactNode}</div>;
-MenuComp.Dropdown = ({ children }: Record<string, unknown>) => <div>{children as React.ReactNode}</div>;
-MenuComp.Label = ({ children }: Record<string, unknown>) => <div data-component="Menu.Label">{children as React.ReactNode}</div>;
+MenuComp.Target = ({ children }: Record<string, unknown>) => {
+  useMenuPart();
+  return <div>{children as React.ReactNode}</div>;
+};
+MenuComp.Dropdown = ({ children }: Record<string, unknown>) => {
+  useMenuPart();
+  return <div>{children as React.ReactNode}</div>;
+};
+MenuComp.Label = ({ children }: Record<string, unknown>) => {
+  useMenuPart();
+  return <div data-component="Menu.Label">{children as React.ReactNode}</div>;
+};
+MenuComp.Divider = () => {
+  useMenuPart();
+  return <hr data-component="Menu.Divider" />;
+};
 MenuComp.Item = ({ children, onClick, ...props }: Record<string, unknown>) => {
+  useMenuPart();
   const testProps: Record<string, unknown> = {};
   for (const key of Object.keys(props)) {
     if (key.startsWith("data-")) testProps[key] = props[key];
@@ -215,6 +296,7 @@ const PaginationComp = React.forwardRef<HTMLDivElement, Record<string, unknown>>
 );
 PaginationComp.displayName = "Pagination";
 const Paper = makeComponent("Paper");
+const Skeleton = makeComponent("Skeleton");
 const StackComp = makeComponent("Stack");
 const TextComp = makeComponent("Text");
 
@@ -223,15 +305,19 @@ export {
   Alert,
   Badge,
   Button,
+  Checkbox,
   Collapse,
   GroupComp as Group,
   LoadingOverlay,
   MantineProvider,
   MenuComp as Menu,
   Modal,
+  NumberInput,
   PaginationComp as Pagination,
   Paper,
+  Radio,
   Select,
+  Skeleton,
   StackComp as Stack,
   TextComp as Text,
   TextInput,

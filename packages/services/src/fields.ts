@@ -18,22 +18,22 @@ function unwrapField(response: { data: Field } | Field): Field {
  */
 export class FieldsService {
   /**
-   * Read all fields across all collections or in a specific collection
+   * Read all fields across all collections or in a specific collection.
+   *
+   * @throws when the request fails. It used to log and resolve `[]`, so a
+   * failed load read as "this collection has no fields": CollectionList said
+   * "No visible fields found … Verify the collection exists" and
+   * CollectionForm drew an empty form, instead of the load error.
    */
   async readAll(collection?: string): Promise<Field[]> {
-    try {
-      const path = collection
-        ? `/api/fields/${collection}`
-        : '/api/fields';
+    const path = collection
+      ? `/api/fields/${collection}`
+      : '/api/fields';
 
-      // Handle both { data: Field[] } (DaaS) and Field[] (DaaS flat) formats
-      const response = await apiRequest<{ data: Field[] } | Field[]>(path);
-      if (Array.isArray(response)) return response;
-      return response.data || [];
-    } catch (error) {
-      console.error('Error fetching fields:', error);
-      return [];
-    }
+    // Handle both { data: Field[] } (DaaS) and Field[] (DaaS flat) formats
+    const response = await apiRequest<{ data: Field[] } | Field[]>(path);
+    if (Array.isArray(response)) return response;
+    return response.data || [];
   }
 
   /**

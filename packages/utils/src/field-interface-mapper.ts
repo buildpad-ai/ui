@@ -1310,9 +1310,14 @@ export function getFieldDisplayName(field: Field, locale?: string): string {
   if (translations && translations.length > 0) {
     if (locale) {
       const lang = locale.toLowerCase();
+      // The language without its region ("id" for "id-ID" or "id").
+      const primary = (tag: string) => tag.toLowerCase().split(/[-_]/)[0];
       const match =
         translations.find((t) => t.language.toLowerCase() === lang) ??
-        translations.find((t) => lang.startsWith(t.language.toLowerCase()));
+        translations.find((t) => lang.startsWith(t.language.toLowerCase())) ??
+        // A page locale without a region ("id", "en") matches a translation
+        // stored with one ("id-ID", "en-US"), and the other way round.
+        translations.find((t) => t.translation && primary(t.language) === primary(lang));
       if (match?.translation) return match.translation;
     } else {
       const first = translations.find((t) => t.translation);

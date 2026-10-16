@@ -33,6 +33,11 @@ export interface SelectDropdownM2OTranslations {
   createModal: {
     /** "Create New {collection}" */
     title: string;
+    /**
+     * @deprecated No longer shown: the dialog renders the create form from
+     * the relational UI context (or the missing-component alert). Kept so
+     * existing dictionaries and overrides still type-check.
+     */
     notImplemented: string;
   };
   selectModal: {

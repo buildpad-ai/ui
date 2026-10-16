@@ -350,7 +350,9 @@ export const VForm: React.FC<VFormProps> = ({
   // Pipeline: getFormFields → group filter → exclude filter → applyConditions
   //   → pushGroupOptionsDown → permissions filter → updateSystemDivider → updateFieldWidths
   const formFields = useMemo(() => {
-    let processed = getFormFields(fields, t);
+    // The label of each field follows `locale` (it named every field with its
+    // first translation, whatever the locale, and FormField takes this name).
+    let processed = getFormFields(fields, t, locale);
 
     // Filter by group if specified
     if (group !== null) {
@@ -390,7 +392,7 @@ export const VForm: React.FC<VFormProps> = ({
     processed = updateFieldWidths(processed);
 
     return processed;
-  }, [fields, group, stableExcludeFields, enforcePermissions, accessibleFields, allValues, primaryKey, t]);
+  }, [fields, group, stableExcludeFields, enforcePermissions, accessibleFields, allValues, primaryKey, t, locale]);
 
   // Collect all group field names so we can filter out their children
   const groupFieldNames = useMemo(() => {

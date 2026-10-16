@@ -53,6 +53,7 @@ import {
 } from "@buildpad/utils";
 import { VForm } from "@buildpad/ui-form";
 import {
+  ItemSaveHostProvider,
   RelationalUIProvider,
   type RelationalUIComponents,
 } from "@buildpad/services/relational-ui-context";
@@ -126,6 +127,13 @@ export interface CollectionFormProps {
    * Forwarded to the SaveOptions menu.
    */
   translations?: DeepPartial<CollectionsTranslations>;
+  /**
+   * Locale of the field labels (e.g. `'id'` or `'en-US'`), matched against
+   * each field's `meta.translations`: exactly, then by language
+   * (`'id'` ↔ `'id-ID'`). Forwarded to VForm. Without it a field is labelled
+   * with its first translation.
+   */
+  locale?: string;
 }
 
 /** Permission state exposed to parent components */
@@ -138,14 +146,16 @@ export interface FormPermissionState {
   isSavable: boolean;
 }
 
-// System fields that should be auto-generated
+// System fields that should be auto-generated.
+// Not "sort": a field of that name is as often the user's own column, and
+// matching the name hid it from every form. The sort field DaaS manages for
+// manual ordering is hidden by its own meta.hidden, which VForm honours.
 const SYSTEM_FIELDS = new Set([
   "id",
   "user_created",
   "user_updated",
   "date_created",
   "date_updated",
-  "sort",
 ]);
 
 // Fields that are read-only by nature
@@ -191,6 +201,49 @@ function isM2MChangesItem(value: unknown): value is {
     "update" in (value as object) &&
     "delete" in (value as object)
   );
+}
+
+/** Junction of a `files` field (from DaaS's files interface options). */
+interface FilesJunctionInfo {
+  junctionCollection: string;
+  /** FK in the junction pointing back to this item */
+  junctionFieldCurrent: string;
+  /** FK in the junction pointing to daas_files */
+  junctionFieldRelated: string;
+}
+
+/**
+ * The junction a `files` field links through: its options' junction_* keys
+ * when it has them, else `<collection>_daas_files` — the same resolution the
+ * files interface uses to load the field (its `junctionConfig` prop, or its
+ * convention).
+ */
+function filesJunctionOf(collection: string, field: Field): FilesJunctionInfo {
+  const options = (field.meta?.options ?? {}) as Record<string, unknown>;
+  const junctionCollection = options.junction_collection as string | undefined;
+  const junctionFieldCurrent = options.junction_field_current as string | undefined;
+  if (junctionCollection && junctionFieldCurrent) {
+    return {
+      junctionCollection,
+      junctionFieldCurrent,
+      junctionFieldRelated: (options.junction_field_related as string | undefined) ?? "daas_files_id",
+    };
+  }
+  return {
+    junctionCollection: `${collection}_daas_files`,
+    junctionFieldCurrent: `${collection}_id`,
+    junctionFieldRelated: "daas_files_id",
+  };
+}
+
+/** A file's id from a files value entry or a junction FK (an id, or an object with one). */
+function fileIdOf(value: unknown): string | null {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value && typeof value === "object" && "id" in value) {
+    const id = (value as { id: unknown }).id;
+    if (typeof id === "string" || typeof id === "number") return String(id);
+  }
+  return null;
 }
 
 /** Past this depth two values are called different, which is the safe answer. */
@@ -273,6 +326,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   definition,
   persist = true,
   translations,
+  locale,
 }) => {
   // Strings: component prop > provider dictionary > English defaults.
   const t = useBuildpadTranslations((d) => d.collections, translations);
@@ -328,6 +382,21 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  // A save is several requests (the item, then its junction rows) and not
+  // atomic. When a later request fails, these remember what the failed
+  // attempt already wrote, so the retry does not write it again: the item a
+  // create made (it was created a second time, with its links), and the
+  // junction rows created or deleted. Cleared by a load and by a save that
+  // completes.
+  const createdItemRef = useRef<{ id: string | number; sent: Record<string, unknown> } | null>(null);
+  const writtenLinksRef = useRef(new WeakSet<object>());
+  const deletedLinksRef = useRef(new Set<string>());
+  const forgetPartialSave = () => {
+    createdItemRef.current = null;
+    writtenLinksRef.current = new WeakSet<object>();
+    deletedLinksRef.current = new Set<string>();
+  };
+
   // Track if data has been loaded to prevent re-fetching. It is false from the
   // moment a load starts until that load has applied its result.
   const dataLoadedRef = useRef(false);
@@ -352,6 +421,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     // load cancelled halfway is never mistaken for a finished one when the
     // inputs return to the key loaded before it.
     dataLoadedRef.current = false;
+    // A new item (or another one) is loaded: nothing of an earlier failed
+    // save is reused for it.
+    createdItemRef.current = null;
+    writtenLinksRef.current = new WeakSet<object>();
+    deletedLinksRef.current = new Set<string>();
 
     const loadData = async () => {
       try {
@@ -411,17 +485,18 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         const updateAccess: CollectionActionAccess | undefined = access.update;
         const deleteAccess: CollectionActionAccess | undefined = access.delete;
 
-        // Determine create/update/delete allowed
-        // Admin users get full access; empty map (failed fetch) also assumes full access
+        // Determine create/update/delete allowed. An administrator has full
+        // access; anyone else has exactly what the map grants. An empty map
+        // (no grants, or a failed /permissions/me) grants nothing: treating it
+        // as full access gave a user with no permissions an editable form.
         const isAdmin = PermissionsService.isAdmin;
-        const isEmptyAccess = Object.keys(collectionAccess || {}).length === 0;
-        setCreateAllowed(isAdmin || isEmptyAccess || !!createAccess);
-        setUpdateAllowed(isAdmin || isEmptyAccess || !!updateAccess);
-        setDeleteAllowed(isAdmin || isEmptyAccess || !!deleteAccess);
+        setCreateAllowed(isAdmin || !!createAccess);
+        setUpdateAllowed(isAdmin || !!updateAccess);
+        setDeleteAllowed(isAdmin || !!deleteAccess);
 
         // Compute readable field names
         let readFields: string[] | null = null;
-        if (!isAdmin && !isEmptyAccess && readAccess) {
+        if (!isAdmin && readAccess) {
           readFields = readAccess.fields || null; // null = wildcard
           if (readFields && readFields.includes("*")) readFields = null;
         }
@@ -429,7 +504,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // Compute writable field names for the current action
         const actionAccess = mode === "create" ? createAccess : updateAccess;
         let writeFields: string[] | null = null;
-        if (!isAdmin && !isEmptyAccess && actionAccess) {
+        if (!isAdmin && actionAccess) {
           writeFields = actionAccess.fields || null;
           if (writeFields && writeFields.includes("*")) writeFields = null;
         }
@@ -675,7 +750,12 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     ]);
     for (const key of keys) {
       if (READ_ONLY_FIELDS.has(key) && key !== manualPrimaryKeyField) continue;
-      if (formData[key] !== initialFormData[key]) return true;
+      // VForm drops a key from the model when its value returns to the
+      // loaded one (see handleFormUpdate), so a missing key is "as loaded",
+      // not "emptied". Comparing it as undefined kept Save and Discard
+      // enabled after the user typed the original value back.
+      const current = key in formData ? formData[key] : initialFormData[key];
+      if (current !== initialFormData[key]) return true;
     }
     return false;
   }, [formData, initialFormData, manualPrimaryKeyField]);
@@ -775,6 +855,8 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       const junctionService = new ItemsService(junctionCollection);
 
       for (const entry of changes.create) {
+        // Written by an earlier attempt of this save that failed later on.
+        if (writtenLinksRef.current.has(entry)) continue;
         // selectItems stages entries as {[junctionField]: {id: "uuid"}} — a
         // nested object wrapping the related PK. Flatten it to the bare PK
         // before sending to the junction API; PostgreSQL can't parse the JSON
@@ -797,6 +879,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           [reverseJunctionField]: parentId,
           ...flatEntry,
         });
+        writtenLinksRef.current.add(entry);
       }
 
       for (const entry of changes.update) {
@@ -819,7 +902,53 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       }
 
       for (const junctionId of changes.delete) {
+        const deleteKey = `${junctionCollection}:${String(junctionId)}`;
+        if (deletedLinksRef.current.has(deleteKey)) continue;
         await junctionService.deleteOne(junctionId);
+        deletedLinksRef.current.add(deleteKey);
+      }
+    }
+  };
+
+  // =========================================================================
+  // Files flush — the files interface stages its picks and removals while
+  // this form saves its item (see ItemSaveHostProvider below); they are
+  // written here, after the item. The junction is read first and only the
+  // difference is written, so a retry after a failure writes nothing twice.
+  // =========================================================================
+  const flushFilesChanges = async (
+    parentId: string | number,
+    filesEntries: Array<{ field: Field; value: unknown }>,
+  ) => {
+    for (const { field, value } of filesEntries) {
+      const { junctionCollection, junctionFieldCurrent, junctionFieldRelated } =
+        filesJunctionOf(collection, field);
+      const junctionService = new ItemsService(junctionCollection);
+      const wanted = new Set(
+        (Array.isArray(value) ? value : [])
+          .map(fileIdOf)
+          .filter((fileId): fileId is string => fileId !== null),
+      );
+      const { data: rows = [] } = await junctionService.readByQuery({
+        filter: { [junctionFieldCurrent]: { _eq: parentId } },
+        limit: -1,
+      });
+      const linked = new Set<string>();
+      for (const row of rows) {
+        const fileId = fileIdOf(row[junctionFieldRelated]);
+        if (fileId !== null && wanted.has(fileId)) {
+          linked.add(fileId);
+          continue;
+        }
+        const rowId = row.id as string | number | undefined;
+        if (rowId !== undefined && rowId !== null) await junctionService.deleteOne(rowId);
+      }
+      for (const fileId of wanted) {
+        if (linked.has(fileId)) continue;
+        await junctionService.createOne({
+          [junctionFieldCurrent]: parentId,
+          [junctionFieldRelated]: fileId,
+        });
       }
     }
   };
@@ -886,14 +1015,40 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         return { scalar, m2m, extras };
       };
 
+      if (mode === "edit" && id && afterSave === "copy") {
+        // Save as Copy creates a new item from what the form shows and leaves
+        // the original as it was loaded. It used to PATCH the original with
+        // the edits (and flush its M2M changes) before creating the copy, so
+        // the original took the copy's values — and kept them when the copy
+        // then failed (a manual primary key has no value to copy).
+        const copyData: Record<string, unknown> = { ...initialFormData, ...dataToSave };
+        READ_ONLY_FIELDS.forEach((f) => {
+          if (!stableDefaultValues[f]) delete copyData[f];
+        });
+        delete copyData[resolvedPk];
+        // A concealed column reads back as a mask, never as the secret, and
+        // formData holds that mask verbatim. Copying it would write the
+        // literal asterisks into the new row — a guessable static token, or
+        // a password hashed from "**********". Omit those keys so the new
+        // record starts with no secret rather than a known one.
+        for (const [key, val] of Object.entries(copyData)) {
+          if (isConcealedValue(val)) delete copyData[key];
+        }
+        const copyResult = await itemsService.createOne(copyData);
+        onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
+        return;
+      }
+
       if (mode === "edit" && id) {
-        // Collect only changed fields, excluding self-persisting interfaces
-        // (e.g. "files" manages its own junction table independently)
+        // Collect only changed fields. Self-persisting interfaces ("files")
+        // are not columns: their junction rows are written after the item.
         const allChanged: Record<string, unknown> = {};
+        const filesEntries: Array<{ field: Field; value: unknown }> = [];
         for (const [key, value] of Object.entries(dataToSave)) {
           if (initialFormData[key] === value) continue;
           const fieldDef = fields.find(f => f.field === key);
           if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
+            if (fieldDef) filesEntries.push({ field: fieldDef, value });
             continue;
           }
           allChanged[key] = value;
@@ -928,11 +1083,17 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
         // Flush M2M changes via junction collection APIs
         await flushM2MChanges(id, m2mEntries);
+        await flushFilesChanges(id, filesEntries);
+        forgetPartialSave();
 
         // Clear M2M keys from form state so child interfaces (e.g. ListM2M)
         // receive value=undefined and reset their staged changes — prevents
         // stale "NEW" rows appearing alongside the just-fetched server records.
-        const clearedFormData: Record<string, unknown> = { ...formData };
+        // The saved state: the loaded values with the edits over them. A key
+        // VForm dropped because its value went back to the loaded one keeps
+        // the loaded value (formData alone would lose it from the baseline,
+        // and the field would show empty after the save).
+        const clearedFormData: Record<string, unknown> = { ...initialFormData, ...formData };
         for (const { junctionInfo: ji } of m2mEntries) {
           // find field name for this junction
           for (const [k, v] of Object.entries(m2mJunctionMap)) {
@@ -950,36 +1111,27 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         setFormData(clearedFormData);
         setInitialFormData(clearedFormData); // Reset "hasEdits" baseline
 
-        if (afterSave === "copy") {
-          const copyData = { ...dataToSave };
-          delete copyData[resolvedPk];
-          // A concealed column reads back as a mask, never as the secret, and
-          // formData holds that mask verbatim. Copying it would write the
-          // literal asterisks into the new row — a guessable static token, or
-          // a password hashed from "**********". Omit those keys so the new
-          // record starts with no secret rather than a known one.
-          for (const [key, val] of Object.entries(copyData)) {
-            if (isConcealedValue(val)) delete copyData[key];
-          }
-          const copyResult = await itemsService.createOne(copyData);
-          onSuccess?.({ ...copyData, id: copyResult?.[resolvedPk] });
-          return;
-        }
-
         if (afterSave === "add-new") {
           onNavigateToCreate?.();
           return;
         }
 
+        // Save and Stay: the item stays open, saved, with the success banner.
+        // It fell through to onSuccess, and a host that leaves the page there
+        // (the content item page goes to the list) left the item.
+        if (afterSave === "stay") return;
+
         onSuccess?.({ ...dataToSave, id });
       } else {
         // Create mode: split out M2M before creating the parent record.
-        // Also strip self-persisting interfaces (e.g. "files") that manage
-        // their own junction table persistence.
+        // Self-persisting interfaces ("files") are not columns either: their
+        // junction rows are written once the item exists.
         const cleanedDataToSave: Record<string, unknown> = {};
+        const filesEntries: Array<{ field: Field; value: unknown }> = [];
         for (const [key, value] of Object.entries(dataToSave)) {
           const fieldDef = fields.find(f => f.field === key);
           if (isSelfPersistingInterface(fieldDef?.meta?.interface)) {
+            if (fieldDef) filesEntries.push({ field: fieldDef, value });
             continue;
           }
           cleanedDataToSave[key] = value;
@@ -1000,30 +1152,65 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           scalarData[EXTRAS_COLUMN] = createdExtras;
         }
 
-        const result = await itemsService.createOne(scalarData);
-        const newId = result?.[resolvedPk] as string | number | undefined;
+        let newId: string | number | undefined;
+        const created = createdItemRef.current;
+        if (created) {
+          // An earlier attempt created the item and then failed writing its
+          // links. Retrying the create made the item a second time; reuse it
+          // and write only what changed since.
+          newId = created.id;
+          const changedSince: Record<string, unknown> = {};
+          for (const key of new Set([...Object.keys(created.sent), ...Object.keys(scalarData)])) {
+            const next = key in scalarData ? scalarData[key] : (initialFormData[key] ?? null);
+            if (JSON.stringify(next) !== JSON.stringify(created.sent[key])) changedSince[key] = next;
+          }
+          if (Object.keys(changedSince).length > 0) {
+            await itemsService.updateOne(newId, changedSince);
+          }
+          created.sent = scalarData;
+        } else {
+          const result = await itemsService.createOne(scalarData);
+          newId = result?.[resolvedPk] as string | number | undefined;
+          if (newId != null) createdItemRef.current = { id: newId, sent: scalarData };
+        }
 
-        // Flush M2M changes now that we have the parent PK
+        // Flush M2M and files changes now that we have the parent PK
         if (newId != null && m2mEntries.length > 0) {
           await flushM2MChanges(newId, m2mEntries);
         }
-
-        setSuccess(true);
+        if (newId != null && filesEntries.length > 0) {
+          await flushFilesChanges(newId, filesEntries);
+        }
+        forgetPartialSave();
 
         if (afterSave === "add-new") {
           onSuccess?.({ ...scalarData, id: newId });
           onNavigateToCreate?.();
+          // Start the next item here. A host that comes back to (or stays on)
+          // this create form keeps this component with the same collection,
+          // id and mode, so nothing reloads it: the values just saved and
+          // the success banner stayed, and Create made the same item again.
+          setFormData(initialFormData);
           return;
         }
 
+        setSuccess(true);
         onSuccess?.({ ...scalarData, id: newId });
       }
     } catch (err) {
       console.error("Error saving item:", err);
+      // apiRequest throws an ApiRequestError: its `errors` (DaaS validation
+      // errors) feed the per-field messages, and its `detail` is the
+      // backend's own sentence. The message alone was the raw response,
+      // "API error: 500 - {"error":"…"}", and parseValidationErrors never saw
+      // an `errors` array to read.
       const perFieldErrors = parseValidationErrors(err);
+      const detail = err && typeof err === "object" ? (err as { detail?: unknown }).detail : undefined;
       if (Object.keys(perFieldErrors).length > 0) {
         setFieldErrors(perFieldErrors);
         setError(t.form.errors.validationFailed);
+      } else if (typeof detail === "string" && detail.trim()) {
+        setError(detail);
       } else {
         setError(err instanceof Error ? err.message : t.form.errors.saveFailed);
       }
@@ -1046,6 +1233,39 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     e.preventDefault();
     e.stopPropagation();
     await handleSave();
+  };
+
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // The save options (and their shortcuts) call the save directly, so the
+  // browser's own check that the submit button gets (`required` and the other
+  // constraints the rendered inputs declare) never ran: Save and Stay sent a
+  // create without a required value. Run the same check first.
+  const saveWithOption = (afterSave: "stay" | "add-new" | "copy") => {
+    const form = formRef.current;
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
+      setSuccess(false);
+      setError(t.form.errors.validationFailed);
+      return;
+    }
+    void handleSave(afterSave);
+  };
+
+  // Keyboard shortcuts drawn in the save options menu: Ctrl/⌘+S is Save and
+  // Stay, Ctrl/⌘+Shift+S is Save and Create New. Only for keys pressed in this
+  // form's own fields: a dialog portaled out of it (a relational field's form
+  // or picker) is not in its DOM, and its keys belong to that dialog.
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (!showSaveOptions) return;
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== "s") return;
+    if (!(e.target instanceof Node) || !formRef.current?.contains(e.target)) return;
+    // Never the browser's "Save page" dialog, even when there is nothing to save.
+    e.preventDefault();
+    e.stopPropagation();
+    const action: SaveAction = e.shiftKey ? "save-and-add-new" : "save-and-stay";
+    if (saving || disabledSaveOptions.includes(action)) return;
+    saveWithOption(e.shiftKey ? "add-new" : "stay");
   };
 
   // Discard changes
@@ -1119,7 +1339,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form ref={formRef} onSubmit={handleSubmit} onKeyDown={handleFormKeyDown}>
         <Stack gap="md">
           {fields.length === 0 ? (
             <Text c="dimmed" ta="center" py="xl">
@@ -1139,21 +1359,26 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                   defaults: a provider above (e.g. CollectionsRelationalProvider
                   with custom components) wins. */}
               <RelationalUIProvider defaults={collectionsRelationalUI}>
-                <VForm
-                  collection={collection}
-                  fields={fields}
-                  modelValue={formData}
-                  initialValues={initialFormData}
-                  onUpdate={handleFormUpdate}
-                  primaryKey={primaryKey}
-                  disabled={saving || !saveAllowed}
-                  // NOT `loading={saving}`: VForm renders a skeleton while
-                  // loading, which unmounts every field and remounts them when
-                  // the save resolves — re-firing mount-time autofocus and
-                  // scrolling the user back to that field, losing their place.
-                  // `disabled` above already blocks input during the save.
-                  showNoVisibleFields={false}
-                />
+                {/* This form writes the junction rows of the item's "files"
+                    fields on save; the files interface stages its changes. */}
+                <ItemSaveHostProvider host={{ collection, primaryKey }}>
+                  <VForm
+                    collection={collection}
+                    fields={fields}
+                    modelValue={formData}
+                    initialValues={initialFormData}
+                    onUpdate={handleFormUpdate}
+                    primaryKey={primaryKey}
+                    locale={locale}
+                    disabled={saving || !saveAllowed}
+                    // NOT `loading={saving}`: VForm renders a skeleton while
+                    // loading, which unmounts every field and remounts them when
+                    // the save resolves — re-firing mount-time autofocus and
+                    // scrolling the user back to that field, losing their place.
+                    // `disabled` above already blocks input during the save.
+                    showNoVisibleFields={false}
+                  />
+                </ItemSaveHostProvider>
               </RelationalUIProvider>
               {/* Per-field validation errors */}
               {Object.keys(fieldErrors).length > 0 && (
@@ -1218,9 +1443,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 <SaveOptions
                   disabledOptions={disabledSaveOptions}
                   disabled={saving}
-                  onSaveAndStay={() => handleSave("stay")}
-                  onSaveAndAddNew={() => handleSave("add-new")}
-                  onSaveAsCopy={() => handleSave("copy")}
+                  onSaveAndStay={() => saveWithOption("stay")}
+                  onSaveAndAddNew={() => saveWithOption("add-new")}
+                  onSaveAsCopy={() => saveWithOption("copy")}
                   onDiscardAndStay={handleDiscard}
                   translations={translations}
                 />

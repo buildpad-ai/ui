@@ -105,6 +105,11 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
     startX: number;
     startWidth: number;
   } | null>(null);
+  // True from the end of a resize until the click the browser sends right
+  // after it. The resize handle sits inside the sortable <th>, so releasing a
+  // drag inside the header clicks the <th>; `resizing` is already false by
+  // then, and that click sorted the column.
+  const resizeJustEndedRef = useRef(false);
 
   /**
    * Handle header right-click (context menu)
@@ -158,7 +163,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
    */
   const handleSort = useCallback(
     (header: Header) => {
-      if (!header.sortable || resizing) return;
+      if (!header.sortable || resizing || resizeJustEndedRef.current) return;
 
       if (header.value === sort.by) {
         if (mustSort) {
@@ -221,6 +226,12 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
       const handleMouseUp = () => {
         setResizing(false);
         resizeRef.current = null;
+        // The click (if any) is dispatched in the same task as this pointerup;
+        // clear the flag after it, so the next real click sorts again.
+        resizeJustEndedRef.current = true;
+        setTimeout(() => {
+          resizeJustEndedRef.current = false;
+        }, 0);
         window.removeEventListener("pointermove", handleMouseMove);
         window.removeEventListener("pointerup", handleMouseUp);
       };
@@ -321,10 +332,13 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
           >
             <div className="header-content">
               {allowHeaderReorder && (
-                <div
+                // The grip only marks where a column is dragged from; a click
+                // on it must not reach the <th>, whose click sorts.
+                <div // NOSONAR: drag affordance; it has no click action of its own
                   className="reorder-handle"
                   role="button"
                   aria-label={t.reorderColumn}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <IconGripVertical size={14} />
                 </div>

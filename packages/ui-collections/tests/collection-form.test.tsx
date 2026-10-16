@@ -17,19 +17,32 @@ import { MantineProvider } from "@mantine/core";
 const {
   mockFieldsReadAll,
   mockPermissionsGetAccess,
+  permissionState,
   mockItemsReadOne,
   mockItemsCreateOne,
   mockItemsUpdateOne,
   mockItemsDeleteOne,
   mockItemsDeleteMany,
+  mockJunctionCreateOne,
+  mockJunctionDeleteOne,
+  mockJunctionReadByQuery,
 } = vi.hoisted(() => ({
   mockFieldsReadAll: vi.fn(),
   mockPermissionsGetAccess: vi.fn(),
+  // PermissionsService.isAdmin: true by default (each test starts as an
+  // administrator); a test that hands the form a role's access map sets it
+  // to false, as the real service does for a non-administrator.
+  permissionState: { isAdmin: true },
   mockItemsReadOne: vi.fn(),
   mockItemsCreateOne: vi.fn(),
   mockItemsUpdateOne: vi.fn(),
   mockItemsDeleteOne: vi.fn(),
   mockItemsDeleteMany: vi.fn(),
+  // Writes to a junction collection (any collection but the form's "posts"),
+  // called with (collection, data | id).
+  mockJunctionCreateOne: vi.fn(),
+  mockJunctionDeleteOne: vi.fn(),
+  mockJunctionReadByQuery: vi.fn(),
 }));
 
 vi.mock("@buildpad/services", async (importOriginal) => ({
@@ -39,15 +52,25 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   FieldsService: vi.fn().mockImplementation(() => ({
     readAll: mockFieldsReadAll,
   })),
-  ItemsService: vi.fn().mockImplementation(() => ({
+  ItemsService: vi.fn().mockImplementation((collection: string) => ({
     readOne: mockItemsReadOne,
-    createOne: mockItemsCreateOne,
+    createOne: (data: Record<string, unknown>) =>
+      collection === "posts"
+        ? mockItemsCreateOne(data)
+        : mockJunctionCreateOne(collection, data),
     updateOne: mockItemsUpdateOne,
-    deleteOne: mockItemsDeleteOne,
+    readByQuery: (query: unknown) => mockJunctionReadByQuery(collection, query),
+    deleteOne: (id: string | number) =>
+      collection === "posts"
+        ? mockItemsDeleteOne(id)
+        : mockJunctionDeleteOne(collection, id),
     deleteMany: mockItemsDeleteMany,
   })),
   PermissionsService: {
     getMyCollectionAccess: mockPermissionsGetAccess,
+    get isAdmin() {
+      return permissionState.isAdmin;
+    },
   },
   apiRequest: vi.fn(),
 }));
@@ -61,19 +84,28 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
 // `handleFormUpdate` from a replacing one.
 vi.mock("@buildpad/ui-form", () => ({
   VForm: vi.fn(({ fields, modelValue, initialValues, onUpdate, disabled }: {
-    fields: Array<{ field: string }>;
+    fields: Array<{ field: string; meta?: { required?: boolean } }>;
     modelValue: Record<string, unknown>;
     initialValues?: Record<string, unknown>;
     onUpdate: (values: Record<string, unknown>) => void;
     disabled?: boolean;
   }) => (
     <div data-testid="vform-mock">
+      {/* Sets a field to a JSON value (a relational field's staged changes). */}
+      {fields.map((f) => (
+        <input
+          key={`json-${f.field}`}
+          data-testid={`json-${f.field}`}
+          onChange={(e) => onUpdate({ ...modelValue, [f.field]: JSON.parse(e.target.value) })}
+        />
+      ))}
       {fields.map((f) => (
         <input
           key={f.field}
           data-testid={`field-${f.field}`}
           value={String(modelValue[f.field] ?? initialValues?.[f.field] ?? "")}
           disabled={disabled}
+          required={f.meta?.required === true}
           onChange={(e) => {
             const next = { ...modelValue, [f.field]: e.target.value };
             const initial = initialValues?.[f.field];
@@ -108,7 +140,7 @@ vi.mock("../src/SaveOptions", () => ({
 }));
 
 // Import component under test AFTER mocks
-import { apiRequest } from "@buildpad/services";
+import { apiRequest, ApiRequestError } from "@buildpad/services";
 import { CollectionForm } from "../src/CollectionForm";
 
 // -------------------------------------------------------------------
@@ -141,6 +173,11 @@ function renderForm(props: Partial<React.ComponentProps<typeof CollectionForm>> 
 // -------------------------------------------------------------------
 afterEach(() => {
   cleanup();
+});
+
+// Every test starts as an administrator (see permissionState).
+beforeEach(() => {
+  permissionState.isAdmin = true;
 });
 
 describe("CollectionForm", () => {
@@ -265,6 +302,7 @@ describe("CollectionForm", () => {
       mockFieldsReadAll.mockResolvedValue([
         { field: "status", type: "string", schema: { default_value: "'active'::character varying" }, meta: { interface: "input", sort: 1 } },
       ]);
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -287,6 +325,7 @@ describe("CollectionForm", () => {
         { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
         { field: "status", type: "string", schema: { default_value: "'active'::character varying" }, meta: { interface: "input", sort: 2 } },
       ]);
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: { read: { fields: ["*"] }, create: { fields: ["title"] } },
       });
@@ -313,6 +352,7 @@ describe("CollectionForm", () => {
         { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
         { field: "status", type: "string", schema: { default_value: "'active'::character varying" }, meta: { interface: "input", sort: 2 } },
       ]);
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: { read: { fields: ["*"] }, create: { fields: ["title"] } },
       });
@@ -431,6 +471,524 @@ describe("CollectionForm", () => {
       expect(copied).not.toHaveProperty("token");
       // The rest of the row still copies.
       expect(copied).toHaveProperty("title", "Row");
+    });
+  });
+
+  describe("a create whose junction write fails", () => {
+    const M2M_FIELDS = [
+      { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+      { field: "tags", type: "alias", meta: { interface: "list-m2m", special: ["m2m"], sort: 2 } },
+    ];
+
+    function relationsApi() {
+      vi.mocked(apiRequest).mockImplementation(async (path: string) => {
+        if (path === "/api/relations") {
+          return {
+            data: [
+              {
+                collection: "posts_tags",
+                field: "posts_id",
+                related_collection: "posts",
+                meta: { one_field: "tags", junction_field: "tags_id" },
+              },
+            ],
+          } as never;
+        }
+        return { data: [{ field: "id", schema: { is_primary_key: true } }] } as never;
+      });
+    }
+
+    async function fillAndCreate() {
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("json-tags"), {
+        target: { value: JSON.stringify({ create: [{ tags_id: { id: "red" } }, { tags_id: { id: "blue" } }], update: [], delete: [] }) },
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Dup" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+    }
+
+    it("retries on the item it already created, without creating it twice", async () => {
+      mockFieldsReadAll.mockResolvedValue(M2M_FIELDS);
+      relationsApi();
+      mockItemsCreateOne.mockResolvedValue({ id: 42, title: "Dup" });
+      mockJunctionCreateOne.mockRejectedValueOnce(new ApiRequestError(500, '{"error":"injected"}'));
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "create", onSuccess });
+      await fillAndCreate();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-error")).toHaveTextContent("injected");
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledTimes(1);
+      expect(onSuccess).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }));
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledTimes(1);
+      // Nothing changed on the item since it was created: no PATCH either.
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+      expect(mockJunctionCreateOne.mock.calls.filter(([, data]) => data.posts_id === 42).map(([, data]) => data.tags_id)).toEqual([
+        "red", // failed
+        "red",
+        "blue",
+      ]);
+    });
+
+    it("does not write a link twice when it failed after writing some", async () => {
+      mockFieldsReadAll.mockResolvedValue(M2M_FIELDS);
+      relationsApi();
+      mockItemsCreateOne.mockResolvedValue({ id: 42, title: "Dup" });
+      mockJunctionCreateOne
+        .mockResolvedValueOnce({ id: 1 })
+        .mockRejectedValueOnce(new ApiRequestError(500, '{"error":"injected"}'));
+
+      renderForm({ mode: "create" });
+      await fillAndCreate();
+      await waitFor(() => {
+        expect(screen.getByTestId("form-error")).toHaveTextContent("injected");
+      });
+
+      // An edit made before the retry goes to the item that exists.
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Dup 2" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockJunctionCreateOne).toHaveBeenCalledTimes(3);
+      });
+      expect(mockJunctionCreateOne.mock.calls.map(([, data]) => data.tags_id)).toEqual(["red", "blue", "blue"]);
+      expect(mockItemsCreateOne).toHaveBeenCalledTimes(1);
+      expect(mockItemsUpdateOne).toHaveBeenCalledWith(42, { title: "Dup 2" });
+    });
+  });
+
+  describe("files fields", () => {
+    const FILES_FIELDS = [
+      { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+      { field: "attachments", type: "alias", meta: { interface: "files", special: ["files"], sort: 2 } },
+    ];
+
+    it("writes the staged links of a saved item on Save, and only the difference", async () => {
+      mockFieldsReadAll.mockResolvedValue(FILES_FIELDS);
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Doc" });
+      mockJunctionReadByQuery.mockResolvedValue({
+        data: [
+          { id: 91, posts_id: 1, daas_files_id: "f1" },
+          { id: 92, posts_id: 1, daas_files_id: "f2" },
+        ],
+      });
+
+      renderForm({ mode: "edit", id: 1 });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Doc");
+      });
+      // The files interface stages: f2 removed, f3 picked.
+      fireEvent.change(screen.getByTestId("json-attachments"), { target: { value: '["f1","f3"]' } });
+      expect(mockJunctionCreateOne).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockJunctionCreateOne).toHaveBeenCalledWith("posts_daas_files", { posts_id: 1, daas_files_id: "f3" });
+      });
+      expect(mockJunctionReadByQuery).toHaveBeenCalledWith("posts_daas_files", {
+        filter: { posts_id: { _eq: 1 } },
+        limit: -1,
+      });
+      expect(mockJunctionDeleteOne).toHaveBeenCalledTimes(1);
+      expect(mockJunctionDeleteOne).toHaveBeenCalledWith("posts_daas_files", 92);
+      expect(mockJunctionCreateOne).toHaveBeenCalledTimes(1);
+      // Not a column: the item itself is not PATCHed for it.
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("links the files picked on a new item once it is created", async () => {
+      mockFieldsReadAll.mockResolvedValue(FILES_FIELDS);
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 42, title: "New doc" });
+      mockJunctionReadByQuery.mockResolvedValue({ data: [] });
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "create", onSuccess });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("json-attachments"), { target: { value: '["f1"]' } });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "New doc" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalled();
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "New doc" });
+      expect(mockJunctionCreateOne).toHaveBeenCalledWith("posts_daas_files", { posts_id: 42, daas_files_id: "f1" });
+    });
+
+    it("uses the junction named in the field's options", async () => {
+      mockFieldsReadAll.mockResolvedValue([
+        FILES_FIELDS[0],
+        {
+          ...FILES_FIELDS[1],
+          meta: {
+            ...FILES_FIELDS[1].meta,
+            options: { junction_collection: "post_files", junction_field_current: "post", junction_field_related: "file" },
+          },
+        },
+      ]);
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 7 });
+      mockJunctionReadByQuery.mockResolvedValue({ data: [] });
+
+      renderForm({ mode: "create" });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("json-attachments"), { target: { value: '["f9"]' } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockJunctionCreateOne).toHaveBeenCalledWith("post_files", { post: 7, file: "f9" });
+      });
+    });
+  });
+
+  describe("a user field named sort", () => {
+    it("renders it like any other field", async () => {
+      mockFieldsReadAll.mockResolvedValue([
+        { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+        { field: "sort", type: "integer", meta: { interface: "input", sort: 2 } },
+      ]);
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 1 });
+
+      renderForm({ mode: "create" });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-sort")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "S" } });
+      fireEvent.change(screen.getByTestId("field-sort"), { target: { value: "5" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "S", sort: "5" });
+      });
+    });
+  });
+
+  describe("locale", () => {
+    it("hands its locale to VForm, which labels the fields with it", async () => {
+      const { VForm } = await import("@buildpad/ui-form");
+
+      renderForm({ mode: "create", locale: "id" });
+      await waitFor(() => {
+        expect(screen.getByTestId("vform-mock")).toBeInTheDocument();
+      });
+
+      expect(vi.mocked(VForm).mock.lastCall?.[0]).toMatchObject({ locale: "id" });
+    });
+  });
+
+  describe("save errors", () => {
+    it("shows the backend's sentence, not the raw response", async () => {
+      mockItemsCreateOne.mockRejectedValueOnce(
+        new ApiRequestError(500, '{"error":"null value in column \\"title\\" violates not-null constraint"}'),
+      );
+
+      renderForm({ mode: "create" });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-body")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-body"), { target: { value: "Body" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-error")).toHaveTextContent(
+          'null value in column "title" violates not-null constraint',
+        );
+      });
+      expect(screen.getByTestId("form-error")).not.toHaveTextContent("API error:");
+      expect(screen.getByTestId("form-error")).not.toHaveTextContent('{"error"');
+    });
+
+    it("shows DaaS validation errors per field", async () => {
+      mockItemsCreateOne.mockRejectedValueOnce(
+        new ApiRequestError(
+          400,
+          JSON.stringify({ errors: [{ message: "Must contain @", extensions: { code: "FAILED_VALIDATION", field: "title" } }] }),
+        ),
+      );
+
+      renderForm({ mode: "create" });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "bad" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-field-errors")).toHaveTextContent("title: Must contain @");
+      });
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Validation failed. Please fix the highlighted fields.");
+    });
+  });
+
+  describe("save and create new", () => {
+    it("empties the create form for the next item", async () => {
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 11, title: "A" });
+      const onSuccess = vi.fn();
+      const onNavigateToCreate = vi.fn();
+
+      renderForm({ mode: "create", showSaveOptions: true, onSuccess, onNavigateToCreate });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "A" } });
+
+      fireEvent.click(screen.getByTestId("save-add-new"));
+
+      await waitFor(() => {
+        expect(onNavigateToCreate).toHaveBeenCalled();
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "A" });
+      expect(onSuccess).toHaveBeenCalledWith({ title: "A", id: 11 });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("");
+      });
+      expect(screen.queryByTestId("form-success")).not.toBeInTheDocument();
+
+      // The next Create is a new item with the new values only.
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 12, title: "B" });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "B" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+      await waitFor(() => {
+        expect(mockItemsCreateOne).toHaveBeenCalledTimes(2);
+      });
+      expect(mockItemsCreateOne).toHaveBeenLastCalledWith({ title: "B" });
+    });
+  });
+
+  describe("required fields and the save options", () => {
+    const REQUIRED_FIELDS = [
+      { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+      { field: "code", type: "string", meta: { interface: "input", sort: 2, required: true } },
+    ];
+
+    it("does not save with Save and Stay while a required field is empty", async () => {
+      mockFieldsReadAll.mockResolvedValue(REQUIRED_FIELDS);
+
+      renderForm({ mode: "create", showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-code")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Req" } });
+
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Validation failed");
+      expect(mockItemsCreateOne).not.toHaveBeenCalled();
+
+      // Filled in, the same option saves.
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 1 });
+      fireEvent.change(screen.getByTestId("field-code"), { target: { value: "C1" } });
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+      await waitFor(() => {
+        expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "Req", code: "C1" });
+      });
+    });
+
+    it("does not save with Ctrl+S while a required field is empty", async () => {
+      mockFieldsReadAll.mockResolvedValue(REQUIRED_FIELDS);
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "T", code: "C" });
+
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-code")).toHaveValue("C");
+      });
+      fireEvent.change(screen.getByTestId("field-code"), { target: { value: "" } });
+
+      fireEvent.keyDown(screen.getByTestId("field-code"), { key: "s", ctrlKey: true });
+
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Validation failed");
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("keyboard shortcuts", () => {
+    async function openEdited(props: Partial<React.ComponentProps<typeof CollectionForm>> = {}) {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old", body: "Body" });
+      mockItemsUpdateOne.mockResolvedValue({ id: 1 });
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true, ...props });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Old");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Keyed" } });
+    }
+
+    it("saves and stays on Ctrl+S or Cmd+S", async () => {
+      const onSuccess = vi.fn();
+      await openEdited({ onSuccess });
+
+      const ctrl = fireEvent.keyDown(screen.getByTestId("field-title"), { key: "s", ctrlKey: true });
+
+      expect(ctrl).toBe(false); // default prevented: no browser "Save page"
+      await waitFor(() => {
+        expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { title: "Keyed" });
+      });
+      expect(onSuccess).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Keyed 2" } });
+      fireEvent.keyDown(screen.getByTestId("field-title"), { key: "s", metaKey: true });
+      await waitFor(() => {
+        expect(mockItemsUpdateOne).toHaveBeenLastCalledWith(1, { title: "Keyed 2" });
+      });
+    });
+
+    it("saves and opens a new item on Ctrl+Shift+S", async () => {
+      const onNavigateToCreate = vi.fn();
+      await openEdited({ onNavigateToCreate });
+
+      fireEvent.keyDown(screen.getByTestId("field-title"), { key: "S", ctrlKey: true, shiftKey: true });
+
+      await waitFor(() => {
+        expect(onNavigateToCreate).toHaveBeenCalled();
+      });
+      expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { title: "Keyed" });
+    });
+
+    it("does nothing when there is nothing to save", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old" });
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Old");
+      });
+
+      fireEvent.keyDown(screen.getByTestId("field-title"), { key: "s", ctrlKey: true });
+
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("is off without the save options", async () => {
+      await openEdited({ showSaveOptions: false });
+
+      const notPrevented = fireEvent.keyDown(screen.getByTestId("field-title"), { key: "s", ctrlKey: true });
+
+      expect(notPrevented).toBe(true);
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("save and stay", () => {
+    it("saves an edited item without leaving it", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old", body: "Body" });
+      mockItemsUpdateOne.mockResolvedValueOnce({ id: 1, title: "New", body: "Body" });
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true, onSuccess });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Old");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "New" } });
+
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-success")).toHaveTextContent("Item updated successfully!");
+      });
+      expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { title: "New" });
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(screen.getByTestId("field-title")).toHaveValue("New");
+      // Saved: nothing left to save.
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+    });
+  });
+
+  describe("save as copy of an edited item", () => {
+    it("creates the copy with the edits and leaves the original unchanged", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 7, title: "Orig", body: "Body" });
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 8 });
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "edit", id: 7, showSaveOptions: true, onSuccess });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Orig");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Copy" } });
+
+      fireEvent.click(screen.getByTestId("save-as-copy"));
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledWith({ title: "Copy", body: "Body", id: 8 });
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "Copy", body: "Body" });
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("leaves the original unchanged when the copy fails", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 7, title: "Orig", body: "Body" });
+      mockItemsCreateOne.mockRejectedValueOnce(new Error("copy refused"));
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "edit", id: 7, showSaveOptions: true, onSuccess });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Orig");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Copy" } });
+
+      fireEvent.click(screen.getByTestId("save-as-copy"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-error")).toHaveTextContent("copy refused");
+      });
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+      expect(onSuccess).not.toHaveBeenCalled();
+      // The edit is still there to save or discard.
+      expect(screen.getByTestId("field-title")).toHaveValue("Copy");
+    });
+  });
+
+  describe("reverting an edit", () => {
+    it("disables Save again when the loaded value is typed back", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Rev", body: "Body" });
+
+      renderForm({ mode: "edit", id: 1 });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Rev");
+      });
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Y" } });
+      expect(screen.getByTestId("form-submit-btn")).toBeEnabled();
+
+      // The VForm double drops the key, as VForm does on a revert.
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Rev" } });
+
+      expect(screen.getByTestId("field-title")).toHaveValue("Rev");
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+    });
+
+    it("keeps a reverted field's value after saving another field", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Rev", body: "Body" });
+      mockItemsUpdateOne.mockResolvedValueOnce({ id: 1 });
+
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Rev");
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Y" } });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Rev" } });
+      fireEvent.change(screen.getByTestId("field-body"), { target: { value: "Body 2" } });
+
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-success")).toBeInTheDocument();
+      });
+      expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { body: "Body 2" });
+      expect(screen.getByTestId("field-title")).toHaveValue("Rev");
+      expect(screen.getByTestId("field-body")).toHaveValue("Body 2");
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
     });
   });
 
@@ -594,6 +1152,7 @@ describe("CollectionForm", () => {
   describe("permissions", () => {
     it("disables delete button when permission is denied", async () => {
       // Return permissions that deny delete
+      permissionState.isAdmin = false;
       mockPermissionsGetAccess.mockResolvedValueOnce({
         posts: {
           read: { fields: ["*"] },
@@ -612,6 +1171,50 @@ describe("CollectionForm", () => {
 
       // Delete button should NOT be shown because deleteAllowed = false
       expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+    });
+
+    // An empty access map is what /permissions/me returns for a user with no
+    // grants at all (and what a failed load turns into). It grants a
+    // non-administrator nothing; it used to grant everything.
+    it("gives a non-administrator with an empty access map a disabled create form", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+
+      renderForm({ mode: "create" });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      expect(screen.getByTestId("field-title")).toBeDisabled();
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+    });
+
+    it("gives a non-administrator no write control when the permissions fail to load", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item" });
+
+      renderForm({ mode: "edit", id: 1, showDelete: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Item");
+      });
+      expect(screen.getByTestId("field-title")).toBeDisabled();
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+      expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+    });
+
+    it("keeps full access for an administrator whose access map is empty", async () => {
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item" });
+
+      renderForm({ mode: "edit", id: 1 });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("Item");
+      });
+      expect(screen.getByTestId("field-title")).toBeEnabled();
+      expect(screen.getByTestId("form-delete-btn")).toBeInTheDocument();
     });
   });
 });

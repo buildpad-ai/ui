@@ -38,6 +38,7 @@ import {
   useBuildpadTranslations,
 } from "@buildpad/services";
 import {
+  getFieldDisplayName,
   interfaceRequiresChoices,
   interpolate,
   isNonFlatRelationalField,
@@ -189,6 +190,12 @@ export interface CollectionListProps {
    * far more than the marginal cost of a real count.
    */
   exactCount?: boolean;
+  /**
+   * Locale of the column headers (e.g. `'id'` or `'en-US'`), matched against
+   * each field's `meta.translations` the way CollectionForm labels its fields.
+   * A field without translations keeps its humanized name.
+   */
+  locale?: string;
 }
 
 // System fields to exclude from default display
@@ -243,6 +250,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   renderCell: consumerRenderCell,
   translations,
   exactCount = false,
+  locale,
 }) => {
   // ----- Strings & formatters (prop > provider dictionary > English defaults) -----
   const t = useBuildpadTranslations((d) => d.collections, translations);
@@ -306,7 +314,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
   // ----- Permission state (mirrors DaaS useCollectionPermissions) -----
   // Fetched from GET /permissions/me via PermissionsService.getMyCollectionAccess().
-  // Empty access map (admin or failed fetch) = assume full access.
+  // An administrator has full access; anyone else has what the map grants, so
+  // an empty map (no grants, or a failed fetch) grants nothing.
   const [createAllowed, setCreateAllowed] = useState(true);
   const [updateAllowed, setUpdateAllowed] = useState(true);
   const [deleteAllowed, setDeleteAllowed] = useState(true);
@@ -332,16 +341,18 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         const accessMap = (collectionAccess ?? {}) as Record<string, Record<string, CollectionActionAccess>>;
         const access = accessMap[collection] || {};
         const isAdmin = PermissionsService.isAdmin;
-        const isEmptyAccess = Object.keys(accessMap).length === 0;
 
         const readAccess: CollectionActionAccess | undefined = access.read;
         const createAccess: CollectionActionAccess | undefined = access.create;
         const updateAccess: CollectionActionAccess | undefined = access.update;
         const deleteAccess: CollectionActionAccess | undefined = access.delete;
 
-        const canCreate = isAdmin || isEmptyAccess || !!createAccess;
-        const canUpdate = isAdmin || isEmptyAccess || !!updateAccess;
-        const canDelete = isAdmin || isEmptyAccess || !!deleteAccess;
+        // An empty map (no grants, or a failed /permissions/me) grants a
+        // non-administrator nothing. Treating it as full access enabled Create
+        // and Delete for a user with no permissions at all.
+        const canCreate = isAdmin || !!createAccess;
+        const canUpdate = isAdmin || !!updateAccess;
+        const canDelete = isAdmin || !!deleteAccess;
 
         setCreateAllowed(canCreate);
         setUpdateAllowed(canUpdate);
@@ -350,7 +361,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         // Determine archive permission (like DaaS: requires update + archive field in writable fields)
         let canArchive = false;
         if (archiveField && canUpdate) {
-          if (isAdmin || isEmptyAccess) {
+          if (isAdmin) {
             canArchive = true;
           } else if (updateAccess?.fields) {
             canArchive = updateAccess.fields.includes("*") || updateAccess.fields.includes(archiveField);
@@ -361,7 +372,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         if (!cancelled) {
           onPermissionsLoaded?.({
             createAllowed: canCreate,
-            readAllowed: isAdmin || isEmptyAccess || !!readAccess,
+            readAllowed: isAdmin || !!readAccess,
             updateAllowed: canUpdate,
             deleteAllowed: canDelete,
             archiveAllowed: canArchive,
@@ -370,7 +381,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
         // ── Readable fields (for column filtering) ──
         let permFields: string[] | null = null;
-        if (!isAdmin && !isEmptyAccess && readAccess) {
+        if (!isAdmin && readAccess) {
           permFields = readAccess.fields ?? null;
           if (permFields && permFields.includes("*")) permFields = null;
         }
@@ -711,8 +722,11 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       // Use field.meta?.field (display name) or humanize the key.
       // DaaS uses field `name` for display; DaaS uses meta.note as a tooltip.
       // The header text should be the humanized field name, not the note.
+      // A field with meta.translations is named by them, for `locale`, as
+      // its form label is (the headers ignored them).
       const label =
         (fieldMeta as Record<string, unknown> | undefined)?.name as string ||
+        (fieldMeta?.meta?.translations?.length ? getFieldDisplayName(fieldMeta, locale) : "") ||
         key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
       return {
@@ -727,7 +741,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         ...overrides,
       } as HeaderRaw;
     });
-  }, [visibleFieldKeys, permittedFields, headerOverrides, enableSort]);
+  }, [visibleFieldKeys, permittedFields, headerOverrides, enableSort, locale]);
 
   // =========================================================================
   // Derived / computed
@@ -800,8 +814,15 @@ export const CollectionList: React.FC<CollectionListProps> = ({
       if (h.align && h.align !== "left") overrides[h.value].align = h.align;
     });
     setHeaderOverrides((prev) => ({ ...prev, ...overrides }));
-    // Update visible field order
-    setVisibleFieldKeys(newHeaders.map((h) => h.value));
+    // Update visible field order — only when it changed. A resize calls this
+    // on every pointer move with the same columns; a new (equal) array each
+    // time re-created loadItems and refetched the page once per move.
+    const nextKeys = newHeaders.map((h) => h.value);
+    setVisibleFieldKeys((prev) =>
+      prev.length === nextKeys.length && prev.every((key, i) => key === nextKeys[i])
+        ? prev
+        : nextKeys,
+    );
   }, []);
 
   // =========================================================================
@@ -810,10 +831,15 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   const renderHeaderContextMenu = useCallback(
     (header: Header) => {
       if (!enableHeaderMenu) return null;
+      // VTable draws this in its own popup, not inside a Mantine <Menu>, so
+      // no Menu.* part may be used here: Menu.Label threw "Menu component was
+      // not found in the tree" and took the page down on a right-click.
       return (
         <div className="collection-list-context-menu" role="menu">
           {/* Sort */}
-          <Menu.Label>{t.list.headerMenu.sort}</Menu.Label>
+          <Text size="xs" c="dimmed" fw={500} className="collection-list-context-menu-label">
+            {t.list.headerMenu.sort}
+          </Text>
           <div
             role="menuitem"
             tabIndex={0}
@@ -848,7 +874,9 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           <div className="collection-list-context-menu-divider" />
 
           {/* Alignment */}
-          <Menu.Label>{t.list.headerMenu.alignment}</Menu.Label>
+          <Text size="xs" c="dimmed" fw={500} className="collection-list-context-menu-label">
+            {t.list.headerMenu.alignment}
+          </Text>
           {[
             {
               align: "left" as Alignment,
@@ -1219,11 +1247,13 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
   // Manual refresh is the user saying "re-sync with the server" — which
   // includes rows other people added or removed since the pinned total was
-  // proven, so the pin goes first.
+  // proven, so the pin goes first. The collection's total (the "filtered
+  // from N" in the footer) is fetched again too; it went stale otherwise.
   const handleRefresh = useCallback(() => {
     exactTotalRef.current = null;
     loadItems();
-  }, [loadItems]);
+    getTotalCount();
+  }, [loadItems, getTotalCount]);
 
   const handleDeleteCancel = useCallback(() => {
     setDeleteConfirmOpen(false);

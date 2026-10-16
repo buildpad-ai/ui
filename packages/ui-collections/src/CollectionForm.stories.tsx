@@ -115,7 +115,7 @@ const WithMockApi: Decorator = (Story) => {
 
     // Mock permissions endpoint (admin — full access)
     if (url.includes("/api/permissions/me")) {
-      return new Response(JSON.stringify({ data: {} }), {
+      return new Response(JSON.stringify({ data: {}, isAdmin: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -1140,7 +1140,7 @@ const WithMockFilesApi: Decorator = (Story) => {
           : input.url;
 
     if (url.includes("/api/permissions/me")) {
-      return new Response(JSON.stringify({ data: {} }), {
+      return new Response(JSON.stringify({ data: {}, isAdmin: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
