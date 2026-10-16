@@ -23,6 +23,8 @@ const {
   mockItemsUpdateOne,
   mockItemsDeleteOne,
   mockItemsDeleteMany,
+  mockJunctionCreateOne,
+  mockJunctionDeleteOne,
 } = vi.hoisted(() => ({
   mockFieldsReadAll: vi.fn(),
   mockPermissionsGetAccess: vi.fn(),
@@ -35,6 +37,10 @@ const {
   mockItemsUpdateOne: vi.fn(),
   mockItemsDeleteOne: vi.fn(),
   mockItemsDeleteMany: vi.fn(),
+  // Writes to a junction collection (any collection but the form's "posts"),
+  // called with (collection, data | id).
+  mockJunctionCreateOne: vi.fn(),
+  mockJunctionDeleteOne: vi.fn(),
 }));
 
 vi.mock("@buildpad/services", async (importOriginal) => ({
@@ -44,11 +50,17 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   FieldsService: vi.fn().mockImplementation(() => ({
     readAll: mockFieldsReadAll,
   })),
-  ItemsService: vi.fn().mockImplementation(() => ({
+  ItemsService: vi.fn().mockImplementation((collection: string) => ({
     readOne: mockItemsReadOne,
-    createOne: mockItemsCreateOne,
+    createOne: (data: Record<string, unknown>) =>
+      collection === "posts"
+        ? mockItemsCreateOne(data)
+        : mockJunctionCreateOne(collection, data),
     updateOne: mockItemsUpdateOne,
-    deleteOne: mockItemsDeleteOne,
+    deleteOne: (id: string | number) =>
+      collection === "posts"
+        ? mockItemsDeleteOne(id)
+        : mockJunctionDeleteOne(collection, id),
     deleteMany: mockItemsDeleteMany,
   })),
   PermissionsService: {
@@ -76,6 +88,14 @@ vi.mock("@buildpad/ui-form", () => ({
     disabled?: boolean;
   }) => (
     <div data-testid="vform-mock">
+      {/* Sets a field to a JSON value (a relational field's staged changes). */}
+      {fields.map((f) => (
+        <input
+          key={`json-${f.field}`}
+          data-testid={`json-${f.field}`}
+          onChange={(e) => onUpdate({ ...modelValue, [f.field]: JSON.parse(e.target.value) })}
+        />
+      ))}
       {fields.map((f) => (
         <input
           key={f.field}
@@ -448,6 +468,99 @@ describe("CollectionForm", () => {
       expect(copied).not.toHaveProperty("token");
       // The rest of the row still copies.
       expect(copied).toHaveProperty("title", "Row");
+    });
+  });
+
+  describe("a create whose junction write fails", () => {
+    const M2M_FIELDS = [
+      { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+      { field: "tags", type: "alias", meta: { interface: "list-m2m", special: ["m2m"], sort: 2 } },
+    ];
+
+    function relationsApi() {
+      vi.mocked(apiRequest).mockImplementation(async (path: string) => {
+        if (path === "/api/relations") {
+          return {
+            data: [
+              {
+                collection: "posts_tags",
+                field: "posts_id",
+                related_collection: "posts",
+                meta: { one_field: "tags", junction_field: "tags_id" },
+              },
+            ],
+          } as never;
+        }
+        return { data: [{ field: "id", schema: { is_primary_key: true } }] } as never;
+      });
+    }
+
+    async function fillAndCreate() {
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("json-tags"), {
+        target: { value: JSON.stringify({ create: [{ tags_id: { id: "red" } }, { tags_id: { id: "blue" } }], update: [], delete: [] }) },
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Dup" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+    }
+
+    it("retries on the item it already created, without creating it twice", async () => {
+      mockFieldsReadAll.mockResolvedValue(M2M_FIELDS);
+      relationsApi();
+      mockItemsCreateOne.mockResolvedValue({ id: 42, title: "Dup" });
+      mockJunctionCreateOne.mockRejectedValueOnce(new ApiRequestError(500, '{"error":"injected"}'));
+      const onSuccess = vi.fn();
+
+      renderForm({ mode: "create", onSuccess });
+      await fillAndCreate();
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-error")).toHaveTextContent("injected");
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledTimes(1);
+      expect(onSuccess).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }));
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledTimes(1);
+      // Nothing changed on the item since it was created: no PATCH either.
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+      expect(mockJunctionCreateOne.mock.calls.filter(([, data]) => data.posts_id === 42).map(([, data]) => data.tags_id)).toEqual([
+        "red", // failed
+        "red",
+        "blue",
+      ]);
+    });
+
+    it("does not write a link twice when it failed after writing some", async () => {
+      mockFieldsReadAll.mockResolvedValue(M2M_FIELDS);
+      relationsApi();
+      mockItemsCreateOne.mockResolvedValue({ id: 42, title: "Dup" });
+      mockJunctionCreateOne
+        .mockResolvedValueOnce({ id: 1 })
+        .mockRejectedValueOnce(new ApiRequestError(500, '{"error":"injected"}'));
+
+      renderForm({ mode: "create" });
+      await fillAndCreate();
+      await waitFor(() => {
+        expect(screen.getByTestId("form-error")).toHaveTextContent("injected");
+      });
+
+      // An edit made before the retry goes to the item that exists.
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Dup 2" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockJunctionCreateOne).toHaveBeenCalledTimes(3);
+      });
+      expect(mockJunctionCreateOne.mock.calls.map(([, data]) => data.tags_id)).toEqual(["red", "blue", "blue"]);
+      expect(mockItemsCreateOne).toHaveBeenCalledTimes(1);
+      expect(mockItemsUpdateOne).toHaveBeenCalledWith(42, { title: "Dup 2" });
     });
   });
 

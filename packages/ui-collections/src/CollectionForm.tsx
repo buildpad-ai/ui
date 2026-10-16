@@ -338,6 +338,21 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  // A save is several requests (the item, then its junction rows) and not
+  // atomic. When a later request fails, these remember what the failed
+  // attempt already wrote, so the retry does not write it again: the item a
+  // create made (it was created a second time, with its links), and the
+  // junction rows created or deleted. Cleared by a load and by a save that
+  // completes.
+  const createdItemRef = useRef<{ id: string | number; sent: Record<string, unknown> } | null>(null);
+  const writtenLinksRef = useRef(new WeakSet<object>());
+  const deletedLinksRef = useRef(new Set<string>());
+  const forgetPartialSave = () => {
+    createdItemRef.current = null;
+    writtenLinksRef.current = new WeakSet<object>();
+    deletedLinksRef.current = new Set<string>();
+  };
+
   // Track if data has been loaded to prevent re-fetching. It is false from the
   // moment a load starts until that load has applied its result.
   const dataLoadedRef = useRef(false);
@@ -362,6 +377,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     // load cancelled halfway is never mistaken for a finished one when the
     // inputs return to the key loaded before it.
     dataLoadedRef.current = false;
+    // A new item (or another one) is loaded: nothing of an earlier failed
+    // save is reused for it.
+    createdItemRef.current = null;
+    writtenLinksRef.current = new WeakSet<object>();
+    deletedLinksRef.current = new Set<string>();
 
     const loadData = async () => {
       try {
@@ -791,6 +811,8 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       const junctionService = new ItemsService(junctionCollection);
 
       for (const entry of changes.create) {
+        // Written by an earlier attempt of this save that failed later on.
+        if (writtenLinksRef.current.has(entry)) continue;
         // selectItems stages entries as {[junctionField]: {id: "uuid"}} — a
         // nested object wrapping the related PK. Flatten it to the bare PK
         // before sending to the junction API; PostgreSQL can't parse the JSON
@@ -813,6 +835,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           [reverseJunctionField]: parentId,
           ...flatEntry,
         });
+        writtenLinksRef.current.add(entry);
       }
 
       for (const entry of changes.update) {
@@ -835,7 +858,10 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       }
 
       for (const junctionId of changes.delete) {
+        const deleteKey = `${junctionCollection}:${String(junctionId)}`;
+        if (deletedLinksRef.current.has(deleteKey)) continue;
         await junctionService.deleteOne(junctionId);
+        deletedLinksRef.current.add(deleteKey);
       }
     }
   };
@@ -968,6 +994,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 
         // Flush M2M changes via junction collection APIs
         await flushM2MChanges(id, m2mEntries);
+        forgetPartialSave();
 
         // Clear M2M keys from form state so child interfaces (e.g. ListM2M)
         // receive value=undefined and reset their staged changes — prevents
@@ -1033,13 +1060,33 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           scalarData[EXTRAS_COLUMN] = createdExtras;
         }
 
-        const result = await itemsService.createOne(scalarData);
-        const newId = result?.[resolvedPk] as string | number | undefined;
+        let newId: string | number | undefined;
+        const created = createdItemRef.current;
+        if (created) {
+          // An earlier attempt created the item and then failed writing its
+          // links. Retrying the create made the item a second time; reuse it
+          // and write only what changed since.
+          newId = created.id;
+          const changedSince: Record<string, unknown> = {};
+          for (const key of new Set([...Object.keys(created.sent), ...Object.keys(scalarData)])) {
+            const next = key in scalarData ? scalarData[key] : (initialFormData[key] ?? null);
+            if (JSON.stringify(next) !== JSON.stringify(created.sent[key])) changedSince[key] = next;
+          }
+          if (Object.keys(changedSince).length > 0) {
+            await itemsService.updateOne(newId, changedSince);
+          }
+          created.sent = scalarData;
+        } else {
+          const result = await itemsService.createOne(scalarData);
+          newId = result?.[resolvedPk] as string | number | undefined;
+          if (newId != null) createdItemRef.current = { id: newId, sent: scalarData };
+        }
 
         // Flush M2M changes now that we have the parent PK
         if (newId != null && m2mEntries.length > 0) {
           await flushM2MChanges(newId, m2mEntries);
         }
+        forgetPartialSave();
 
         if (afterSave === "add-new") {
           onSuccess?.({ ...scalarData, id: newId });
