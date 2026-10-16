@@ -1014,14 +1014,18 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           await flushM2MChanges(newId, m2mEntries);
         }
 
-        setSuccess(true);
-
         if (afterSave === "add-new") {
           onSuccess?.({ ...scalarData, id: newId });
           onNavigateToCreate?.();
+          // Start the next item here. A host that comes back to (or stays on)
+          // this create form keeps this component with the same collection,
+          // id and mode, so nothing reloads it: the values just saved and
+          // the success banner stayed, and Create made the same item again.
+          setFormData(initialFormData);
           return;
         }
 
+        setSuccess(true);
         onSuccess?.({ ...scalarData, id: newId });
       }
     } catch (err) {

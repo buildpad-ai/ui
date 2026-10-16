@@ -450,6 +450,41 @@ describe("CollectionForm", () => {
     });
   });
 
+  describe("save and create new", () => {
+    it("empties the create form for the next item", async () => {
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 11, title: "A" });
+      const onSuccess = vi.fn();
+      const onNavigateToCreate = vi.fn();
+
+      renderForm({ mode: "create", showSaveOptions: true, onSuccess, onNavigateToCreate });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeInTheDocument();
+      });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "A" } });
+
+      fireEvent.click(screen.getByTestId("save-add-new"));
+
+      await waitFor(() => {
+        expect(onNavigateToCreate).toHaveBeenCalled();
+      });
+      expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "A" });
+      expect(onSuccess).toHaveBeenCalledWith({ title: "A", id: 11 });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toHaveValue("");
+      });
+      expect(screen.queryByTestId("form-success")).not.toBeInTheDocument();
+
+      // The next Create is a new item with the new values only.
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 12, title: "B" });
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "B" } });
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+      await waitFor(() => {
+        expect(mockItemsCreateOne).toHaveBeenCalledTimes(2);
+      });
+      expect(mockItemsCreateOne).toHaveBeenLastCalledWith({ title: "B" });
+    });
+  });
+
   describe("save and stay", () => {
     it("saves an edited item without leaving it", async () => {
       mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old", body: "Body" });
