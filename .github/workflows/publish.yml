@@ -1,11 +1,19 @@
 # GitHub Actions workflow: Publish packages to npm
 #
-# Two ways to trigger:
+# Releases in this repo are cut LOCALLY with scripts/release-local.sh, because
+# this repo's Actions cannot create pull requests. That is not a preference:
+# the changesets "Version Packages" PR step fails on every push that carries a
+# changeset, and left a `changeset-release/main` branch behind each time, so
+# every release came with a red Publish run to discount and a branch to delete
+# by hand. This workflow now skips that path instead of failing on it (see
+# "Publish to npm" below).
 #
-# A) **Automated via Changesets (recommended)**
-#    Push to main with changeset files → opens a "Version Packages" PR.
-#    Merge that PR → versions are bumped, CHANGELOG updated, and packages
-#    are published to npm automatically.
+# What still runs here:
+#
+# A) **After CI succeeds on main, with NO pending changesets** — i.e. the push
+#    of a release commit that scripts/release-local.sh already versioned.
+#    `changeset publish` runs; the local script normally publishes first, so
+#    this is usually a no-op that simply reports success.
 #
 # B) **Manual dispatch**
 #    Go to Actions → "Publish" → "Run workflow" to publish immediately. A
@@ -65,11 +73,13 @@ jobs:
 
       # The automated trigger only fires after CI passed on this exact commit;
       # a manual dispatch has no such guarantee, so check here.
+      # `test:coverage`, not `test`: the per-package coverage floors are only
+      # enforced under --coverage, so `pnpm test` would pass a tree CI fails.
       - name: Typecheck and unit tests (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
           pnpm -r typecheck
-          pnpm test
+          pnpm test:coverage
 
       # Changesets will either:
       # - open a "Version Packages" PR (if there are unreleased changesets), or
@@ -86,8 +96,29 @@ jobs:
       # changesets/action splits this input on whitespace and execs it directly
       # rather than through a shell, so an inline `a && b` is passed to
       # `changeset` as arguments ("Too many arguments passed to changesets").
+      # With changesets pending, changesets/action takes its VERSION path: it
+      # commits the bump to a `changeset-release/main` branch, pushes it, then
+      # opens the "Version Packages" PR — and that last step cannot succeed
+      # here, so the run goes red and the branch is left behind. Releases are
+      # cut locally instead, so detect that case and skip rather than fail.
+      #
+      # With zero changesets the action takes its PUBLISH path, which works;
+      # that is the case this workflow exists for.
+      - name: Check for pending changesets
+        id: pending
+        run: |
+          set -euo pipefail
+          count=$(find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' | wc -l | tr -d ' ')
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+          if [ "${count}" -gt 0 ]; then
+            echo "::notice title=Nothing to publish::${count} pending changeset(s). Cut the release locally with scripts/release-local.sh --execute; this workflow publishes only an already-versioned commit."
+          fi
+
+      # `version:` is retained so this step is correct the day Actions can open
+      # a PR in this repo; until then the `if` above means it never runs.
       - name: Create Release PR or Publish
         id: changesets
+        if: steps.pending.outputs.count == '0'
         uses: changesets/action@v1
         with:
           publish: pnpm changeset publish

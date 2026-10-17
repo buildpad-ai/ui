@@ -218,8 +218,21 @@ fi
 step "Verifying the tree builds and is self-consistent"
 # ─────────────────────────────────────────────────────────────────────────
 
-# The same gates as CI (.github/workflows/ci.yml), in the same order. Running
-# only the CLI tests here let 2.0.0–2.6.0 ship while ui-interfaces was red.
+# The same gates as CI's "Build & Test" job (.github/workflows/ci.yml), in the
+# same order and with the SAME commands. Two earlier versions of this block
+# drifted from CI and each let a broken release through:
+#
+#   - running only the CLI tests let 2.0.0–2.6.0 ship while ui-interfaces was red;
+#   - running `pnpm test` instead of `pnpm test:coverage` reported all-green at
+#     3.3.0 on a commit whose CI was failing, because only the coverage run
+#     enforces the per-package floors. `pnpm test` cannot see them at all.
+#
+# If you add a gate to CI, add it here. A preflight that is a subset of CI is
+# worse than no preflight, because it is trusted.
+echo "${DIM}  pnpm lint${OFF}"
+pnpm lint >/dev/null 2>&1 || die "lint fails (run \`pnpm lint\`). Fix before releasing."
+ok "lint passes"
+
 echo "${DIM}  pnpm build${OFF}"
 pnpm build >/dev/null 2>&1 || die "build fails. Fix before releasing."
 ok "build passes"
@@ -228,9 +241,19 @@ echo "${DIM}  pnpm -r typecheck${OFF}"
 pnpm -r typecheck >/dev/null 2>&1 || die "typecheck fails. Fix before releasing."
 ok "typecheck passes"
 
-echo "${DIM}  pnpm test${OFF}"
-pnpm test >/dev/null 2>&1 || die "unit tests fail (run \`pnpm test\` to see which). Fix before releasing."
-ok "unit tests pass"
+# `test:coverage`, not `test`: the coverage floors live in each package's own
+# config and are only enforced under --coverage.
+echo "${DIM}  pnpm test:coverage${OFF}"
+pnpm test:coverage >/dev/null 2>&1 || die "unit tests or coverage floors fail (run \`pnpm test:coverage\` to see which). Fix before releasing."
+ok "unit tests and coverage floors pass"
+
+echo "${DIM}  pnpm graph:check${OFF}"
+pnpm graph:check >/dev/null 2>&1 || die "graph:check fails (run \`pnpm graph:check\`). Fix before releasing."
+ok "import graph is acyclic"
+
+echo "${DIM}  pnpm deps:check${OFF}"
+pnpm deps:check >/dev/null 2>&1 || die "deps:check fails (run \`pnpm deps:check\`). Fix before releasing."
+ok "no unused or undeclared dependencies"
 
 # The artifact-sync check is mode-dependent, and getting this wrong blocked a
 # real release (2.2.0):
