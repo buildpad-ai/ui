@@ -254,6 +254,7 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 }) => {
   // ----- Strings & formatters (prop > provider dictionary > English defaults) -----
   const t = useBuildpadTranslations((d) => d.collections, translations);
+  const common = useBuildpadTranslations((d) => d.common);
   const { formatDate, formatDateTime, formatNumber, formatCount } = useBuildpadI18n();
 
   // ----- Data state -----
@@ -313,12 +314,18 @@ export const CollectionList: React.FC<CollectionListProps> = ({
   const rowHeight = rowHeightProp ?? SPACING_HEIGHT[tableSpacing] ?? 48;
 
   // ----- Permission state (mirrors DaaS useCollectionPermissions) -----
-  // Fetched from GET /permissions/me via PermissionsService.getMyCollectionAccess().
+  // Fetched from GET /permissions/me via PermissionsService.loadMyCollectionAccess().
   // An administrator has full access; anyone else has what the map grants, so
-  // an empty map (no grants, or a failed fetch) grants nothing.
+  // an empty map (no grants) grants nothing. A failed load grants nothing
+  // either, also to an administrator, and shows a load error with a Retry
+  // until a load succeeds.
   const [createAllowed, setCreateAllowed] = useState(true);
   const [updateAllowed, setUpdateAllowed] = useState(true);
   const [deleteAllowed, setDeleteAllowed] = useState(true);
+  const [permissionsFailed, setPermissionsFailed] = useState(false);
+  // Bumped by Retry: reruns the load below, asking /permissions/me again.
+  const [permissionsAttempt, setPermissionsAttempt] = useState(0);
+  const [retryingPermissions, setRetryingPermissions] = useState(false);
 
   // =========================================================================
   // Load fields + permissions in parallel (avoids race condition)
@@ -328,19 +335,28 @@ export const CollectionList: React.FC<CollectionListProps> = ({
 
     const loadFieldsAndPermissions = async () => {
       try {
-        // Fetch fields + full collection access in parallel
+        // Fetch fields + full collection access in parallel. A failed
+        // permissions load is not a failed list: the rows still show, with
+        // the load error and no write control.
+        let permissionsLoaded = true;
         const [fieldsResult, collectionAccess] = await Promise.all([
           new FieldsService().readAll(collection),
-          PermissionsService.getMyCollectionAccess().catch(() => ({})),
+          PermissionsService.loadMyCollectionAccess(permissionsAttempt > 0).catch(() => {
+            permissionsLoaded = false;
+            return {};
+          }),
         ]);
 
         if (cancelled) return;
+        setPermissionsFailed(!permissionsLoaded);
 
         // ── Derive CRUD permission flags (mirrors DaaS useCollectionPermissions) ──
-        // Admin users get full access; otherwise check specific collection permissions.
+        // Admin users get full access; otherwise check specific collection
+        // permissions. Who is an administrator is only known from a load that
+        // succeeded: after a failure the cached flag may be an old answer.
         const accessMap = (collectionAccess ?? {}) as Record<string, Record<string, CollectionActionAccess>>;
         const access = accessMap[collection] || {};
-        const isAdmin = PermissionsService.isAdmin;
+        const isAdmin = permissionsLoaded && PermissionsService.isAdmin;
 
         const readAccess: CollectionActionAccess | undefined = access.read;
         const createAccess: CollectionActionAccess | undefined = access.create;
@@ -454,6 +470,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           setError(t.list.errors.loadFieldsFailed);
           setLoading(false);
         }
+      } finally {
+        if (!cancelled) setRetryingPermissions(false);
       }
     };
 
@@ -461,7 +479,12 @@ export const CollectionList: React.FC<CollectionListProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [collection, displayFields, primaryKeyFieldProp, t]);
+  }, [collection, displayFields, primaryKeyFieldProp, t, permissionsAttempt]);
+
+  const retryPermissions = useCallback(() => {
+    setRetryingPermissions(true);
+    setPermissionsAttempt((attempt) => attempt + 1);
+  }, []);
 
   // =========================================================================
   // Merge external filter prop with internal FilterPanel filter
@@ -1374,6 +1397,29 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           mt="xs"
         >
           {error}
+        </Alert>
+      )}
+
+      {permissionsFailed && (
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          color="red"
+          data-testid="collection-list-permissions-error"
+          mt="xs"
+        >
+          <Group justify="space-between" gap="sm">
+            <Text size="sm">{t.list.errors.permissionsLoadFailed}</Text>
+            <Button
+              size="xs"
+              variant="light"
+              color="red"
+              onClick={retryPermissions}
+              loading={retryingPermissions}
+              data-testid="collection-list-permissions-retry"
+            >
+              {common.retry}
+            </Button>
+          </Group>
         </Alert>
       )}
 

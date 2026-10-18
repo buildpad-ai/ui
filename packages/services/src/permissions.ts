@@ -87,8 +87,31 @@ export class PermissionsService {
    * Fetch the full CollectionAccess map for the current user.
    * Uses an in-memory cache with a 30 s TTL so multiple components mounting
    * at the same time share a single request.
+   *
+   * A failed request resolves to an empty map, which grants a
+   * non-administrator nothing. To tell a failed load from a user with no
+   * grants (and offer a retry), use {@link loadMyCollectionAccess}.
    */
   static async getMyCollectionAccess(
+    forceRefresh = false,
+  ): Promise<CollectionAccess> {
+    try {
+      return await PermissionsService.loadMyCollectionAccess(forceRefresh);
+    } catch {
+      // Collection access returns empty, which grants a non-administrator
+      // nothing (CollectionList / CollectionForm fail closed on it).
+      return {};
+    }
+  }
+
+  /**
+   * Like {@link getMyCollectionAccess} (same cache and shared request), but a
+   * failed `/permissions/me` request REJECTS instead of resolving to an empty
+   * map. An empty map from this method is a successful answer: the user has
+   * no grants. CollectionList and CollectionForm use it to show a load error
+   * with a Retry, and keep their write controls off, until a load succeeds.
+   */
+  static async loadMyCollectionAccess(
     forceRefresh = false,
   ): Promise<CollectionAccess> {
     const now = Date.now();
@@ -126,12 +149,10 @@ export class PermissionsService {
           "[PermissionsService] Failed to fetch /permissions/me:",
           err,
         );
-        // Collection access returns empty, which grants a non-administrator
-        // nothing (CollectionList / CollectionForm fail closed on it). Module
-        // access is deny-by-default too: leave it null and let
+        // Module access is deny-by-default: leave it null and let
         // hasModuleAccess() return false.
         _cachedModuleAccess = null;
-        return {};
+        throw err;
       } finally {
         _cachePromise = null;
       }

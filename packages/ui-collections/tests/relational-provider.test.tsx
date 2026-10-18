@@ -21,7 +21,10 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@buildpad/services")>()),
   FieldsService: vi.fn().mockImplementation(() => ({ readAll: mockFieldsReadAll })),
   ItemsService: vi.fn().mockImplementation(() => ({ readOne: vi.fn() })),
-  PermissionsService: { getMyCollectionAccess: mockPermissionsGetAccess },
+  PermissionsService: {
+    getMyCollectionAccess: mockPermissionsGetAccess,
+    loadMyCollectionAccess: mockPermissionsGetAccess,
+  },
   apiRequest: vi.fn(),
 }));
 

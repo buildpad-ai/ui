@@ -166,6 +166,40 @@ describe('/permissions/me cache', () => {
   });
 });
 
+describe('loadMyCollectionAccess — a failed load is an error', () => {
+  it('rejects when /permissions/me fails, where getMyCollectionAccess resolves to {}', async () => {
+    const failure = new Error('500');
+    apiRequestMock.mockRejectedValue(failure);
+    await expect(PermissionsService.loadMyCollectionAccess()).rejects.toBe(failure);
+    expect(await PermissionsService.getMyCollectionAccess()).toEqual({});
+    expect(PermissionsService.hasModuleAccess('reports')).toBe(false);
+  });
+
+  it('an empty map from a successful load resolves (no grants is an answer)', async () => {
+    apiRequestMock.mockResolvedValue({ data: {} });
+    await expect(PermissionsService.loadMyCollectionAccess()).resolves.toEqual({});
+  });
+
+  it('shares the cache and the in-flight request with getMyCollectionAccess', async () => {
+    apiRequestMock.mockResolvedValue({ data: ACCESS });
+    const [a, b] = await Promise.all([
+      PermissionsService.loadMyCollectionAccess(),
+      PermissionsService.getMyCollectionAccess(),
+    ]);
+    expect(a).toBe(b);
+    await PermissionsService.loadMyCollectionAccess();
+    expect(apiRequestMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('a retry after a failure asks again and resolves', async () => {
+    apiRequestMock.mockRejectedValueOnce(new Error('500'));
+    await expect(PermissionsService.loadMyCollectionAccess()).rejects.toThrow('500');
+    apiRequestMock.mockResolvedValueOnce({ data: ACCESS });
+    await expect(PermissionsService.loadMyCollectionAccess(true)).resolves.toEqual(ACCESS);
+    expect(apiRequestMock).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('legacy field-permission helpers', () => {
   it('getFieldPermissions calls the per-collection route', async () => {
     apiRequestMock.mockResolvedValue({ data: { collection: 'a', action: 'read', fields: ['id'] } });

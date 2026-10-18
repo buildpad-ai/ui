@@ -330,6 +330,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
 }) => {
   // Strings: component prop > provider dictionary > English defaults.
   const t = useBuildpadTranslations((d) => d.collections, translations);
+  const common = useBuildpadTranslations((d) => d.common);
 
   // Stable references for the optional props the load depends on: each keeps
   // its identity until its content changes (see useContentStable).
@@ -371,6 +372,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const [createAllowed, setCreateAllowed] = useState(true);
   const [updateAllowed, setUpdateAllowed] = useState(true);
   const [deleteAllowed, setDeleteAllowed] = useState(false);
+  // The last /permissions/me load failed: the form is read-only and shows a
+  // load error with a Retry until a load succeeds.
+  const [permissionsFailed, setPermissionsFailed] = useState(false);
+  // Bumped by Retry: reruns the load, asking /permissions/me again.
+  const [permissionsAttempt, setPermissionsAttempt] = useState(0);
   // Whether the target collection actually has the `extras` jsonb column that
   // `store: 'extras'` fields write into (guards a cryptic DaaS 500 when absent).
   const [hasExtrasColumn, setHasExtrasColumn] = useState(true);
@@ -406,7 +412,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   // Permission-aware field + item loading
   // =========================================================================
   useEffect(() => {
-    const loadKey = `${collection}-${id}-${mode}-${definitionSignature}`;
+    const loadKey = `${collection}-${id}-${mode}-${definitionSignature}-${permissionsAttempt}`;
     if (dataLoadedRef.current && lastLoadKey.current === loadKey) {
       return;
     }
@@ -433,13 +439,19 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         setError(null);
         setFieldErrors({});
 
-        // Fetch fields + permissions in parallel
+        // Fetch fields + permissions in parallel. A failed permissions load
+        // still draws the item, read-only, with the load error and a Retry.
         const fieldsService = new FieldsService();
+        let permissionsLoaded = true;
         const [allFields, collectionAccess] = await Promise.all([
           fieldsService.readAll(collection),
-          PermissionsService.getMyCollectionAccess().catch(() => ({} as CollectionAccess)),
+          PermissionsService.loadMyCollectionAccess(permissionsAttempt > 0).catch(() => {
+            permissionsLoaded = false;
+            return {} as CollectionAccess;
+          }),
         ]);
         if (cancelled) return;
+        setPermissionsFailed(!permissionsLoaded);
 
         // Does the target collection expose the `extras` jsonb tail column?
         setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
@@ -489,7 +501,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // access; anyone else has exactly what the map grants. An empty map
         // (no grants, or a failed /permissions/me) grants nothing: treating it
         // as full access gave a user with no permissions an editable form.
-        const isAdmin = PermissionsService.isAdmin;
+        // Who is an administrator is only known from a load that succeeded:
+        // after a failure the cached flag may be an old answer.
+        const isAdmin = permissionsLoaded && PermissionsService.isAdmin;
         setCreateAllowed(isAdmin || !!createAccess);
         setUpdateAllowed(isAdmin || !!updateAccess);
         setDeleteAllowed(isAdmin || !!deleteAccess);
@@ -737,6 +751,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     stableDefinition,
     definitionSignature,
     t,
+    permissionsAttempt,
   ]);
 
   // =========================================================================
@@ -1321,6 +1336,28 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           data-testid="form-error"
         >
           {error}
+        </Alert>
+      )}
+
+      {permissionsFailed && (
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          color="red"
+          mb="md"
+          data-testid="form-permissions-error"
+        >
+          <Group justify="space-between" gap="sm">
+            <Text size="sm">{t.form.errors.permissionsLoadFailed}</Text>
+            <Button
+              size="xs"
+              variant="light"
+              color="red"
+              onClick={() => setPermissionsAttempt((attempt) => attempt + 1)}
+              data-testid="form-permissions-retry"
+            >
+              {common.retry}
+            </Button>
+          </Group>
         </Alert>
       )}
 

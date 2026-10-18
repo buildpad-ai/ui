@@ -47,6 +47,8 @@ export interface CollectionListTranslations {
     loadFieldsFailed: string;
     loadItemsFailed: string;
     deleteFailed: string;
+    /** A failed /permissions/me load; shown with a Retry, write controls off */
+    permissionsLoadFailed: string;
   };
   headerMenu: CollectionListHeaderMenuTranslations;
   addField: {
@@ -131,6 +133,8 @@ export interface CollectionFormTranslations {
     saveFailed: string;
     deleteFailed: string;
     validationFailed: string;
+    /** A failed /permissions/me load; shown with a Retry, the form read-only */
+    permissionsLoadFailed: string;
     /** Fallback per-field message when the backend error carries none */
     fieldValidationFallback: string;
     /** 'Cannot update junction row in "{junctionCollection}": staged entry has no "{junctionPrimaryKeyField}" value.' */
@@ -256,6 +260,8 @@ export const collectionsDefaults: CollectionsTranslations = {
       loadFieldsFailed: 'Failed to load collection fields.',
       loadItemsFailed: 'Failed to load items',
       deleteFailed: 'Failed to delete items',
+      permissionsLoadFailed:
+        'Your permissions could not be loaded, so creating, editing and deleting are turned off.',
     },
     headerMenu: {
       sort: 'Sort',
@@ -348,6 +354,8 @@ export const collectionsDefaults: CollectionsTranslations = {
       saveFailed: 'Failed to save item',
       deleteFailed: 'Failed to delete item',
       validationFailed: 'Validation failed. Please fix the highlighted fields.',
+      permissionsLoadFailed:
+        'Your permissions could not be loaded, so this item cannot be saved.',
       fieldValidationFallback: 'Validation failed',
       junctionUpdateMissingKey:
         'Cannot update junction row in "{junctionCollection}": staged entry has no "{junctionPrimaryKeyField}" value.',
@@ -443,6 +451,8 @@ export const collectionsId: CollectionsTranslations = {
       loadFieldsFailed: 'Gagal memuat kolom koleksi.',
       loadItemsFailed: 'Gagal memuat item',
       deleteFailed: 'Gagal menghapus item',
+      permissionsLoadFailed:
+        'Izin Anda tidak dapat dimuat, sehingga membuat, mengubah, dan menghapus dinonaktifkan.',
     },
     headerMenu: {
       sort: 'Urutkan',
@@ -531,6 +541,8 @@ export const collectionsId: CollectionsTranslations = {
       saveFailed: 'Gagal menyimpan item',
       deleteFailed: 'Gagal menghapus item',
       validationFailed: 'Validasi gagal. Harap perbaiki kolom yang ditandai.',
+      permissionsLoadFailed:
+        'Izin Anda tidak dapat dimuat, sehingga item ini tidak dapat disimpan.',
       fieldValidationFallback: 'Validasi gagal',
       junctionUpdateMissingKey:
         'Tidak dapat memperbarui baris junction di "{junctionCollection}": entri yang disiapkan tidak memiliki nilai "{junctionPrimaryKeyField}".',

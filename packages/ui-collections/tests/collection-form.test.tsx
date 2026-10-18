@@ -68,6 +68,8 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   })),
   PermissionsService: {
     getMyCollectionAccess: mockPermissionsGetAccess,
+    // The form reads it through the load that rejects on a failure.
+    loadMyCollectionAccess: mockPermissionsGetAccess,
     get isAdmin() {
       return permissionState.isAdmin;
     },
@@ -1202,6 +1204,47 @@ describe("CollectionForm", () => {
       expect(screen.getByTestId("field-title")).toBeDisabled();
       expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
       expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+    });
+
+    // A failed /permissions/me is a load error, not "no grants": the form
+    // says so and offers a Retry, and stays read-only until a load succeeds,
+    // also for an administrator (whose cached flag may be an old answer).
+    it("shows a permissions load error with Retry, and a successful retry makes the form editable", async () => {
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item" });
+
+      renderForm({ mode: "edit", id: 1, showDelete: true });
+
+      const alert = await screen.findByTestId("form-permissions-error");
+      expect(alert).toHaveTextContent("Your permissions could not be loaded");
+      expect(screen.getByTestId("field-title")).toHaveValue("Item");
+      expect(screen.getByTestId("field-title")).toBeDisabled();
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+      expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+      await userEvent.click(screen.getByTestId("form-permissions-retry"));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("form-permissions-error")).not.toBeInTheDocument();
+      });
+      expect(mockPermissionsGetAccess).toHaveBeenLastCalledWith(true);
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeEnabled();
+      });
+      expect(screen.getByTestId("form-delete-btn")).toBeInTheDocument();
+    });
+
+    it("shows no load error when the access map is empty but loaded", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+
+      renderForm({ mode: "create" });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+      });
+      expect(screen.queryByTestId("form-permissions-error")).not.toBeInTheDocument();
     });
 
     it("keeps full access for an administrator whose access map is empty", async () => {
