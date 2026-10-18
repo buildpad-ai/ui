@@ -6,7 +6,7 @@
 "@buildpad/ui-interfaces": minor
 ---
 
-Item routes, the item form's field rules, a failed permissions load and "Is empty" on json fields.
+Item routes, the item form's field rules and per-item access, a failed permissions load, and "Is empty" on json fields.
 
 **Create route is `+`; a row keyed `new` opens for editing** (`isNewItem`, `ListM2A`)
 
@@ -17,6 +17,10 @@ Item routes, the item form's field rules, a failed permissions load and "Is empt
 
 - `meta.required` and `meta.validation` (the filter rule a field's Validation tab stores) are checked before every save: the Create / Save button, the save options, and Ctrl/⌘+S and Ctrl/⌘+Shift+S. Nothing is sent while one fails; the form shows "Validation failed. Please fix the highlighted fields." and each failing field its message (the field's validation message for a failed rule, "This field is required" for a missing value). Conditions are applied first; hidden and read-only fields are not checked; a rule is checked when the field holds a value. The items API does not check these rules.
 - New `validateItem(item, fields)` in `@buildpad/ui-form`. A `_regex` rule may be written as `/pattern/flags`.
+
+**Access for one item** (`CollectionForm`)
+
+- New optional `accessOverride` prop (`{ create?, update?, delete? }`, each like a `/api/permissions/me` action entry): applied over the user's permissions for that form only, each named action replacing the collection's entry; its `fields` limit what is editable, as a grant's do. For example a user's own profile, which the DaaS users API lets them edit without an update grant. Applied only after a permissions load succeeds.
 
 **A failed permissions load shows a load error with Retry** (`CollectionList`, `CollectionForm`, `PermissionsService`)
 
