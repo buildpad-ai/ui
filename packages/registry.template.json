@@ -2763,6 +2763,10 @@
           "target": "components/ui/vform/utils/update-system-divider.ts"
         },
         {
+          "source": "ui-form/src/utils/validate-item.ts",
+          "target": "components/ui/vform/utils/validate-item.ts"
+        },
+        {
           "source": "ui-form/src/utils/index.ts",
           "target": "components/ui/vform/utils/index.ts"
         },
