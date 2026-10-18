@@ -132,7 +132,7 @@ function evaluateOperator(op: string, value: unknown, expected: unknown): boolea
  */
 function toRegExp(expected: unknown): RegExp | null {
   if (typeof expected !== 'string') return null;
-  const literal = /^\/(.*)\/([dgimsuvy]*)$/s.exec(expected);
+  const literal = /^\/([\s\S]*)\/([dgimsuvy]*)$/.exec(expected);
   try {
     return literal ? new RegExp(literal[1], literal[2]) : new RegExp(expected);
   } catch {
