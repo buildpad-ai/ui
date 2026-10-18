@@ -21,7 +21,10 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@buildpad/services")>()),
   FieldsService: vi.fn().mockImplementation(() => ({ readAll: mockFieldsReadAll })),
   ItemsService: vi.fn().mockImplementation(() => ({ readOne: vi.fn() })),
-  PermissionsService: { getMyCollectionAccess: mockPermissionsGetAccess },
+  PermissionsService: {
+    getMyCollectionAccess: mockPermissionsGetAccess,
+    loadMyCollectionAccess: mockPermissionsGetAccess,
+  },
   apiRequest: vi.fn(),
 }));
 
@@ -29,7 +32,9 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
 // form's fields (and so any ListO2M/M2M/M2A) would render.
 vi.mock("@buildpad/ui-form", async () => {
   const { useRelationalUI: useUI } = await import("@buildpad/services/relational-ui-context");
+  const { validateItem } = await import("../../ui-form/src/utils/validate-item");
   return {
+    validateItem,
     VForm: function VForm() {
       seen.current = useUI();
       return <div data-testid="vform-probe" />;

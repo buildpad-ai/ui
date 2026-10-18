@@ -45,6 +45,8 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   })),
   PermissionsService: {
     getMyCollectionAccess: mockPermissionsGetAccess,
+    // The list reads it through the load that rejects on a failure.
+    loadMyCollectionAccess: mockPermissionsGetAccess,
     get isAdmin() {
       return permissionState.isAdmin;
     },
@@ -694,6 +696,63 @@ describe("CollectionList", () => {
       await waitFor(() => {
         expect(screen.getByTestId("bulk-action-delete")).toBeDisabled();
       });
+    });
+
+    // A failed /permissions/me is a load error, not "no grants": the list
+    // says so and offers a Retry, and no write control is enabled until a
+    // load succeeds, also for an administrator (whose cached flag may be an
+    // old answer).
+    it("shows a permissions load error with Retry, and a successful retry enables the writes", async () => {
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+      const onPermissionsLoaded = vi.fn();
+
+      renderList({ enableCreate: true, onCreate: vi.fn(), onPermissionsLoaded });
+
+      const alert = await screen.findByTestId("collection-list-permissions-error");
+      expect(alert).toHaveTextContent("Your permissions could not be loaded");
+      expect(screen.getByTestId("collection-list-create")).toBeDisabled();
+      expect(onPermissionsLoaded).toHaveBeenLastCalledWith(
+        expect.objectContaining({ createAllowed: false, updateAllowed: false, deleteAllowed: false }),
+      );
+
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+      fireEvent.click(screen.getByTestId("collection-list-permissions-retry"));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("collection-list-permissions-error")).not.toBeInTheDocument();
+      });
+      // Retry asks again, bypassing the cache.
+      expect(mockPermissionsGetAccess).toHaveBeenLastCalledWith(true);
+      await waitFor(() => {
+        expect(screen.getByTestId("collection-list-create")).toBeEnabled();
+      });
+    });
+
+    it("shows no load error when the access map is empty but loaded", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+
+      renderList({ enableCreate: true, onCreate: vi.fn() });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("collection-list-create")).toBeDisabled();
+      });
+      expect(screen.queryByTestId("collection-list-permissions-error")).not.toBeInTheDocument();
+    });
+
+    it("a retry that fails again keeps the error and the write controls off", async () => {
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+      renderList({ enableCreate: true, onCreate: vi.fn() });
+      await screen.findByTestId("collection-list-permissions-error");
+
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 503"));
+      fireEvent.click(screen.getByTestId("collection-list-permissions-retry"));
+
+      await waitFor(() => {
+        expect(mockPermissionsGetAccess).toHaveBeenCalledTimes(2);
+      });
+      expect(await screen.findByTestId("collection-list-permissions-error")).toBeInTheDocument();
+      expect(screen.getByTestId("collection-list-create")).toBeDisabled();
     });
 
     it("keeps full access for an administrator whose access map is empty", async () => {

@@ -24,9 +24,10 @@ export type { FieldCondition };
  *   { category: { _in: ["tech", "design"] } }
  *   { _and: [ { status: { _eq: "draft" } }, { author: { _eq: "$CURRENT_USER" } } ] }
  *
- * This function evaluates the most common operators against an item.
+ * This function evaluates the most common operators against an item. It also
+ * evaluates a field's `meta.validation` rule (see `validateItem`).
  */
-function evaluateFilter(rule: Record<string, unknown>, item: Record<string, unknown>): boolean {
+export function evaluateFilter(rule: Record<string, unknown>, item: Record<string, unknown>): boolean {
   for (const [key, condition] of Object.entries(rule)) {
     // Logical operators
     if (key === '_and') {
@@ -105,12 +106,10 @@ function evaluateOperator(op: string, value: unknown, expected: unknown): boolea
       return typeof value === 'string' && typeof expected === 'string' && value.endsWith(expected);
     case '_nends_with':
       return typeof value === 'string' && typeof expected === 'string' && !value.endsWith(expected);
-    case '_regex':
-      try {
-        return typeof value === 'string' && new RegExp(expected as string).test(value);
-      } catch {
-        return false;
-      }
+    case '_regex': {
+      const regex = toRegExp(expected);
+      return typeof value === 'string' && regex !== null && regex.test(value);
+    }
     case '_between': {
       if (!Array.isArray(expected) || expected.length !== 2) return false;
       const num = Number(value);
@@ -123,6 +122,21 @@ function evaluateOperator(op: string, value: unknown, expected: unknown): boolea
     }
     default:
       return false;
+  }
+}
+
+/**
+ * A `_regex` operand as a RegExp: a bare pattern (`^[a-z]+$`), or the
+ * `/pattern/flags` form DaaS (Directus) validation rules also store. An
+ * invalid pattern is null (a non-match, not a throw).
+ */
+function toRegExp(expected: unknown): RegExp | null {
+  if (typeof expected !== 'string') return null;
+  const literal = /^\/([\s\S]*)\/([dgimsuvy]*)$/.exec(expected);
+  try {
+    return literal ? new RegExp(literal[1], literal[2]) : new RegExp(expected);
+  } catch {
+    return null;
   }
 }
 

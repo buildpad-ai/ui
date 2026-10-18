@@ -68,6 +68,8 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
   })),
   PermissionsService: {
     getMyCollectionAccess: mockPermissionsGetAccess,
+    // The form reads it through the load that rejects on a failure.
+    loadMyCollectionAccess: mockPermissionsGetAccess,
     get isAdmin() {
       return permissionState.isAdmin;
     },
@@ -82,15 +84,22 @@ vi.mock("@buildpad/services", async (importOriginal) => ({
 // returns to the field's initial/default rather than recording it as an edit.
 // A double that emitted only the changed key could not tell a merging
 // `handleFormUpdate` from a replacing one.
-vi.mock("@buildpad/ui-form", () => ({
-  VForm: vi.fn(({ fields, modelValue, initialValues, onUpdate, disabled }: {
+// The double also lists the `validationErrors` it is given, and the real
+// field-rule check (validateItem) is kept: it is CollectionForm's logic.
+vi.mock("@buildpad/ui-form", async () => ({
+  validateItem: (await import("../../ui-form/src/utils/validate-item")).validateItem,
+  VForm: vi.fn(({ fields, modelValue, initialValues, onUpdate, disabled, validationErrors }: {
     fields: Array<{ field: string; meta?: { required?: boolean } }>;
     modelValue: Record<string, unknown>;
     initialValues?: Record<string, unknown>;
     onUpdate: (values: Record<string, unknown>) => void;
     disabled?: boolean;
+    validationErrors?: Array<{ field: string; type: string; message?: string }>;
   }) => (
     <div data-testid="vform-mock">
+      {(validationErrors ?? []).map((e) => (
+        <p key={e.field} data-testid={`rule-error-${e.field}`}>{e.message ?? e.type}</p>
+      ))}
       {/* Sets a field to a JSON value (a relational field's staged changes). */}
       {fields.map((f) => (
         <input
@@ -815,6 +824,108 @@ describe("CollectionForm", () => {
     });
   });
 
+  // meta.required and meta.validation are enforced by the form only (the
+  // items API does not check them): every save path runs them first.
+  describe("field rules (meta.required, meta.validation)", () => {
+    const RULE_FIELDS = [
+      { field: "title", type: "string", meta: { interface: "input", sort: 1 } },
+      {
+        field: "email",
+        type: "string",
+        meta: {
+          interface: "input",
+          sort: 2,
+          validation: { _and: [{ email: { _regex: "@" } }] },
+          validation_message: "Must contain @",
+        },
+      },
+      {
+        // Required only by a condition, so the input carries no native
+        // `required` and only the form's own check can stop the save.
+        field: "reason",
+        type: "string",
+        meta: {
+          interface: "input",
+          sort: 3,
+          conditions: [{ rule: { title: { _eq: "Rejected" } }, required: true }],
+        },
+      },
+    ];
+
+    beforeEach(() => {
+      mockFieldsReadAll.mockResolvedValue(RULE_FIELDS);
+    });
+
+    it("Create refuses a value its validation rule does not match, with the field's message", async () => {
+      renderForm({ mode: "create" });
+      await screen.findByTestId("field-email");
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "T" } });
+      fireEvent.change(screen.getByTestId("field-email"), { target: { value: "bad" } });
+
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("rule-error-email")).toHaveTextContent("Must contain @");
+      });
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Validation failed");
+      expect(mockItemsCreateOne).not.toHaveBeenCalled();
+
+      // Editing clears the messages; a matching value saves.
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 1 });
+      fireEvent.change(screen.getByTestId("field-email"), { target: { value: "a@b" } });
+      expect(screen.queryByTestId("rule-error-email")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+      await waitFor(() => {
+        expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "T", email: "a@b" });
+      });
+    });
+
+    it("Create refuses an empty field a condition makes required", async () => {
+      renderForm({ mode: "create" });
+      await screen.findByTestId("field-reason");
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Rejected" } });
+
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("rule-error-reason")).toHaveTextContent("required");
+      });
+      expect(mockItemsCreateOne).not.toHaveBeenCalled();
+    });
+
+    it("Save and Stay and Ctrl+S check the rules too, on an edit", async () => {
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "T", email: "a@b", reason: null });
+
+      renderForm({ mode: "edit", id: 1, showSaveOptions: true });
+      await waitFor(() => {
+        expect(screen.getByTestId("field-email")).toHaveValue("a@b");
+      });
+      fireEvent.change(screen.getByTestId("field-email"), { target: { value: "bad" } });
+
+      fireEvent.click(screen.getByTestId("save-and-stay"));
+      expect(await screen.findByTestId("rule-error-email")).toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId("field-email"), { target: { value: "worse" } });
+      fireEvent.keyDown(screen.getByTestId("field-email"), { key: "s", ctrlKey: true });
+      expect(await screen.findByTestId("rule-error-email")).toBeInTheDocument();
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Validation failed");
+      expect(mockItemsUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it("an empty optional field with a validation rule saves", async () => {
+      mockItemsCreateOne.mockResolvedValueOnce({ id: 2 });
+      renderForm({ mode: "create" });
+      await screen.findByTestId("field-title");
+      fireEvent.change(screen.getByTestId("field-title"), { target: { value: "T" } });
+
+      fireEvent.click(screen.getByTestId("form-submit-btn"));
+
+      await waitFor(() => {
+        expect(mockItemsCreateOne).toHaveBeenCalledWith({ title: "T" });
+      });
+    });
+  });
+
   describe("keyboard shortcuts", () => {
     async function openEdited(props: Partial<React.ComponentProps<typeof CollectionForm>> = {}) {
       mockItemsReadOne.mockResolvedValue({ id: 1, title: "Old", body: "Body" });
@@ -1202,6 +1313,104 @@ describe("CollectionForm", () => {
       expect(screen.getByTestId("field-title")).toBeDisabled();
       expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
       expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+    });
+
+    // A failed /permissions/me is a load error, not "no grants": the form
+    // says so and offers a Retry, and stays read-only until a load succeeds,
+    // also for an administrator (whose cached flag may be an old answer).
+    it("shows a permissions load error with Retry, and a successful retry makes the form editable", async () => {
+      mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+      mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item" });
+
+      renderForm({ mode: "edit", id: 1, showDelete: true });
+
+      const alert = await screen.findByTestId("form-permissions-error");
+      expect(alert).toHaveTextContent("Your permissions could not be loaded");
+      expect(screen.getByTestId("field-title")).toHaveValue("Item");
+      expect(screen.getByTestId("field-title")).toBeDisabled();
+      expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+      expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+      await userEvent.click(screen.getByTestId("form-permissions-retry"));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("form-permissions-error")).not.toBeInTheDocument();
+      });
+      expect(mockPermissionsGetAccess).toHaveBeenLastCalledWith(true);
+      await waitFor(() => {
+        expect(screen.getByTestId("field-title")).toBeEnabled();
+      });
+      expect(screen.getByTestId("form-delete-btn")).toBeInTheDocument();
+    });
+
+    it("shows no load error when the access map is empty but loaded", async () => {
+      permissionState.isAdmin = false;
+      mockPermissionsGetAccess.mockResolvedValueOnce({});
+
+      renderForm({ mode: "create" });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("form-submit-btn")).toBeDisabled();
+      });
+      expect(screen.queryByTestId("form-permissions-error")).not.toBeInTheDocument();
+    });
+
+    // A host that knows the backend allows more on one item (a user's own
+    // profile without an update grant) grants it to that form only.
+    describe("accessOverride", () => {
+      const READ_ONLY = { posts: { read: { fields: ["*"] } } };
+
+      it("makes the form editable within the override's fields, and saves", async () => {
+        permissionState.isAdmin = false;
+        mockPermissionsGetAccess.mockResolvedValueOnce(READ_ONLY);
+        mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item", body: "Body" });
+        mockItemsUpdateOne.mockResolvedValueOnce({ id: 1 });
+
+        renderForm({ mode: "edit", id: 1, accessOverride: { update: { fields: ["title"] } } });
+
+        await waitFor(() => {
+          expect(screen.getByTestId("field-title")).toHaveValue("Item");
+        });
+        expect(screen.getByTestId("field-title")).toBeEnabled();
+        // Fields outside the override are read-only, as outside a grant's.
+        const { VForm } = await import("@buildpad/ui-form");
+        const fields = vi.mocked(VForm).mock.lastCall?.[0].fields as Array<{ field: string; meta?: { readonly?: boolean } }>;
+        expect(fields.find((f) => f.field === "body")?.meta?.readonly).toBe(true);
+        expect(fields.find((f) => f.field === "title")?.meta?.readonly).not.toBe(true);
+        // It grants only the actions it names: no delete.
+        expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+
+        fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Mine" } });
+        fireEvent.click(screen.getByTestId("form-submit-btn"));
+        await waitFor(() => {
+          expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { title: "Mine" });
+        });
+      });
+
+      it("without the override the same user has a read-only form", async () => {
+        permissionState.isAdmin = false;
+        mockPermissionsGetAccess.mockResolvedValueOnce(READ_ONLY);
+        mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item", body: "Body" });
+
+        renderForm({ mode: "edit", id: 1 });
+
+        await waitFor(() => {
+          expect(screen.getByTestId("field-title")).toHaveValue("Item");
+        });
+        expect(screen.getByTestId("field-title")).toBeDisabled();
+      });
+
+      it("is not applied while the permissions failed to load", async () => {
+        permissionState.isAdmin = false;
+        mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+        mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item", body: "Body" });
+
+        renderForm({ mode: "edit", id: 1, accessOverride: { update: { fields: ["title"] } } });
+
+        await screen.findByTestId("form-permissions-error");
+        expect(screen.getByTestId("field-title")).toBeDisabled();
+      });
     });
 
     it("keeps full access for an administrator whose access map is empty", async () => {

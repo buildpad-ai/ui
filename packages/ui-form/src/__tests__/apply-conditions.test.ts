@@ -160,6 +160,13 @@ describe('applyConditions — operators', () => {
   test('an invalid regex is a non-match, not a throw', () => {
     expect(matches({ a: { _regex: '([' } }, { a: 'hello' })).toBe(false);
   });
+
+  test('a /pattern/flags regex (as DaaS validation rules store it) uses its pattern and flags', () => {
+    expect(matches({ a: { _regex: '/^H/i' } }, { a: 'hello' })).toBe(true);
+    expect(matches({ a: { _regex: '/^H/' } }, { a: 'hello' })).toBe(false);
+    expect(matches({ a: { _regex: '/@/' } }, { a: 'a@b' })).toBe(true);
+    expect(matches({ a: { _regex: '/(/' } }, { a: 'hello' })).toBe(false);
+  });
 });
 
 describe('applyConditions — which condition wins', () => {

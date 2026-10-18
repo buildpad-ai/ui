@@ -197,6 +197,41 @@ describe('applyFilterToQuery — operators', () => {
     ]);
   });
 
+  // A json value is never '' (comparing a jsonb column with '' fails the
+  // request): on a column named in jsonFields, empty is NULL, {} or [].
+  it('_empty on a jsonb column: NULL, {} or []', () => {
+    const json = { jsonFields: ['payload'] };
+    expect(applyFilterToQuery(fakeQuery(), { payload: { _empty: true } }, json).calls).toEqual([
+      ['or', 'payload.is.null,payload.eq."{}",payload.eq."[]"'],
+    ]);
+    expect(applyFilterToQuery(fakeQuery(), { payload: { _nempty: true } }, json).calls).toEqual([
+      ['not', 'payload', 'is', null],
+      ['neq', 'payload', '{}'],
+      ['neq', 'payload', '[]'],
+    ]);
+    // Other columns keep the string reading.
+    expect(applyFilterToQuery(fakeQuery(), { f: { _empty: true } }, json).calls).toEqual([
+      ['or', 'f.is.null,f.eq.""'],
+    ]);
+  });
+
+  it('_empty on a jsonb column inside _or joins the OR group', () => {
+    const calls = applyFilter(
+      fakeQuery(),
+      { _or: [{ payload: { _empty: true } }, { title: { _eq: 'x' } }] },
+      { jsonFields: new Set(['payload']) },
+    ).calls;
+    expect(calls).toEqual([
+      ['or', 'payload.is.null,payload.eq."{}",payload.eq."[]",title.eq."x"'],
+    ]);
+  });
+
+  it('applyFieldOperators takes the jsonb columns too', () => {
+    expect(
+      applyFieldOperators(fakeQuery(), 'payload', { _empty: true }, { jsonFields: ['payload'] }).calls,
+    ).toEqual([['or', 'payload.is.null,payload.eq."{}",payload.eq."[]"']]);
+  });
+
   it.each([
     ['_contains', ['like', 'name', '%abc%']],
     ['_ncontains', ['not', 'name', 'like', '%abc%']],

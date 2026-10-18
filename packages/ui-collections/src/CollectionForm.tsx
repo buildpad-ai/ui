@@ -51,7 +51,7 @@ import {
   type CollectionsTranslations,
   type DeepPartial,
 } from "@buildpad/utils";
-import { VForm } from "@buildpad/ui-form";
+import { VForm, validateItem, type ValidationError } from "@buildpad/ui-form";
 import {
   ItemSaveHostProvider,
   RelationalUIProvider,
@@ -134,6 +134,16 @@ export interface CollectionFormProps {
    * with its first translation.
    */
   locale?: string;
+  /**
+   * Access granted to this form only, applied over the user's
+   * `/api/permissions/me` answer for the collection: each action given here
+   * replaces that action's entry, and its `fields` limit which fields are
+   * editable, as a grant's do. For a host that knows the backend allows more
+   * on this one item than the collection grants, e.g. a user editing their
+   * own profile without an update grant. Applied only after a permissions
+   * load succeeds; an administrator has full access anyway.
+   */
+  accessOverride?: Partial<Record<"create" | "update" | "delete", CollectionActionAccess>>;
 }
 
 /** Permission state exposed to parent components */
@@ -327,9 +337,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   persist = true,
   translations,
   locale,
+  accessOverride,
 }) => {
   // Strings: component prop > provider dictionary > English defaults.
   const t = useBuildpadTranslations((d) => d.collections, translations);
+  const common = useBuildpadTranslations((d) => d.common);
 
   // Stable references for the optional props the load depends on: each keeps
   // its identity until its content changes (see useContentStable).
@@ -337,6 +349,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const stableDefaultValues = useContentStable(defaultValues || EMPTY_OBJECT);
   const stableExcludeFields = useContentStable(excludeFields || EMPTY_ARRAY);
   const stableIncludeFields = useContentStable(includeFields);
+  const stableAccessOverride = useContentStable(accessOverride);
 
   // Stable signature so the load effect re-runs when the definition changes
   // (e.g. live preview in the builder) without depending on object identity.
@@ -366,11 +379,20 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // The fields' own rules (meta.required, meta.validation) the item failed
+  // when a save was asked for; shown per field by VForm. Nothing is sent
+  // while any is listed.
+  const [ruleErrors, setRuleErrors] = useState<ValidationError[]>([]);
 
   // ----- Permission state -----
   const [createAllowed, setCreateAllowed] = useState(true);
   const [updateAllowed, setUpdateAllowed] = useState(true);
   const [deleteAllowed, setDeleteAllowed] = useState(false);
+  // The last /permissions/me load failed: the form is read-only and shows a
+  // load error with a Retry until a load succeeds.
+  const [permissionsFailed, setPermissionsFailed] = useState(false);
+  // Bumped by Retry: reruns the load, asking /permissions/me again.
+  const [permissionsAttempt, setPermissionsAttempt] = useState(0);
   // Whether the target collection actually has the `extras` jsonb column that
   // `store: 'extras'` fields write into (guards a cryptic DaaS 500 when absent).
   const [hasExtrasColumn, setHasExtrasColumn] = useState(true);
@@ -406,7 +428,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   // Permission-aware field + item loading
   // =========================================================================
   useEffect(() => {
-    const loadKey = `${collection}-${id}-${mode}-${definitionSignature}`;
+    const loadKey = `${collection}-${id}-${mode}-${definitionSignature}-${permissionsAttempt}-${JSON.stringify(stableAccessOverride ?? null)}`;
     if (dataLoadedRef.current && lastLoadKey.current === loadKey) {
       return;
     }
@@ -432,14 +454,21 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         setLoading(true);
         setError(null);
         setFieldErrors({});
+        setRuleErrors([]);
 
-        // Fetch fields + permissions in parallel
+        // Fetch fields + permissions in parallel. A failed permissions load
+        // still draws the item, read-only, with the load error and a Retry.
         const fieldsService = new FieldsService();
+        let permissionsLoaded = true;
         const [allFields, collectionAccess] = await Promise.all([
           fieldsService.readAll(collection),
-          PermissionsService.getMyCollectionAccess().catch(() => ({} as CollectionAccess)),
+          PermissionsService.loadMyCollectionAccess(permissionsAttempt > 0).catch(() => {
+            permissionsLoaded = false;
+            return {} as CollectionAccess;
+          }),
         ]);
         if (cancelled) return;
+        setPermissionsFailed(!permissionsLoaded);
 
         // Does the target collection expose the `extras` jsonb tail column?
         setHasExtrasColumn(allFields.some((f) => f.field === EXTRAS_COLUMN));
@@ -479,7 +508,11 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           schemaPk && !isPkAutoGenerated ? schemaPk : null,
         );
 
-        const access = collectionAccess?.[collection] || {};
+        // The host's override replaces the actions it names, for this form.
+        const access: Record<string, CollectionActionAccess> = {
+          ...(collectionAccess?.[collection] || {}),
+          ...(permissionsLoaded ? stableAccessOverride : undefined),
+        };
         const readAccess: CollectionActionAccess | undefined = access.read;
         const createAccess: CollectionActionAccess | undefined = access.create;
         const updateAccess: CollectionActionAccess | undefined = access.update;
@@ -489,7 +522,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         // access; anyone else has exactly what the map grants. An empty map
         // (no grants, or a failed /permissions/me) grants nothing: treating it
         // as full access gave a user with no permissions an editable form.
-        const isAdmin = PermissionsService.isAdmin;
+        // Who is an administrator is only known from a load that succeeded:
+        // after a failure the cached flag may be an old answer.
+        const isAdmin = permissionsLoaded && PermissionsService.isAdmin;
         setCreateAllowed(isAdmin || !!createAccess);
         setUpdateAllowed(isAdmin || !!updateAccess);
         setDeleteAllowed(isAdmin || !!deleteAccess);
@@ -737,6 +772,8 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     stableDefinition,
     definitionSignature,
     t,
+    permissionsAttempt,
+    stableAccessOverride,
   ]);
 
   // =========================================================================
@@ -807,6 +844,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     setFormData(values);
     setSuccess(false);
     setFieldErrors({}); // Clear field errors when user edits
+    setRuleErrors([]);
   }, []);
 
   // Compute primary key for VForm context
@@ -1232,10 +1270,24 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!passesFieldRules()) return;
     await handleSave();
   };
 
   const formRef = useRef<HTMLFormElement>(null);
+
+  // The fields' meta.required and meta.validation rules, checked before
+  // every save (the button, the save options and their shortcuts). The items
+  // API does not enforce them, so this check is what holds them: an item
+  // that fails one is not sent, and each failing field shows its message.
+  const passesFieldRules = (): boolean => {
+    const errors = validateItem({ ...initialFormData, ...formData }, fields);
+    setRuleErrors(errors);
+    if (errors.length === 0) return true;
+    setSuccess(false);
+    setError(t.form.errors.validationFailed);
+    return false;
+  };
 
   // The save options (and their shortcuts) call the save directly, so the
   // browser's own check that the submit button gets (`required` and the other
@@ -1249,6 +1301,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       setError(t.form.errors.validationFailed);
       return;
     }
+    if (!passesFieldRules()) return;
     void handleSave(afterSave);
   };
 
@@ -1272,6 +1325,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const handleDiscard = useCallback(() => {
     setFormData(initialFormData);
     setFieldErrors({});
+    setRuleErrors([]);
     setSuccess(false);
     setError(null);
   }, [initialFormData]);
@@ -1324,6 +1378,28 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         </Alert>
       )}
 
+      {permissionsFailed && (
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          color="red"
+          mb="md"
+          data-testid="form-permissions-error"
+        >
+          <Group justify="space-between" gap="sm">
+            <Text size="sm">{t.form.errors.permissionsLoadFailed}</Text>
+            <Button
+              size="xs"
+              variant="light"
+              color="red"
+              onClick={() => setPermissionsAttempt((attempt) => attempt + 1)}
+              data-testid="form-permissions-retry"
+            >
+              {common.retry}
+            </Button>
+          </Group>
+        </Alert>
+      )}
+
       {success && (
         <Alert
           icon={<IconCheck size={16} />}
@@ -1370,6 +1446,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                     onUpdate={handleFormUpdate}
                     primaryKey={primaryKey}
                     locale={locale}
+                    validationErrors={ruleErrors}
                     disabled={saving || !saveAllowed}
                     // NOT `loading={saving}`: VForm renders a skeleton while
                     // loading, which unmounts every field and remounts them when

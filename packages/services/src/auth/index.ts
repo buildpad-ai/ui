@@ -52,6 +52,7 @@ export {
   assertPermissionFilterSupported,
   isUnsupportedPermissionFilterError,
   type DynamicVariableContext,
+  type FilterQueryOptions,
   type QueryBuilder,
   type UnsupportedPermissionFilterReason,
   FILTER_OPERATORS,

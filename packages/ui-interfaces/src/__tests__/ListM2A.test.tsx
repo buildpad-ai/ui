@@ -437,13 +437,14 @@ describe("ListM2A replace payload — must span all pages (mass-unlink regressio
         expect(apiRequest).not.toHaveBeenCalled();
     });
 
-    it("treats the other new-item sentinels as unsaved too", async () => {
-        // `isNewItem` knows '+', '%2B' and 'new'. Testing only '+' let a
-        // parent on a /new route report "saved", which preserve-fetches
-        // against a literal 'new' primary key — and if the backend rejects
+    it("treats the encoded new-item sentinel as unsaved too", async () => {
+        // `isNewItem` knows '+' and '%2B'. Testing only '+' let a parent on
+        // an encoded /%2B route report "saved", which preserve-fetches
+        // against a literal '%2B' primary key — and if the backend rejects
         // that against a uuid column, the emit aborts and the record saves
-        // with none of its staged rows.
-        for (const sentinel of ["%2B", "new"]) {
+        // with none of its staged rows. ('new' is an item key, not a
+        // sentinel.)
+        for (const sentinel of ["%2B"]) {
             (apiRequest as jest.Mock).mockClear();
             const onChange = jest.fn();
             setItemsHook({

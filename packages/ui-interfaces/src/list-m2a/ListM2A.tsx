@@ -330,10 +330,10 @@ export const ListM2A: React.FC<ListM2AProps> = ({
     const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
     
     // Check if parent item is saved. Uses the canonical sentinel set
-    // (`isNewItem` knows '+', '%2B' and 'new') — the same helper
+    // (`isNewItem` knows '+' and '%2B') — the same helper
     // useRelationM2A.loadItems gates on, so this can't report "saved" for a
     // parent the loader is declining to fetch and then preserve-fetch against
-    // a literal 'new' primary key.
+    // a literal '%2B' primary key.
     const isParentSaved = !!primaryKey && !isNewItem(primaryKey);
 
     // Error notification state

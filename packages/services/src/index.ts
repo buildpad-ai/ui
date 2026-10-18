@@ -93,6 +93,7 @@ export {
   type AuthenticatedClient,
   type DynamicVariableContext,
   type FilterObject,
+  type FilterQueryOptions,
   type PermissionCheck,
   type PermissionDetails,
   type QueryBuilder,

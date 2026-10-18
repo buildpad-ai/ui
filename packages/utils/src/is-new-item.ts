@@ -8,11 +8,19 @@
  * Handles URL-encoded "+" (%2B) which occurs when the "+" character is
  * percent-encoded in Next.js dynamic route segments.
  *
+ * "new" is NOT a sentinel: it is a value a primary key can hold (a manually
+ * entered string key), and a row keyed "new" must open for editing. A host
+ * whose create route was `/…/new` routes to `/…/+` instead.
+ *
  * @package @buildpad/utils
  */
 
-/** Sentinel values that indicate a new/unsaved item */
-const NEW_ITEM_SENTINELS = new Set(["+", "%2B", "new"]);
+/**
+ * Sentinel values that indicate a new/unsaved item: "+" (the create route
+ * segment) and its percent-encoding "%2B". A key of "+" is the one value
+ * that cannot be told from them, and is not supported.
+ */
+const NEW_ITEM_SENTINELS = new Set(["+", "%2B"]);
 
 /**
  * Check if a primary key / route ID represents a new (unsaved) item.
@@ -20,15 +28,16 @@ const NEW_ITEM_SENTINELS = new Set(["+", "%2B", "new"]);
  * Returns `true` for:
  * - `"+"` — primary sentinel (DaaS convention, used in routes like `/content/articles/+`)
  * - `"%2B"` — URL-encoded `+` (Next.js may percent-encode the `+` in `[id]` segments)
- * - `"new"` — alternative human-readable sentinel
  * - `null`, `undefined`, `""` — no ID means new item
+ *
+ * Returns `false` for `"new"`: that is an item's key, not a sentinel.
  *
  * @example
  * ```ts
  * isNewItem("+");    // true
  * isNewItem("%2B");  // true
- * isNewItem("new");  // true
  * isNewItem(null);   // true
+ * isNewItem("new");  // false (a row keyed "new")
  * isNewItem("abc-123"); // false
  * isNewItem(42);     // false
  * ```

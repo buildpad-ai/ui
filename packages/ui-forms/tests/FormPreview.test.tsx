@@ -22,7 +22,10 @@ const { seen } = vi.hoisted(() => ({
 // form's fields (and so any ListO2M / M2M / M2A) would render.
 vi.mock('@buildpad/ui-form', async () => {
   const { useRelationalUI } = await import('@buildpad/services/relational-ui-context');
+  // The real field-rule check CollectionForm runs before a save.
+  const { validateItem } = await import('../../ui-form/src/utils/validate-item');
   return {
+    validateItem,
     VForm: function VForm() {
       seen.current = useRelationalUI();
       return <div data-testid="vform-probe" />;

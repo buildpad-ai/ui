@@ -19,7 +19,9 @@
  * - Comparison: `_lt`, `_lte`, `_gt`, `_gte`
  * - Lists: `_in`, `_nin` (value MUST be an array)
  * - Null checks: `_null`, `_nnull` (value MUST be a boolean)
- * - Empty checks: `_empty`, `_nempty` (NULL or `''`, Directus semantics)
+ * - Empty checks: `_empty`, `_nempty` (NULL or `''`, Directus semantics; on a
+ *   jsonb column named in {@link FilterQueryOptions.jsonFields}: NULL, `{}`
+ *   or `[]`)
  * - Substring (LIKE): `_contains`, `_ncontains`, `_icontains`, `_nicontains`
  * - Prefix/suffix (LIKE): `_starts_with`, `_nstarts_with`, `_istarts_with`,
  *   `_nistarts_with`, `_ends_with`, `_nends_with`, `_iends_with`, `_niends_with`
@@ -48,6 +50,25 @@
  */
 
 export type FilterObject = Record<string, unknown>;
+
+/** What the translator needs to know about the queried table's columns. */
+export interface FilterQueryOptions {
+  /**
+   * The jsonb columns of the queried table. On these, `_empty` matches NULL,
+   * `{}` and `[]` (and `_nempty` none of them): a json value is never the
+   * empty string, and comparing it with `''` fails the whole request.
+   */
+  jsonFields?: Iterable<string>;
+}
+
+/** The compiled form of {@link FilterQueryOptions}. */
+interface CompileContext {
+  jsonFields: ReadonlySet<string>;
+}
+
+function compileContext(options?: FilterQueryOptions): CompileContext {
+  return { jsonFields: new Set(options?.jsonFields ?? []) };
+}
 
 // ─── Errors ──────────────────────────────────────────────────────
 
@@ -463,7 +484,13 @@ const COMPARISON_OPERATORS: Record<string, ComparisonOp> = {
   _lte: 'lte',
 };
 
-function compileOperator(field: string, operator: string, value: unknown, path: string): Node {
+function compileOperator(
+  field: string,
+  operator: string,
+  value: unknown,
+  path: string,
+  context: CompileContext
+): Node {
   const cmp = (op: ComparisonOp, v: Scalar, negate = false): Node => ({
     kind: 'cmp',
     field,
@@ -498,6 +525,13 @@ function compileOperator(field: string, operator: string, value: unknown, path: 
     case '_empty':
     case '_nempty': {
       const isEmpty = assertBoolean(value, path) === (operator === '_empty');
+      if (context.jsonFields.has(field)) {
+        // A json value is never '': empty is NULL, an empty object or an
+        // empty array.
+        return isEmpty
+          ? orNode([{ kind: 'null', field, negate: false }, cmp('eq', '{}'), cmp('eq', '[]')])
+          : andNode([{ kind: 'null', field, negate: true }, cmp('neq', '{}'), cmp('neq', '[]')]);
+      }
       return isEmpty
         ? orNode([{ kind: 'null', field, negate: false }, cmp('eq', '')])
         : andNode([{ kind: 'null', field, negate: true }, cmp('neq', '')]);
@@ -531,12 +565,12 @@ function compileOperator(field: string, operator: string, value: unknown, path: 
   }
 }
 
-function compileField(field: string, value: unknown, path: string): Node {
+function compileField(field: string, value: unknown, path: string, context: CompileContext): Node {
   assertField(field, path);
 
   // Shorthand `{ field: value }` → `{ field: { _eq: value } }`.
   if (!isPlainObject(value)) {
-    return compileOperator(field, '_eq', value, path);
+    return compileOperator(field, '_eq', value, path, context);
   }
 
   const entries = Object.entries(value);
@@ -558,12 +592,17 @@ function compileField(field: string, value: unknown, path: string): Node {
         opPath
       );
     }
-    children.push(compileOperator(field, operator, operand, opPath));
+    children.push(compileOperator(field, operator, operand, opPath, context));
   }
   return andNode(children);
 }
 
-function compileGroup(value: unknown, path: string, kind: '_and' | '_or'): Node {
+function compileGroup(
+  value: unknown,
+  path: string,
+  kind: '_and' | '_or',
+  context: CompileContext
+): Node {
   if (!Array.isArray(value)) {
     throw new UnsupportedPermissionFilterError(
       `${kind} expects an array, got ${describe(value)}`,
@@ -578,11 +617,11 @@ function compileGroup(value: unknown, path: string, kind: '_and' | '_or'): Node 
       path
     );
   }
-  const children = value.map((c, i) => compileFilter(c, `${path}[${i}]`));
+  const children = value.map((c, i) => compileFilter(c, `${path}[${i}]`, context));
   return kind === '_and' ? andNode(children) : orNode(children);
 }
 
-function compileFilter(filter: unknown, path: string): Node {
+function compileFilter(filter: unknown, path: string, context: CompileContext): Node {
   if (!isPlainObject(filter)) {
     throw new UnsupportedPermissionFilterError(
       `expected a filter object, got ${describe(filter)}`,
@@ -595,7 +634,7 @@ function compileFilter(filter: unknown, path: string): Node {
   for (const [key, value] of Object.entries(filter)) {
     const keyPath = joinPath(path, key);
     if (key === '_and' || key === '_or') {
-      children.push(compileGroup(value, keyPath, key));
+      children.push(compileGroup(value, keyPath, key, context));
     } else if (key.startsWith('_')) {
       throw new UnsupportedPermissionFilterError(
         `operator ${JSON.stringify(key)} is not supported at filter level`,
@@ -603,7 +642,7 @@ function compileFilter(filter: unknown, path: string): Node {
         keyPath
       );
     } else {
-      children.push(compileField(key, value, keyPath));
+      children.push(compileField(key, value, keyPath, context));
     }
   }
   // An empty object imposes no restriction (DaaS: `{}` = all items).
@@ -693,7 +732,7 @@ function applyNode<T extends QueryBuilder>(query: T, node: Node): T {
  */
 export function assertPermissionFilterSupported(filter: FilterObject | null | undefined): void {
   if (filter === null || filter === undefined) return;
-  compileFilter(filter, '');
+  compileFilter(filter, '', compileContext());
 }
 
 /**
@@ -706,6 +745,7 @@ export function assertPermissionFilterSupported(filter: FilterObject | null | un
  *
  * @param query - Supabase query builder
  * @param filter - Filter object (DaaS format, dynamic values already resolved)
+ * @param options - The queried table's jsonb columns (see {@link FilterQueryOptions})
  * @returns Modified query builder
  *
  * @example
@@ -717,20 +757,25 @@ export function assertPermissionFilterSupported(filter: FilterObject | null | un
  */
 export function applyFilterToQuery<T extends QueryBuilder>(
   query: T,
-  filter: FilterObject | null | undefined
+  filter: FilterObject | null | undefined,
+  options?: FilterQueryOptions
 ): T {
   if (filter === null || filter === undefined) {
     return query;
   }
-  return applyFilter(query, filter);
+  return applyFilter(query, filter, options);
 }
 
 /**
  * Apply filter conditions (all-or-nothing: the filter is fully validated
  * before the query is modified).
  */
-export function applyFilter<T extends QueryBuilder>(query: T, filter: FilterObject): T {
-  return applyNode(query, compileFilter(filter, ''));
+export function applyFilter<T extends QueryBuilder>(
+  query: T,
+  filter: FilterObject,
+  options?: FilterQueryOptions
+): T {
+  return applyNode(query, compileFilter(filter, '', compileContext(options)));
 }
 
 /**
@@ -739,7 +784,8 @@ export function applyFilter<T extends QueryBuilder>(query: T, filter: FilterObje
 export function applyFieldOperators<T extends QueryBuilder>(
   query: T,
   field: string,
-  operators: FilterObject
+  operators: FilterObject,
+  options?: FilterQueryOptions
 ): T {
-  return applyNode(query, compileField(field, operators, field));
+  return applyNode(query, compileField(field, operators, field, compileContext(options)));
 }

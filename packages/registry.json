@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-16T06:43:36.637Z",
+  "generatedAt": "2026-10-18T03:06:09.970Z",
   "version": "3.3.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -184,7 +184,7 @@
         {
           "source": "utils/src/is-new-item.ts",
           "target": "lib/buildpad/is-new-item.ts",
-          "sourceSha256": "852eda416e2fe0e3f41a64de2bc49078ddde3bf232a0cee1f96863f3d7830d44"
+          "sourceSha256": "222695e79b80a938cde475c097d42abc043b0bb55c6d3742fa1ec06e1ad476f5"
         },
         {
           "source": "utils/src/build-fields-from-definition.ts",
@@ -249,7 +249,7 @@
         {
           "source": "utils/src/i18n/namespaces/collections.ts",
           "target": "lib/buildpad/i18n/namespaces/collections.ts",
-          "sourceSha256": "89fc01009801bcf01fcbfa9f2b5e7132abcab934bfdbf9b27088b5d0eada7745"
+          "sourceSha256": "185250c290594385d9089924bc1286aadc6b606f454646f3b91c8990f5bde3d7"
         },
         {
           "source": "utils/src/i18n/namespaces/files.ts",
@@ -625,7 +625,7 @@
         {
           "source": "services/src/permissions.ts",
           "target": "lib/buildpad/services/permissions.ts",
-          "sourceSha256": "a75434d750f757da70d189406d116ebe4c116d8041c1b216b86317dff9032e65"
+          "sourceSha256": "da1a9a2876c95a33f104210a0c30a08e74b25476418383a6f4a4a40a902d439a"
         },
         {
           "source": "services/src/daas-context.tsx",
@@ -645,7 +645,7 @@
         {
           "source": "services/src/auth/index.ts",
           "target": "lib/buildpad/services/auth/index.ts",
-          "sourceSha256": "471e76c182c57735db47df510e8ecc062b911f70883da190b8a7fa63a740abc0"
+          "sourceSha256": "c65e3ccb58a08b2aeb1c3e07d73e458700e46abb65eb1c306fb276513f23fcc2"
         },
         {
           "source": "services/src/auth/session.ts",
@@ -660,7 +660,7 @@
         {
           "source": "services/src/auth/filter-to-query.ts",
           "target": "lib/buildpad/services/auth/filter-to-query.ts",
-          "sourceSha256": "4a4472ef521ed851e99ed55b1dcb1a32fd6e60dc99f1fd862c4fa0b7e534bf6e"
+          "sourceSha256": "0f16914949d0430297a8a56cf9af21e34b36cc2f3dc1ae6308e0617c86cbafd2"
         },
         {
           "source": "cli/templates/lib/module-access/enforce.ts",
@@ -2802,7 +2802,7 @@
         {
           "source": "ui-interfaces/src/list-m2a/ListM2A.tsx",
           "target": "components/ui/list-m2a.tsx",
-          "sourceSha256": "911f31d22ba0a79fdf65bdb694807b14a90abaaa78c95c78dd63e9895eca753f"
+          "sourceSha256": "254e1506de29a7eb4c83503a619e05a4d4dc498cc445cbbe4e44df3ee546a904"
         },
         {
           "source": "ui-interfaces/src/list-m2a/JunctionItemForm.tsx",
@@ -3209,7 +3209,7 @@
         {
           "source": "ui-form/src/components/FormField.tsx",
           "target": "components/ui/vform/components/FormField.tsx",
-          "sourceSha256": "6aaf681e34ecb1e369018f9eeb1b1f6f7fea325e2b39a3e3da348bcd2d1476a9"
+          "sourceSha256": "e65177f1d0bf7bde85ebd9c152ac73c99fa7c1be5074f2f9b86770f95f99b40a"
         },
         {
           "source": "ui-form/src/components/FormFieldLabel.tsx",
@@ -3264,7 +3264,7 @@
         {
           "source": "ui-form/src/utils/apply-conditions.ts",
           "target": "components/ui/vform/utils/apply-conditions.ts",
-          "sourceSha256": "b790cfc96ac61b67dabe11d015cb89390c90554434d26ba1fea3ee3cd5423f63"
+          "sourceSha256": "d8f584cb5ba1455d2596fd3f7636850d60a5a46f276a34a738496923142dd4aa"
         },
         {
           "source": "ui-form/src/utils/push-group-options-down.ts",
@@ -3282,9 +3282,14 @@
           "sourceSha256": "bcdaee9a7bea6beac2a0a3a32fb66a9a6200a9b0ea4d83e1dfd2d4d62e7adc30"
         },
         {
+          "source": "ui-form/src/utils/validate-item.ts",
+          "target": "components/ui/vform/utils/validate-item.ts",
+          "sourceSha256": "28dadb4de1c1a31e262194fd0f6ac9f269d68492c55ec670f13626e57f1b30ff"
+        },
+        {
           "source": "ui-form/src/utils/index.ts",
           "target": "components/ui/vform/utils/index.ts",
-          "sourceSha256": "4ff38d27012b3cc146dbbdb6fa297b091a1c913d7a9c2562bd8b7f155ebb8ee9"
+          "sourceSha256": "726582a3f84029bcda3268f801e6b51b3db7fc7519102547a7cca51d944bf1fa"
         },
         {
           "source": "cli/templates/lib/vform/index.ts",
@@ -3355,7 +3360,7 @@
         {
           "source": "ui-collections/src/CollectionForm.tsx",
           "target": "components/ui/collection-form.tsx",
-          "sourceSha256": "201ada07c61e57081825ffdebd452689a2964ebd69edc3d21284300f6e1cd466"
+          "sourceSha256": "fc79b835da7a55c43452d7847781d2d3183a1787165fd9f97ec05d6d89c5d2e4"
         },
         {
           "source": "ui-collections/src/extras-storage.ts",
@@ -3450,7 +3455,7 @@
         {
           "source": "ui-collections/src/CollectionList.tsx",
           "target": "components/ui/collection-list.tsx",
-          "sourceSha256": "4c727aa52a8f835660edf48b6f01c130aea1e788f3adbe929b4d7ef96a7ba00a"
+          "sourceSha256": "4620b988db991d766a41f558e87eea0f657e75a76e20aad9ce369c80b6b5ea25"
         },
         {
           "source": "ui-collections/src/CollectionList.css",
