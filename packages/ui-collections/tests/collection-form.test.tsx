@@ -1356,6 +1356,63 @@ describe("CollectionForm", () => {
       expect(screen.queryByTestId("form-permissions-error")).not.toBeInTheDocument();
     });
 
+    // A host that knows the backend allows more on one item (a user's own
+    // profile without an update grant) grants it to that form only.
+    describe("accessOverride", () => {
+      const READ_ONLY = { posts: { read: { fields: ["*"] } } };
+
+      it("makes the form editable within the override's fields, and saves", async () => {
+        permissionState.isAdmin = false;
+        mockPermissionsGetAccess.mockResolvedValueOnce(READ_ONLY);
+        mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item", body: "Body" });
+        mockItemsUpdateOne.mockResolvedValueOnce({ id: 1 });
+
+        renderForm({ mode: "edit", id: 1, accessOverride: { update: { fields: ["title"] } } });
+
+        await waitFor(() => {
+          expect(screen.getByTestId("field-title")).toHaveValue("Item");
+        });
+        expect(screen.getByTestId("field-title")).toBeEnabled();
+        // Fields outside the override are read-only, as outside a grant's.
+        const { VForm } = await import("@buildpad/ui-form");
+        const fields = vi.mocked(VForm).mock.lastCall?.[0].fields as Array<{ field: string; meta?: { readonly?: boolean } }>;
+        expect(fields.find((f) => f.field === "body")?.meta?.readonly).toBe(true);
+        expect(fields.find((f) => f.field === "title")?.meta?.readonly).not.toBe(true);
+        // It grants only the actions it names: no delete.
+        expect(screen.queryByTestId("form-delete-btn")).not.toBeInTheDocument();
+
+        fireEvent.change(screen.getByTestId("field-title"), { target: { value: "Mine" } });
+        fireEvent.click(screen.getByTestId("form-submit-btn"));
+        await waitFor(() => {
+          expect(mockItemsUpdateOne).toHaveBeenCalledWith(1, { title: "Mine" });
+        });
+      });
+
+      it("without the override the same user has a read-only form", async () => {
+        permissionState.isAdmin = false;
+        mockPermissionsGetAccess.mockResolvedValueOnce(READ_ONLY);
+        mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item", body: "Body" });
+
+        renderForm({ mode: "edit", id: 1 });
+
+        await waitFor(() => {
+          expect(screen.getByTestId("field-title")).toHaveValue("Item");
+        });
+        expect(screen.getByTestId("field-title")).toBeDisabled();
+      });
+
+      it("is not applied while the permissions failed to load", async () => {
+        permissionState.isAdmin = false;
+        mockPermissionsGetAccess.mockRejectedValueOnce(new Error("API error: 500"));
+        mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item", body: "Body" });
+
+        renderForm({ mode: "edit", id: 1, accessOverride: { update: { fields: ["title"] } } });
+
+        await screen.findByTestId("form-permissions-error");
+        expect(screen.getByTestId("field-title")).toBeDisabled();
+      });
+    });
+
     it("keeps full access for an administrator whose access map is empty", async () => {
       mockPermissionsGetAccess.mockResolvedValueOnce({});
       mockItemsReadOne.mockResolvedValue({ id: 1, title: "Item" });
