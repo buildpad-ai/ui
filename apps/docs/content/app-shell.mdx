@@ -152,7 +152,7 @@ export default function CollectionPage({
       enableSearch
       enableSelection
       onItemClick={(item) => router.push(`/content/${collection}/${item.id}`)}
-      onCreate={() => router.push(`/content/${collection}/+new`)}
+      onCreate={() => router.push(`/content/${collection}/+`)}
     />
   );
 }
@@ -166,7 +166,8 @@ actions for selected rows), `archiveField` (archive/unarchive UI), `fields`
 
 `app/content/[collection]/[id]/page.tsx` renders `CollectionForm`, which
 wraps VForm with every field interface plus save/delete handling and
-permission enforcement. A sentinel id (`+new`) switches it to create mode.
+permission enforcement. The sentinel id `+` switches it to create mode
+(`isNewItem`); any other id, `new` included, is an item's key.
 
 ```tsx filename="app/content/[collection]/[id]/page.tsx" copy
 "use client";

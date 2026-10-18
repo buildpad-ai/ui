@@ -10,7 +10,7 @@
  * `apiRequest` is mocked so no network is required. Only that one export is
  * replaced: the rest of `../src/utils` is the real module. The hook itself
  * uses `@buildpad/utils`'s `isExistingItem` (unmocked, real) for the same
- * unsaved-item check — rejecting the `'+'` / `'%2B'` / `'new'` sentinels.
+ * unsaved-item check — rejecting the `'+'` / `'%2B'` sentinels.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
