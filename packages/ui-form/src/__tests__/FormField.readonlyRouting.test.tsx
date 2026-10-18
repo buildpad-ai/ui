@@ -147,3 +147,22 @@ describe('FormField routes read-only-ness to `readonly` (S2.6)', () => {
         expect(received.length).toBeGreaterThan(0);
     });
 });
+
+describe('FormField error message', () => {
+    const validated = field({ meta: { required: true, validation_message: 'Must contain @' } });
+
+    it('shows the validation message for a failed validation rule', () => {
+        const { getByText } = render(
+            wrap(<FormField field={validated} value="bad" primaryKey="1" validationError={{ field: 'title', type: 'validation', code: 'FAILED_VALIDATION' }} />),
+        );
+        expect(getByText('Must contain @')).toBeInTheDocument();
+    });
+
+    it('keeps the required message for a missing required value', () => {
+        const { getByText, queryByText } = render(
+            wrap(<FormField field={validated} value={null} primaryKey="1" validationError={{ field: 'title', type: 'required' }} />),
+        );
+        expect(getByText('This field is required')).toBeInTheDocument();
+        expect(queryByText('Must contain @')).not.toBeInTheDocument();
+    });
+});

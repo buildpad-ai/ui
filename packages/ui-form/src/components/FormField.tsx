@@ -152,8 +152,9 @@ export const FormField: React.FC<FormFieldProps> = ({
   const errorMessage = useMemo(() => {
     if (!validationError) return undefined;
 
-    // Use custom validation message if available
-    if (field.meta?.validation_message) {
+    // Use custom validation message if available. It describes the field's
+    // validation rule, so a missing required value keeps its own message.
+    if (field.meta?.validation_message && validationError.type !== 'required') {
       return field.meta.validation_message;
     }
 

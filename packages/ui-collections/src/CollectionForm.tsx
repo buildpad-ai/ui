@@ -51,7 +51,7 @@ import {
   type CollectionsTranslations,
   type DeepPartial,
 } from "@buildpad/utils";
-import { VForm } from "@buildpad/ui-form";
+import { VForm, validateItem, type ValidationError } from "@buildpad/ui-form";
 import {
   ItemSaveHostProvider,
   RelationalUIProvider,
@@ -367,6 +367,10 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // The fields' own rules (meta.required, meta.validation) the item failed
+  // when a save was asked for; shown per field by VForm. Nothing is sent
+  // while any is listed.
+  const [ruleErrors, setRuleErrors] = useState<ValidationError[]>([]);
 
   // ----- Permission state -----
   const [createAllowed, setCreateAllowed] = useState(true);
@@ -438,6 +442,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         setLoading(true);
         setError(null);
         setFieldErrors({});
+        setRuleErrors([]);
 
         // Fetch fields + permissions in parallel. A failed permissions load
         // still draws the item, read-only, with the load error and a Retry.
@@ -822,6 +827,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     setFormData(values);
     setSuccess(false);
     setFieldErrors({}); // Clear field errors when user edits
+    setRuleErrors([]);
   }, []);
 
   // Compute primary key for VForm context
@@ -1247,10 +1253,24 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!passesFieldRules()) return;
     await handleSave();
   };
 
   const formRef = useRef<HTMLFormElement>(null);
+
+  // The fields' meta.required and meta.validation rules, checked before
+  // every save (the button, the save options and their shortcuts). The items
+  // API does not enforce them, so this check is what holds them: an item
+  // that fails one is not sent, and each failing field shows its message.
+  const passesFieldRules = (): boolean => {
+    const errors = validateItem({ ...initialFormData, ...formData }, fields);
+    setRuleErrors(errors);
+    if (errors.length === 0) return true;
+    setSuccess(false);
+    setError(t.form.errors.validationFailed);
+    return false;
+  };
 
   // The save options (and their shortcuts) call the save directly, so the
   // browser's own check that the submit button gets (`required` and the other
@@ -1264,6 +1284,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       setError(t.form.errors.validationFailed);
       return;
     }
+    if (!passesFieldRules()) return;
     void handleSave(afterSave);
   };
 
@@ -1287,6 +1308,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const handleDiscard = useCallback(() => {
     setFormData(initialFormData);
     setFieldErrors({});
+    setRuleErrors([]);
     setSuccess(false);
     setError(null);
   }, [initialFormData]);
@@ -1407,6 +1429,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                     onUpdate={handleFormUpdate}
                     primaryKey={primaryKey}
                     locale={locale}
+                    validationErrors={ruleErrors}
                     disabled={saving || !saveAllowed}
                     // NOT `loading={saving}`: VForm renders a skeleton while
                     // loading, which unmounts every field and remounts them when
