@@ -20,6 +20,7 @@ import { renderComponentsIndex } from '../utils/components-index.js';
 import { componentFilePath, sourceRoot } from '../utils/paths.js';
 import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
+import { libBackendMismatch, libForBackend, readProjectBackend } from '../utils/project-backend.js';
 import { validate } from './validate.js';
 import {
   getRegistry as fetchRegistry,
@@ -197,6 +198,42 @@ export interface CopyLibModuleOptions {
  * Records per-file checksums in `config.lib[moduleName]` so the module can be
  * refreshed later via `upgrade` with three-way merge.
  */
+/**
+ * The manifest record of a target that one of `libModule.replaces` wrote, when
+ * this module has not recorded the target itself yet.
+ */
+function replacedRecordFor(
+  libModule: LibModule,
+  config: Config,
+  target: string,
+  ownRecord: { files?: FileChecksum[] } | undefined
+): { module: string; sha256: string } | null {
+  if (!libModule.replaces?.length || ownRecord?.files?.some(f => f.target === target)) return null;
+  for (const replaced of libModule.replaces) {
+    const record = config.lib?.[replaced]?.files?.find(f => f.target === target);
+    if (record?.sha256) return { module: replaced, sha256: record.sha256 };
+  }
+  return null;
+}
+
+/**
+ * A replaced module whose every recorded target this module also ships is
+ * superseded: dropped from the manifest, so `upgrade` and `add` do not write
+ * its files back over this module's. One that shares only some targets with
+ * this module (api-routes and the auth callback) stays installed.
+ */
+function supersedeReplacedModules(libModule: LibModule, config: Config, spinner: Ora): void {
+  const ownTargets = new Set((libModule.files ?? []).map(f => f.target));
+  for (const replaced of libModule.replaces ?? []) {
+    if (!config.installedLib.includes(replaced)) continue;
+    const targets = config.lib?.[replaced]?.files?.map(f => f.target);
+    if (!targets || !targets.every(t => ownTargets.has(t))) continue;
+    config.installedLib = config.installedLib.filter(name => name !== replaced);
+    delete config.lib![replaced];
+    spinner.info(`${libModule.name} supersedes ${replaced} (removed from buildpad.json)`);
+  }
+}
+
 export async function copyLibModule(
   moduleName: string,
   registry: Registry,
@@ -328,10 +365,26 @@ export async function copyLibModule(
       if (!overwrite && fs.existsSync(targetPath)) {
         const existing = await fs.readFile(targetPath, 'utf-8');
         const prior = existingRecord?.files?.find(f => f.target === file.target);
+        // A module that replaces another (external-oauth-engine replaces
+        // external-oauth and api-routes' callback) takes over a target that
+        // module wrote, while that copy is unmodified; an edited copy is kept.
+        const replacing = replacedRecordFor(libModule, config, file.target, existingRecord);
+        if (replacing) {
+          if (hashTransformed(existing) === replacing.sha256) {
+            spinner.info(`${file.target} — replacing ${replacing.module}'s unmodified copy`);
+          } else {
+            spinner.warn(
+              `${file.target} was written by ${replacing.module} and changed locally — keeping yours. ` +
+              `Replace it with: npx buildpad add ${moduleName} --overwrite`
+            );
+            writtenFiles.push(keepExisting(file, existing));
+            continue;
+          }
+        }
         const staleUpstream =
           !!prior?.sourceSha256 && !!file.sourceSha256 && prior.sourceSha256 !== file.sourceSha256;
         const pristine = !!prior && hashTransformed(existing) === prior.sha256;
-        if (!staleUpstream || !pristine) {
+        if (!replacing && (!staleUpstream || !pristine)) {
           if (staleUpstream) {
             spinner.warn(
               `${file.target} is outdated but locally modified — keeping yours. Merge with: npx buildpad upgrade ${moduleName} --three-way`
@@ -340,7 +393,7 @@ export async function copyLibModule(
           writtenFiles.push(keepExisting(file, existing));
           continue;
         }
-        spinner.info(`${file.target} — refreshing unmodified copy (changed upstream)`);
+        if (!replacing) spinner.info(`${file.target} — refreshing unmodified copy (changed upstream)`);
       }
 
       if (await checkSource(file.source)) {
@@ -366,6 +419,7 @@ export async function copyLibModule(
   if (!config.installedLib.includes(moduleName)) {
     config.installedLib.push(moduleName);
   }
+  supersedeReplacedModules(libModule, config, spinner);
 
   // v3: record per-file checksums in `config.lib[moduleName]`
   if ((config.schemaVersion ?? 1) >= 2 && writtenFiles.length > 0 && primarySource) {
@@ -905,6 +959,10 @@ export async function add(
   }
 
   const registry = await getRegistry();
+  // `.buildpad/project.json` (a Buildpad starter's Backend_Signal) picks the
+  // Engine variant of a lib module that has one (external-oauth).
+  const backend = readProjectBackend(cwd);
+  const oauthLib = libForBackend('external-oauth', registry, backend);
 
   // If --with-api flag is set, add api-routes and supabase-auth lib modules
   // Components the API lib modules need (api-routes' authenticated layout
@@ -917,7 +975,7 @@ export async function add(
     console.log(chalk.bold('\n🔌 Installing API routes and Supabase auth...\n'));
     const spinner = ora('Processing lib modules...').start();
 
-    for (const libName of ['supabase-auth', 'i18n', 'api-routes', 'external-oauth']) {
+    for (const libName of ['supabase-auth', 'i18n', 'api-routes', oauthLib]) {
       if (!registry.lib[libName] || config.installedLib.includes(libName)) continue;
       for (const dep of libComponentDependencies(libName, registry, config.installedLib)) {
         if (!apiComponentDeps.includes(dep)) apiComponentDeps.push(dep);
@@ -947,8 +1005,13 @@ export async function add(
     // fail to resolve. external-oauth depends back on api-routes/supabase-auth
     // (already installed above), so it only adds its own oauth files here — and
     // its oauth-aware callback intentionally supersedes the basic one.
-    if (registry.lib['external-oauth'] && !config.installedLib.includes('external-oauth')) {
-      await copyLibModule('external-oauth', registry, config, cwd, spinner);
+    // On an Engine project this is external-oauth-engine (My Apps sign-in
+    // through the Engine), which also replaces an unmodified external-oauth.
+    if (registry.lib[oauthLib] && !config.installedLib.includes(oauthLib)) {
+      if (oauthLib !== 'external-oauth') {
+        spinner.info(`Engine project (.buildpad/project.json): installing ${oauthLib}`);
+      }
+      await copyLibModule(oauthLib, registry, config, cwd, spinner);
     }
 
     spinner.succeed('API routes and auth installed!');
@@ -972,11 +1035,20 @@ export async function add(
       process.exit(1);
     }
   } else if (components.length > 0) {
-    for (const name of components) {
+    for (const requested of components) {
       // Check lib modules first — before searching components so we don't print
       // "Component not found" for valid lib module names like api-routes, supabase-auth.
-      if (registry.lib[name]) {
-        libModulesToInstall.push(name);
+      if (registry.lib[requested]) {
+        const name = libForBackend(requested, registry, backend);
+        if (name !== requested) {
+          console.log(chalk.dim(`  Engine project (.buildpad/project.json): ${requested} → ${name}`));
+        }
+        const mismatch = libBackendMismatch(name, registry, backend);
+        if (mismatch) {
+          console.log(chalk.red(`\n✗ ${mismatch}\n`));
+          process.exit(1);
+        }
+        if (!libModulesToInstall.includes(name)) libModulesToInstall.push(name);
         // Route modules can require components (e.g. users-routes →
         // users-management, files-routes → file-manager) — queue them so a
         // single `add <module>-routes` installs the whole feature. So can a
@@ -989,7 +1061,7 @@ export async function add(
         }
         continue;
       }
-      const component = findComponentWithSuggestions(name, registry);
+      const component = findComponentWithSuggestions(requested, registry);
       if (!component) {
         process.exit(1);
       } else {

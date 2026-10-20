@@ -16,6 +16,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import type { Registry } from '../src/resolver.js';
 import {
   BARREL,
   REPO_ROOT,
@@ -68,46 +69,85 @@ const TSCONFIG = {
   exclude: ['node_modules'],
 };
 
+/**
+ * The install a project of one backend gets. A lib module that names an
+ * `engineVariant` is swapped for it on an Engine project (add.ts), so each
+ * backend's corpus holds one of the two; they share targets, and a single
+ * corpus would type-check only whichever came last.
+ */
+function registryFor(registry: Registry, backend: 'engine' | 'supabase'): Registry {
+  const lib = Object.fromEntries(
+    Object.entries(registry.lib).filter(([, mod]) =>
+      backend === 'engine'
+        ? !(mod.engineVariant && registry.lib[mod.engineVariant])
+        : (mod.backend ?? 'supabase') === 'supabase'
+    )
+  );
+  return { ...registry, lib };
+}
+
+/** Writes the install for `registry` into a temp project and returns tsc's errors. */
+function typecheck(registry: Registry, dir: string): { errors: string[]; output: string } {
+  const files = new Map<string, string>();
+  // Lib modules first, then components, in registry order — the order
+  // `add --with-api` writes them (external-oauth's callback route replaces
+  // api-routes' on the shared target).
+  for (const f of transformCorpus(registry, makeConfig())) files.set(f.finalTarget, f.content);
+  for (const [target, content] of initSkeleton()) files.set(target, content);
+  files.set(BARREL, renderBarrel(registry.components.map(c => c.name), registry, files).content);
+  files.set('next-env.d.ts', '/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n');
+  files.set('tsconfig.json', JSON.stringify(TSCONFIG, null, 2));
+  const stubs = STUBBED_PACKAGES.filter(p => !hasTypes(p));
+  if (stubs.length > 0) {
+    files.set('buildpad-fixture-stubs.d.ts', stubs.map(p => `declare module '${p}';`).join('\n') + '\n');
+  }
+
+  for (const [rel, content] of files) {
+    const abs = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content);
+  }
+  fs.symlinkSync(NODE_MODULES, path.join(dir, 'node_modules'), 'junction');
+
+  let output = '';
+  try {
+    execFileSync(process.execPath, [path.join(NODE_MODULES, 'typescript/bin/tsc'), '-p', dir, '--pretty', 'false'], {
+      cwd: dir,
+      encoding: 'utf8',
+      stdio: 'pipe',
+      maxBuffer: 32 * 1024 * 1024,
+    });
+  } catch (err) {
+    const e = err as { stdout?: string; stderr?: string; message: string };
+    output = `${e.stdout ?? ''}${e.stderr ?? ''}` || e.message;
+  }
+  const errors = output.split('\n').filter(line => /error TS\d+/.test(line));
+  return { errors, output };
+}
+
 describe('registry corpus: offline typecheck of a full install', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'buildpad-fixture-'));
-  afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const dirs: string[] = [];
+  const tempDir = () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'buildpad-fixture-'));
+    dirs.push(dir);
+    return dir;
+  };
+  afterAll(() => dirs.forEach(dir => fs.rmSync(dir, { recursive: true, force: true })));
 
   test('tsc --noEmit reports no errors', () => {
+    const { errors, output } = typecheck(registryFor(loadRegistry(), 'supabase'), tempDir());
+    expect(errors).toEqual([]);
+    expect(output).toBe('');
+  }, 180_000);
+
+  test('tsc --noEmit reports no errors for an Engine project (engine variants installed)', () => {
     const registry = loadRegistry();
-    const files = new Map<string, string>();
-    // Lib modules first, then components, in registry order — the order
-    // `add --with-api` writes them (external-oauth's callback route replaces
-    // api-routes' on the shared target).
-    for (const f of transformCorpus(registry, makeConfig())) files.set(f.finalTarget, f.content);
-    for (const [target, content] of initSkeleton()) files.set(target, content);
-    files.set(BARREL, renderBarrel(registry.components.map(c => c.name), registry, files).content);
-    files.set('next-env.d.ts', '/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n');
-    files.set('tsconfig.json', JSON.stringify(TSCONFIG, null, 2));
-    const stubs = STUBBED_PACKAGES.filter(p => !hasTypes(p));
-    if (stubs.length > 0) {
-      files.set('buildpad-fixture-stubs.d.ts', stubs.map(p => `declare module '${p}';`).join('\n') + '\n');
-    }
-
-    for (const [rel, content] of files) {
-      const abs = path.join(dir, rel);
-      fs.mkdirSync(path.dirname(abs), { recursive: true });
-      fs.writeFileSync(abs, content);
-    }
-    fs.symlinkSync(NODE_MODULES, path.join(dir, 'node_modules'), 'junction');
-
-    let output = '';
-    try {
-      execFileSync(process.execPath, [path.join(NODE_MODULES, 'typescript/bin/tsc'), '-p', dir, '--pretty', 'false'], {
-        cwd: dir,
-        encoding: 'utf8',
-        stdio: 'pipe',
-        maxBuffer: 32 * 1024 * 1024,
-      });
-    } catch (err) {
-      const e = err as { stdout?: string; stderr?: string; message: string };
-      output = `${e.stdout ?? ''}${e.stderr ?? ''}` || e.message;
-    }
-    const errors = output.split('\n').filter(line => /error TS\d+/.test(line));
+    const engine = registryFor(registry, 'engine');
+    // The swap is real: the Engine corpus holds the variant, not the original.
+    expect(Object.keys(engine.lib)).toContain('external-oauth-engine');
+    expect(Object.keys(engine.lib)).not.toContain('external-oauth');
+    expect(Object.keys(registryFor(registry, 'supabase').lib)).not.toContain('external-oauth-engine');
+    const { errors, output } = typecheck(engine, tempDir());
     expect(errors).toEqual([]);
     expect(output).toBe('');
   }, 180_000);
