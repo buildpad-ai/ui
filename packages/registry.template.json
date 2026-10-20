@@ -1156,6 +1156,7 @@
     "external-oauth": {
       "name": "external-oauth",
       "description": "External OAuth2/OIDC integration where Next.js acts as the OAuth client. Supports Azure AD, Google, Okta, Auth0, and generic OIDC providers. Includes PKCE, AES-256-GCM state encryption, JIT user provisioning, and multi-source claim extraction.",
+      "engineVariant": "external-oauth-engine",
       "dependencies": [
         "jose"
       ],
@@ -1191,6 +1192,60 @@
         {
           "source": "cli/templates/components/auth/OAuthLoginButtons.tsx",
           "target": "components/auth/OAuthLoginButtons.tsx"
+        }
+      ]
+    },
+    "external-oauth-engine": {
+      "name": "external-oauth-engine",
+      "description": "My Apps sign-in for an Engine project (.buildpad/project.json backend \"engine\"): Next.js finishes the OIDC authorization-code flow (PKCE, state, SHA-256 nonce) and signs the user in to the project's Buildpad Engine with signInWithIdToken, sending X-Tenant-Id. No service-role key, admin API, magic link or role write. An account without a role is sent to a pending-access page. `add external-oauth` installs this module on an Engine project.",
+      "backend": "engine",
+      "replaces": [
+        "external-oauth",
+        "api-routes"
+      ],
+      "dependencies": [
+        "jose"
+      ],
+      "internalDependencies": [
+        "supabase-auth",
+        "api-routes"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/lib/oauth/config.ts",
+          "target": "lib/oauth/config.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/pkce.ts",
+          "target": "lib/oauth/pkce.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/validate.ts",
+          "target": "lib/oauth/validate.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/index.ts",
+          "target": "lib/oauth/index.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/engine.ts",
+          "target": "lib/oauth/engine.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-callback-oauth-engine-route.ts",
+          "target": "app/api/auth/callback/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-oauth-provider-engine-route.ts",
+          "target": "app/api/auth/oauth/[provider]/route.ts"
+        },
+        {
+          "source": "cli/templates/components/auth/OAuthLoginButtonsEngine.tsx",
+          "target": "components/auth/OAuthLoginButtons.tsx"
+        },
+        {
+          "source": "cli/templates/app/auth-pending-access-page.tsx",
+          "target": "app/[lang]/auth/pending-access/page.tsx"
         }
       ]
     },
