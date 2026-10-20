@@ -78,6 +78,7 @@ import {
 import { threeWayMerge } from '../utils/three-way-merge.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
 import { applyNavItems, copyLibModule, generateComponentsIndex } from './add.js';
+import { libForBackend, readProjectBackend } from '../utils/project-backend.js';
 import { componentFilePath } from '../utils/paths.js';
 import { entryKey, isEmptyPlan, planDependencies, type DependencyPlan, type EntryRef } from '../utils/upgrade-plan.js';
 
@@ -799,6 +800,21 @@ export async function upgrade(options: UpgradeOptions) {
     if (!mod) return null;
     return computeEntryStaleness(registryFilesOf(mod), config.lib?.[name]);
   };
+
+  // An Engine project that still has the Supabase variant of a module (an
+  // earlier bootstrap installed external-oauth): upgrading it keeps the
+  // Supabase files. Say how to switch; `add` replaces unmodified copies.
+  if (readProjectBackend(cwd) === 'engine') {
+    for (const name of config.installedLib) {
+      const variant = libForBackend(name, registry, 'engine');
+      if (variant !== name && !config.installedLib.includes(variant)) {
+        console.log(chalk.yellow(
+          `\n⚠ ${name} is the Supabase variant; this is an Engine project (.buildpad/project.json). ` +
+          `Switch with: npx buildpad add ${name}`
+        ));
+      }
+    }
+  }
 
   // ── Resolve targets ───────────────────────────────────────────────
   // `--design` scopes strictly to the design-system lib module (no components).

@@ -227,7 +227,13 @@ Bootstrap installs everything non-interactively, including:
 - Auth proxy routes (login, logout, user, callback) + login page
 - Supabase auth utilities and middleware
 - **OAuth helpers** (`external-oauth` module): `lib/oauth/*` (config, pkce, validate) + OAuth
-  provider route and login buttons — required because the auth routes import `@/lib/oauth/*`
+  provider route and login buttons — required because the auth routes import `@/lib/oauth/*`.
+  On an Engine project (`.buildpad/project.json` says `"backend": "engine"`) bootstrap and
+  `add external-oauth` install `external-oauth-engine` instead: My Apps sign-in, where the
+  callback signs the user in to the Engine with `signInWithIdToken` (sending `X-Tenant-Id`),
+  with no service-role key, admin API, magic link or role write. A first sign-in creates an
+  account with no role, which lands on `/auth/pending-access` until an administrator gives it
+  a role. It replaces unmodified copies of `external-oauth`'s files and of api-routes' callback
 - **Locale routing** (`i18n` module): `lib/i18n/*` and `components/LanguageSwitcher.tsx`; every
   page lives under `app/[lang]/` — see [Locale routing](#locale-routing-applang)
 - npm dependencies via `pnpm install` (incl. `@supabase/ssr`, `@supabase/supabase-js`, `jose`,

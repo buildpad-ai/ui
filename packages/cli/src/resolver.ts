@@ -215,6 +215,22 @@ export interface LibModule {
   lastChangedIn?: string;
   /** v2: SHA-256 of the raw source bytes for a single-path module. */
   sourceSha256?: string;
+  /**
+   * The backend this module is written for. Unset: the Supabase behaviour
+   * every module had before Engine projects (and the only one most need).
+   */
+  backend?: 'engine' | 'supabase';
+  /**
+   * The module `add` installs instead of this one when `.buildpad/project.json`
+   * says the backend is the Engine (external-oauth → external-oauth-engine).
+   */
+  engineVariant?: string;
+  /**
+   * Modules whose copies of this module's targets it may replace when they
+   * are still pristine, and which it supersedes in the manifest when it ships
+   * every one of their targets.
+   */
+  replaces?: string[];
 }
 
 export interface ComponentEntry {
