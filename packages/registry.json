@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-20T03:42:10.028Z",
+  "generatedAt": "2026-10-20T04:39:15.035Z",
   "version": "3.3.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1433,7 +1433,7 @@
         {
           "source": "cli/templates/supabase/server.ts",
           "target": "lib/supabase/server.ts",
-          "sourceSha256": "5a2ff2ebb53938a6a2090ddc11f196ea66af1d45a1cc46b84e98ff4c8a06df8a"
+          "sourceSha256": "02b416f22291a95967b49de01bc9e9d868f03215ee688ebb1f66ae72655f8288"
         },
         {
           "source": "cli/templates/supabase/middleware.ts",
@@ -1456,7 +1456,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "3.3.0",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "3.3.0"
     },
     "external-oauth": {
       "name": "external-oauth",
