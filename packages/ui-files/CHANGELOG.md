@@ -1,5 +1,16 @@
 # @buildpad/ui-files
 
+## 3.4.0
+
+### Patch Changes
+
+- Updated dependencies [7936cdf]
+  - @buildpad/utils@3.4.0
+  - @buildpad/services@3.4.0
+  - @buildpad/ui-interfaces@3.4.0
+  - @buildpad/hooks@3.4.0
+  - @buildpad/types@3.4.0
+
 ## 3.3.0
 
 ### Minor Changes

@@ -1,5 +1,27 @@
 # @buildpad/cli
 
+## 3.4.0
+
+### Minor Changes
+
+- 0ccdfb8: My Apps sign-in on an Engine project: the `external-oauth-engine` lib module.
+
+  `buildpad add external-oauth`, `add --with-api` and `bootstrap` read the project's backend from `.buildpad/project.json` (then `.buildpad/backend-answer.json`). On an Engine project they install `external-oauth-engine`:
+
+  - `GET /api/auth/oauth/my-apps` starts the authorization-code flow with PKCE, a random `state` and a raw nonce kept in one httpOnly cookie, and sends My Apps the nonce's SHA-256 hex.
+  - `GET /api/auth/callback` checks `state`, exchanges the code server-side with `OAUTH_CLIENT_SECRET`, and signs in to the Engine with `supabase.auth.signInWithIdToken({ provider: 'my-apps', token, nonce })` on a client that sends `X-Tenant-Id`. It writes the session cookies in the format `lib/supabase/*` reads, and clears the flow cookie on every answer. No service-role key, admin API, magic link or role write; no token is logged.
+  - An account the Engine created on its first sign-in holds no role: its session is ended and the user lands on `/auth/pending-access`. The Engine's refusals (`invalid_credentials`, `user_banned`, unavailable) become `?error=` codes that the Engine `OAuthLoginButtons` explains.
+
+  The module replaces unmodified copies of `external-oauth`'s files and api-routes' callback, keeps edited ones (with a warning), and supersedes `external-oauth` in `buildpad.json`. A Supabase project, or one that records no backend, still gets `external-oauth`, unchanged. `upgrade` on an Engine project that still has `external-oauth` says how to switch.
+
+### Patch Changes
+
+- 0968c74: Password sign-in on an Engine project names the project's tenant.
+
+  `lib/supabase/server.ts` (installed by `supabase-auth`) sends `X-Tenant-Id: $NEXT_PUBLIC_BUILDPAD_TENANT_ID` as a supabase-js global header when that variable is set. `POST /api/auth/login` signs in through this client, so the Engine's `/auth/v1/token?grant_type=password` now binds the session to the app's tenant instead of choosing one by its own rule. Every other server call through `createClient()` sends it too; the Engine consults it only on requests without a session token.
+
+  On a Supabase project the variable is unset and the client is created with the same options as before. `buildpad upgrade` offers the new file; an unmodified copy updates cleanly.
+
 ## 3.3.0
 
 ## 3.2.0

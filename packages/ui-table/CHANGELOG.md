@@ -1,5 +1,13 @@
 # @buildpad/ui-table
 
+## 3.4.0
+
+### Patch Changes
+
+- Updated dependencies [7936cdf]
+  - @buildpad/utils@3.4.0
+  - @buildpad/services@3.4.0
+
 ## 3.3.0
 
 ### Minor Changes
