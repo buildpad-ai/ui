@@ -46,7 +46,7 @@ const MOCK_REGISTRY = {
     },
     'external-oauth-engine': {
       name: 'external-oauth-engine',
-      description: 'My Apps sign-in (Engine project)',
+      description: 'XAppHub sign-in (Engine project)',
       backend: 'engine',
       replaces: ['external-oauth', 'api-routes'],
       sourcePackage: '@buildpad/cli',

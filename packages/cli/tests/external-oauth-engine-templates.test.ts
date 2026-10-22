@@ -3,7 +3,7 @@
  *
  * The provider route and the callback route are imported from
  * `templates/` with their `@/` imports pointed at the sibling templates and
- * `@supabase/ssr` replaced by a fake client, so each test drives one My Apps
+ * `@supabase/ssr` replaced by a fake client, so each test drives one XAppHub
  * sign-in end to end: authorize redirect, code exchange, `signInWithIdToken`
  * against the Engine with `X-Tenant-Id`, the role check, and the cookies.
  */
@@ -47,7 +47,7 @@ let auth: FakeAuth;
 let clientOptions: { global?: { headers?: Record<string, string> } } | undefined;
 let clientArgs: unknown[] = [];
 
-/** Engine answers and My Apps answers, by URL. */
+/** Engine answers and XAppHub answers, by URL. */
 let tokenAnswer: { status: number; body: unknown };
 let meAnswer: { status: number; body: unknown };
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -154,7 +154,7 @@ describe('lib/oauth/engine', () => {
 });
 
 describe('GET /api/auth/oauth/[provider] (Engine)', () => {
-  test('redirects to My Apps with state, PKCE and the hashed nonce, and keeps the raw values in an httpOnly cookie', async () => {
+  test('redirects to XAppHub with state, PKCE and the hashed nonce, and keeps the raw values in an httpOnly cookie', async () => {
     const response = await start();
 
     expect(response.status).toBe(307);
@@ -208,7 +208,7 @@ describe('GET /api/auth/callback (Engine)', () => {
 
     const response = await callback(`?code=the-code&state=${flow.state}`, cookie);
 
-    // Code exchange at My Apps, with the secret and the PKCE verifier.
+    // Code exchange at XAppHub, with the secret and the PKCE verifier.
     const [tokenUrl, tokenInit] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(tokenUrl).toBe(ENV.OAUTH_TOKEN_URL);
     const form = new URLSearchParams(tokenInit.body as string);
@@ -224,7 +224,7 @@ describe('GET /api/auth/callback (Engine)', () => {
     expect(clientOptions?.global?.headers).toEqual({ 'X-Tenant-Id': ENV.NEXT_PUBLIC_BUILDPAD_TENANT_ID });
     expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'my-apps', token: ID_TOKEN, nonce: flow.nonce });
 
-    // The secret goes to My Apps only, never to the Engine.
+    // The secret goes to XAppHub only, never to the Engine.
     for (const [url, init] of fetchMock.mock.calls as [string, RequestInit | undefined][]) {
       if (url.startsWith('https://engine.test')) expect(JSON.stringify(init ?? {})).not.toContain(ENV.OAUTH_CLIENT_SECRET);
     }
@@ -294,7 +294,7 @@ describe('GET /api/auth/callback (Engine)', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  test('a cancelled sign-in at My Apps', async () => {
+  test('a cancelled sign-in at XAppHub', async () => {
     const { cookie } = await started();
     const response = await callback('?error=access_denied&error_description=User%20cancelled', cookie);
     expect(response.headers.get('location')).toBe(`${ORIGIN}/login?error=sign_in_cancelled`);

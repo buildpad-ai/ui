@@ -1,11 +1,11 @@
 /**
- * Auth Callback Route (Engine project: My Apps sign-in)
+ * Auth Callback Route (Engine project: XAppHub sign-in)
  *
  * GET /api/auth/callback
  *
- * Finishes My Apps sign-in on an Engine project:
+ * Finishes XAppHub sign-in on an Engine project:
  * 1. Reads the flow cookie the provider route set, and checks `state`
- * 2. Exchanges the code at My Apps' token endpoint, server-side, with the
+ * 2. Exchanges the code at XAppHub's token endpoint, server-side, with the
  *    client secret (never sent to the browser or to the Engine)
  * 3. Signs in to the project's Engine with the ID token:
  *    `supabase.auth.signInWithIdToken({ provider: 'my-apps', token, nonce })`,
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
   const providerError = searchParams.get('error');
   if (providerError) {
     // The provider's error code is not a secret; its description is not logged.
-    console.warn('My Apps sign-in: the provider answered', providerError);
+    console.warn('XAppHub sign-in: the provider answered', providerError);
     return fail(providerError === 'access_denied' ? 'sign_in_cancelled' : 'sign_in_failed');
   }
 
@@ -82,18 +82,18 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const state = searchParams.get('state');
   if (!code || !state || !sameValue(state, flow.state)) {
-    console.warn('My Apps sign-in: missing code, or state mismatch');
+    console.warn('XAppHub sign-in: missing code, or state mismatch');
     return fail('sign_in_failed');
   }
 
   const { env } = readEngineEnv();
   if (!env || !process.env.OAUTH_CLIENT_ID || !process.env.OAUTH_CLIENT_SECRET || !process.env.OAUTH_TOKEN_URL) {
-    console.error('My Apps sign-in: the OAUTH_* or Engine environment is incomplete');
+    console.error('XAppHub sign-in: the OAUTH_* or Engine environment is incomplete');
     return fail('configuration_error');
   }
 
   try {
-    // ─── Code exchange with My Apps (server-side) ────────────────────────
+    // ─── Code exchange with XAppHub (server-side) ────────────────────────
     const config = getGenericOAuthConfig();
     const tokenResponse = await fetch(config.tokenUrl, {
       method: 'POST',
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     });
     const tokens = (await tokenResponse.json().catch(() => ({}))) as TokenResponse;
     if (!tokenResponse.ok || tokens.error || !tokens.id_token) {
-      console.warn('My Apps sign-in: code exchange failed', tokenResponse.status, tokens.error ?? '');
+      console.warn('XAppHub sign-in: code exchange failed', tokenResponse.status, tokens.error ?? '');
       return fail('sign_in_failed');
     }
 
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       nonce: flow.nonce,
     });
     if (error || !data.session) {
-      console.warn('My Apps sign-in: the Engine refused', error?.status ?? '', error?.code ?? '');
+      console.warn('XAppHub sign-in: the Engine refused', error?.status ?? '', error?.code ?? '');
       return fail(error ? signInErrorOf(error) : 'sign_in_failed');
     }
 
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     // ─── Session cookies, in the format lib/supabase/* reads ─────────────
     return redirect(safeRelativePath(flow.returnTo), sessionCookies);
   } catch (error) {
-    console.error('My Apps sign-in failed:', error instanceof Error ? error.message : 'unknown error');
+    console.error('XAppHub sign-in failed:', error instanceof Error ? error.message : 'unknown error');
     return fail('sign_in_failed');
   }
 }

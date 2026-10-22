@@ -1,9 +1,9 @@
 /**
- * My Apps sign-in on an Engine project
+ * XAppHub sign-in on an Engine project
  *
  * Helpers for the Engine variant of the external-oauth module
  * (`external-oauth-engine`). The application's server finishes the
- * authorization-code flow with My Apps, then hands the ID token to the
+ * authorization-code flow with XAppHub, then hands the ID token to the
  * project's Buildpad Engine through the Supabase client's
  * `signInWithIdToken`. The Engine checks the token and answers with an
  * ordinary session.
@@ -22,7 +22,7 @@ import crypto from 'node:crypto';
 import { createServerClient } from '@supabase/ssr';
 
 /**
- * The provider name the Engine knows My Apps by. The Engine's operator names
+ * The provider name the Engine knows XAppHub by. The Engine's operator names
  * it in `AUTH_EXTERNAL_ISSUERS`, the Platform records the app's client id
  * under it, and the app passes it to `signInWithIdToken`. Change all three
  * together, or not at all.
@@ -39,7 +39,7 @@ export const ENGINE_FLOW_MAX_AGE = 600;
 /**
  * What the provider route stores and the callback reads. Every value is
  * random and single-use; the cookie is httpOnly, so the browser's scripts
- * never see it. `nonce` is the RAW nonce: My Apps receives only its SHA-256
+ * never see it. `nonce` is the RAW nonce: XAppHub receives only its SHA-256
  * hex digest.
  */
 export interface EngineFlowState {
@@ -55,7 +55,7 @@ export function randomToken(bytes = 32): string {
 }
 
 /**
- * The OIDC `nonce` sent to My Apps: the lower-case hex SHA-256 of the raw
+ * The OIDC `nonce` sent to XAppHub: the lower-case hex SHA-256 of the raw
  * nonce, the Supabase convention the Engine applies. The Engine refuses a
  * token whose `nonce` claim equals the raw value.
  */
@@ -216,7 +216,7 @@ export type EngineSignInError =
 /**
  * Maps the Engine's answer to `signInWithIdToken` to a code. The Engine
  * answers every refusal (an account that is a host or tenant administrator,
- * an existing account with the same email that is not linked to this My Apps
+ * an existing account with the same email that is not linked to this XAppHub
  * identity, an unverified email, a token it does not trust) with the same
  * body as a wrong password, on purpose, so the app cannot tell them apart.
  */
@@ -224,7 +224,7 @@ export function signInErrorOf(error: { status?: number; code?: string }): Engine
   if (error.code === 'user_banned') return 'account_disabled';
   if (error.code === 'invalid_credentials') return 'sign_in_refused';
   if (typeof error.status === 'number' && error.status >= 500) return 'engine_unavailable';
-  // Anything else, such as a 400 with no code: the Engine names no My Apps
+  // Anything else, such as a 400 with no code: the Engine names no XAppHub
   // issuer (its operator has not enabled the sign-in) or the request was malformed.
   return 'sign_in_failed';
 }

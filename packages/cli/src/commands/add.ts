@@ -1005,7 +1005,7 @@ export async function add(
     // fail to resolve. external-oauth depends back on api-routes/supabase-auth
     // (already installed above), so it only adds its own oauth files here — and
     // its oauth-aware callback intentionally supersedes the basic one.
-    // On an Engine project this is external-oauth-engine (My Apps sign-in
+    // On an Engine project this is external-oauth-engine (XAppHub sign-in
     // through the Engine), which also replaces an unmodified external-oauth.
     if (registry.lib[oauthLib] && !config.installedLib.includes(oauthLib)) {
       if (oauthLib !== 'external-oauth') {
