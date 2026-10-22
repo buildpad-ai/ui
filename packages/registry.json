@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-20T06:11:26.193Z",
+  "generatedAt": "2026-10-22T09:00:29.909Z",
   "version": "3.4.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1512,7 +1512,7 @@
     },
     "external-oauth-engine": {
       "name": "external-oauth-engine",
-      "description": "My Apps sign-in for an Engine project (.buildpad/project.json backend \"engine\"): Next.js finishes the OIDC authorization-code flow (PKCE, state, SHA-256 nonce) and signs the user in to the project's Buildpad Engine with signInWithIdToken, sending X-Tenant-Id. No service-role key, admin API, magic link or role write. An account without a role is sent to a pending-access page. `add external-oauth` installs this module on an Engine project.",
+      "description": "XAppHub sign-in for an Engine project (.buildpad/project.json backend \"engine\"): Next.js finishes the OIDC authorization-code flow (PKCE, state, SHA-256 nonce) and signs the user in to the project's Buildpad Engine with signInWithIdToken, sending X-Tenant-Id. No service-role key, admin API, magic link or role write. An account without a role is sent to a pending-access page. `add external-oauth` installs this module on an Engine project.",
       "backend": "engine",
       "replaces": [
         "external-oauth",
@@ -1549,27 +1549,27 @@
         {
           "source": "cli/templates/lib/oauth/engine.ts",
           "target": "lib/oauth/engine.ts",
-          "sourceSha256": "5f867b9720a102496d4370f513233c57494f52f305a28c068e16d2df58798d19"
+          "sourceSha256": "a97eb6f6d246503a5aa06e26f061e26eba675eb7071ea5cb1ae1c64cbf02dacb"
         },
         {
           "source": "cli/templates/api/auth-callback-oauth-engine-route.ts",
           "target": "app/api/auth/callback/route.ts",
-          "sourceSha256": "76df96356a35418f82f34720d1f7ab3f25c1c6177cdeca7e5c2b2eb72fe5dc88"
+          "sourceSha256": "97dcb7a5311cfc2feac871ccc89f952e366564a7aab1ba0d7eb5d6726ee1a72e"
         },
         {
           "source": "cli/templates/api/auth-oauth-provider-engine-route.ts",
           "target": "app/api/auth/oauth/[provider]/route.ts",
-          "sourceSha256": "0a8836b178f8049cc8f69356f968756ee01ea9ecd4cc7e4cb30527c73566713f"
+          "sourceSha256": "0fa32600e94432776f968651e51f214cca6fcf9ed74247dd66fc4e4f51fd50f1"
         },
         {
           "source": "cli/templates/components/auth/OAuthLoginButtonsEngine.tsx",
           "target": "components/auth/OAuthLoginButtons.tsx",
-          "sourceSha256": "e51aec67b83435f394f9d777d56674274f103580c0ca2573bde87682b29b8c35"
+          "sourceSha256": "d93472739beacf50672f2798c41bfbb50ba45d5be41234ed99e150b4f4e46e9a"
         },
         {
           "source": "cli/templates/app/auth-pending-access-page.tsx",
           "target": "app/[lang]/auth/pending-access/page.tsx",
-          "sourceSha256": "8ee2c1206b957db9a3449e8c756445b67d1cb0922bceeee4e3139e7651f3bd50"
+          "sourceSha256": "17d70ba5223ad9acf5a7689a7a14481f82dfc1a4e319cdaf2f6f9048f1569726"
         }
       ],
       "sourcePackage": "@buildpad/cli",

@@ -1,14 +1,14 @@
 /**
- * OAuth Initiation Route (Engine project: My Apps sign-in)
+ * OAuth Initiation Route (Engine project: XAppHub sign-in)
  *
  * GET /api/auth/oauth/my-apps
  *
- * Starts the authorization-code flow with My Apps for an Engine project:
+ * Starts the authorization-code flow with XAppHub for an Engine project:
  * 1. Accepts only the `my-apps` provider (the Engine trusts no other issuer)
  * 2. Checks the OAUTH_* and Engine environment
  * 3. Makes a random `state`, a raw nonce and a PKCE verifier, and keeps them
  *    in one httpOnly cookie for the callback
- * 4. Redirects to My Apps' authorize endpoint with `nonce` = SHA-256 hex of
+ * 4. Redirects to XAppHub's authorize endpoint with `nonce` = SHA-256 hex of
  *    the raw nonce (the callback passes the raw nonce to the Engine)
  *
  * Query params:
@@ -36,7 +36,7 @@ import {
 } from '@/lib/oauth/engine';
 import { publicOrigin, safeRelativePath } from '@/lib/origin';
 
-/** The variables the Platform stores for a connected My Apps connector. */
+/** The variables the Platform stores for a connected XAppHub connector. */
 const REQUIRED_OAUTH_ENV = [
   'OAUTH_CLIENT_ID',
   'OAUTH_CLIENT_SECRET',
@@ -54,7 +54,7 @@ export async function GET(
     return NextResponse.json(
       {
         error: 'unsupported_provider',
-        message: `On an Engine project only My Apps sign-in is available (/api/auth/oauth/${MY_APPS_PROVIDER}).`,
+        message: `On an Engine project only XAppHub sign-in is available (/api/auth/oauth/${MY_APPS_PROVIDER}).`,
       },
       { status: 400 }
     );
@@ -64,11 +64,11 @@ export async function GET(
   missing.push(...readEngineEnv().missing);
   if (missing.length > 0) {
     // Names only: never log a value.
-    console.error('My Apps sign-in is not configured. Missing:', missing.join(', '));
+    console.error('XAppHub sign-in is not configured. Missing:', missing.join(', '));
     return NextResponse.json(
       {
         error: 'configuration_error',
-        message: `My Apps sign-in is not configured. Missing: ${missing.join(', ')}`,
+        message: `XAppHub sign-in is not configured. Missing: ${missing.join(', ')}`,
       },
       { status: 500 }
     );
@@ -104,9 +104,9 @@ export async function GET(
     response.cookies.set(ENGINE_FLOW_COOKIE, encodeFlowState(flow), flowCookieOptions);
     return response;
   } catch (error) {
-    console.error('My Apps sign-in could not start:', error instanceof Error ? error.message : 'unknown error');
+    console.error('XAppHub sign-in could not start:', error instanceof Error ? error.message : 'unknown error');
     return NextResponse.json(
-      { error: 'oauth_error', message: 'My Apps sign-in could not start' },
+      { error: 'oauth_error', message: 'XAppHub sign-in could not start' },
       { status: 500 }
     );
   }

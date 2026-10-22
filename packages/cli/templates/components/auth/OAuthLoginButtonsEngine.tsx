@@ -1,9 +1,9 @@
 /**
- * OAuth Login Buttons Component (Engine project: My Apps sign-in)
+ * OAuth Login Buttons Component (Engine project: XAppHub sign-in)
  *
- * Renders the "Continue with My Apps" button, which starts the flow at
+ * Renders the "Continue with XAppHub" button, which starts the flow at
  * `/api/auth/oauth/my-apps`, and explains a failed sign-in from the
- * `?error=` code the callback route sets. On an Engine project My Apps is the
+ * `?error=` code the callback route sets. On an Engine project XAppHub is the
  * only external sign-in.
  *
  * Usage (same props as the Supabase project's component):
@@ -36,14 +36,14 @@ interface OAuthLoginButtonsProps {
 
 /** The callback's error codes (lib/oauth/engine.ts), in words for the user. */
 const ERROR_MESSAGES: Record<string, string> = {
-  sign_in_cancelled: 'The sign-in with My Apps was cancelled.',
+  sign_in_cancelled: 'The sign-in with XAppHub was cancelled.',
   sign_in_expired: 'The sign-in took too long or was started in another browser. Try again.',
-  sign_in_failed: 'The sign-in with My Apps did not complete. Try again.',
+  sign_in_failed: 'The sign-in with XAppHub did not complete. Try again.',
   sign_in_refused:
-    'This application did not accept your My Apps account. If you already have an account here with the same email, or you administer this project, sign in with your email and password instead.',
+    'This application did not accept your XAppHub account. If you already have an account here with the same email, or you administer this project, sign in with your email and password instead.',
   account_disabled: 'Your account in this application is disabled. Contact an administrator.',
   engine_unavailable: 'The sign-in service is not available right now. Try again in a few minutes.',
-  configuration_error: 'My Apps sign-in is not set up for this application yet. Contact an administrator.',
+  configuration_error: 'XAppHub sign-in is not set up for this application yet. Contact an administrator.',
 };
 
 export function OAuthLoginButtons({
@@ -85,7 +85,7 @@ export function OAuthLoginButtons({
       )}
 
       <Button variant="outline" leftSection={<IconKey size={20} />} onClick={handleLogin} fullWidth>
-        Continue with My Apps
+        Continue with XAppHub
       </Button>
     </Stack>
   );

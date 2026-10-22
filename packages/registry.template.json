@@ -1197,7 +1197,7 @@
     },
     "external-oauth-engine": {
       "name": "external-oauth-engine",
-      "description": "My Apps sign-in for an Engine project (.buildpad/project.json backend \"engine\"): Next.js finishes the OIDC authorization-code flow (PKCE, state, SHA-256 nonce) and signs the user in to the project's Buildpad Engine with signInWithIdToken, sending X-Tenant-Id. No service-role key, admin API, magic link or role write. An account without a role is sent to a pending-access page. `add external-oauth` installs this module on an Engine project.",
+      "description": "XAppHub sign-in for an Engine project (.buildpad/project.json backend \"engine\"): Next.js finishes the OIDC authorization-code flow (PKCE, state, SHA-256 nonce) and signs the user in to the project's Buildpad Engine with signInWithIdToken, sending X-Tenant-Id. No service-role key, admin API, magic link or role write. An account without a role is sent to a pending-access page. `add external-oauth` installs this module on an Engine project.",
       "backend": "engine",
       "replaces": [
         "external-oauth",
