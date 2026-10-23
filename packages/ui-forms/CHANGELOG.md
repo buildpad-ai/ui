@@ -1,5 +1,17 @@
 # @buildpad/ui-forms
 
+## 3.4.1
+
+### Patch Changes
+
+- @buildpad/hooks@3.4.1
+- @buildpad/services@3.4.1
+- @buildpad/types@3.4.1
+- @buildpad/ui-collections@3.4.1
+- @buildpad/ui-form@3.4.1
+- @buildpad/ui-interfaces@3.4.1
+- @buildpad/utils@3.4.1
+
 ## 3.4.0
 
 ### Patch Changes

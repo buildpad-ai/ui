@@ -1,5 +1,11 @@
 # @buildpad/mcp
 
+## 3.4.1
+
+### Patch Changes
+
+- 1b5f286: Depend on `@modelcontextprotocol/sdk` `^1.32.1` (was `^1.31.0`). Releases before 1.32.0 are covered by two high-severity advisories, including GHSA-46jr-4wx8-v453. The server's tools and resources are unchanged.
+
 ## 3.4.0
 
 ## 3.3.0

@@ -1,5 +1,16 @@
 # @buildpad/ui-cron
 
+## 3.4.1
+
+### Patch Changes
+
+- @buildpad/hooks@3.4.1
+- @buildpad/services@3.4.1
+- @buildpad/types@3.4.1
+- @buildpad/ui-interfaces@3.4.1
+- @buildpad/ui-table@3.4.1
+- @buildpad/utils@3.4.1
+
 ## 3.4.0
 
 ### Patch Changes

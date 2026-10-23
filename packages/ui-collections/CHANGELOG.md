@@ -1,5 +1,15 @@
 # @buildpad/ui-collections
 
+## 3.4.1
+
+### Patch Changes
+
+- @buildpad/services@3.4.1
+- @buildpad/types@3.4.1
+- @buildpad/ui-form@3.4.1
+- @buildpad/ui-table@3.4.1
+- @buildpad/utils@3.4.1
+
 ## 3.4.0
 
 ### Minor Changes
