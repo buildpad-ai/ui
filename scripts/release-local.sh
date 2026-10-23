@@ -299,6 +299,8 @@ if ! $EXECUTE; then
   6. changeset publish           ${BLD}irreversible${OFF} — @buildpad/cli + @buildpad/mcp to npm;
                                  asks for a 2FA code only if npm demands one
   7. push release tags           only the ones ${REMOTE} does not already have
+  8. gh release create           a GitHub Release for v<version>, with notes
+                                 collected from every package's CHANGELOG
 
   Re-run with --execute to perform this.
 PLAN
@@ -554,6 +556,105 @@ if [[ -n "$TO_PUSH" ]]; then
   ok "pushed:${TO_PUSH}"
 fi
 ok "${ALREADY} release tag(s) were already on ${REMOTE}"
+
+# ─────────────────────────────────────────────────────────────────────────
+step "8. Publish the GitHub Release"
+# ─────────────────────────────────────────────────────────────────────────
+#
+# A release here is a `v*` tag plus two npm publishes. Nothing created a
+# GitHub *Release* object, so anything that measures "is it released?" by
+# asking the Releases API — dashboards, bots, dependency trackers — reported
+# every shipped version as unreleased, forever.
+#
+# This runs LAST, after the tag and both publishes: the Release records that
+# the release happened, so it must not exist before it has. It is also the
+# only step that cannot break anything — by the time it runs the release is
+# already irreversible — so a failure warns and prints the manual command
+# rather than dying.
+
+if ! command -v gh >/dev/null 2>&1; then
+  warn "gh is not installed — no GitHub Release created (the tag and npm are live)."
+elif ! gh auth status >/dev/null 2>&1; then
+  warn "gh is not authenticated — no GitHub Release created (run: gh auth login)."
+else
+  # The remote may still carry the pre-rename name; ask gh for the canonical
+  # one so the Release lands on the repository people actually look at.
+  REPO_GUESS="$(git remote get-url "$REMOTE" | sed -E 's#(git@|https://)github\.com[:/]##; s#\.git$##')"
+  REPO="$(gh repo view "$REPO_GUESS" --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "$REPO_GUESS")"
+
+  if gh release view "v${NEW}" --repo "$REPO" >/dev/null 2>&1; then
+    ok "GitHub Release v${NEW} already exists on ${REPO}"
+  else
+    # Lockstep means one version across every package, so the notes are each
+    # package's CHANGELOG section for this version in one document. The
+    # changesets entries already ARE the release notes; this only collects them.
+    #
+    # Sections whose only content is the lockstep dependency bump
+    # ("- @buildpad/utils@3.4.1") are dropped. At 3.4.1 that was 13 of the 15
+    # packages, and keeping them buried the two real entries.
+    NOTES_FILE="$(mktemp -t buildpad-release-notes)"
+    node -e '
+      const fs = require("fs"), path = require("path");
+      const v = process.argv[1], out = [];
+      let bumpedOnly = 0;
+      for (const d of fs.readdirSync("packages").sort()) {
+        const cl = path.join("packages", d, "CHANGELOG.md");
+        const pj = path.join("packages", d, "package.json");
+        if (!fs.existsSync(cl) || !fs.existsSync(pj)) continue;
+        const lines = fs.readFileSync(cl, "utf8").split("\n");
+        const i = lines.findIndex((l) => l.trim() === "## " + v);
+        if (i === -1) continue;
+        let j = i + 1;
+        while (j < lines.length && !/^## /.test(lines[j])) j++;
+        const body = lines.slice(i + 1, j).join("\n").trim();
+        if (!body) continue;
+        const meaty = body.split("\n").some((l) => {
+          const t = l.trim();
+          return t && !/^###\s/.test(t) && !/^-\s+@buildpad\/[\w-]+@\d/.test(t);
+        });
+        if (!meaty) { bumpedOnly++; continue; }
+        out.push("## " + JSON.parse(fs.readFileSync(pj, "utf8")).name + "\n\n" + body);
+      }
+      if (bumpedOnly) {
+        out.push("## Lockstep\n\n" + bumpedOnly +
+          " further package(s) ship at " + v + " with no changes of their own.");
+      }
+      let notes = out.length
+        ? out.join("\n\n")
+        : "See each package CHANGELOG.md for " + v + ".";
+      // GitHub rejects a release body over 125,000 characters. The 3.0.0 notes
+      // came to 113,759 — 9% short of it — so a large major WILL cross it.
+      // Truncate on a section boundary and point at the changelogs.
+      const LIMIT = 100000;
+      if (notes.length > LIMIT) {
+        const cut = notes.lastIndexOf("\n\n## ", LIMIT);
+        notes =
+          notes.slice(0, cut > 0 ? cut : LIMIT) +
+          "\n\n## …\n\nThese notes were truncated to fit GitHub's release-body limit. " +
+          "The full entries for " + v + " are in each package's CHANGELOG.md at tag v" + v + ".";
+      }
+      process.stdout.write(notes);
+    ' "$NEW" > "$NOTES_FILE"
+
+    {
+      printf '\n---\n\n'
+      printf 'Install: `npx @buildpad/cli@%s`\n\n' "$NEW"
+      printf 'Consumers upgrade with `npx @buildpad/cli@latest outdated`, then `npx @buildpad/cli@latest upgrade --three-way`.\n'
+    } >> "$NOTES_FILE"
+
+    if gh release create "v${NEW}" \
+         --repo "$REPO" \
+         --title "v${NEW}" \
+         --notes-file "$NOTES_FILE" \
+         --verify-tag >/dev/null 2>&1; then
+      ok "GitHub Release v${NEW} published on ${REPO}"
+      rm -f "$NOTES_FILE"
+    else
+      warn "could not create the GitHub Release — cosmetic; the tag and npm are already live."
+      warn "  retry: gh release create v${NEW} --repo ${REPO} --verify-tag --title v${NEW} --notes-file ${NOTES_FILE}"
+    fi
+  fi
+fi
 
 # ─────────────────────────────────────────────────────────────────────────
 step "Done — verifying what landed"
