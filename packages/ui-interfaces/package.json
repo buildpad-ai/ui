@@ -123,7 +123,7 @@
     "@tiptap/starter-kit": "^3.31.4",
     "axios": "^1.20.0",
     "dayjs": "^1.11.19",
-    "dompurify": "^3.4.16",
+    "dompurify": "^3.4.17",
     "highlight.js": "^11.11.1",
     "lowlight": "^3.3.0",
     "maplibre-gl": "^5.17.0",
