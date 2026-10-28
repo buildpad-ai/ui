@@ -4,6 +4,12 @@ import { useState, type ReactNode } from 'react';
 import { SchemeContext, type Scheme } from './SchemeContext';
 import styles from './styleguide.module.css';
 
+// The docs chrome doesn't load the brand fonts, so the showcase pulls in the
+// same Google Fonts set the app's globals.css imports. React 19 hoists and
+// dedupes a <link rel="stylesheet"> that carries `precedence`.
+const BRAND_FONTS_HREF =
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap';
+
 /**
  * Wraps the demo sections and scopes the design-token color scheme to its
  * own subtree: design-tokens.css redefines the --ds-* variables under a
@@ -16,6 +22,7 @@ export function Showcase({ children }: { children: ReactNode }) {
 
   return (
     <SchemeContext.Provider value={scheme}>
+      <link rel="stylesheet" href={BRAND_FONTS_HREF} precedence="default" />
       <div className={styles.showcase} data-mantine-color-scheme={scheme}>
         <div className={styles.toggleBar}>
           <div className={styles.toggle} role="group" aria-label="Color scheme">

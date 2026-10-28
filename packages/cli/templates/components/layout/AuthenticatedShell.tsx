@@ -321,7 +321,15 @@ export function AuthenticatedShell({
           <div className="bp-brand-container">
             <div className="bp-brand-icon">{brand.initial}</div>
             <Stack gap={0}>
-              <Text fw={700} size="sm" style={{ lineHeight: 1.2 }}>
+              <Text
+                fw={600}
+                size="sm"
+                style={{
+                  lineHeight: 1.2,
+                  fontFamily: "var(--ds-font-display)",
+                  letterSpacing: "var(--ds-letter-spacing-tight, -0.02em)",
+                }}
+              >
                 {brand.name}
               </Text>
               <Text size="xs" c="dimmed" style={{ lineHeight: 1 }}>

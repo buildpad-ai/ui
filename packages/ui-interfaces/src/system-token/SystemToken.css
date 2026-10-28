@@ -1,6 +1,6 @@
 /* Match DaaS: placeholder text in primary color when a token is securely saved */
 .system-token-saved::placeholder {
-  color: var(--mantine-primary-color-6, var(--ds-primary, #ea580c)) !important;
+  color: var(--mantine-primary-color-6, var(--ds-primary, #e86a00)) !important;
   opacity: 1;
 }
 

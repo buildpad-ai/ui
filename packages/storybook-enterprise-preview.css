@@ -1,9 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 /* ═══════════════════════════════════════════════════════════
    Buildpad Storybook Preview — shared across all packages
-   "Soft Futurism" palette — navy + amber, Space Grotesk display,
-   pill controls, large-radius cards.
+   "BuildPad brand — Ink & Ember" — ink primary, ember orange
+   accent, Inter / Inter Tight type, pill controls, hairline
+   16px cards with a soft long shadow.
    Import in each .storybook/preview.css.
    ═══════════════════════════════════════════════════════════ */
 
@@ -17,50 +18,89 @@
   padding: 1.5rem 2rem;
   margin: 0 auto;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  color: #0f172a;
+  color: #0a0a0b;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Raise muted text to WCAG AA on white and on the lightest striped
-     row (#f8fafc = gray[0]). Reuses the gray[6] stop (slate-600)
+  /* Keep muted text at WCAG AA on white and on the lightest striped
+     row (#fafbfc = gray[0]). Reuses the gray[6] stop (#54555d)
      already defined in storybook-enterprise-theme.ts. */
   --mantine-color-dimmed: var(--mantine-color-gray-6);
 
-  /* Mantine derives default-border from gray-4 (slate-400 here) — repoint
-     to the card border convention (--ds-card-border). */
-  --mantine-color-default-border: #e8ebf1;
+  /* Mantine derives default-border from gray-4 — repoint to the card
+     border convention (--ds-card-border). */
+  --mantine-color-default-border: #e8e9ec;
 
   /* Dedicated table/collection-list border token — mirrors --ds-card-border
      so VTable/CollectionList match Card's border exactly. */
-  --ds-table-border: #e8ebf1;
+  --ds-table-border: #e8e9ec;
 
-  /* Mantine resolves `variant="light"` text to `--mantine-color-{name}-light-color`,
-     which by default points at a light stop of each custom palette. Tailwind's
-     600 stops on the matching 50/100 tint backgrounds sit around 3.5:1 — below
-     WCAG AA for small text. Promote these to stop [7] (the 700s) so Alert titles,
-     Button labels, and Badge text on tinted bg pass contrast. Filled variants and
-     brand backgrounds are unaffected. */
-  --mantine-color-primary-light-color: #16213c; /* primary[7] */
-  --mantine-color-warning-light-color: #b45309; /* warning[7] */
-  --mantine-color-success-light-color: #15803d; /* success[7] */
-  --mantine-color-info-light-color: #0369a1;    /* info[7] */
-  --mantine-color-danger-light-color: #b91c1c;  /* danger[7] */
-  --mantine-color-accent-light-color: #c26e07;  /* accent[7] */
-  --mantine-color-secondary-light-color: #c26e07; /* secondary[7] */
+  /* Mantine resolves `variant="light"` text to `--mantine-color-{name}-light-color`
+     and `variant="outline"` text + border to `--mantine-color-{name}-outline`, both
+     at the primaryShade stop [6]. Those fill stops (ember #e86a00 ~3.2:1) sit below
+     WCAG AA for small text on white and on their own tint, so promote them to the
+     AA text stop — [7], or [8] for amber. Filled variants and brand backgrounds are
+     unaffected. Built-in hue aliases (red/green/yellow/blue/orange) share the
+     semantic scales, so they get the same stops. */
+  --mantine-color-primary-light-color: #b34d00; /* primary[7] */
+  --mantine-color-primary-outline: #b34d00;
+  --mantine-color-secondary-light-color: #18191d; /* secondary[7] */
+  --mantine-color-secondary-outline: #18191d;
+  --mantine-color-accent-light-color: #b34d00; /* accent[7] = primary[7] */
+  --mantine-color-accent-outline: #b34d00;
+  --mantine-color-warning-light-color: #92400e; /* warning[8] — amber-700 is ~4.4:1 on its tint */
+  --mantine-color-warning-outline: #92400e;
+  --mantine-color-success-light-color: #047857; /* success[7] */
+  --mantine-color-success-outline: #047857;
+  --mantine-color-info-light-color: #1d4ed8; /* info[7] */
+  --mantine-color-info-outline: #1d4ed8;
+  --mantine-color-danger-light-color: #b42318; /* danger[7] */
+  --mantine-color-danger-outline: #b42318;
+  --mantine-color-gray-light-color: #3a3b42; /* gray[7] */
+  --mantine-color-gray-outline: #3a3b42;
+  --mantine-color-red-light-color: #b42318; /* red = danger */
+  --mantine-color-red-outline: #b42318;
+  --mantine-color-green-light-color: #047857; /* green = success */
+  --mantine-color-green-outline: #047857;
+  --mantine-color-yellow-light-color: #92400e; /* yellow = warning */
+  --mantine-color-yellow-outline: #92400e;
+  --mantine-color-blue-light-color: #1d4ed8; /* blue = info */
+  --mantine-color-blue-outline: #1d4ed8;
+  --mantine-color-orange-light-color: #b34d00; /* orange = primary */
+  --mantine-color-orange-outline: #b34d00;
+}
+
+/* ── Headings ─────────────────────────────────────────────── */
+.sb-enterprise-wrapper .mantine-Title-root {
+  font-family: "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.sb-enterprise-wrapper h1.mantine-Title-root {
+  letter-spacing: -0.03em;
 }
 
 /* ── Focus Ring ───────────────────────────────────────────── */
+/* A solid ember outline: the soft 22% ring alone is ~1.2:1 on white and would
+   leave buttons, tabs and checkboxes without a visible keyboard focus. */
 .sb-enterprise-wrapper :focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(27, 42, 74, 0.25);
-  border-radius: 0.25rem;
+  outline: 2px solid #e86a00;
+  outline-offset: 2px;
 }
 
 /* ── Input Focus ──────────────────────────────────────────── */
-.sb-enterprise-wrapper .mantine-Input-input:focus,
-.sb-enterprise-wrapper .mantine-Input-input:focus-within {
-  border-color: #1b2a4a;
-  box-shadow: 0 0 0 3px rgba(27, 42, 74, 0.25);
+/* Override Mantine's --input-bd / --input-bd-focus variables rather than
+   border-color, so errored fields keep their red border (Mantine drives that
+   through --input-bd too). Mirrors the CLI globals.css form-field rules. */
+.sb-enterprise-wrapper .mantine-Input-wrapper[data-variant="default"]:not([data-error]) {
+  --input-bd: #d7d9df;
+  --input-bd-focus: #e86a00;
+}
+
+.sb-enterprise-wrapper .mantine-Input-wrapper:not([data-error]) .mantine-Input-input:focus,
+.sb-enterprise-wrapper .mantine-Input-wrapper:not([data-error]) .mantine-Input-input:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(253 127 21 / 0.22);
 }
 
 /* ── Tabs ─────────────────────────────────────────────────── */
@@ -69,14 +109,14 @@
 }
 
 .sb-enterprise-wrapper .mantine-Tabs-tab:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: #f4f4f6;
+  color: #0a0a0b;
 }
 
 .sb-enterprise-wrapper .mantine-Tabs-tab[data-active],
 .sb-enterprise-wrapper .mantine-Tabs-tab[data-active]:hover {
-  color: #1b2a4a;
-  border-bottom-color: #1b2a4a;
+  color: #0a0a0b;
+  border-bottom-color: #e86a00;
   font-weight: 600;
 }
 
@@ -86,22 +126,22 @@
 }
 
 .sb-enterprise-wrapper .mantine-ActionIcon-root:hover {
-  background-color: #f1f5f9;
+  background-color: #f4f4f6;
 }
 
 /* ── Cards ────────────────────────────────────────────────── */
 .sb-enterprise-wrapper .mantine-Card-root {
-  border: 1px solid #e8ebf1;
-  box-shadow: 0 2px 10px rgba(15, 27, 51, 0.04);
+  border: 1px solid #e8e9ec;
+  box-shadow: 0 1px 1px 0 rgb(10 10 11 / 0.03), 0 18px 40px -30px rgb(10 10 11 / 0.28);
 }
 
 /* ── Notification Accents ─────────────────────────────────── */
 .sb-enterprise-wrapper .mantine-Notification-root[data-variant="success"] {
-  border-left-color: #16a34a;
+  border-left-color: #059669;
 }
 
 .sb-enterprise-wrapper .mantine-Notification-root[data-variant="error"] {
-  border-left-color: #dc2626;
+  border-left-color: #d92d20;
 }
 
 .sb-enterprise-wrapper .mantine-Notification-root[data-variant="warning"] {
@@ -109,5 +149,5 @@
 }
 
 .sb-enterprise-wrapper .mantine-Notification-root[data-variant="info"] {
-  border-left-color: #0284c7;
+  border-left-color: #2563eb;
 }

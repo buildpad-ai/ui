@@ -2,6 +2,7 @@ export { Showcase } from './Showcase';
 export { ColorScale, SemanticTokens } from './ColorScale';
 export {
   TypeScale,
+  FontFamilies,
   SpacingScale,
   RadiusScale,
   ShadowScale,

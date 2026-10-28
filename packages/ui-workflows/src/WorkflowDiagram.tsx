@@ -149,7 +149,7 @@ function WorkflowStateNode({ data, selected, isConnectable }: NodeProps<StateNod
 
   let borderColor: string;
   if (selected) {
-    borderColor = 'var(--mantine-color-blue-6)';
+    borderColor = 'var(--mantine-primary-color-filled)';
   } else if (isInitial) {
     borderColor = 'var(--mantine-color-green-6)';
   } else if (state.isEndState) {
@@ -621,7 +621,6 @@ export const WorkflowDiagram: React.FC<WorkflowDiagramProps> = ({
       {!readOnly && workflowJson.states.length > 0 && (
         <ActionIcon
           variant="filled"
-          color="blue"
           size="lg"
           radius="xl"
           aria-label={t.diagram.addStateAriaLabel}
@@ -652,7 +651,6 @@ export const WorkflowDiagram: React.FC<WorkflowDiagramProps> = ({
             <>
               <ActionIcon
                 variant="filled"
-                color="blue"
                 size="xl"
                 radius="xl"
                 aria-label={t.diagram.addStateAriaLabel}

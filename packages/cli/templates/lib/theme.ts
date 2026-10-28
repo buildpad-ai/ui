@@ -1,116 +1,118 @@
 "use client";
 
-import { createTheme } from "@mantine/core";
+import { Button, createTheme, type MantineColorsTuple } from "@mantine/core";
 
 /*
- * Palette arrays map Mantine indices 0–9 to the Tailwind 50–900 stops of
- * each hue (the 950 stop is intentionally dropped). primaryShade is a
- * single number (6) because design-tokens.css mirrors the --ds-* variables
- * themselves in dark mode — index 6 resolves to the 400 stop there, so a
- * per-scheme shade would double-invert. Keep primaryShade and that
- * mirroring in sync.
+ * BuildPad brand — "Ink & Ember". Ink is the primary action colour (the
+ * default Button), ember orange is the brand accent (primaryColor, so it
+ * drives checkboxes, switches, focus, progress and other interactive state).
+ *
+ * Palette arrays map Mantine indices 0–9 to the 50–900 stops of each hue
+ * (the 950 stop is intentionally dropped). primaryShade is a single number
+ * (6) because design-tokens.css mirrors the --ds-* variables themselves in
+ * dark mode — index 6 resolves to the 400 stop there, so a per-scheme shade
+ * would double-invert. Keep primaryShade and that mirroring in sync.
  */
+const STOPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
+
+/*
+ * Builds a palette of var(--ds-<name>-<stop>, <fallback>) entries. Index 6
+ * points at the unsuffixed main token (e.g. --ds-primary) so it follows the
+ * token's dark-mode remap; gray has no unsuffixed main and uses its 600 stop.
+ */
+function dsScale(
+  name: string,
+  fallbacks: MantineColorsTuple,
+  main = `--ds-${name}`
+): MantineColorsTuple {
+  return fallbacks.map(
+    (hex, i) => `var(${i === 6 ? main : `--ds-${name}-${STOPS[i]}`}, ${hex})`
+  ) as unknown as MantineColorsTuple;
+}
+
+const primary = dsScale("primary", [
+  "#fff8f2", "#ffeee1", "#ffd9b8", "#feaa6b", "#fd9843",
+  "#fd7f15", "#e86a00", "#b34d00", "#8f3d00", "#6b2e00"
+]);
+const secondary = dsScale("secondary", [
+  "#f4f4f6", "#e8e9ec", "#d7d9df", "#b9bac2", "#8a8b94",
+  "#54555d", "#2a2b31", "#18191d", "#131418", "#0a0a0b"
+]);
+const success = dsScale("success", [
+  "#ecfdf5", "#d1fae5", "#a7f3d0", "#6ee7b7", "#34d399",
+  "#10b981", "#059669", "#047857", "#065f46", "#064e3b"
+]);
+const info = dsScale("info", [
+  "#eff6ff", "#dbeafe", "#bfdbfe", "#93c5fd", "#60a5fa",
+  "#3b82f6", "#2563eb", "#1d4ed8", "#1e40af", "#1e3a8a"
+]);
+const warning = dsScale("warning", [
+  "#fffbeb", "#fef3c7", "#fde68a", "#fcd34d", "#fbbf24",
+  "#f59e0b", "#d97706", "#b45309", "#92400e", "#78350f"
+]);
+const danger = dsScale("danger", [
+  "#fef3f2", "#fee4e2", "#fecdca", "#fda29b", "#f97066",
+  "#f04438", "#d92d20", "#b42318", "#912018", "#7a271a"
+]);
+const gray = dsScale(
+  "gray",
+  [
+    "#fafbfc", "#f4f4f6", "#e8e9ec", "#d7d9df", "#9b9ca6",
+    "#6b6c75", "#54555d", "#3a3b42", "#2a2b31", "#131418"
+  ],
+  "--ds-gray-600"
+);
+
+/*
+ * Mantine's built-in `dark` palette only applies in the dark scheme (body,
+ * input and border surfaces). Static hex because it is never mirrored;
+ * these are the brand's ink surfaces, lightest first.
+ */
+const dark: MantineColorsTuple = [
+  "#e8e9ec", "#d7d9df", "#9b9ca6", "#6b6c75", "#34353c",
+  "#2a2b31", "#1c1d22", "#131418", "#0f1013", "#0a0a0b"
+];
+
+// Shared by every field label so TextInput / NumberInput / Select match.
+const fieldLabel = {
+  fontSize: "var(--mantine-font-size-sm)",
+  fontWeight: "var(--ds-font-weight-medium, 500)",
+  color: "var(--ds-gray-700, #3a3b42)",
+  marginBottom: "4px"
+};
+
+// Popover, Menu and Combobox dropdowns share one floating-surface look.
+const dropdownSurface = {
+  dropdown: {
+    borderRadius: "var(--ds-radius-lg, 0.75rem)",
+    boxShadow: "var(--ds-shadow-lg)",
+    border: "1px solid var(--ds-border-color, #e8e9ec)"
+  }
+};
+
+const transitionFast = "var(--ds-transition-fast, 150ms ease)";
+
 export const theme = createTheme({
   colors: {
-    primary: [
-      "var(--ds-primary-50, #fff7ed)",
-      "var(--ds-primary-100, #ffedd5)",
-      "var(--ds-primary-200, #fed7aa)",
-      "var(--ds-primary-300, #fdba74)",
-      "var(--ds-primary-400, #fb923c)",
-      "var(--ds-primary-500, #f97316)",
-      "var(--ds-primary, #ea580c)",
-      "var(--ds-primary-700, #c2410c)",
-      "var(--ds-primary-800, #9a3412)",
-      "var(--ds-primary-900, #7c2d12)"
-    ],
+    primary,
     // "secondary" matches the --ds-secondary-* token naming used throughout
-    // design-tokens.css and app code; "accent" is kept as an alias since a
-    // few scaffolded (currently unused) components still reference it.
-    secondary: [
-      "var(--ds-secondary-50, #fff8eb)",
-      "var(--ds-secondary-100, #ffebc2)",
-      "var(--ds-secondary-200, #ffd98a)",
-      "var(--ds-secondary-300, #ffc152)",
-      "var(--ds-secondary-400, #f5a623)",
-      "var(--ds-secondary-500, #ec940f)",
-      "var(--ds-secondary, #e8890c)",
-      "var(--ds-secondary-700, #c26e07)",
-      "var(--ds-secondary-800, #995607)",
-      "var(--ds-secondary-900, #7a4407)"
-    ],
-    accent: [
-      "var(--ds-secondary-50, #fff8eb)",
-      "var(--ds-secondary-100, #ffebc2)",
-      "var(--ds-secondary-200, #ffd98a)",
-      "var(--ds-secondary-300, #ffc152)",
-      "var(--ds-secondary-400, #f5a623)",
-      "var(--ds-secondary-500, #ec940f)",
-      "var(--ds-secondary, #e8890c)",
-      "var(--ds-secondary-700, #c26e07)",
-      "var(--ds-secondary-800, #995607)",
-      "var(--ds-secondary-900, #7a4407)"
-    ],
-    success: [
-      "var(--ds-success-50, #f0fdf4)",
-      "var(--ds-success-100, #dcfce7)",
-      "var(--ds-success-200, #bbf7d0)",
-      "var(--ds-success-300, #86efac)",
-      "var(--ds-success-400, #4ade80)",
-      "var(--ds-success-500, #22c55e)",
-      "var(--ds-success, #16a34a)",
-      "var(--ds-success-700, #15803d)",
-      "var(--ds-success-800, #166534)",
-      "var(--ds-success-900, #14532d)"
-    ],
-    info: [
-      "var(--ds-info-50, #f0f9ff)",
-      "var(--ds-info-100, #e0f2fe)",
-      "var(--ds-info-200, #bae6fd)",
-      "var(--ds-info-300, #7dd3fc)",
-      "var(--ds-info-400, #38bdf8)",
-      "var(--ds-info-500, #0ea5e9)",
-      "var(--ds-info, #0284c7)",
-      "var(--ds-info-700, #0369a1)",
-      "var(--ds-info-800, #075985)",
-      "var(--ds-info-900, #0c4a6e)"
-    ],
-    warning: [
-      "var(--ds-warning-50, #fffbeb)",
-      "var(--ds-warning-100, #fef3c7)",
-      "var(--ds-warning-200, #fde68a)",
-      "var(--ds-warning-300, #fcd34d)",
-      "var(--ds-warning-400, #fbbf24)",
-      "var(--ds-warning-500, #f59e0b)",
-      "var(--ds-warning, #d97706)",
-      "var(--ds-warning-700, #b45309)",
-      "var(--ds-warning-800, #92400e)",
-      "var(--ds-warning-900, #78350f)"
-    ],
-    danger: [
-      "var(--ds-danger-50, #fef2f2)",
-      "var(--ds-danger-100, #fee2e2)",
-      "var(--ds-danger-200, #fecaca)",
-      "var(--ds-danger-300, #fca5a5)",
-      "var(--ds-danger-400, #f87171)",
-      "var(--ds-danger-500, #ef4444)",
-      "var(--ds-danger, #dc2626)",
-      "var(--ds-danger-700, #b91c1c)",
-      "var(--ds-danger-800, #991b1b)",
-      "var(--ds-danger-900, #7f1d1d)"
-    ],
-    gray: [
-      "var(--ds-gray-50, #f8fafc)",
-      "var(--ds-gray-100, #f1f5f9)",
-      "var(--ds-gray-200, #e2e8f0)",
-      "var(--ds-gray-300, #cbd5e1)",
-      "var(--ds-gray-400, #94a3b8)",
-      "var(--ds-gray-500, #64748b)",
-      "var(--ds-gray-600, #475569)",
-      "var(--ds-gray-700, #334155)",
-      "var(--ds-gray-800, #1e293b)",
-      "var(--ds-gray-900, #0f172a)"
-    ]
+    // design-tokens.css and app code.
+    secondary,
+    success,
+    info,
+    warning,
+    danger,
+    gray,
+    dark,
+    // Built-in hue aliases: consumer code that says color="red" (or the
+    // scaffolded components that still say "accent") gets the matching brand
+    // scale. accent is the brand accent, i.e. primary.
+    red: danger,
+    green: success,
+    yellow: warning,
+    blue: info,
+    orange: primary,
+    accent: primary
   },
   primaryColor: "primary",
   primaryShade: 6,
@@ -119,7 +121,7 @@ export const theme = createTheme({
     "var(--ds-font-mono, 'JetBrains Mono', SFMono-Regular, Consolas, monospace)",
   headings: {
     fontWeight: "var(--ds-font-weight-semibold, 600)",
-    fontFamily: "var(--ds-font-display, var(--ds-font-family))",
+    fontFamily: "var(--ds-font-display, 'Inter Tight', var(--ds-font-family))",
     sizes: {
       h1: { lineHeight: "1.2" },
       h2: { lineHeight: "1.25" },
@@ -142,52 +144,69 @@ export const theme = createTheme({
     xl: "var(--ds-spacing-8)"
   },
   radius: {
-    xs: "var(--ds-radius-sm, 0.25rem)",
-    sm: "var(--ds-radius, 0.375rem)",
-    md: "var(--ds-radius-md, 0.5rem)",
+    xs: "var(--ds-radius-sm, 0.375rem)",
+    sm: "var(--ds-radius, 0.5rem)",
+    md: "var(--ds-radius-md, 0.625rem)",
     lg: "var(--ds-radius-lg, 0.75rem)",
     xl: "var(--ds-radius-xl, 1rem)"
   },
   shadows: {
-    xs: "var(--ds-shadow-sm)",
-    sm: "var(--ds-shadow)",
+    xs: "var(--ds-shadow-xs)",
+    sm: "var(--ds-shadow-sm)",
     md: "var(--ds-shadow-md)",
     lg: "var(--ds-shadow-lg)",
     xl: "var(--ds-shadow-xl)"
   },
   defaultRadius: "sm",
   components: {
-    Button: {
+    Button: Button.extend({
       defaultProps: {
-        radius: "xl",
+        radius: "var(--ds-radius-pill)",
+      },
+      // The default button (no color prop, filled variant) is the ink CTA.
+      // An explicit color — e.g. color="primary" for the ember brand CTA —
+      // and every other variant keep Mantine's own colour resolution.
+      vars: (_theme, props) => {
+        const isFilled = props.variant === undefined || props.variant === "filled";
+        if (props.color !== undefined || !isFilled) {
+          return { root: {} };
+        }
+        return {
+          root: {
+            "--button-bg": "var(--ds-cta-bg)",
+            "--button-hover": "var(--ds-cta-bg-hover)",
+            "--button-color": "var(--ds-cta-color)",
+            "--button-bd": "1px solid transparent"
+          }
+        };
       },
       styles: {
         root: {
-          fontWeight: "var(--ds-font-weight-semibold, 600)",
-          borderRadius: "var(--ds-radius-xl, 1rem)",
+          fontWeight: "var(--ds-font-weight-medium, 500)",
           fontSize: "var(--mantine-font-size-md)",
-          transition: "background-color var(--ds-transition-fast, 150ms ease), border-color var(--ds-transition-fast, 150ms ease)"
+          transition: `background-color ${transitionFast}, border-color ${transitionFast}`
         }
       }
-    },
+    }),
     Input: {
+      // Border colour and focus treatment live in globals.css as --input-bd
+      // overrides; an inline borderColor here would also mask the error and
+      // focus borders.
       styles: {
         input: {
-          borderRadius: "var(--ds-radius, 0.375rem)",
-          borderColor: "var(--ds-gray-300, #cbd5e1)",
           fontSize: "var(--mantine-font-size-md)",
-          transition: "border-color var(--ds-transition-fast, 150ms ease), box-shadow var(--ds-transition-fast, 150ms ease)"
+          transition: `border-color ${transitionFast}, box-shadow ${transitionFast}`
         }
       }
     },
     Card: {
       defaultProps: {
-        radius: "md",
+        radius: "xl",
       },
       styles: {
         root: {
-          borderColor: "var(--ds-card-border, #e8ebf1)",
-          borderRadius: "var(--ds-radius-md, 0.5rem)",
+          borderColor: "var(--ds-card-border, #e8e9ec)",
+          borderRadius: "var(--ds-radius-card, 16px)",
           background: "var(--ds-card-bg, #ffffff)",
         }
       }
@@ -195,46 +214,51 @@ export const theme = createTheme({
     Paper: {
       styles: {
         root: {
-          borderRadius: "var(--ds-radius-md, 0.5rem)"
+          borderRadius: "var(--ds-radius-md, 0.625rem)"
         }
       }
     },
     Modal: {
       styles: {
         header: {
-          borderBottom: "1px solid var(--ds-border-color, #e2e8f0)",
+          borderBottom: "1px solid var(--ds-divider, #eeeff2)",
           padding: "var(--ds-spacing-4) var(--ds-spacing-6)",
           marginBottom: 0
         },
         title: {
+          fontFamily: "var(--ds-font-display)",
           fontWeight: "var(--ds-font-weight-semibold, 600)",
-          fontSize: "var(--ds-font-size-base)"
+          fontSize: "var(--ds-font-size-base)",
+          letterSpacing: "var(--ds-letter-spacing-tight, -0.02em)"
         },
         body: {
           padding: "var(--ds-spacing-6)"
         },
         content: {
-          borderRadius: "var(--ds-radius-lg, 0.75rem)",
+          borderRadius: "var(--ds-radius-xl, 1rem)",
           boxShadow: "var(--ds-shadow-xl)"
         },
         close: {
-          color: "var(--ds-gray-400, #94a3b8)"
+          color: "var(--ds-gray-500, #6b6c75)"
         }
       }
     },
     Popover: {
-      styles: {
-        dropdown: {
-          borderRadius: "var(--ds-radius-md, 0.5rem)",
-          boxShadow: "var(--ds-shadow-md)",
-          border: "1px solid var(--ds-border-color, #e2e8f0)"
-        }
-      }
+      styles: dropdownSurface
+    },
+    Menu: {
+      styles: dropdownSurface
+    },
+    Combobox: {
+      styles: dropdownSurface
     },
     Badge: {
+      defaultProps: {
+        variant: "light",
+        radius: "var(--ds-radius-pill)",
+      },
       styles: {
         root: {
-          borderRadius: "var(--ds-radius-xl, 1rem)",
           fontSize: "var(--ds-font-size-xs)",
           fontWeight: "var(--ds-font-weight-medium, 500)",
           textTransform: "none" as const
@@ -243,12 +267,7 @@ export const theme = createTheme({
     },
     TextInput: {
       styles: {
-        label: {
-          fontSize: "var(--mantine-font-size-sm)",
-          fontWeight: "var(--ds-font-weight-medium, 500)",
-          color: "var(--ds-gray-700, #334155)",
-          marginBottom: "4px"
-        },
+        label: fieldLabel,
         input: {
           fontFamily: "var(--mantine-font-family)"
         }
@@ -256,22 +275,12 @@ export const theme = createTheme({
     },
     NumberInput: {
       styles: {
-        label: {
-          fontSize: "var(--mantine-font-size-sm)",
-          fontWeight: "var(--ds-font-weight-medium, 500)",
-          color: "var(--ds-gray-700, #334155)",
-          marginBottom: "4px"
-        }
+        label: fieldLabel
       }
     },
     Select: {
       styles: {
-        label: {
-          fontSize: "var(--mantine-font-size-sm)",
-          fontWeight: "var(--ds-font-weight-medium, 500)",
-          color: "var(--ds-gray-700, #334155)",
-          marginBottom: "4px"
-        }
+        label: fieldLabel
       }
     },
     Table: {
@@ -281,23 +290,26 @@ export const theme = createTheme({
           fontSize: "var(--mantine-font-size-md)"
         },
         th: {
-          fontWeight: "var(--ds-font-weight-medium, 500)",
+          fontWeight: "var(--ds-font-weight-semibold, 600)",
           fontSize: "var(--ds-font-size-xs)",
-          color: "var(--ds-gray-500, #64748b)"
+          color: "var(--ds-gray-500, #6b6c75)"
         }
       }
     },
     Tabs: {
+      // Active tab (ink text + ember underline) is styled in globals.css.
       styles: {
         tab: {
           fontWeight: "var(--ds-font-weight-medium, 500)",
           fontSize: "var(--mantine-font-size-md)",
-          borderRadius: "var(--ds-radius, 0.375rem)",
-          transition: "background var(--ds-transition-fast, 150ms ease), color var(--ds-transition-fast, 150ms ease)"
+          borderRadius: "var(--ds-radius, 0.5rem)",
+          transition: `background ${transitionFast}, color ${transitionFast}`
         }
       }
     },
     Tooltip: {
+      // Colours come from --tooltip-bg / --tooltip-color in globals.css so
+      // the light (ink) and dark (inverted) schemes can differ.
       defaultProps: {
         withArrow: true,
         arrowSize: 6,
@@ -305,8 +317,15 @@ export const theme = createTheme({
       styles: {
         tooltip: {
           fontSize: "var(--ds-font-size-xs)",
-          borderRadius: "var(--ds-radius, 0.375rem)"
+          borderRadius: "var(--ds-radius, 0.5rem)"
         }
+      }
+    },
+    Anchor: {
+      // Colour comes from --mantine-color-anchor (→ --ds-accent-text) in
+      // globals.css.
+      defaultProps: {
+        underline: "hover"
       }
     },
     Group: {

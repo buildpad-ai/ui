@@ -139,6 +139,7 @@ export const CollectionListToolbar: React.FC<CollectionListToolbarProps> = ({
                   size="xs"
                   circle
                   color="red"
+                  variant="filled"
                   className="collection-list-filter-badge"
                   data-testid="collection-list-filter-count"
                 >

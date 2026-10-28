@@ -92,15 +92,28 @@ export function Specimens() {
           </thead>
           <tbody>
             <tr>
-              <td>Primary Filled</td>
+              <td>Default (ink CTA)</td>
               <td>
                 <button type="button" className={styles.specButton}>
-                  Primary Action
+                  Create project
                 </button>
               </td>
               <td>
                 <button type="button" className={styles.specButton} disabled>
-                  Disabled Primary
+                  Disabled
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td>Brand (color=&quot;primary&quot;)</td>
+              <td>
+                <button type="button" className={styles.specButton} data-variant="brand">
+                  Start building
+                </button>
+              </td>
+              <td>
+                <button type="button" className={styles.specButton} data-variant="brand" disabled>
+                  Disabled Brand
                 </button>
               </td>
             </tr>
@@ -120,7 +133,9 @@ export function Specimens() {
           </tbody>
         </table>
         <span className={styles.tileNote}>
-          Uses <code>--ds-primary</code> and <code>--ds-gray-300</code> borders. Disabled elements respect <code>--ds-disabled-opacity: 0.5</code>.
+          Buttons are pills. A Button with no <code>color</code> renders the ink CTA (<code>--ds-cta-bg</code> / <code>--ds-cta-color</code>);
+          {' '}<code>color=&quot;primary&quot;</code> opts into the orange brand CTA. Outline uses <code>--ds-gray-300</code> borders.
+          Disabled elements respect <code>--ds-disabled-opacity: 0.5</code>.
         </span>
       </div>
 
@@ -129,7 +144,7 @@ export function Specimens() {
         <div className={styles.sectionTitle}>Status Badges & Chips</div>
         <div className={styles.badgeRow}>
           <span className={`${styles.badge} ${styles.badgePrimary}`}>Primary</span>
-          <span className={`${styles.badge} ${styles.badgeSecondary}`}>Secondary</span>
+          <span className={`${styles.badge} ${styles.badgeSecondary}`}>Ink</span>
           <span className={`${styles.badge} ${styles.badgeSuccess}`}>Success</span>
           <span className={`${styles.badge} ${styles.badgeInfo}`}>Info</span>
           <span className={`${styles.badge} ${styles.badgeWarning}`}>Warning</span>
@@ -137,7 +152,7 @@ export function Specimens() {
           <span className={`${styles.badge} ${styles.badgeGray}`}>Gray</span>
         </div>
         <span className={styles.tileNote}>
-          Badges pair stop 50 (background) and stop 700 (text) for optimal light/dark contrast and readability.
+          Badges default to the light variant: pill-shaped, stop 50 background with stop 700 text so small labels pass WCAG AA in both schemes.
         </span>
       </div>
 
@@ -224,7 +239,7 @@ export function Specimens() {
           </button>
         </div>
         <span className={styles.tileNote}>
-          Interactive state updates: Currently showing {activeTab === 'overview' ? 'Overview' : 'Deployments'} segment.
+          Active tab: ink text with a <code>--ds-primary-500</code> underline. Currently showing {activeTab === 'overview' ? 'Overview' : 'Deployments'}.
         </span>
       </div>
 
@@ -259,7 +274,7 @@ export function Specimens() {
           </div>
         </div>
         <span className={styles.tileNote}>
-          Stat cards leverage <code>--ds-shadow-sm</code>, transitioning smoothly to <code>--ds-shadow-md</code> and scaling slightly upwards on hover.
+          Cards use a hairline <code>--ds-card-border</code>, <code>--ds-radius-card</code> and the soft, long <code>--ds-card-shadow</code>; on hover they lift to <code>--ds-shadow-md</code> with a soft-orange border.
         </span>
       </div>
 
@@ -269,12 +284,12 @@ export function Specimens() {
         <div className={styles.transitionGrid}>
           <div className={`${styles.transitionBox} ${styles.transitionBoxFast}`}>
             <strong>Fast Transition</strong>
-            <span>150ms ease</span>
+            <span>150ms · cubic-bezier(0.2, 0, 0, 1)</span>
             <code>--ds-transition-fast</code>
           </div>
           <div className={`${styles.transitionBox} ${styles.transitionBoxNormal}`}>
             <strong>Normal Transition</strong>
-            <span>200ms ease</span>
+            <span>200ms · cubic-bezier(0.2, 0, 0, 1)</span>
             <code>--ds-transition-normal</code>
           </div>
         </div>

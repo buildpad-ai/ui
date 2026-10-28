@@ -32,6 +32,7 @@ export function ColorSchemeToggle() {
       <ActionIcon
         variant="subtle"
         size="lg"
+        color="gray"
         onClick={() =>
           setColorScheme(computedColorScheme === "light" ? "dark" : "light")
         }

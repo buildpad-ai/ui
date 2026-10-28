@@ -279,7 +279,7 @@ export function FilterRuleNode({
                 onClick={() => { handleFieldChange(f.field); }}
                 closeMenuOnClick
                 style={{
-                  backgroundColor: f.field === node.field ? 'var(--mantine-color-blue-0)' : undefined,
+                  backgroundColor: f.field === node.field ? 'var(--mantine-primary-color-0)' : undefined,
                 }}
               >
                 {formatFieldName(f.field)}
@@ -319,7 +319,7 @@ export function FilterRuleNode({
                           }}
                           closeMenuOnClick
                           style={{
-                            backgroundColor: node.field === rel.field && node.operator === '_has' ? 'var(--mantine-color-blue-0)' : undefined,
+                            backgroundColor: node.field === rel.field && node.operator === '_has' ? 'var(--mantine-primary-color-0)' : undefined,
                             fontWeight: 500,
                             color: 'var(--mantine-color-violet-7)',
                           }}
@@ -335,7 +335,7 @@ export function FilterRuleNode({
                               onClick={() => { handleFieldChange(`${rel.field}.${rf.field}`); }}
                               closeMenuOnClick
                               style={{
-                                backgroundColor: node.field === `${rel.field}.${rf.field}` ? 'var(--mantine-color-blue-0)' : undefined,
+                                backgroundColor: node.field === `${rel.field}.${rf.field}` ? 'var(--mantine-primary-color-0)' : undefined,
                               }}
                             >
                               {formatFieldName(rf.field)}
@@ -386,7 +386,7 @@ export function FilterRuleNode({
                 key={op.value}
                 onClick={() => handleOperatorChange(op.value)}
                 style={{
-                  backgroundColor: op.value === node.operator ? 'var(--mantine-color-blue-0)' : undefined,
+                  backgroundColor: op.value === node.operator ? 'var(--mantine-primary-color-0)' : undefined,
                 }}
                 rightSection={op.relationalLimitation ? (
                   <Tooltip label={op.relationalLimitation} multiline w={260}>
