@@ -59,10 +59,11 @@ export default async function RootLayout({
                   Buildpad UI
                 </span>
               }
+              projectLink="https://github.com/buildpad-ai/ui"
             />
           }
           pageMap={pageMap}
-          docsRepositoryBase="https://github.com/microbuild-ui/ui/tree/main/apps/docs"
+          docsRepositoryBase="https://github.com/buildpad-ai/ui/tree/main/apps/docs"
         >
           {children}
         </Layout>

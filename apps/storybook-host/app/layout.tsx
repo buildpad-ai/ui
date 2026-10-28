@@ -2,9 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Buildpad Storybook Host',
+  title: 'Buildpad UI — Copy & Own components for data-heavy apps',
   description:
-    'Authentication proxy and hosting for Buildpad Storybooks — connects to DaaS backend',
+    'Schema-aware Mantine components, Storybooks on live DaaS data, and the CLI + MCP tooling to add them to any Next.js app.',
+  icons: { icon: '/buildpad-mark.svg' },
 };
 
 export default function RootLayout({
@@ -14,12 +15,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link
-          rel="icon"
-          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔌</text></svg>"
-        />
-      </head>
       <body>{children}</body>
     </html>
   );
