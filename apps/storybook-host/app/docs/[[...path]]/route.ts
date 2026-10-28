@@ -28,7 +28,7 @@ function getMimeType(filePath: string): string {
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> }
 ) {
   const { path: segments } = await params;
@@ -43,26 +43,18 @@ export async function GET(
 
   try {
     let content: Buffer;
-    let isDirectory = false;
     try {
       content = await readFile(filePath);
     } catch {
       if (!path.extname(filePath)) {
+        // Serve the folder's index.html as is. Redirecting to add the trailing
+        // slash loops forever: Next.js answers "/docs/x/" with a 308 to "/docs/x"
+        // before this handler runs. The exported pages use absolute links, so
+        // they render the same with or without the slash.
         filePath = path.join(filePath, 'index.html');
         content = await readFile(filePath);
-        isDirectory = true;
       } else {
         throw new Error('Not found');
-      }
-    }
-
-    if (isDirectory) {
-      const pathname = request.nextUrl.pathname;
-      if (!pathname.endsWith('/')) {
-        return new NextResponse(null, {
-          status: 302,
-          headers: { Location: pathname + '/' },
-        });
       }
     }
 
