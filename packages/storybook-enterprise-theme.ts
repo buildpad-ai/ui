@@ -340,7 +340,6 @@ export const enterpriseTheme = createTheme({
         tab: {
           fontWeight: "500",
           fontSize: "0.875rem",
-          borderRadius: "0.375rem",
           transition: "background 0.15s, color 0.15s",
         },
       },

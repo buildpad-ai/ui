@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, createTheme, type MantineColorsTuple } from "@mantine/core";
+import { Button, Pagination, createTheme, type MantineColorsTuple } from "@mantine/core";
 
 /*
  * BuildPad brand — "Ink & Ember". Ink is the primary action colour (the
@@ -73,7 +73,7 @@ const dark: MantineColorsTuple = [
   "#2a2b31", "#1c1d22", "#131418", "#0f1013", "#0a0a0b"
 ];
 
-// Shared by every field label so TextInput / NumberInput / Select match.
+// Every field label, via InputWrapper (which all inputs and groups render).
 const fieldLabel = {
   fontSize: "var(--mantine-font-size-sm)",
   fontWeight: "var(--ds-font-weight-medium, 500)",
@@ -199,6 +199,11 @@ export const theme = createTheme({
         }
       }
     },
+    InputWrapper: {
+      styles: {
+        label: fieldLabel
+      }
+    },
     Card: {
       defaultProps: {
         radius: "xl",
@@ -267,22 +272,24 @@ export const theme = createTheme({
     },
     TextInput: {
       styles: {
-        label: fieldLabel,
         input: {
           fontFamily: "var(--mantine-font-family)"
         }
       }
     },
-    NumberInput: {
-      styles: {
-        label: fieldLabel
+    // Mantine's first/previous/next/last controls are icon-only and unnamed.
+    Pagination: Pagination.extend({
+      defaultProps: {
+        getControlProps: (control) => ({
+          "aria-label": {
+            first: "First page",
+            previous: "Previous page",
+            next: "Next page",
+            last: "Last page"
+          }[control]
+        })
       }
-    },
-    Select: {
-      styles: {
-        label: fieldLabel
-      }
-    },
+    }),
     Table: {
       defaultProps: { withTableBorder: true },
       styles: {
@@ -297,12 +304,13 @@ export const theme = createTheme({
       }
     },
     Tabs: {
-      // Active tab (ink text + ember underline) is styled in globals.css.
+      // Rail, hover and active tab (ink text + ember indicator) are styled in
+      // globals.css. No borderRadius here: Mantine rounds only the top corners
+      // of a default-variant tab, which keeps the indicator square-ended.
       styles: {
         tab: {
           fontWeight: "var(--ds-font-weight-medium, 500)",
           fontSize: "var(--mantine-font-size-md)",
-          borderRadius: "var(--ds-radius, 0.5rem)",
           transition: `background ${transitionFast}, color ${transitionFast}`
         }
       }

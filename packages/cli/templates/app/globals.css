@@ -191,6 +191,11 @@
      #feaa6b) reads at ~10:1. */
   --mantine-color-anchor: var(--ds-accent-text) !important;
 
+  /* Errors. Mantine uses red-8 in dark, which the mirrored danger scale
+     turns into pale pink (#fecdca): error borders, messages and required
+     asterisks read as white. --ds-danger (#f97066) stays red at ~6:1. */
+  --mantine-color-error: var(--ds-danger) !important;
+
   /* Body / muted text. Mantine falls back to its `dark` palette here
      (dark-0, dark-2), which drifts from our ink ramp, so text inside
      Paper and Card would read greyer than the page around them. Point
@@ -200,7 +205,9 @@
   --mantine-color-placeholder: var(--ds-ink-faint) !important;
 
   /* Paper/Card border in dark mode is hard-wired to dark-4 (#34353c), a
-     step heavier than the hairline card border used everywhere else. */
+     step heavier than the hairline card border used everywhere else.
+     Checkbox and Radio also draw their unchecked border from dark-4; they
+     get it back below so they don't vanish into the card. */
   --mantine-color-dark-4: var(--ds-card-border) !important;
 
   /* Tooltip is deliberately inverted: on dark it wants a LIGHT surface with
@@ -209,6 +216,18 @@
      fixed ink text. */
   --tooltip-bg: var(--ds-gray-900) !important;
   --tooltip-color: var(--ds-brand-ink-900) !important;
+}
+
+/* Unchecked Checkbox / Radio in dark: a visible control border instead of
+   the dark-4 card hairline above. Checked and error states keep theirs. */
+:root[data-mantine-color-scheme="dark"] :is(.mantine-Checkbox-input, .mantine-Radio-radio, .mantine-CheckboxIndicator-indicator, .mantine-RadioIndicator-indicator):not(:checked, [data-checked], [data-error]) {
+  border-color: var(--ds-gray-400);
+}
+
+/* Skeleton bars in dark also come from dark-4; on the card surface the
+   hairline value all but disappears. gray-300 is Mantine's own dark-4. */
+:root[data-mantine-color-scheme="dark"] .mantine-Skeleton-root[data-visible]::after {
+  background-color: var(--ds-gray-300);
 }
 
 body {
@@ -251,17 +270,50 @@ body {
   transition: background var(--ds-transition-fast, 150ms ease), color var(--ds-transition-fast, 150ms ease);
 }
 
-.mantine-Tabs-tab:hover {
+/* Default variant: a 1px hairline rail (Mantine draws a 2px gray-3 one) with
+   the 2px indicator sitting on top of it. The rail is a zero-size ::before,
+   so a single border side is a single hairline in every orientation. */
+.mantine-Tabs-root[data-variant="default"] {
+  --tab-border-color: var(--ds-border-color);
+}
+
+.mantine-Tabs-root[data-variant="default"] > .mantine-Tabs-list::before {
+  border-width: 0 0 1px 0;
+}
+
+.mantine-Tabs-root[data-variant="default"][data-orientation="vertical"] > .mantine-Tabs-list::before {
+  border-width: 0 1px 0 0;
+}
+
+.mantine-Tabs-root[data-variant="default"] .mantine-Tabs-tab {
+  color: var(--ds-gray-600);
+}
+
+.mantine-Tabs-root[data-variant="default"] .mantine-Tabs-tab:not([data-active], :disabled, [data-disabled]):hover {
   background-color: var(--ds-gray-100);
+  border-color: var(--ds-gray-300);
   color: var(--ds-ink);
 }
 
-/* Active tab: ink text, ember underline. */
-.mantine-Tabs-tab[data-active],
-.mantine-Tabs-tab[data-active]:hover {
+/* Vertical tabs read as a list: start-align the labels (Mantine centres
+   them, so labels of different lengths start at different x). */
+.mantine-Tabs-root[data-orientation="vertical"] .mantine-Tabs-tabLabel {
+  text-align: start;
+}
+
+/* Active tab: ink text, ember indicator. */
+.mantine-Tabs-root[data-variant="default"] .mantine-Tabs-tab[data-active],
+.mantine-Tabs-root[data-variant="default"] .mantine-Tabs-tab[data-active]:hover {
   color: var(--ds-ink);
-  border-bottom-color: var(--ds-primary-600);
+  border-color: var(--ds-primary-600);
+  background-color: transparent;
   font-weight: 600;
+}
+
+.mantine-Tabs-root[data-variant="outline"] .mantine-Tabs-tab:not([data-active]):hover,
+.mantine-Tabs-root[data-variant="pills"] .mantine-Tabs-tab:not([data-active]):hover {
+  background-color: var(--ds-gray-100);
+  color: var(--ds-ink);
 }
 
 /* ── Notifications ────────────────────────────────────────── */
@@ -312,8 +364,28 @@ body {
   transition: all var(--ds-transition-fast, 150ms ease);
 }
 
-.mantine-ActionIcon-root:hover {
+/* Neutral wash for subtle icon buttons only; filled, light and outline keep
+   their own hover colour (a blanket rule turned a filled ember icon button
+   near-white on hover). */
+.mantine-ActionIcon-root[data-variant="subtle"]:not(:disabled, [data-disabled], [data-loading]):hover {
   background-color: var(--ds-gray-100);
+}
+
+/* Selected Checkbox.Card / Radio.Card: orange wash + soft-orange border, the
+   same selected treatment as the active nav link. */
+.mantine-CheckboxCard-card[data-checked],
+.mantine-RadioCard-card[data-checked] {
+  border-color: var(--ds-primary-200);
+  background-color: var(--ds-primary-50);
+}
+
+/* Typography: Mantine's per-scheme inline-code chip comes after its
+   `pre code` reset at the same specificity, so code blocks get a chip
+   inside the block. Restore the reset. */
+.mantine-Typography-root pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
 }
 
 /* ── Cards ────────────────────────────────────────────────── */

@@ -108,16 +108,45 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.sb-enterprise-wrapper .mantine-Tabs-tab:hover {
+/* Default variant: 1px hairline rail, 2px ember indicator — mirrors globals.css. */
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="default"] {
+  --tab-border-color: #e8e9ec;
+}
+
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="default"] > .mantine-Tabs-list::before {
+  border-width: 0 0 1px 0;
+}
+
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="default"][data-orientation="vertical"] > .mantine-Tabs-list::before {
+  border-width: 0 1px 0 0;
+}
+
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="default"] .mantine-Tabs-tab {
+  color: #54555d;
+}
+
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="default"] .mantine-Tabs-tab:not([data-active], :disabled, [data-disabled]):hover {
   background-color: #f4f4f6;
+  border-color: #d7d9df;
   color: #0a0a0b;
 }
 
-.sb-enterprise-wrapper .mantine-Tabs-tab[data-active],
-.sb-enterprise-wrapper .mantine-Tabs-tab[data-active]:hover {
+.sb-enterprise-wrapper .mantine-Tabs-root[data-orientation="vertical"] .mantine-Tabs-tabLabel {
+  text-align: start;
+}
+
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="default"] .mantine-Tabs-tab[data-active],
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="default"] .mantine-Tabs-tab[data-active]:hover {
   color: #0a0a0b;
-  border-bottom-color: #e86a00;
+  border-color: #e86a00;
+  background-color: transparent;
   font-weight: 600;
+}
+
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="outline"] .mantine-Tabs-tab:not([data-active]):hover,
+.sb-enterprise-wrapper .mantine-Tabs-root[data-variant="pills"] .mantine-Tabs-tab:not([data-active]):hover {
+  background-color: #f4f4f6;
+  color: #0a0a0b;
 }
 
 /* ── Action Icon ──────────────────────────────────────────── */
