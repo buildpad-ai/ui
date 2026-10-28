@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-23T02:29:00.389Z",
+  "generatedAt": "2026-10-28T08:00:03.146Z",
   "version": "3.4.1",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1004,7 +1004,7 @@
         {
           "source": "cli/templates/api/login-page.tsx",
           "target": "app/[lang]/login/page.tsx",
-          "sourceSha256": "0f203ce0691dbce2aa78175a9f620a9842bd1e3753f6ee48a1729b0c60cbcf36"
+          "sourceSha256": "1dc5bdedcf5be6b1d832c8d871a43a265f9103bb31efc8532329703984e60f72"
         },
         {
           "source": "cli/templates/lib/api-auth-headers.ts",
@@ -1108,7 +1108,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "3.4.1",
-      "lastChangedIn": "3.0.0"
+      "lastChangedIn": "3.4.1"
     },
     "content-routes": {
       "name": "content-routes",
@@ -1620,22 +1620,22 @@
         {
           "source": "cli/templates/app/design-tokens.css",
           "target": "app/design-tokens.css",
-          "sourceSha256": "2c485fee1d94a6b0e5393d34767e9d546480e528290188efd48cfcdd865a79ce"
+          "sourceSha256": "9a10f59db88dada984367c945a7f76a4d2d22aa41815528d9c01350ce2183950"
         },
         {
           "source": "cli/templates/app/globals.css",
           "target": "app/globals.css",
-          "sourceSha256": "3df463eab8d72c1bb559208568d258816eccab34c8bc14d9e43387150fe7ff89"
+          "sourceSha256": "7a7748a6467309635dab26ac0da3050936373ace610d3803d0740ccd1b9522c2"
         },
         {
           "source": "cli/templates/lib/theme.ts",
           "target": "lib/theme.ts",
-          "sourceSha256": "e419acdae03416b3b1bead609901f6b28345a3065e08a6155955383ef0d587be"
+          "sourceSha256": "543de3d96c016e7f96c5c41b0c866fc1c56b5e735f3f33bf1f04e86af3f61509"
         },
         {
           "source": "cli/templates/components/ColorSchemeToggle.tsx",
           "target": "components/ColorSchemeToggle.tsx",
-          "sourceSha256": "8c0e46f9388fa40bde6886b1ea219d756f7bf3f6bad95141cc7beac176c0d026"
+          "sourceSha256": "68a30bba01b94acb3c2da83be66082282af508e35b6b82a8ba831cc905756ccc"
         },
         {
           "source": "cli/templates/components/layout/navigation.ts",
@@ -1645,7 +1645,7 @@
         {
           "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
           "target": "components/layout/AuthenticatedShell.tsx",
-          "sourceSha256": "9dabc8d3725c35117f2d7e25cdbbb132b176638ccd801b6663a8972989a6ef27"
+          "sourceSha256": "8c5b8448c90107d7ed9db6443b4e45a9f3a553b90461e6743a0f56a4504877f1"
         }
       ],
       "internalDependencies": [
@@ -1653,7 +1653,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "3.4.1",
-      "lastChangedIn": "2.3.0"
+      "lastChangedIn": "3.4.1"
     }
   },
   "components": [
@@ -1788,7 +1788,7 @@
         {
           "source": "ui-interfaces/src/input-hash/InputHash.css",
           "target": "components/ui/InputHash.css",
-          "sourceSha256": "00da180d01f2af399ae1b70d7cca31fec4d43be5edcc5e3ea447887de705292a"
+          "sourceSha256": "097c9e5e48dac2316d67a0c83bdc0a084e76657df3b4e013f42128dd3700328f"
         }
       ],
       "dependencies": [
@@ -1815,7 +1815,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "3.4.1",
-      "lastChangedIn": "2.3.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "system-token",
@@ -1831,7 +1831,7 @@
         {
           "source": "ui-interfaces/src/system-token/SystemToken.css",
           "target": "components/ui/SystemToken.css",
-          "sourceSha256": "f1884a5f3be5990ea93eae385d2ba6f4cba39587c5d922a2add102c0085e976a"
+          "sourceSha256": "8e9ee818fc9eb477dcd866914622df1dd7ca62df55103b3aff0eda55774e2581"
         }
       ],
       "dependencies": [
@@ -1860,7 +1860,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "3.4.1",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "system-permissions",
@@ -1911,7 +1911,7 @@
         {
           "source": "ui-interfaces/src/system-permissions/FilterRuleNode.tsx",
           "target": "components/ui/filter-rule-node.tsx",
-          "sourceSha256": "ddfde9b52fa3a7ba7b5e344f85bb096dcf54bd2851dafcb5b1513ff5bff03564"
+          "sourceSha256": "f5873f58761cd966fd69d19af72ad44a5591dff40fa168ed3478da63627f9e5f"
         },
         {
           "source": "ui-interfaces/src/system-permissions/PermissionFilterTypes.ts",
@@ -1953,7 +1953,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "3.4.1",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "input-block-editor",
@@ -2631,7 +2631,7 @@
         {
           "source": "ui-interfaces/src/upload/Upload.css",
           "target": "components/ui/upload.css",
-          "sourceSha256": "ce97141227951d88dfa8a0511d7777aa7fbb1cca086f6fa1dd55a43d5f386983"
+          "sourceSha256": "dce752fa1e7f9293433f48faa9e507e15371645a52fd2533163fc601f0c06710"
         }
       ],
       "dependencies": [
@@ -2661,7 +2661,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "3.4.1",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "color",
@@ -3153,7 +3153,7 @@
         {
           "source": "ui-interfaces/src/rich-text-html/RichTextHTML.css",
           "target": "components/ui/RichTextHTML.css",
-          "sourceSha256": "6e93144cdc94e9c1b43ba45f9deac1c27b898a01ab35d0da530d0808579bcb96"
+          "sourceSha256": "317ab04cdc0d330aa64953d86edff2292352e79c0bc13db6867ee20b4c25e4ac"
         }
       ],
       "dependencies": [
@@ -3190,7 +3190,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "3.4.1",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "rich-text-markdown",
@@ -3206,7 +3206,7 @@
         {
           "source": "ui-interfaces/src/rich-text-markdown/RichTextMarkdown.css",
           "target": "components/ui/RichTextMarkdown.css",
-          "sourceSha256": "2c752744acd2b60e14c6a3e73e74e519966dfe41bb6916d6c964f428dd284cc8"
+          "sourceSha256": "eb2b7b930bb222faf0e11fc72988bf78914309bc28991835fd1c4d845b2f7d3f"
         }
       ],
       "dependencies": [
@@ -3250,7 +3250,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "3.4.1",
-      "lastChangedIn": "2.4.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "vform",
@@ -3266,7 +3266,7 @@
         {
           "source": "ui-form/src/VForm.css",
           "target": "components/ui/vform/VForm.css",
-          "sourceSha256": "8b2b5f4b9217c3e2a1ec9e9679744a74c9fe0e7875658deceab556686bd5ddd1"
+          "sourceSha256": "b23e776a702f13afa6e1b17de08f70c02d516872f06ed47a0841052498e63d3b"
         },
         {
           "source": "ui-form/src/types.ts",
@@ -3416,7 +3416,7 @@
       ],
       "sourcePackage": "@buildpad/ui-form",
       "version": "3.4.1",
-      "lastChangedIn": "3.4.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "collection-form",
@@ -3532,7 +3532,7 @@
         {
           "source": "ui-collections/src/CollectionListToolbar.tsx",
           "target": "components/ui/collection-list-toolbar.tsx",
-          "sourceSha256": "ca68fd325031cd7f8260cd3b4d6646c81cab3cc2075e8b69ba70ce78a3829926"
+          "sourceSha256": "45a90cb9c5305dbfdb15db04c34c7af1660496691ee5eaedc98399103fcbe838"
         },
         {
           "source": "ui-collections/src/CollectionListFooter.tsx",
@@ -3565,7 +3565,7 @@
       ],
       "sourcePackage": "@buildpad/ui-collections",
       "version": "3.4.1",
-      "lastChangedIn": "3.4.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "filter-panel",
@@ -4091,7 +4091,7 @@
         {
           "source": "ui-forms/src/FieldPalette.tsx",
           "target": "components/ui/form-builder/field-palette.tsx",
-          "sourceSha256": "47f3530d71b425eb9000f7d54b60e65f904400f2a8b7c83713b2cb56951c7a0c"
+          "sourceSha256": "5d4d113b9c015ce3d56db4b183fac08f73f55d4f049c0a0cbeef38e1c41b82ae"
         },
         {
           "source": "ui-forms/src/AddFieldModal.tsx",
@@ -4121,12 +4121,12 @@
         {
           "source": "ui-forms/src/BuilderSection.tsx",
           "target": "components/ui/form-builder/builder-section.tsx",
-          "sourceSha256": "30cfc0ff8d1ec58779fb102b10730588522bd7ba4ca6f82b4f5a98eb1a1794a7"
+          "sourceSha256": "1e981d72bfc74bb1ad629939f80079eaae27e3272ad174e639ce357cf35750c3"
         },
         {
           "source": "ui-forms/src/BuilderFieldRow.tsx",
           "target": "components/ui/form-builder/builder-field-row.tsx",
-          "sourceSha256": "5d2fc4b917155bb7ab282d02015f65ad55fa66549f340e3c82c815ca38b84284"
+          "sourceSha256": "d64305bfce33d7f1a1fc47614cadcf3a008929e6fec479a46a204c73cc3be253"
         },
         {
           "source": "ui-forms/src/FieldSettingsPanel.tsx",
@@ -4180,7 +4180,7 @@
       ],
       "sourcePackage": "@buildpad/ui-forms",
       "version": "3.4.1",
-      "lastChangedIn": "3.0.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "workflow-management",
@@ -4202,7 +4202,7 @@
         {
           "source": "ui-workflows/src/WorkflowDiagram.tsx",
           "target": "components/ui/workflow-management/workflow-diagram.tsx",
-          "sourceSha256": "c23c5bde9d0b8c39614d7cd2d63f1f2bde248652a5b3c6ddba0454c11dff227c"
+          "sourceSha256": "ca2530e7e34197888e423554f67e8ff0c57542bd50d5c29137ceb4f21aa82c1e"
         },
         {
           "source": "ui-workflows/src/workflowDiagramModel.ts",
@@ -4318,7 +4318,7 @@
       ],
       "sourcePackage": "@buildpad/ui-workflows",
       "version": "3.4.1",
-      "lastChangedIn": "3.2.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "cron-management",
@@ -4355,7 +4355,7 @@
         {
           "source": "ui-cron/src/CronRunLogModal.tsx",
           "target": "components/ui/cron-management/cron-run-log-modal.tsx",
-          "sourceSha256": "82acbff60b792ca4b1c7d7a7e22872db35fe0b0558d9123bdb192665f63b37d2"
+          "sourceSha256": "cd11918ed818e4d56077a939c9df42d8d82ea1e249d9f4f149176cf568fd66d1"
         },
         {
           "source": "ui-cron/src/CronJobStatusBadge.tsx",
@@ -4451,7 +4451,7 @@
       ],
       "sourcePackage": "@buildpad/ui-cron",
       "version": "3.4.1",
-      "lastChangedIn": "3.3.0"
+      "lastChangedIn": "3.4.1"
     }
   ],
   "categories": [
