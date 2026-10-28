@@ -1,5 +1,5 @@
 /**
- * Shared Storybook Manager theme — "Soft Futurism" navy + amber sidebar.
+ * Shared Storybook Manager theme — "BuildPad brand — Ink & Ember" sidebar.
  *
  * Usage in each package's .storybook/manager.ts:
  *   import { enterpriseManagerTheme } from '../../storybook-enterprise-manager';
@@ -14,38 +14,38 @@ export function enterpriseManagerTheme(brandTitle: string): StoryTheme {
   return create({
     base: "light",
     brandTitle,
-    brandUrl: "https://github.com/buildpad",
+    brandUrl: "https://www.buildpad.ai",
 
-    // UI chrome — slate neutrals with gradient bg hint
-    appBg: "#f6f7fa",
+    // UI chrome — flat neutral-cool page, white content, hairline borders
+    appBg: "#fafbfc",
     appContentBg: "#ffffff",
     appPreviewBg: "#ffffff",
     appBorderColor: COLOR_BORDER,
-    appBorderRadius: 8,
+    appBorderRadius: 10,
 
-    // Typography — Inter body, Space Grotesk for headings
+    // Typography — Inter body, JetBrains Mono code
     fontBase: FONT_BODY,
     fontCode: FONT_MONO,
 
-    // Text colors — navy ink
-    textColor: "#0f1b33",
+    // Text colors — ink
+    textColor: "#0a0a0b",
     textInverseColor: "#ffffff",
     textMutedColor: COLOR_MUTED,
 
-    // Brand colors — amber accent
-    colorPrimary: "#e8890c",
-    colorSecondary: "#e8890c",
+    // Brand colors — ember accent
+    colorPrimary: "#fd7f15",
+    colorSecondary: "#e86a00",
 
     // Toolbar
     barTextColor: COLOR_MUTED,
-    barSelectedColor: "#e8890c",
-    barHoverColor: "#b45309",
+    barSelectedColor: "#e86a00",
+    barHoverColor: "#b34d00",
     barBg: "#ffffff",
 
     // Form inputs in sidebar
     inputBg: "#ffffff",
     inputBorder: COLOR_BORDER,
-    inputTextColor: "#0f1b33",
-    inputBorderRadius: 6,
+    inputTextColor: "#0a0a0b",
+    inputBorderRadius: 8,
   });
 }

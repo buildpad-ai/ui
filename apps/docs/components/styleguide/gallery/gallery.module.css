@@ -1,0 +1,212 @@
+/* Layout chrome for the live gallery. Only the frames around the demos live
+   here — the demos themselves are real Mantine components styled by the
+   shipped theme.ts + globals.css, never by this file. */
+
+.root {
+  /* The scoped app globals give .bp-gallery the app's body styles (page
+     background, ink text, Inter at 14px); keep it transparent on top of the
+     Showcase surface so specimens sit on the same page colour. */
+  background: transparent !important;
+  margin-top: var(--ds-spacing-4);
+  margin-bottom: var(--ds-spacing-8);
+}
+
+/* The docs site's preflight (in @layer base) strips list markers that a
+   Buildpad app keeps. Zero specificity and unlayered: beats the reset, loses
+   to any Mantine class rule (Tree, List icon variant). */
+:where(.root) :where(ul) {
+  list-style-type: disc;
+}
+
+:where(.root) :where(ol) {
+  list-style-type: decimal;
+}
+
+:where(.root) :where(ul ul) {
+  list-style-type: circle;
+}
+
+/* Live overlays portal here rather than into <body>. Mantine's Modal/Drawer
+   inner wrapper is `position: fixed; width: 100%` with no `left`, so it would
+   start at the gallery's left edge instead of the viewport's. */
+.portal :global(.mantine-Modal-inner),
+.portal :global(.mantine-Drawer-inner) {
+  left: 0;
+}
+
+/* ── Specimen grid ─────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  gap: var(--ds-spacing-4);
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.specimen {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--ds-card-bg);
+  border: 1px solid var(--ds-card-border);
+  border-radius: var(--ds-radius-lg);
+  overflow: hidden;
+}
+
+.specimen[data-span='full'] {
+  grid-column: 1 / -1;
+}
+
+.specimenStage {
+  flex: 1;
+  padding: var(--ds-spacing-6);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--ds-spacing-3);
+  min-width: 0;
+}
+
+.specimenStage[data-align='start'] {
+  justify-content: flex-start;
+}
+
+.specimenStage[data-surface='muted'] {
+  background: var(--ds-body-bg);
+}
+
+.specimenCaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+  border-top: 1px solid var(--ds-divider);
+  font-size: var(--ds-font-size-xs);
+  line-height: var(--ds-line-height-normal);
+  color: var(--ds-ink-secondary);
+}
+
+.specimenLabel {
+  font-weight: var(--ds-font-weight-semibold);
+  color: var(--ds-ink);
+}
+
+.specimenCaption code {
+  font-family: var(--ds-font-mono);
+  font-size: 0.6875rem;
+  padding: 0 4px;
+  border-radius: var(--ds-radius-sm);
+  /* Ink-tinted so it reads on the card surface in both schemes. */
+  background: color-mix(in srgb, var(--ds-ink) 7%, transparent);
+  color: var(--ds-ink);
+}
+
+/* ── Browser frame (templates) ─────────────────────────────── */
+
+.frame {
+  border: 1px solid var(--ds-card-border);
+  border-radius: var(--ds-radius-card);
+  overflow: hidden;
+  background: var(--ds-body-bg);
+  box-shadow: var(--ds-shadow-lg);
+}
+
+.frameBar {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-spacing-3);
+  height: 36px;
+  padding: 0 var(--ds-spacing-3);
+  background: var(--ds-gray-100);
+  border-bottom: 1px solid var(--ds-border-color);
+}
+
+.frameDots {
+  display: flex;
+  gap: 6px;
+}
+
+.frameDots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ds-gray-300);
+}
+
+.frameUrl {
+  flex: 1;
+  max-width: 420px;
+  margin: 0 auto;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-card-bg);
+  border: 1px solid var(--ds-border-color);
+  font-family: var(--ds-font-mono);
+  font-size: 0.6875rem;
+  color: var(--ds-ink-faint);
+}
+
+.frameViewport {
+  position: relative;
+  overflow: auto;
+  height: var(--frame-height, 720px);
+}
+
+/* ── App shell (mirrors components/layout/AuthenticatedShell) ── */
+
+.shell {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  min-height: 100%;
+  height: 100%;
+}
+
+.shellNavbar {
+  /* .bp-navbar supplies colours/borders; this only sizes it for the frame. */
+  padding: var(--ds-spacing-3);
+  overflow-y: auto;
+}
+
+.shellMain {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: auto;
+}
+
+.shellHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 60px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--ds-spacing-4);
+}
+
+.shellContent {
+  flex: 1;
+  padding: var(--ds-spacing-6);
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Two classes to out-rank .bp-navbar's `display: flex !important`. */
+  .shell .shellNavbar {
+    display: none !important;
+  }
+}

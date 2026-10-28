@@ -1,0 +1,71 @@
+---
+title: Styleguide
+description: A live showcase of the Buildpad design system — foundations, every component, composed patterns and full application templates, rendered with the theme Buildpad ships.
+---
+
+import { Callout, Cards } from 'nextra/components'
+import { Showcase, StorybookLinks } from '@/components/styleguide'
+import { OverviewPreview } from '@/components/styleguide/gallery/lazy/sections/overview'
+
+# Styleguide
+
+What a Buildpad application looks like, end to end. Every demo on these pages
+is a **real Mantine component rendered with the exact `lib/theme.ts` and
+`app/globals.css` that `buildpad init` installs** — nothing is redrawn or
+approximated, so if it looks right here it looks right in your app.
+Templates compose those same components with sample data to show what you can
+build; each template says which parts the CLI generates. Use the
+**Light / Dark** toggle on any page; your choice carries across the showcase.
+
+The system is **BuildPad brand — Ink & Ember**, taken from
+[buildpad.ai](https://www.buildpad.ai): ink (`#0a0a0b`) is the primary action
+colour, ember orange (`#e86a00` / `#fd7f15`) marks interactive state and the
+brand, on cool neutral greys with hairline borders, soft long shadows, Inter
+body text and Inter Tight headings.
+
+<Showcase>
+<OverviewPreview />
+</Showcase>
+
+## How the showcase is organised
+
+<Cards>
+  <Cards.Card title="Foundations" href="/styleguide/foundations" arrow />
+  <Cards.Card title="Components" href="/styleguide/components/buttons" arrow />
+  <Cards.Card title="Patterns" href="/styleguide/patterns/forms" arrow />
+  <Cards.Card title="Templates" href="/styleguide/templates/dashboard" arrow />
+</Cards>
+
+- **Foundations** — the `--ds-*` tokens: colour scales, semantic tokens,
+  typography, spacing, radius, shadows and focus.
+- **Components** — every Mantine building block in all its variants and states:
+  buttons, inputs, selection controls, feedback, data display, navigation,
+  overlays, typography and layout.
+- **Patterns** — components composed into the recurring pieces of an internal
+  tool: forms, data views, empty / loading / error states and page sections.
+- **Templates** — complete screens inside the app shell (sign in, dashboard,
+  list, record detail, settings, users & roles) built from the same parts your
+  generated app uses, for a feel of the finished product.
+
+<Callout type="info">
+**Usage rules**
+
+- **Ink vs. ember**: a Button with no `color` is the ink CTA (`--ds-cta-bg`). Orange is for interactive state (checkbox, switch, radio, slider, focus ring, active tab underline, active nav, progress), brand marks and explicit brand CTAs (`color="primary"`).
+- **Small text contrast**: coloured text uses the **700** stop (`--ds-accent-text` for orange). Light and outline variants are promoted to it automatically.
+- **Built-in hues**: `color="red" | "green" | "yellow" | "blue" | "orange"` resolve to danger / success / warning / info / primary, so status props get the brand scales.
+- **Borders**: `--ds-border-color` (hairline `#e8e9ec`) for cards and dividers, `gray-300` for inputs.
+</Callout>
+
+## Real data, every state
+
+The templates use static sample data. The schema-driven components themselves —
+`CollectionList`, `CollectionForm`, `VTable`, `VForm` and the field interfaces —
+with every prop and live DaaS data, live in the package Storybooks:
+
+<StorybookLinks />
+
+<Callout>
+The links above use production paths. In local development run the Storybooks
+directly: `pnpm storybook:interfaces` (6005), `storybook:form` (6006),
+`storybook:table` (6007), `storybook:collections` (6008).
+</Callout>

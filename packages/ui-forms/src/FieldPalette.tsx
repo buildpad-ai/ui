@@ -265,7 +265,7 @@ function NewFieldChip({
       }}
     >
       <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-        <Icon size={14} color="var(--mantine-color-blue-6)" />
+        <Icon size={14} color="var(--mantine-primary-color-filled)" />
         <Text size="xs" truncate>
           {label}
         </Text>

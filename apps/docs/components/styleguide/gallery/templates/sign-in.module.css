@@ -1,0 +1,236 @@
+/* Layout for the sign-in templates. Mirrors the inline layout styles of
+   cli/templates/api/login-page.tsx; colours come only from --ds-* tokens.
+   The page is a size container so the hero / mobile switch follows the
+   frame width rather than the docs viewport. */
+
+.screen {
+  container-type: inline-size;
+  height: 100%;
+}
+
+.split {
+  display: flex;
+  min-height: 100%;
+}
+
+/* ── Hero (fixed ink panel) ───────────────────────────────────
+   The panel carries data-mantine-color-scheme="dark", so the scheme-aware
+   tokens below resolve to their dark values in both page schemes — the
+   same fixed on-dark colours login-page.tsx writes inline (--ds-ink
+   #f4f4f6, --ds-gray-200 #23242a, --ds-primary-600 #fd9843, --ds-primary-700
+   #feaa6b). The fixed brand tokens (--ds-brand-hero, --ds-hero-sub) never
+   invert anyway. */
+
+.hero {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--ds-spacing-8);
+  padding: var(--ds-spacing-10) var(--ds-spacing-12);
+  background: var(--ds-brand-hero);
+  border-right: 1px solid var(--ds-gray-200);
+  color: var(--ds-ink);
+}
+
+.brandName {
+  font-family: var(--ds-font-display);
+  letter-spacing: var(--ds-letter-spacing-tight);
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--ds-radius-pill);
+  background: color-mix(in srgb, var(--ds-primary-500) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ds-primary-500) 30%, transparent);
+  color: var(--ds-primary-700);
+}
+
+.pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ds-primary-600);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ds-primary-600) 40%, transparent);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}
+
+.heroTitle {
+  font-family: var(--ds-font-display);
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: var(--ds-letter-spacing-tighter);
+  color: var(--ds-ink);
+}
+
+.heroSub {
+  color: var(--ds-hero-sub);
+}
+
+.heroCheck {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ds-primary-600);
+}
+
+.heroFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ds-spacing-4);
+  padding-top: var(--ds-spacing-5);
+  border-top: 1px solid var(--ds-gray-200);
+  color: var(--ds-ink-faint);
+}
+
+/* ── Form side ─────────────────────────────────────────────── */
+
+.heroFooter > :last-child {
+  flex: none;
+  white-space: nowrap;
+}
+
+.formSide {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--ds-spacing-10) var(--ds-spacing-8);
+  background: var(--mantine-color-body);
+}
+
+.formColumn {
+  width: 100%;
+  max-width: 440px;
+}
+
+.mobileBrand {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-spacing-2);
+  margin-bottom: var(--ds-spacing-10);
+}
+
+/* Form card — hairline border + soft long shadow from the card tokens,
+   exactly as login-page.tsx draws it. */
+.card {
+  padding: var(--ds-spacing-8);
+  background: var(--ds-card-bg);
+  border: 1px solid var(--ds-card-border);
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-card-shadow);
+}
+
+.cardHeading {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.footer {
+  margin-top: var(--ds-spacing-10);
+}
+
+/* Below the md breakpoint (62em) login-page.tsx hides the hero
+   (visibleFrom="md") and shows the compact brand above the card
+   (hiddenFrom="md"); the card drops to p="lg". The docs content column is
+   narrower than 992px, so the switch happens at the frame's phone width
+   instead, keeping the split visible in the desktop frame. */
+@container (max-width: 719px) {
+  .hero {
+    display: none;
+  }
+
+  .mobileBrand {
+    display: flex;
+  }
+
+  .card {
+    padding: var(--ds-spacing-6);
+  }
+
+  .cardHeading {
+    text-align: center;
+  }
+}
+
+/* ── Pending access page ───────────────────────────────────── */
+
+.pending {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ds-spacing-6);
+  background: var(--ds-body-bg);
+}
+
+/* ── Frames row and state specimens ────────────────────────── */
+
+.frameRow {
+  display: grid;
+  grid-template-columns: 390px minmax(0, 1fr);
+  gap: var(--ds-spacing-6);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .frameRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.frameLabel {
+  margin-top: var(--ds-spacing-3);
+  font-size: var(--ds-font-size-xs);
+  line-height: var(--ds-line-height-normal);
+  color: var(--ds-ink-secondary);
+}
+
+.frameLabel strong {
+  color: var(--ds-ink);
+  font-weight: var(--ds-font-weight-semibold);
+}
+
+.frameLabel code {
+  font-family: var(--ds-font-mono);
+  font-size: 0.6875rem;
+  padding: 0 4px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-gray-100);
+  color: var(--ds-ink);
+}
+
+.stateStage {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}

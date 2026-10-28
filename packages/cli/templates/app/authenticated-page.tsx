@@ -24,7 +24,7 @@ export default function HomePage() {
         </Text>
       </div>
 
-      <Card withBorder radius="md" padding="lg">
+      <Card withBorder padding="lg">
         <Stack gap="sm">
           <Title order={4}>{t("app.home.nextSteps")}</Title>
           <Text size="sm" c="dimmed">

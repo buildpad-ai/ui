@@ -83,7 +83,7 @@ export function BuilderFieldRow({
       radius="sm"
       onClick={onSelect}
       data-testid={`builder-field-${config.field}`}
-      bg={selected ? 'var(--mantine-color-blue-light)' : undefined}
+      bg={selected ? 'var(--mantine-primary-color-light)' : undefined}
     >
       <Group justify="space-between" wrap="nowrap" gap="xs">
         <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>

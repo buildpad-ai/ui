@@ -1,0 +1,435 @@
+/* Layout-only rules for the Dashboard template. Every control is a stock
+   Mantine component styled by the shipped theme; the charts are plain boxes
+   painted with --ds-* tokens (no chart library). The grid answers to the
+   frame's width through a container query, not the viewport. */
+
+.root {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-5);
+}
+
+/* ── Page header ─────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ds-spacing-4);
+}
+
+.headerText {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-spacing-2);
+}
+
+/* ── Grids ───────────────────────────────────────────────────── */
+
+.kpis {
+  display: grid;
+  gap: var(--ds-spacing-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.split {
+  display: grid;
+  gap: var(--ds-spacing-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.trio {
+  display: grid;
+  gap: var(--ds-spacing-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.trio > :last-child {
+  grid-column: 1 / -1;
+}
+
+@container (min-width: 540px) {
+  .split {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  }
+
+  .trio {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 880px) {
+  .kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 700px) {
+  .split {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}
+
+@container (min-width: 1080px) {
+  .trio {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  }
+
+  .trio > :last-child {
+    grid-column: auto;
+  }
+}
+
+.cardFill {
+  height: 100%;
+}
+
+/* ── KPI sparkline ───────────────────────────────────────────── */
+
+.spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 28px;
+  margin-top: var(--ds-spacing-3);
+}
+
+.sparkBar {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--ds-primary-200);
+}
+
+.sparkBar[data-current] {
+  background: var(--ds-primary-500);
+}
+
+.sparkEmpty {
+  height: 28px;
+  margin-top: var(--ds-spacing-3);
+  border-bottom: 1px dashed var(--ds-gray-300);
+}
+
+/* ── Spend chart ─────────────────────────────────────────────── */
+
+.chart {
+  --axis-gutter: 44px;
+  position: relative;
+  height: 200px;
+  margin-top: var(--ds-spacing-6);
+}
+
+.gridline {
+  position: absolute;
+  left: var(--axis-gutter);
+  right: 0;
+  border-top: 1px solid var(--ds-divider);
+}
+
+.tick {
+  position: absolute;
+  right: calc(100% + var(--ds-spacing-2));
+  transform: translateY(-50%);
+  font-size: 0.6875rem;
+  line-height: 1;
+  color: var(--ds-ink-faint);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.budgetLine {
+  position: absolute;
+  left: var(--axis-gutter);
+  right: 0;
+  z-index: 1;
+  border-top: 2px dashed var(--ds-gray-400);
+  pointer-events: none;
+}
+
+.budgetLabel {
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-weight: var(--ds-font-weight-medium, 500);
+  color: var(--ds-ink-secondary);
+}
+
+.plot {
+  position: absolute;
+  inset: 0 0 0 var(--axis-gutter);
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  border-bottom: 1px solid var(--ds-gray-300);
+}
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  cursor: default;
+}
+
+.barValue {
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-weight: var(--ds-font-weight-semibold, 600);
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  width: min(40px, 70%);
+  border-radius: 4px 4px 0 0;
+  background: var(--ds-primary-200);
+  transition: background var(--ds-transition-fast);
+}
+
+.bar[data-current] {
+  background: var(--ds-primary-500);
+}
+
+.column:hover .bar {
+  background: var(--ds-primary-300);
+}
+
+.column:hover .bar[data-current] {
+  background: var(--ds-primary-600);
+}
+
+.xAxis {
+  --axis-gutter: 44px;
+  display: flex;
+  gap: 2px;
+  padding-left: var(--axis-gutter);
+  margin-top: var(--ds-spacing-2);
+}
+
+.xAxis > span {
+  flex: 1;
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--ds-ink-faint);
+}
+
+.xAxis > span[data-current] {
+  color: var(--ds-ink);
+  font-weight: var(--ds-font-weight-semibold, 600);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-2) var(--ds-spacing-4);
+  margin-top: var(--ds-spacing-4);
+  padding-top: var(--ds-spacing-3);
+  border-top: 1px solid var(--ds-divider);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-spacing-2);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-ink-secondary);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--ds-primary-200);
+}
+
+.swatch[data-current] {
+  background: var(--ds-primary-500);
+}
+
+.swatchLine {
+  width: 16px;
+  border-top: 2px dashed var(--ds-gray-400);
+}
+
+/* ── Deliveries ──────────────────────────────────────────────── */
+
+.dateTile {
+  flex: none;
+  width: 44px;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius);
+  background: var(--ds-gray-50);
+  line-height: 1.1;
+}
+
+.dateDay {
+  font-family: var(--ds-font-display);
+  font-size: var(--ds-font-size-base);
+  font-weight: var(--ds-font-weight-semibold, 600);
+  color: var(--ds-ink);
+}
+
+.dateMonth {
+  font-size: 0.625rem;
+  font-weight: var(--ds-font-weight-semibold, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ds-ink-faint);
+}
+
+.budgetBar {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-spacing-2);
+}
+
+.budgetBar > :first-child {
+  flex: 1;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.minw0 {
+  flex: 1;
+  min-width: 0;
+}
+
+.noShrink {
+  flex: none;
+}
+
+/* ── Quick actions ───────────────────────────────────────────── */
+
+.actions {
+  display: grid;
+  gap: var(--ds-spacing-2);
+  margin-top: var(--ds-spacing-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@container (min-width: 860px) and (max-width: 1079px) {
+  .actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 1080px) {
+  .actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-spacing-3);
+  min-width: 0;
+  padding: var(--ds-spacing-3);
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-lg);
+  transition:
+    background var(--ds-transition-fast),
+    border-color var(--ds-transition-fast);
+}
+
+.action:hover {
+  background: var(--ds-gray-50);
+  border-color: var(--ds-gray-300);
+}
+
+.action:focus-visible {
+  outline: none;
+  border-color: var(--ds-focus-border);
+  box-shadow: var(--ds-focus-ring);
+}
+
+/* ── First-run state ─────────────────────────────────────────── */
+
+.setupSteps {
+  display: grid;
+  gap: var(--ds-spacing-3);
+  margin-top: var(--ds-spacing-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 520px) {
+  .setupSteps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-4);
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-lg);
+}
+
+.step[data-done] {
+  background: var(--ds-gray-50);
+}
+
+.emptyPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-spacing-2);
+  min-height: 200px;
+  margin-top: var(--ds-spacing-4);
+  padding: var(--ds-spacing-6);
+  text-align: center;
+  border: 1px dashed var(--ds-gray-300);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-gray-50);
+}
+
+/* ── Loading state ───────────────────────────────────────────── */
+
+.tickSkeleton {
+  position: absolute;
+  right: calc(100% + var(--ds-spacing-2));
+  transform: translateY(-50%);
+}
+
+.barSkeleton {
+  width: min(40px, 70%);
+}
+
+.xSkeleton {
+  display: flex;
+  justify-content: center;
+}
+
+.skeletonRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) auto auto;
+  align-items: center;
+  gap: var(--ds-spacing-4);
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+}
+
+.skeletonRow + .skeletonRow {
+  border-top: 1px solid var(--ds-divider);
+}

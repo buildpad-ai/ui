@@ -1,0 +1,85 @@
+---
+title: Overlays
+description: Modals, drawers, popovers, menus, tooltips, hover cards, dialogs and combobox dropdowns — every floating surface a Buildpad app uses, rendered with the shipped theme.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  ModalPreview,
+  ModalTriggers,
+  DrawerPreview,
+  DrawerTriggers,
+  Popovers,
+  Menus,
+  Tooltips,
+  HoverCards,
+  Dialogs,
+  Comboboxes,
+} from '@/components/styleguide/gallery/lazy/sections/overlays'
+
+# Overlays
+
+Everything that floats above the page. Dropdown surfaces — popover, menu,
+combobox, hover card — share one look (`--ds-radius-lg`, `--ds-shadow-lg`,
+hairline border); modals and drawers add an overlay. Previews are pinned open so
+you can read them without clicking, and every trigger opens the real thing.
+
+<Showcase>
+
+## Modal
+
+Blocking tasks and confirmations, shown open over an app page.
+
+<ModalPreview />
+
+## Modal options
+
+Open each configuration — basic, centered, form, destructive, sizes, full screen and scrolling.
+
+<ModalTriggers />
+
+## Drawer
+
+Side panels for record details, edits and filters that keep the page in context.
+
+<DrawerPreview />
+
+<DrawerTriggers />
+
+## Popover
+
+Small anchored panels for quick forms and inline filters.
+
+<Popovers />
+
+## Menu
+
+Action lists on a button or icon — row actions, bulk actions and the user menu.
+
+<Menus />
+
+## Tooltip
+
+Short labels for icon-only controls and extra context on hover or focus.
+
+<Tooltips />
+
+## Hover card
+
+Richer previews of a linked record or person on hover.
+
+<HoverCards />
+
+## Dialog
+
+A non-blocking, corner-anchored message that leaves the page usable.
+
+<Dialogs />
+
+## Combobox
+
+The dropdown behind Select, Autocomplete and custom pickers.
+
+<Comboboxes />
+
+</Showcase>

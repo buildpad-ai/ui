@@ -1,0 +1,174 @@
+/* Layout-only helpers for the Layout demos. Guide boxes use the ember
+   tint tokens so the otherwise invisible layout primitives can be seen. */
+
+.guide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-spacing-2);
+  min-height: 32px;
+  padding: 4px var(--ds-spacing-3);
+  border: 1px dashed var(--ds-primary-200);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-primary-50);
+  color: var(--ds-accent-text);
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-medium);
+  font-family: var(--ds-font-mono);
+  white-space: nowrap;
+}
+
+.block {
+  min-width: 40px;
+}
+
+/* A faint track that shows the bounds a Group / Flex distributes within. */
+.track {
+  padding: var(--ds-spacing-2);
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius);
+  background: var(--ds-body-bg);
+}
+
+.tallTrack {
+  composes: track;
+  height: 188px;
+}
+
+.flex1 {
+  flex: 1;
+}
+
+.flex2 {
+  flex: 2;
+}
+
+/* Container scale drawing: a 1440px "viewport" zoomed to fit the column. */
+.containerRow {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: var(--ds-spacing-3);
+}
+
+.viewportTrack {
+  overflow: hidden;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-body-bg);
+  border: 1px solid var(--ds-border-color);
+}
+
+.viewport {
+  width: 1440px;
+  zoom: 0.33;
+  padding: 12px 0;
+}
+
+.containerBar {
+  min-height: 48px;
+  border-width: 3px;
+  background: var(--ds-primary-200);
+}
+
+.resizable {
+  resize: horizontal;
+  overflow: hidden;
+  width: 100%;
+  min-width: 220px;
+  max-width: 100%;
+  padding: var(--ds-spacing-3);
+  border: 1px dashed var(--ds-gray-300);
+  border-radius: var(--ds-radius);
+}
+
+.spaceMarker {
+  position: relative;
+  border-left: 2px solid var(--ds-primary-200);
+  margin-left: var(--ds-spacing-3);
+}
+
+.spaceLabel {
+  position: absolute;
+  top: 50%;
+  left: var(--ds-spacing-2);
+  transform: translateY(-50%);
+}
+
+.centerBox {
+  height: 96px;
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius);
+  background: var(--ds-body-bg);
+}
+
+.ratioRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.3fr;
+  gap: var(--ds-spacing-4);
+  align-items: start;
+}
+
+.media {
+  flex-direction: column;
+  height: 100%;
+}
+
+.fullWidth {
+  width: 100%;
+  overflow: hidden;
+}
+
+.minw0 {
+  min-width: 0;
+}
+
+.rowDivider + .rowDivider {
+  border-top: 1px solid var(--ds-divider);
+}
+
+.scrollCard {
+  flex: none;
+  width: 236px;
+}
+
+.surfaceTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+}
+
+.guideFrame {
+  width: 100%;
+  border: 1px dashed var(--ds-primary-200);
+  border-radius: var(--ds-radius);
+  background: var(--ds-primary-50);
+}
+
+.innerBox {
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-sm);
+}
+
+.tracked {
+  letter-spacing: 0.05em;
+}
+
+.kpiValue {
+  font-family: var(--ds-font-display);
+  letter-spacing: var(--ds-letter-spacing-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.inlineIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+@media (max-width: 640px) {
+  .ratioRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,63 @@
+---
+title: Sign in
+description: The generated Buildpad sign-in page — brand hero, sign-in card, SSO buttons, its states, the phone layout and the pending-access page.
+---
+
+import { Callout } from 'nextra/components'
+import { Showcase } from '@/components/styleguide'
+import {
+  SignInScreen,
+  SignInStates,
+  SignInPhoneAndPending,
+} from '@/components/styleguide/gallery/lazy/templates/sign-in'
+
+# Sign in
+
+The first screen anyone sees in a Buildpad app: a fixed ink brand panel beside
+a calm sign-in card. Everything below is the shipped page rebuilt with the same
+Mantine components, theme and tokens. Only the network calls are left out.
+
+<Callout type="info">
+**What generates this**
+
+- `buildpad add api-routes` writes `app/[lang]/login/page.tsx` from
+  `packages/cli/templates/api/login-page.tsx`. It posts to the same-origin
+  `/api/auth/login` proxy. The copy lives in `lib/i18n/dictionaries/en.json`
+  under `app.login.*`, and the brand name is in the page itself.
+- `buildpad add external-oauth` adds `components/auth/OAuthLoginButtons.tsx`.
+  The login page has a commented-out `<OAuthLoginButtons showDivider />` block
+  that you uncomment. For XAppHub sign-in on an Engine project, use
+  `external-oauth-engine`. It also adds `app/[lang]/auth/pending-access/page.tsx`.
+</Callout>
+
+<Showcase>
+
+## Sign-in page
+
+The real page splits from Mantine's `md` breakpoint (992px). This frame is narrower, so the split is forced here. The form is live, so try submitting it empty or with a malformed email.
+
+<SignInScreen />
+
+## States
+
+What the card shows while validating, submitting and after a failed attempt.
+
+<SignInStates />
+
+## Phone layout and pending access
+
+The same page in a narrow window, and the page XAppHub users see before an administrator gives them a role.
+
+<SignInPhoneAndPending />
+
+</Showcase>
+
+## Built from
+
+- [Buttons](/styleguide/components/buttons): the ink CTA (no `color`), `loading`, and `variant="outline"` SSO buttons in each provider's brand colour
+- [Inputs](/styleguide/components/inputs): `TextInput` and `PasswordInput` at `size="md"` with left icons, `required` and `error`
+- [Feedback](/styleguide/components/feedback): the red and yellow `Alert`, and the `Notification` toast
+- [Typography](/styleguide/components/typography): Inter Tight `Title`, dimmed `Text` and `Anchor`
+- [Layout](/styleguide/components/layout): `Stack`, `Group` and `Divider` with a label
+- [Forms pattern](/styleguide/patterns/forms): field spacing, validation messages and submit placement
+- [Foundations](/styleguide/foundations): `--ds-brand-hero`, `--ds-brand-mark`, `--ds-card-shadow` and `--ds-radius-card`

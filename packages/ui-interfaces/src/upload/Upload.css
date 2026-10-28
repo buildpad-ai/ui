@@ -19,7 +19,7 @@
 
 .library-card:focus-visible {
   outline: none;
-  box-shadow: var(--ds-focus-ring, 0 0 0 3px rgba(234, 88, 12, 0.25));
+  box-shadow: var(--ds-focus-ring, 0 0 0 3px rgb(253 127 21 / 0.22));
 }
 
 .library-card-thumb {

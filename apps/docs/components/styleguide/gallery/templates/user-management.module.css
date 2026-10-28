@@ -1,0 +1,153 @@
+/* Layout-only rules for the Users & roles template. Every control is a stock
+   Mantine component styled by the shipped theme; this file only arranges
+   them, mirroring ManagerTable.css (card + toolbar), ListFooter and the
+   RoleDetail / PolicyDetail pages. */
+
+.minw0 {
+  flex: 1;
+  min-width: 0;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.breakAll {
+  overflow-wrap: anywhere;
+}
+
+/* ── Manager card (.bp-manager-card / .bp-manager-toolbar) ───── */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-3);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ds-border-color);
+}
+
+.search {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+
+.filter {
+  min-width: 160px;
+  flex: 0 1 160px;
+}
+
+.toolbarEnd {
+  margin-left: auto;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.row {
+  cursor: pointer;
+}
+
+/* VTable keeps its column widths and scrolls sideways when the window is narrower. */
+.usersTable {
+  min-width: 760px;
+}
+
+.checkCell {
+  width: 44px;
+}
+
+.menuCell {
+  width: 40px;
+}
+
+.emailCell {
+  max-width: 140px;
+}
+
+/* ListFooter: px="md" py="sm" with the table border on top. */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+  border-top: 1px solid var(--ds-border-color);
+}
+
+/* ── Role and policy detail ──────────────────────────────────── */
+
+.avatarCol {
+  width: 48px;
+}
+
+.descCell {
+  max-width: 160px;
+}
+
+.actionCol {
+  width: 60px;
+  text-align: center;
+}
+
+.removeCol {
+  width: 50px;
+}
+
+.collectionName {
+  max-width: 160px;
+}
+
+.pill {
+  cursor: pointer;
+}
+
+/* SystemPermissions' clickable "all / none" spans and reset links. */
+.textButton,
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.linkButton {
+  color: var(--ds-accent-text);
+  text-decoration: underline;
+}
+
+.leafRow {
+  border-bottom: 1px solid var(--ds-border-color);
+}
+
+/* ── Static modal over the users page ────────────────────────── */
+
+/* A transform makes this the containing block for the Modal's fixed layers. */
+.fixedStage {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+/* ── Pinned-open overlay specimens ───────────────────────────── */
+
+.overlayStage {
+  min-height: 250px;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+

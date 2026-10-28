@@ -1,0 +1,185 @@
+/* Layout-only rules for the Settings template. Every control is a stock
+   Mantine component styled by the shipped theme. The danger zone is a plain
+   section bordered with --ds-danger-300 because Card has no colour prop. */
+
+.root {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-5);
+}
+
+.minw0 {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Settings nav + panel ────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  gap: var(--ds-spacing-5);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+@container (min-width: 520px) {
+  .layout {
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: var(--ds-spacing-4);
+  }
+
+  .nav {
+    position: sticky;
+    /* Below the shell's 60px glass header. */
+    top: calc(60px + var(--ds-spacing-4));
+  }
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.panel {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-4);
+  min-width: 0;
+}
+
+/* ── Cards and rows ──────────────────────────────────────────── */
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-4) var(--ds-spacing-5);
+}
+
+.cardFoot {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--ds-spacing-3) var(--ds-spacing-5);
+  border-top: 1px solid var(--ds-divider);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ds-spacing-2);
+  align-items: center;
+  padding: var(--ds-spacing-4) var(--ds-spacing-5);
+}
+
+.row:has(> .control[data-inline]) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ds-spacing-4);
+}
+
+.control {
+  min-width: 0;
+}
+
+@container (min-width: 400px) {
+  .row {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: var(--ds-spacing-5);
+  }
+
+  .control[data-inline] {
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+.block {
+  padding: var(--ds-spacing-4) var(--ds-spacing-5);
+}
+
+.listRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-4) var(--ds-spacing-5);
+}
+
+.key {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── Notification matrix ─────────────────────────────────────── */
+
+.groupRow td {
+  padding-top: var(--ds-spacing-4);
+  padding-bottom: var(--ds-spacing-1);
+  background: var(--ds-gray-50);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.cellCenter {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Danger zone ─────────────────────────────────────────────── */
+
+.danger {
+  border: 1px solid var(--ds-danger-300);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-card-bg);
+  overflow: hidden;
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ds-spacing-3);
+  margin-top: var(--ds-spacing-4);
+}
+
+.confirm > :first-child {
+  flex: 1 1 200px;
+}
+
+/* ── Save bar ────────────────────────────────────────────────── */
+
+.saveBar {
+  position: sticky;
+  bottom: var(--ds-spacing-4);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-3) var(--ds-spacing-3) var(--ds-spacing-3) var(--ds-spacing-5);
+  border: 1px solid var(--ds-card-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-card-bg);
+  box-shadow: var(--ds-shadow-lg);
+}

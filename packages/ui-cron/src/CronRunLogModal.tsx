@@ -16,15 +16,15 @@ import { CronRunStatusBadge } from './CronRunStatusBadge';
 import { CronTriggerBadge } from './CronTriggerBadge';
 
 // The console is dark in both color schemes, like a terminal: its colors are
-// its own and do not follow the theme.
-const CONSOLE_BACKGROUND = '#111827';
-const CONSOLE_TEXT = '#e5e7eb';
-const CONSOLE_DIMMED = '#9ca3af';
+// its own (the BuildPad brand ink surfaces) and do not follow the theme.
+const CONSOLE_BACKGROUND = '#0a0a0b';
+const CONSOLE_TEXT = '#e8e9ec';
+const CONSOLE_DIMMED = '#9b9ca6';
 const LEVEL_COLORS: Record<CronLogLevel, string> = {
-  INFO: '#9ca3af',
+  INFO: '#9b9ca6',
   WARN: '#fbbf24',
-  ERROR: '#f87171',
-  RAW: '#9ca3af',
+  ERROR: '#f97066',
+  RAW: '#9b9ca6',
 };
 
 /**

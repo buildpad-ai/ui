@@ -1,0 +1,88 @@
+---
+title: Forms
+description: Create, relational, file-upload, settings, filter, multi-step, auth, invite and destructive-confirmation forms composed from stock Mantine inputs with the shipped Buildpad theme.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  CreateRecordForm,
+  RelationalFields,
+  RelationPicker,
+  FileUpload,
+  FileLibraryPicker,
+  SettingsForm,
+  FilterBar,
+  MultiStepForm,
+  AuthForms,
+  InviteAndConfirmForms,
+  ValidationStates,
+} from '@/components/styleguide/gallery/lazy/sections/forms'
+
+# Forms
+
+The forms an internal tool is mostly made of, at the size they appear in an
+app. Every one is interactive — submit with fields empty, edit a setting, change
+a filter — so you can see the validation, dirty, loading and empty states the
+theme gives you without writing any styles.
+
+<Showcase>
+
+## Create a record
+
+Sections with a title and description on the left and a two-column field grid on the right; errors appear only after the first submit, and the footer sticks to the bottom of the card while the form scrolls.
+
+<CreateRecordForm />
+
+## Relational fields
+
+Buildpad's signature controls: a many-to-one value in a bordered card, and related-record lists you can reorder, add to and remove from — every change is staged until the parent record saves.
+
+<RelationalFields />
+
+<RelationPicker />
+
+## File upload
+
+The shipped upload field: a dashed drop zone, a queue that shows progress, success and failure per file, and a picker for files already in the library.
+
+<FileUpload />
+
+<FileLibraryPicker />
+
+## Settings
+
+One setting per row — label and description left, control right — split by dividers. The footer tells you when there are unsaved changes and stays disabled until there are.
+
+<SettingsForm />
+
+## Filter bar
+
+Search plus the two or three filters people use most, with everything else behind a popover. Active filters repeat as removable pills so the current view is always explained.
+
+<FilterBar />
+
+## Multi-step
+
+For long, ordered tasks. Next validates only the current step; completed steps stay clickable.
+
+<MultiStepForm />
+
+## Sign in & sign up
+
+Compact, single-column auth forms. The ink button is the default action; the ember `color="primary"` button is kept for brand moments like creating an account.
+
+<AuthForms />
+
+## Invite & confirm
+
+Collecting many values in one field, and slowing people down before something irreversible.
+
+<InviteAndConfirmForms />
+
+## Validation states
+
+Summarise every problem at the top of a long form and link each one to its field; repeat the message on the field itself. The field states on the right are everything an input can show.
+
+<ValidationStates />
+
+</Showcase>

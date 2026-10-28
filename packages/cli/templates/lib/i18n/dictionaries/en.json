@@ -79,7 +79,7 @@
         "feature1Title": "Role-Based Access Control",
         "feature1Body": "Manage fine-grained permissions, roles, and users in real-time with an intuitive dashboard interface.",
         "feature2Title": "Unified Design Tokens",
-        "feature2Body": "Maintain brand consistency using Tailwind slate neutrals, orange primary accents, and responsive typography.",
+        "feature2Body": "Maintain brand consistency with ink and ember accents on cool neutral greys, and Inter typography.",
         "feature3Title": "Secure Two-Tier Auth Proxy",
         "feature3Body": "Avoid CORS issues with direct browser-to-proxy route mapping, providing enhanced security out of the box.",
         "trust": "Protected by industry-standard encryption",

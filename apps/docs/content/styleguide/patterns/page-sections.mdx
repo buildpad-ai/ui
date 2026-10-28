@@ -1,0 +1,75 @@
+---
+title: Page headers & sections
+description: Page headers, card section headers, toolbars, sticky footers, side panels, banners, onboarding checklists and stats rows composed from stock Mantine components with the shipped Buildpad theme.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  PageHeaders,
+  CardSectionHeaders,
+  Toolbars,
+  StickyFooters,
+  DetailPanel,
+  Banners,
+  OnboardingChecklist,
+  StatsHeader,
+} from '@/components/styleguide/gallery/lazy/sections/page-sections'
+
+# Page headers & sections
+
+The frame around a page's content: how a screen introduces itself, groups what
+is on it, and offers actions. These are the pieces every list, record and
+dashboard in a Buildpad app is assembled from, shown at real size and fully
+interactive.
+
+<Showcase>
+
+## Page headers
+
+Breadcrumbs, title and a short description on the left; at most one ink primary action on the right, with the rest in secondary buttons or an overflow menu.
+
+<PageHeaders />
+
+## Section headers in cards
+
+Smaller headers that name a group of content inside a card and hold its one or two local actions.
+
+<CardSectionHeaders />
+
+## Toolbars
+
+Everything that changes what a list shows — search, filters, sort and view — in one row; selecting rows swaps in actions for the selection.
+
+<Toolbars />
+
+## Sticky action footers
+
+Keep save and bulk actions reachable while long content scrolls. Scroll inside each frame to see them stick.
+
+<StickyFooters />
+
+## Side panel & drawer
+
+Show a record's details next to the list it came from, so people can work through a queue without losing their place.
+
+<DetailPanel />
+
+## Banners
+
+Page-level messages built on `Alert`. The colour carries the meaning — announcement, warning, info, danger, success, neutral — so keep each one to a sentence and a single action.
+
+<Banners />
+
+## Onboarding checklist
+
+Guide new workspaces through setup with visible progress and one obvious next step.
+
+<OnboardingChecklist />
+
+## Stats header
+
+The numbers people check first, at the top of a dashboard or report, using the shared `KPIS` sample data.
+
+<StatsHeader />
+
+</Showcase>

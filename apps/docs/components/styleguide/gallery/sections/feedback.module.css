@@ -1,0 +1,35 @@
+/* Layout-only helpers for the Feedback & status demos. */
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.toastViewport {
+  position: relative;
+  min-height: 330px;
+}
+
+.toastPage {
+  width: 100%;
+}
+
+.toastStack {
+  position: absolute;
+  top: var(--ds-spacing-3);
+  right: var(--ds-spacing-3);
+  z-index: 3;
+  width: min(340px, calc(100% - var(--ds-spacing-6)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-2);
+}
+
+.overlayCard {
+  width: 100%;
+}
+
+.dim {
+  color: var(--ds-ink-faint);
+  flex: none;
+}

@@ -1,0 +1,108 @@
+/* Layout-only helpers for the Data display demos. Colours come from --ds-*
+   tokens; the components themselves are styled by the shipped theme. */
+
+.matrix {
+  display: grid;
+  grid-template-columns: 76px repeat(6, minmax(0, 1fr));
+  gap: var(--ds-spacing-3) 6px;
+  align-items: center;
+  justify-items: start;
+  width: 100%;
+}
+
+.matrixHead {
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-ink-faint);
+}
+
+.matrixVariant {
+  font-family: var(--ds-font-mono);
+  font-size: 0.6875rem;
+  color: var(--ds-ink-secondary);
+}
+
+.inkBackdrop {
+  width: 100%;
+  padding: var(--ds-spacing-4);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-brand-ink-900);
+}
+
+.band {
+  height: 104px;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+  background: linear-gradient(135deg, var(--ds-primary-50), var(--ds-primary-200) 70%, var(--ds-primary-300));
+}
+
+.placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-spacing-2);
+  border: 1px dashed var(--ds-gray-300);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-gray-50);
+  color: var(--ds-ink-faint);
+  font-size: var(--ds-font-size-xs);
+}
+
+.dlGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ds-spacing-4) var(--ds-spacing-6);
+  margin: 0;
+}
+
+.dlGrid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dlRows {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  margin: 0;
+}
+
+.dlRows > dt,
+.dlRows > dd {
+  margin: 0;
+  padding: var(--ds-spacing-3) 0;
+  border-top: 1px solid var(--ds-divider);
+  min-width: 0;
+}
+
+.dlRows > dt:first-of-type,
+.dlRows > dd:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.dlGrid dd {
+  margin: 0;
+}
+
+.shadowTile {
+  height: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+@media (max-width: 640px) {
+  .dlGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .matrix {
+    overflow-x: auto;
+  }
+}

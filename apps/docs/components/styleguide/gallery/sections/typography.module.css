@@ -1,0 +1,43 @@
+/* Layout-only helpers for the Typography demos. */
+
+.scaleRow {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--ds-spacing-4);
+  padding-bottom: var(--ds-spacing-3);
+  border-bottom: 1px solid var(--ds-divider);
+}
+
+.scaleRow:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.scaleMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.minw0 {
+  min-width: 0;
+}
+
+.tracked {
+  letter-spacing: 0.05em;
+}
+
+.bounded {
+  width: 100%;
+  min-width: 0;
+}
+
+.quoteStack {
+  width: 100%;
+}
+
+/* Comfortable reading measure for long-form text. */
+.measure {
+  max-width: 62ch;
+}
+

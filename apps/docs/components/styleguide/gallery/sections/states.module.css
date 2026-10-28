@@ -1,0 +1,186 @@
+/* Layout chrome for the Empty, loading & error state patterns. Components are
+   styled by the shipped theme; only frames and placement live here, with
+   --ds-* tokens for the few surfaces the blocks need. */
+
+.block {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Fills its specimen so side-by-side states line up. */
+.fill {
+  min-height: 100%;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-4);
+}
+
+.blockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+  border-bottom: 1px solid var(--ds-border-color);
+}
+
+.blockBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--ds-spacing-8) var(--ds-spacing-6);
+}
+
+.blockFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+  border-top: 1px solid var(--ds-border-color);
+}
+
+.empty {
+  max-width: 380px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+}
+
+.row + .row {
+  border-top: 1px solid var(--ds-divider);
+}
+
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-spacing-2);
+  min-height: 132px;
+  padding: var(--ds-spacing-4);
+  border: 1px dashed var(--ds-gray-300);
+  border-radius: var(--ds-radius-md);
+  text-align: center;
+}
+
+.toggleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-3);
+  width: 100%;
+}
+
+/* ── Skeletons ── */
+
+.skeletonToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-2) var(--ds-spacing-3);
+  border-bottom: 1px solid var(--ds-border-color);
+}
+
+.amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.checkCell {
+  width: 44px;
+}
+
+.menuCell {
+  width: 48px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-spacing-4);
+}
+
+.formFull {
+  grid-column: 1 / -1;
+}
+
+/* ── Overlays & stacks ── */
+
+.overlayHost {
+  position: relative;
+  width: 100%;
+}
+
+.toastViewport {
+  position: relative;
+  width: 100%;
+  min-height: 380px;
+}
+
+.toastStack {
+  position: absolute;
+  right: var(--ds-spacing-4);
+  bottom: var(--ds-spacing-4);
+  z-index: 3;
+  width: min(360px, calc(100% - var(--ds-spacing-8)));
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--ds-spacing-2);
+}
+
+.frameContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-4);
+}
+
+.summary {
+  padding: var(--ds-spacing-4);
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-body-bg);
+}
+
+.summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-spacing-3) var(--ds-spacing-4);
+  margin: 0;
+}
+
+.summary dt {
+  margin: 0 0 2px;
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-ink-faint);
+}
+
+.summary dd {
+  margin: 0;
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.twoLineCell {
+  min-height: calc(
+    var(--mantine-font-size-sm) * var(--mantine-line-height-sm) + var(--mantine-font-size-xs) *
+      var(--mantine-line-height-xs)
+  );
+}

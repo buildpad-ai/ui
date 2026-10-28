@@ -1,70 +1,73 @@
 /* ═══════════════════════════════════════════════════════════
    Enterprise Design System — Design Tokens
    ═══════════════════════════════════════════════════════════
-   "Soft Futurism" palette — navy + amber brand, Space Grotesk
-   display type, large-radius cards, gradient surfaces, and an
-   auto-switching light/dark scheme.
-   - Amber accent (fills + AA-safe text stops) for brand energy
-   - Slate neutrals on gradient surfaces for a crisp, modern look
-   - Tailwind type, radius, and shadow scales throughout
+   BuildPad brand — "Ink & Ember". Mirrors the buildpad.ai site
+   tokens: near-black ink for primary actions, ember orange as the
+   brand accent, cool neutral greys, Inter Tight display type, and
+   an auto-switching light/dark scheme.
+   - Ink CTAs; ember for interactive state, brand marks and
+     highlights (AA-safe text stops via --ds-accent-text)
+   - Flat #fafbfc page, white hairline cards, soft long shadows
+   - One radius language: controls 8px, cards 16px, pills for
+     buttons and badges
    ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Primary (Orange) ──────────────────────────────────── */
-  --ds-primary-50: #fff7ed;
-  --ds-primary-100: #ffedd5;
-  --ds-primary-200: #fed7aa;
-  --ds-primary-300: #fdba74;
-  --ds-primary-400: #fb923c;
-  --ds-primary-500: #f97316;
-  --ds-primary: #ea580c;
-  --ds-primary-600: #ea580c;
-  --ds-primary-700: #c2410c;
-  --ds-primary-800: #9a3412;
-  --ds-primary-900: #7c2d12;
-  --ds-primary-950: #431407;
+  /* ── Primary (Ember) ───────────────────────────────────── */
+  --ds-primary-50: #fff8f2;
+  --ds-primary-100: #ffeee1;
+  --ds-primary-200: #ffd9b8;
+  --ds-primary-300: #feaa6b;
+  --ds-primary-400: #fd9843;
+  --ds-primary-500: #fd7f15;
+  --ds-primary: #e86a00;
+  --ds-primary-600: #e86a00;
+  --ds-primary-700: #b34d00;
+  --ds-primary-800: #8f3d00;
+  --ds-primary-900: #6b2e00;
+  --ds-primary-950: #3d1a00;
 
-  /* ── Secondary / Accent (Amber) ────────────────────────── */
-  --ds-secondary-50: #fff8eb;
-  --ds-secondary-100: #ffebc2;
-  --ds-secondary-200: #ffd98a;
-  --ds-secondary-300: #ffc152;
-  --ds-secondary-400: #f5a623;
-  --ds-secondary-500: #ec940f;
-  --ds-secondary: #e8890c;
-  --ds-secondary-600: #e8890c;
-  --ds-secondary-700: #c26e07;
-  --ds-secondary-800: #995607;
-  --ds-secondary-900: #7a4407;
-  --ds-secondary-950: #4d2b04;
+  /* ── Secondary (Ink) ───────────────────────────────────── */
+  --ds-secondary-50: #f4f4f6;
+  --ds-secondary-100: #e8e9ec;
+  --ds-secondary-200: #d7d9df;
+  --ds-secondary-300: #b9bac2;
+  --ds-secondary-400: #8a8b94;
+  --ds-secondary-500: #54555d;
+  --ds-secondary: #2a2b31;
+  --ds-secondary-600: #2a2b31;
+  --ds-secondary-700: #18191d;
+  --ds-secondary-800: #131418;
+  --ds-secondary-900: #0a0a0b;
+  --ds-secondary-950: #050506;
 
-  /* ── Success (Green) ───────────────────────────────────── */
-  --ds-success-50: #f0fdf4;
-  --ds-success-100: #dcfce7;
-  --ds-success-200: #bbf7d0;
-  --ds-success-300: #86efac;
-  --ds-success-400: #4ade80;
-  --ds-success-500: #22c55e;
-  --ds-success: #16a34a;
-  --ds-success-600: #16a34a;
-  --ds-success-700: #15803d;
-  --ds-success-800: #166534;
-  --ds-success-900: #14532d;
-  --ds-success-950: #052e16;
+  /* ── Success (Emerald) ─────────────────────────────────── */
+  --ds-success-50: #ecfdf5;
+  --ds-success-100: #d1fae5;
+  --ds-success-200: #a7f3d0;
+  --ds-success-300: #6ee7b7;
+  --ds-success-400: #34d399;
+  --ds-success-500: #10b981;
+  --ds-success: #059669;
+  --ds-success-600: #059669;
+  --ds-success-700: #047857;
+  --ds-success-800: #065f46;
+  --ds-success-900: #064e3b;
+  --ds-success-950: #022c22;
 
-  /* ── Info (Sky) ────────────────────────────────────────── */
-  --ds-info-50: #f0f9ff;
-  --ds-info-100: #e0f2fe;
-  --ds-info-200: #bae6fd;
-  --ds-info-300: #7dd3fc;
-  --ds-info-400: #38bdf8;
-  --ds-info-500: #0ea5e9;
-  --ds-info: #0284c7;
-  --ds-info-600: #0284c7;
-  --ds-info-700: #0369a1;
-  --ds-info-800: #075985;
-  --ds-info-900: #0c4a6e;
-  --ds-info-950: #082f49;
+  /* ── Info (Blue) ───────────────────────────────────────── */
+  --ds-info-50: #eff6ff;
+  --ds-info-100: #dbeafe;
+  --ds-info-200: #bfdbfe;
+  --ds-info-300: #93c5fd;
+  --ds-info-400: #60a5fa;
+  --ds-info-500: #3b82f6;
+  --ds-info: #2563eb;
+  --ds-info-600: #2563eb;
+  --ds-info-700: #1d4ed8;
+  --ds-info-800: #1e40af;
+  --ds-info-900: #1e3a8a;
+  --ds-info-950: #172554;
 
   /* ── Warning (Amber) ───────────────────────────────────── */
   --ds-warning-50: #fffbeb;
@@ -81,31 +84,31 @@
   --ds-warning-950: #451a03;
 
   /* ── Danger (Red) ──────────────────────────────────────── */
-  --ds-danger-50: #fef2f2;
-  --ds-danger-100: #fee2e2;
-  --ds-danger-200: #fecaca;
-  --ds-danger-300: #fca5a5;
-  --ds-danger-400: #f87171;
-  --ds-danger-500: #ef4444;
-  --ds-danger: #dc2626;
-  --ds-danger-600: #dc2626;
-  --ds-danger-700: #b91c1c;
-  --ds-danger-800: #991b1b;
-  --ds-danger-900: #7f1d1d;
-  --ds-danger-950: #450a0a;
+  --ds-danger-50: #fef3f2;
+  --ds-danger-100: #fee4e2;
+  --ds-danger-200: #fecdca;
+  --ds-danger-300: #fda29b;
+  --ds-danger-400: #f97066;
+  --ds-danger-500: #f04438;
+  --ds-danger: #d92d20;
+  --ds-danger-600: #d92d20;
+  --ds-danger-700: #b42318;
+  --ds-danger-800: #912018;
+  --ds-danger-900: #7a271a;
+  --ds-danger-950: #55160c;
 
-  /* ── Gray (Slate) ──────────────────────────────────────── */
-  --ds-gray-50: #f8fafc;
-  --ds-gray-100: #f1f5f9;
-  --ds-gray-200: #e2e8f0;
-  --ds-gray-300: #cbd5e1;
-  --ds-gray-400: #94a3b8;
-  --ds-gray-500: #64748b;
-  --ds-gray-600: #475569;
-  --ds-gray-700: #334155;
-  --ds-gray-800: #1e293b;
-  --ds-gray-900: #0f172a;
-  --ds-gray-950: #020617;
+  /* ── Gray (Neutral) ────────────────────────────────────── */
+  --ds-gray-50: #fafbfc;
+  --ds-gray-100: #f4f4f6;
+  --ds-gray-200: #e8e9ec;
+  --ds-gray-300: #d7d9df;
+  --ds-gray-400: #9b9ca6;
+  --ds-gray-500: #6b6c75;
+  --ds-gray-600: #54555d;
+  --ds-gray-700: #3a3b42;
+  --ds-gray-800: #2a2b31;
+  --ds-gray-900: #131418;
+  --ds-gray-950: #0a0a0b;
 
   /* ── Spacing (4px base grid) ───────────────────────────── */
   --ds-spacing-1: 0.25rem;
@@ -122,7 +125,7 @@
   /* ── Typography ────────────────────────────────────────── */
   --ds-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --ds-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --ds-font-display: var(--ds-font-sans);
+  --ds-font-display: "Inter Tight", var(--ds-font-sans);
   --ds-font-mono: "JetBrains Mono", "SF Mono", SFMono-Regular, Consolas, monospace;
   --ds-font-size-xs: 0.75rem;
   --ds-font-size-sm: 0.875rem;
@@ -145,78 +148,96 @@
   --ds-line-height-base: 1.5;
   --ds-line-height-relaxed: 1.625;
 
+  /* Display type runs tight, like the site's Inter Tight headings. */
+  --ds-letter-spacing-tight: -0.02em;
+  --ds-letter-spacing-tighter: -0.03em;
+
   /* ── Radius ────────────────────────────────────────────── */
-  --ds-radius-sm: 0.25rem;
-  --ds-radius: 0.375rem;
-  --ds-radius-md: 0.5rem;
+  /* Controls 8px, popovers 12px, modals/cards 16px, large surfaces 24px. */
+  --ds-radius-sm: 0.375rem;
+  --ds-radius: 0.5rem;
+  --ds-radius-md: 0.625rem;
   --ds-radius-lg: 0.75rem;
   --ds-radius-xl: 1rem;
-  --ds-radius-card: 18px;
-  --ds-radius-hero: 22px;
-  --ds-radius-rail: 18px;
+  --ds-radius-card: 16px;
+  --ds-radius-hero: 24px;
+  --ds-radius-rail: 16px;
   --ds-radius-pill: 999px;
 
   /* ── Shadows ───────────────────────────────────────────── */
-  --ds-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --ds-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --ds-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --ds-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --ds-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  /* Ink-tinted, soft and long rather than grey and tight. */
+  --ds-shadow-xs: 0 1px 1px 0 rgb(10 10 11 / 0.03);
+  --ds-shadow-sm: 0 1px 2px 0 rgb(10 10 11 / 0.06);
+  --ds-shadow: 0 1px 2px 0 rgb(10 10 11 / 0.05), 0 2px 8px -2px rgb(10 10 11 / 0.08);
+  --ds-shadow-md: 0 1px 2px 0 rgb(10 10 11 / 0.04), 0 8px 24px -8px rgb(10 10 11 / 0.14);
+  --ds-shadow-lg: 0 2px 4px 0 rgb(10 10 11 / 0.04), 0 18px 40px -16px rgb(10 10 11 / 0.22);
+  --ds-shadow-xl: 0 2px 4px 0 rgb(10 10 11 / 0.04), 0 40px 80px -40px rgb(10 10 11 / 0.3),
+    0 0 0 1px rgb(10 10 11 / 0.05);
 
   /* ── Base ───────────────────────────────────────────────── */
-  /* Ink is the reading colour on the gradient page surface; the
-     gray-derived body-color is kept for components that predate it. */
-  --ds-ink: #0f1b33;
-  --ds-ink-secondary: #55606e;
-  --ds-ink-faint: #7c8698;
-  --ds-body-bg: linear-gradient(180deg, #f6f7fa 0%, #ffffff 40%);
+  /* Ink is the reading colour on the page surface; the gray-derived
+     body-color is kept for components that predate it. */
+  --ds-ink: #0a0a0b;
+  --ds-ink-secondary: #54555d;
+  --ds-ink-faint: #6b6c75;
+  --ds-body-bg: #fafbfc;
   --ds-body-color: var(--ds-gray-900);
-  --ds-body-color-rgb: 15, 23, 42;
-  --ds-primary-rgb: 234, 88, 12;
+  --ds-body-color-rgb: 19, 20, 24;
+  --ds-primary-rgb: 232, 106, 0;
 
-  /* ── Brand gradients (fixed, non-inverting) ───────────────
+  /* ── Brand (fixed, non-inverting) ─────────────────────────
      The numbered primary/secondary scale stops flip in dark mode so text
      stays legible — correct for text/surface roles, but wrong for
      decorative brand treatments (hero bands, brand mark, login splash)
-     that should render as deep navy / amber in both colour schemes. These
+     that should render as deep ink / ember in both colour schemes. These
      are deliberately NOT redefined in the dark-mode block below. */
-  --ds-brand-hero: linear-gradient(135deg, #11192e 0%, #1b2a4a 100%);
-  --ds-brand-mark: linear-gradient(135deg, #1b2a4a 0%, #11192e 100%);
-  --ds-brand-accent-mark: linear-gradient(135deg, #f5a623 0%, #c26e07 100%);
-  --ds-brand-navy-900: #0c1220;
-  --ds-brand-navy-800: #11192e;
-  --ds-brand-navy-500: #3a5480;
+  --ds-brand-hero: radial-gradient(120% 90% at 85% 0%, rgb(253 127 21 / 0.32) 0%, transparent 55%),
+    linear-gradient(160deg, #131418 0%, #0a0a0b 100%);
+  --ds-brand-mark: linear-gradient(135deg, #fd9843 0%, #e86a00 100%);
+  --ds-brand-accent-mark: linear-gradient(135deg, #fd9843 0%, #e86a00 100%);
+  --ds-brand-ink-900: #0a0a0b;
+  --ds-brand-ink-800: #131418;
+  --ds-brand-ink-500: #54555d;
+  /* Deprecated: pre-v4 names, kept so existing consumers still resolve. */
+  --ds-brand-navy-900: var(--ds-brand-ink-900);
+  --ds-brand-navy-800: var(--ds-brand-ink-800);
+  --ds-brand-navy-500: var(--ds-brand-ink-500);
 
   /* ── Icon rail ─────────────────────────────────────────── */
-  --ds-rail-bg: #0f1b33;
-  --ds-rail-shadow: 0 12px 32px rgba(15, 27, 51, 0.18);
+  --ds-rail-bg: #0a0a0b;
+  --ds-rail-shadow: 0 12px 32px rgb(10 10 11 / 0.18);
   --ds-rail-border: transparent;
-  --ds-rail-icon-idle: #8a9cbe;
-  --ds-rail-active-bg: rgba(255, 193, 82, 0.16);
-  --ds-rail-active-icon: #ffc152;
-  --ds-rail-active-ring: 0 0 0 1px rgba(255, 193, 82, 0.35);
+  --ds-rail-icon-idle: #8a8b94;
+  --ds-rail-active-bg: rgb(253 127 21 / 0.16);
+  --ds-rail-active-icon: #fd9843;
+  --ds-rail-active-ring: 0 0 0 1px rgb(253 127 21 / 0.35);
 
-  /* Amber-as-text that passes AA on white — NEVER #e8890c for text. */
-  --ds-accent-text: #b45309;
+  /* Ember-as-text that passes AA on white (~5.3:1) — NEVER the 500/600
+     fill stops for text. */
+  --ds-accent-text: var(--ds-primary-700);
 
-  /* ── CTA + hero gradients ──────────────────────────────── */
-  --ds-cta-gradient: linear-gradient(135deg, #ffc152, #e8890c);
-  --ds-cta-shadow: 0 8px 24px rgba(232, 137, 12, 0.35);
-  --ds-hero-bg: radial-gradient(circle at 88% 0%, rgba(245, 166, 35, 0.35) 0%, transparent 42%),
-    radial-gradient(circle at 10% 110%, rgba(93, 116, 160, 0.5) 0%, transparent 50%),
-    linear-gradient(120deg, #101d38 0%, #1b2a4a 100%);
-  --ds-hero-sub: #c6cede;
+  /* ── Primary CTA (ink pill) ────────────────────────────── */
+  /* The default Button renders with these (see lib/theme.ts). */
+  --ds-cta-bg: #0a0a0b;
+  --ds-cta-bg-hover: #2a2b31;
+  --ds-cta-color: #ffffff;
+
+  /* ── Brand CTA + hero gradients ────────────────────────── */
+  --ds-cta-gradient: linear-gradient(135deg, #fd9843 0%, #e86a00 100%);
+  --ds-cta-shadow: 0 10px 22px -14px rgb(253 127 21 / 0.85);
+  --ds-hero-bg: var(--ds-brand-hero);
+  --ds-hero-sub: #b9bac2;
 
   /* ── Chip / card / divider surfaces ────────────────────── */
   --ds-chip-bg: #ffffff;
-  --ds-chip-border: #e3e6ec;
+  --ds-chip-border: #e8e9ec;
   --ds-card-bg: #ffffff;
-  --ds-card-border: #e8ebf1;
+  --ds-card-border: #e8e9ec;
   --ds-table-border: 1px solid var(--ds-card-border);
   --ds-table-row-border: 1px solid var(--ds-gray-100);
   --ds-table-popup-border: 1px solid var(--ds-card-border);
-  --ds-card-shadow: 0 2px 10px rgba(15, 27, 51, 0.04);
-  --ds-divider: #eef1f5;
+  --ds-card-shadow: 0 1px 1px 0 rgb(10 10 11 / 0.03), 0 18px 40px -30px rgb(10 10 11 / 0.28);
+  --ds-divider: #eeeff2;
 
   /* ── Borders ───────────────────────────────────────────── */
   /* Cards/dividers use gray-200; inputs use gray-300 (one step stronger). */
@@ -225,71 +246,75 @@
 
   /* ── States ────────────────────────────────────────────── */
   --ds-hover-opacity: 0.85;
-  --ds-focus-ring: 0 0 0 3px rgba(27, 42, 74, 0.25);
-  --ds-focus-ring-color: rgba(27, 42, 74, 0.25);
+  --ds-focus-ring: 0 0 0 3px rgb(253 127 21 / 0.22);
+  --ds-focus-ring-color: rgb(253 127 21 / 0.22);
+  --ds-focus-border: var(--ds-primary-600);
   --ds-disabled-opacity: 0.5;
 
   /* ── Transitions ───────────────────────────────────────── */
-  --ds-transition-fast: 150ms ease;
-  --ds-transition-normal: 200ms ease;
+  --ds-transition-fast: 150ms cubic-bezier(0.2, 0, 0, 1);
+  --ds-transition-normal: 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* ── Dark Mode ───────────────────────────────────────────────
    Each hue's numbered scale is mirrored (50↔950, 100↔900, …,
    500 stays) and the unsuffixed main moves to the hue's 400
-   stop, so tokens written for light mode stay legible. */
+   stop, so tokens written for light mode stay legible. Primary
+   gets deeper ember tints at the dark end and gray is hand-tuned
+   so muted text stays AA; the semantic hues mirror exactly. */
 [data-mantine-color-scheme="dark"] {
-  --ds-primary: #fb923c;
-  --ds-primary-50: #431407;
-  --ds-primary-100: #7c2d12;
-  --ds-primary-200: #9a3412;
-  --ds-primary-300: #c2410c;
-  --ds-primary-400: #ea580c;
-  --ds-primary-500: #f97316;
-  --ds-primary-600: #fb923c;
-  --ds-primary-700: #fdba74;
-  --ds-primary-800: #fed7aa;
-  --ds-primary-900: #ffedd5;
-  --ds-primary-950: #fff7ed;
+  --ds-primary: #fd9843;
+  --ds-primary-50: #2b1608;
+  --ds-primary-100: #3d1f0a;
+  --ds-primary-200: #5c2e0e;
+  --ds-primary-300: #8f3d00;
+  --ds-primary-400: #c25400;
+  --ds-primary-500: #e86a00;
+  --ds-primary-600: #fd9843;
+  --ds-primary-700: #feaa6b;
+  --ds-primary-800: #ffd9b8;
+  --ds-primary-900: #ffeee1;
+  --ds-primary-950: #fff8f2;
 
-  --ds-secondary: #f5a623;
-  --ds-secondary-50: #4d2b04;
-  --ds-secondary-100: #7a4407;
-  --ds-secondary-200: #995607;
-  --ds-secondary-300: #c26e07;
-  --ds-secondary-400: #e8890c;
-  --ds-secondary-500: #ec940f;
-  --ds-secondary-600: #f5a623;
-  --ds-secondary-700: #ffc152;
-  --ds-secondary-800: #ffd98a;
-  --ds-secondary-900: #ffebc2;
-  --ds-secondary-950: #fff8eb;
+  /* Ink inverts to light. */
+  --ds-secondary: #d7d9df;
+  --ds-secondary-50: #0a0a0b;
+  --ds-secondary-100: #131418;
+  --ds-secondary-200: #18191d;
+  --ds-secondary-300: #2a2b31;
+  --ds-secondary-400: #54555d;
+  --ds-secondary-500: #8a8b94;
+  --ds-secondary-600: #d7d9df;
+  --ds-secondary-700: #e8e9ec;
+  --ds-secondary-800: #f4f4f6;
+  --ds-secondary-900: #fafbfc;
+  --ds-secondary-950: #ffffff;
 
-  --ds-success: #4ade80;
-  --ds-success-50: #052e16;
-  --ds-success-100: #14532d;
-  --ds-success-200: #166534;
-  --ds-success-300: #15803d;
-  --ds-success-400: #16a34a;
-  --ds-success-500: #22c55e;
-  --ds-success-600: #4ade80;
-  --ds-success-700: #86efac;
-  --ds-success-800: #bbf7d0;
-  --ds-success-900: #dcfce7;
-  --ds-success-950: #f0fdf4;
+  --ds-success: #34d399;
+  --ds-success-50: #022c22;
+  --ds-success-100: #064e3b;
+  --ds-success-200: #065f46;
+  --ds-success-300: #047857;
+  --ds-success-400: #059669;
+  --ds-success-500: #10b981;
+  --ds-success-600: #34d399;
+  --ds-success-700: #6ee7b7;
+  --ds-success-800: #a7f3d0;
+  --ds-success-900: #d1fae5;
+  --ds-success-950: #ecfdf5;
 
-  --ds-info: #38bdf8;
-  --ds-info-50: #082f49;
-  --ds-info-100: #0c4a6e;
-  --ds-info-200: #075985;
-  --ds-info-300: #0369a1;
-  --ds-info-400: #0284c7;
-  --ds-info-500: #0ea5e9;
-  --ds-info-600: #38bdf8;
-  --ds-info-700: #7dd3fc;
-  --ds-info-800: #bae6fd;
-  --ds-info-900: #e0f2fe;
-  --ds-info-950: #f0f9ff;
+  --ds-info: #60a5fa;
+  --ds-info-50: #172554;
+  --ds-info-100: #1e3a8a;
+  --ds-info-200: #1e40af;
+  --ds-info-300: #1d4ed8;
+  --ds-info-400: #2563eb;
+  --ds-info-500: #3b82f6;
+  --ds-info-600: #60a5fa;
+  --ds-info-700: #93c5fd;
+  --ds-info-800: #bfdbfe;
+  --ds-info-900: #dbeafe;
+  --ds-info-950: #eff6ff;
 
   --ds-warning: #fbbf24;
   --ds-warning-50: #451a03;
@@ -304,66 +329,73 @@
   --ds-warning-900: #fef3c7;
   --ds-warning-950: #fffbeb;
 
-  --ds-danger: #f87171;
-  --ds-danger-50: #450a0a;
-  --ds-danger-100: #7f1d1d;
-  --ds-danger-200: #991b1b;
-  --ds-danger-300: #b91c1c;
-  --ds-danger-400: #dc2626;
-  --ds-danger-500: #ef4444;
-  --ds-danger-600: #f87171;
-  --ds-danger-700: #fca5a5;
-  --ds-danger-800: #fecaca;
-  --ds-danger-900: #fee2e2;
-  --ds-danger-950: #fef2f2;
+  --ds-danger: #f97066;
+  --ds-danger-50: #55160c;
+  --ds-danger-100: #7a271a;
+  --ds-danger-200: #912018;
+  --ds-danger-300: #b42318;
+  --ds-danger-400: #d92d20;
+  --ds-danger-500: #f04438;
+  --ds-danger-600: #f97066;
+  --ds-danger-700: #fda29b;
+  --ds-danger-800: #fecdca;
+  --ds-danger-900: #fee4e2;
+  --ds-danger-950: #fef3f2;
 
-  --ds-gray-50: #020617;
-  --ds-gray-100: #0f172a;
-  --ds-gray-200: #1e293b;
-  --ds-gray-300: #334155;
-  --ds-gray-400: #475569;
-  --ds-gray-500: #94a3b8;
-  --ds-gray-600: #cbd5e1;
-  --ds-gray-700: #e2e8f0;
-  --ds-gray-800: #f1f5f9;
-  --ds-gray-900: #f8fafc;
+  --ds-gray-50: #0a0a0b;
+  --ds-gray-100: #131418;
+  --ds-gray-200: #23242a;
+  --ds-gray-300: #34353c;
+  --ds-gray-400: #6b6c75;
+  --ds-gray-500: #9b9ca6;
+  --ds-gray-600: #b9bac2;
+  --ds-gray-700: #d7d9df;
+  --ds-gray-800: #e8e9ec;
+  --ds-gray-900: #f4f4f6;
   --ds-gray-950: #ffffff;
 
   /* ── Dark surface / text overrides ───────────────────── */
-  --ds-ink: #f2f5fa;
-  --ds-ink-secondary: #a7b0c0;
-  --ds-ink-faint: #8a94a8;
-  --ds-body-bg: radial-gradient(circle at 80% -10%, rgba(58, 84, 128, 0.4) 0%, transparent 45%), #0a1120;
-  --ds-body-color: #e2e8f0;
-  --ds-body-color-rgb: 226, 232, 240;
-  --ds-primary-rgb: 251, 146, 60;
+  --ds-ink: #f4f4f6;
+  --ds-ink-secondary: #b9bac2;
+  --ds-ink-faint: #9b9ca6;
+  --ds-body-bg: #0a0a0b;
+  --ds-body-color: #e8e9ec;
+  --ds-body-color-rgb: 232, 233, 236;
+  --ds-primary-rgb: 253, 152, 67;
 
-  /* Rail: translucent glass instead of solid navy. */
-  --ds-rail-bg: rgba(255, 255, 255, 0.04);
+  /* Rail: translucent glass instead of solid ink. */
+  --ds-rail-bg: rgb(255 255 255 / 0.04);
   --ds-rail-shadow: none;
-  --ds-rail-border: rgba(255, 255, 255, 0.08);
-  --ds-rail-active-ring: 0 0 0 1px rgba(255, 193, 82, 0.35), 0 0 22px rgba(245, 166, 35, 0.3);
+  --ds-rail-border: rgb(255 255 255 / 0.08);
+  --ds-rail-active-ring: 0 0 0 1px rgb(253 127 21 / 0.35), 0 0 22px rgb(253 127 21 / 0.25);
 
-  /* Amber reads bright on dark. */
-  --ds-accent-text: #ffc152;
+  /* Ember text reads bright on dark (mirrored 700 stop = #feaa6b). */
+  --ds-accent-text: var(--ds-primary-700);
 
-  /* Chips / cards / dividers go translucent. */
-  --ds-chip-bg: rgba(255, 255, 255, 0.05);
-  --ds-chip-border: rgba(255, 255, 255, 0.1);
-  --ds-card-bg: rgba(255, 255, 255, 0.04);
-  --ds-card-border: rgba(255, 255, 255, 0.09);
+  /* The ink CTA inverts to a light pill. */
+  --ds-cta-bg: #f4f4f6;
+  --ds-cta-bg-hover: #ffffff;
+  --ds-cta-color: #0a0a0b;
+
+  /* Chips / cards / dividers sit one opaque step above the page. */
+  --ds-chip-bg: #131418;
+  --ds-chip-border: #2a2b31;
+  --ds-card-bg: #131418;
+  --ds-card-border: #23242a;
   --ds-table-border: 1px solid var(--ds-card-border);
   --ds-table-row-border: 1px solid var(--ds-gray-200);
   --ds-table-popup-border: 1px solid var(--ds-card-border);
-  --ds-card-shadow: none;
-  --ds-divider: rgba(255, 255, 255, 0.08);
+  --ds-card-shadow: 0 0 0 1px rgb(255 255 255 / 0.02);
+  --ds-divider: #1c1d22;
 
   --ds-border-color: var(--ds-gray-200);
   --ds-border-color-subtle: var(--ds-gray-100);
 
-  --ds-focus-ring: 0 0 0 3px rgba(93, 116, 160, 0.35);
-  --ds-focus-ring-color: rgba(93, 116, 160, 0.35);
+  --ds-focus-ring: 0 0 0 3px rgb(253 152 67 / 0.3);
+  --ds-focus-ring-color: rgb(253 152 67 / 0.3);
+  --ds-focus-border: var(--ds-primary-600);
 
+  --ds-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --ds-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
   --ds-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.3), 0 1px 3px -1px rgba(0, 0, 0, 0.2);
   --ds-shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.35), 0 2px 6px -2px rgba(0, 0, 0, 0.2);

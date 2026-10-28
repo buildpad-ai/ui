@@ -3,15 +3,17 @@
 import { useResolvedVars } from './SchemeContext';
 import styles from './styleguide.module.css';
 
+// `display` rows render as headings do: Inter Tight, weight 600, tight tracking
+// (h1 one step tighter).
 const TYPE_SIZES = [
   { key: 'xs', note: 'captions, badges, table headers' },
   { key: 'sm', note: 'body text in apps (--ds-body-font-size)' },
   { key: 'base', note: 'default paragraph size' },
   { key: 'lg', note: 'lead text' },
-  { key: 'xl', note: 'h4 / section titles' },
-  { key: '2xl', note: 'h3' },
-  { key: '3xl', note: 'h2' },
-  { key: '4xl', note: 'h1 / hero' },
+  { key: 'xl', note: 'h4 / section titles · display', display: 'tight' },
+  { key: '2xl', note: 'h3 · display', display: 'tight' },
+  { key: '3xl', note: 'h2 · display', display: 'tight' },
+  { key: '4xl', note: 'h1 / hero · display, tighter tracking', display: 'tighter' },
 ] as const;
 
 export function TypeScale() {
@@ -28,11 +30,70 @@ export function TypeScale() {
           </code>
           <span
             className={styles.typeSample}
-            style={{ fontSize: `var(--ds-font-size-${t.key})` }}
+            style={{
+              fontSize: `var(--ds-font-size-${t.key})`,
+              ...('display' in t
+                ? {
+                    fontFamily: 'var(--ds-font-display)',
+                    fontWeight: 'var(--ds-font-weight-semibold)',
+                    letterSpacing: `var(--ds-letter-spacing-${t.display})`,
+                  }
+                : {}),
+            }}
           >
             The quick brown fox jumps over the lazy dog
           </span>
           <span className={styles.typeNote}>{t.note}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const FONT_FAMILIES = [
+  {
+    name: '--ds-font-sans',
+    label: 'Inter',
+    note: 'body & UI (--ds-font-family) · 400 / 500 / 600 / 700',
+    sample: 'Schema-aware components for Next.js',
+    style: {},
+  },
+  {
+    name: '--ds-font-display',
+    label: 'Inter Tight',
+    note: 'headings & display · 600, letter-spacing -0.02em (h1 -0.03em)',
+    sample: 'Build apps on your data',
+    style: {
+      fontWeight: 'var(--ds-font-weight-semibold)',
+      letterSpacing: 'var(--ds-letter-spacing-tighter)',
+      fontSize: 'var(--ds-font-size-3xl)',
+    },
+  },
+  {
+    name: '--ds-font-mono',
+    label: 'JetBrains Mono',
+    note: 'code, kbd, hex values · 400 / 500',
+    sample: 'buildpad add input --with-deps',
+    style: {},
+  },
+] as const;
+
+export function FontFamilies() {
+  return (
+    <div className={styles.fontSpecimens}>
+      {FONT_FAMILIES.map((f) => (
+        <div key={f.name} className={styles.fontSpecimen}>
+          <div className={styles.fontSpecimenMeta}>
+            <strong>{f.label}</strong>
+            <code>{f.name}</code>
+          </div>
+          <span
+            className={styles.fontSpecimenSample}
+            style={{ fontFamily: `var(${f.name})`, ...f.style }}
+          >
+            {f.sample}
+          </span>
+          <span className={styles.typeNote}>{f.note}</span>
         </div>
       ))}
     </div>
@@ -64,11 +125,14 @@ export function SpacingScale() {
 }
 
 const RADII = [
-  { name: '--ds-radius-sm', label: 'sm', note: 'chips, small controls' },
-  { name: '--ds-radius', label: 'base', note: 'buttons, inputs, tabs' },
-  { name: '--ds-radius-md', label: 'md', note: 'cards, popovers' },
-  { name: '--ds-radius-lg', label: 'lg', note: 'modals' },
-  { name: '--ds-radius-xl', label: 'xl', note: 'large surfaces' },
+  { name: '--ds-radius-sm', label: 'sm', note: 'tooltips, small controls' },
+  { name: '--ds-radius', label: 'base', note: 'inputs (default)' },
+  { name: '--ds-radius-md', label: 'md', note: 'Paper' },
+  { name: '--ds-radius-lg', label: 'lg', note: 'popovers, menus' },
+  { name: '--ds-radius-xl', label: 'xl', note: 'modals' },
+  { name: '--ds-radius-card', label: 'card', note: 'cards' },
+  { name: '--ds-radius-hero', label: 'hero', note: 'large surfaces' },
+  { name: '--ds-radius-pill', label: 'pill', note: 'buttons, badges' },
 ] as const;
 
 export function RadiusScale() {
@@ -93,11 +157,13 @@ export function RadiusScale() {
 }
 
 const SHADOWS = [
-  { name: '--ds-shadow-sm', label: 'sm', note: 'cards (default)' },
+  { name: '--ds-shadow-xs', label: 'xs', note: 'hairline lift' },
+  { name: '--ds-shadow-sm', label: 'sm', note: 'small controls' },
   { name: '--ds-shadow', label: 'base', note: 'raised elements' },
-  { name: '--ds-shadow-md', label: 'md', note: 'dropdowns, popovers' },
-  { name: '--ds-shadow-lg', label: 'lg', note: 'overlays' },
+  { name: '--ds-shadow-md', label: 'md', note: 'hover elevation' },
+  { name: '--ds-shadow-lg', label: 'lg', note: 'popovers, menus, dropdowns' },
   { name: '--ds-shadow-xl', label: 'xl', note: 'modals' },
+  { name: '--ds-card-shadow', label: 'card', note: 'cards (default)' },
 ] as const;
 
 export function ShadowScale() {
@@ -127,10 +193,10 @@ export function FocusRingDemo() {
         Always-on ring
       </span>
       <div className={styles.stateNotes}>
-        <code>--ds-focus-ring</code> · hover opacity{' '}
+        <code>--ds-focus-ring</code> + <code>--ds-focus-border</code> · hover opacity{' '}
         <code>--ds-hover-opacity: 0.85</code> · disabled opacity{' '}
         <code>--ds-disabled-opacity: 0.5</code> · transitions{' '}
-        <code>150ms / 200ms ease</code>
+        <code>150ms / 200ms cubic-bezier(0.2, 0, 0, 1)</code>
       </div>
     </div>
   );

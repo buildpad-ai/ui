@@ -1,0 +1,148 @@
+---
+title: Data display
+description: Badges, avatars, indicators, cards, tables, timelines, description lists and the other read-only building blocks of a Buildpad screen, rendered with the shipped theme.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  BadgeShowcase,
+  AvatarShowcase,
+  IndicatorShowcase,
+  ThemeIconShowcase,
+  CardShowcase,
+  PaperShowcase,
+  OrdersTable,
+  TableOptions,
+  TableStates,
+  TableDataProp,
+  AccordionShowcase,
+  TimelineShowcase,
+  DescriptionListShowcase,
+  ListShowcase,
+  CodeKbdShowcase,
+  NumberFormatterShowcase,
+  ColorSwatchShowcase,
+  SpoilerShowcase,
+  ImageShowcase,
+} from '@/components/styleguide/gallery/lazy/sections/data-display'
+
+# Data display
+
+The components that present records: status badges, people, cards, tables,
+histories and metadata. Every example uses the Northwind Ops sample data and
+the exact `lib/theme.ts` + `app/globals.css` your app ships, so a list or record
+screen built from these parts looks like this.
+
+<Showcase>
+
+## Badge
+
+Status, category and count labels. `light` is the default variant; colour props resolve to the semantic scales.
+
+<BadgeShowcase />
+
+## Avatar
+
+People and organisations — initials on a tint, round for people, rounded squares for workspaces.
+
+<AvatarShowcase />
+
+## Indicator
+
+A dot or count pinned to the corner of another element: unread, online, new.
+
+<IndicatorShowcase />
+
+## ThemeIcon
+
+An icon on a tinted tile — feature bullets, empty states and KPI cards.
+
+<ThemeIconShowcase />
+
+## Card
+
+The main content container. Sections bleed to the edge; globals.css supplies the hairline border, card shadow and `--ds-radius-card`.
+
+<CardShowcase />
+
+## Paper
+
+A plain surface for sub-panels and floating layers, with the brand's soft shadow scale.
+
+<PaperShowcase />
+
+## Table
+
+The workhorse of list screens. The theme turns on `withTableBorder` and sets small semibold gray headers.
+
+<OrdersTable />
+
+### Appearance
+
+Toggle the visual props to compare densities and border styles.
+
+<TableOptions />
+
+### Scrolling, empty and loading
+
+<TableStates />
+
+### From data
+
+<TableDataProp />
+
+## Accordion
+
+Collapsible sections for secondary detail. Four variants, all on the same tokens.
+
+<AccordionShowcase />
+
+## Timeline
+
+Order history and activity feeds. Completed steps take the ember accent.
+
+<TimelineShowcase />
+
+## Description list
+
+Key/value metadata for a record — the top of a detail page or its side panel.
+
+<DescriptionListShowcase />
+
+## List
+
+Checklists and steps; `ThemeIcon` bullets make requirements scannable.
+
+<ListShowcase />
+
+## Code & Kbd
+
+Monospace for ids and payloads, keycaps for shortcuts.
+
+<CodeKbdShowcase />
+
+## NumberFormatter
+
+Consistent money, percentages and units without hand-written formatting.
+
+<NumberFormatterShowcase />
+
+## ColorSwatch
+
+A colour chip — label colour pickers and legend keys.
+
+<ColorSwatchShowcase />
+
+## Spoiler
+
+Clips long notes behind a show more / show less link.
+
+<SpoilerShowcase />
+
+## Image
+
+Thumbnails and attachment previews, with a placeholder for missing media.
+
+<ImageShowcase />
+
+</Showcase>

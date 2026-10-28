@@ -1,0 +1,130 @@
+---
+title: Text inputs & pickers
+description: Every Mantine text input and picker as the Buildpad theme renders it — anatomy, states, sizes, sections, selects, tag fields, special inputs, date and time pickers, the rich text editor and inline-edit fields.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  InputAnatomy,
+  InputVariants,
+  InputSizes,
+  InputSections,
+  PasswordInputs,
+  NumberInputs,
+  TextareaInputs,
+  SelectInputs,
+  MultiValueInputs,
+  PillsInputDemo,
+  SpecialInputs,
+  DatePickers,
+  DateTimeFields,
+  RichTextEditorDemo,
+  FieldsetDemo,
+  InlineEdit,
+} from '@/components/styleguide/gallery/lazy/sections/inputs'
+
+# Text inputs & pickers
+
+The fields every Buildpad form, filter bar and record view is built from. They
+share one anatomy — label, description, input, error — so a `TextInput`, a
+`Select` and a `NumberInput` line up in the same form without extra work.
+
+<Showcase>
+
+## Anatomy & states
+
+Label, description, placeholder, required asterisk, error, disabled and read-only on `TextInput`.
+
+<InputAnatomy />
+
+## Variants
+
+The `variant` prop is shared by every input.
+
+<InputVariants />
+
+## Sizes
+
+Five steps from `xs` to `xl`; every input below accepts the same `size`.
+
+<InputSizes />
+
+## Sections
+
+`leftSection` and `rightSection` hold icons, units, actions and status.
+
+<InputSections />
+
+## Password
+
+`PasswordInput` with a built-in visibility toggle and a composed strength meter.
+
+<PasswordInputs />
+
+## Numbers
+
+`NumberInput` formats while you type and clamps to a range.
+
+<NumberInputs />
+
+## Textarea
+
+Multi-line text that grows with its content.
+
+<TextareaInputs />
+
+## Select
+
+Pick one value from a list — searchable, clearable, grouped, with custom options.
+
+<SelectInputs />
+
+## Multi-value inputs
+
+`MultiSelect` picks several known values, `TagsInput` takes free-form tags and `Autocomplete` suggests while you type.
+
+<MultiValueInputs />
+
+## Pills input
+
+Build a custom token field from `PillsInput` and `Pill`.
+
+<PillsInputDemo />
+
+## Special inputs
+
+`NativeSelect`, `PinInput`, `FileInput`, `ColorInput` and `JsonInput`.
+
+<SpecialInputs />
+
+## Date pickers
+
+`DatePickerInput` and `DatePicker` from `@mantine/dates` — what the datetime interface renders for date fields.
+
+<DatePickers />
+
+## Date & time
+
+`DateTimePicker` for timestamps, `TimeInput` and `TimePicker` for times of day.
+
+<DateTimeFields />
+
+## Rich text editor
+
+`RichTextEditor` from `@mantine/tiptap` — the editor behind the rich-text-html and rich-text-markdown interfaces.
+
+<RichTextEditorDemo />
+
+## Fieldset
+
+Group related fields under a legend.
+
+<FieldsetDemo />
+
+## Inline edit
+
+Edit one value in place on a record view without opening a form.
+
+<InlineEdit />
+
+</Showcase>

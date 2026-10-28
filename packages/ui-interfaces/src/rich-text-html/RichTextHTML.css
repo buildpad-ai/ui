@@ -63,7 +63,7 @@
 }
 
 .rich-text-html-char-count--near-limit {
-  color: var(--mantine-color-orange-6);
+  color: var(--mantine-color-warning-7, var(--mantine-color-yellow-7));
 }
 
 .rich-text-html-char-count--over-limit {

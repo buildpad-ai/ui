@@ -1,0 +1,96 @@
+---
+title: Foundations
+description: The --ds-* design tokens — colour, typography, spacing, radius, shadows and focus — rendered from the real design-tokens.css.
+---
+
+import { Callout } from 'nextra/components'
+import {
+  Showcase,
+  ColorScale,
+  SemanticTokens,
+  TypeScale,
+  FontFamilies,
+  SpacingScale,
+  RadiusScale,
+  ShadowScale,
+  FocusRingDemo,
+} from '@/components/styleguide'
+
+# Foundations
+
+The tokens every Buildpad screen is built from. Everything here is rendered
+from the real `app/design-tokens.css` — the swatches read the live CSS custom
+properties, so this page cannot drift from the shipped values. See
+[Design System](/design-system) for how the token, theme and override layers
+fit together, and the [styleguide overview](/styleguide) for the rest of the
+showcase.
+
+<Callout type="info">
+**Usage rules**
+
+- **Ink vs. ember**: A Button with no `color` is the ink CTA (`--ds-cta-bg`). Orange is for interactive state (checkbox, switch, radio, slider, focus ring, active tab underline, active nav, progress), brand marks, and explicit brand CTAs (`color="primary"`).
+- **Main Stop**: The unsuffixed main of each hue (`--ds-primary`, `--ds-success`, …) equals its **600** stop. Dark mode mirrors the scales, so the main becomes the light-mode **400** tone (`#fd9843` for primary).
+- **Small Text Contrast**: Small colored text on white/tinted backgrounds must use the **700** stop (`--ds-primary-700`, or `--ds-accent-text` for orange) to meet WCAG AA. Never orange body text below 700; white on filled orange is for graphics and large brand CTAs only.
+- **Built-in hues**: `color="red" | "green" | "yellow" | "blue" | "orange"` resolve to danger / success / warning / info / primary, so status props get the brand scales automatically.
+- **Borders**: `gray-200` (`--ds-border-color`, hairline `#e8e9ec`) is for cards and dividers. `gray-300` is used for form inputs.
+</Callout>
+
+<Showcase>
+
+## Colors
+
+Each hue has eleven numbered stops (50–950) plus an unsuffixed semantic main.
+In dark mode the numbered scales mirror (50↔950, 100↔900, …), so a token
+chosen for light backgrounds stays legible automatically — ink inverts to light
+greys and the neutral scale is hand-tuned so muted text stays AA. Click any
+swatch to copy its variable.
+
+<ColorScale hue="primary" />
+<ColorScale hue="secondary" />
+<ColorScale hue="success" />
+<ColorScale hue="info" />
+<ColorScale hue="warning" />
+<ColorScale hue="danger" />
+<ColorScale hue="gray" />
+
+## Semantic tokens
+
+Prefer these over raw stops — they carry the light/dark switch with them.
+<SemanticTokens />
+
+## Typography
+
+Inter for body and UI (`--ds-font-family`, `--ds-font-sans`), **Inter Tight**
+for headings and display (`--ds-font-display`, weight 600 with
+`--ds-letter-spacing-tight: -0.02em`, h1 `--ds-letter-spacing-tighter: -0.03em`),
+JetBrains Mono for code (`--ds-font-mono`). App UI runs at the `sm` size
+(`--ds-body-font-size: 0.875rem`) for density.
+<FontFamilies />
+<TypeScale />
+
+## Spacing
+
+A 4px base grid (`--ds-spacing-1` … `--ds-spacing-16`), identical to the
+Tailwind spacing scale.
+<SpacingScale />
+
+## Radius
+
+One radius language: inputs 8px, popovers and menus 12px, cards and modals
+16px, large surfaces 24px, and pill buttons and badges.
+<RadiusScale />
+
+## Shadows
+
+Ink-tinted, soft and long, like buildpad.ai. Cards use `--ds-card-shadow`
+(a hairline lift plus a long, faint drop); elevation increases with
+interactivity (popovers and menus `lg`, modals `xl`).
+<ShadowScale />
+
+## Focus & states
+
+Focus is an ember ring (`--ds-focus-ring`) with an ember border on inputs
+(`--ds-focus-border`); hover, disabled, and active states are shared across the system.
+<FocusRingDemo />
+
+</Showcase>

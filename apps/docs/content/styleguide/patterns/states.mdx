@@ -1,0 +1,64 @@
+---
+title: Empty, loading & error states
+description: Empty states, skeletons that mirror the real layout, inline loading, error and offline states, success confirmations and toasts — composed from stock Mantine with the shipped Buildpad theme.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  EmptyStates,
+  TableSkeleton,
+  CardAndFormSkeletons,
+  InlineLoading,
+  ErrorStates,
+  SuccessStates,
+  ActionToasts,
+} from '@/components/styleguide/gallery/lazy/sections/states'
+
+# Empty, loading & error states
+
+Every screen spends part of its life with nothing to show, waiting for data, or
+recovering from a failure. These are the states of the Northwind Ops screens,
+built from the same parts as the loaded views — so the app keeps its shape and
+its tone when things are not going to plan.
+
+<Showcase>
+
+## Empty states
+
+Say what belongs here, why it is empty and what to do next — one primary action at most. Illustrations are `ThemeIcon`s with Tabler icons, never images.
+
+<EmptyStates />
+
+## Loading skeletons
+
+Skeletons mirror the layout they stand in for, so the page does not jump when data arrives. Use the toggles to compare each skeleton with its loaded screen.
+
+<TableSkeleton />
+
+<CardAndFormSkeletons />
+
+## Inline loading
+
+When part of a screen is busy, show it on that part — a button, a field, a card — and leave the rest usable.
+
+<InlineLoading />
+
+## Errors & offline
+
+Explain what went wrong in plain words, say whether anything was lost, and give the one action that fixes it.
+
+<ErrorStates />
+
+## Success
+
+Confirm what happened and what comes next, then get out of the way.
+
+<SuccessStates />
+
+## Toasts
+
+Short-lived confirmations for actions taken elsewhere on the page, with at most one action each.
+
+<ActionToasts />
+
+</Showcase>

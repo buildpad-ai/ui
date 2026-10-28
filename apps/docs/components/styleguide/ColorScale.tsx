@@ -16,13 +16,23 @@ export type Hue =
   | 'gray';
 
 const HUE_LABELS: Record<Hue, string> = {
-  primary: 'Primary — Orange',
-  secondary: 'Secondary — Blue',
-  success: 'Success — Green',
-  info: 'Info — Sky',
+  primary: 'Primary — Ember',
+  secondary: 'Secondary — Ink',
+  success: 'Success — Emerald',
+  info: 'Info — Blue',
   warning: 'Warning — Amber',
   danger: 'Danger — Red',
-  gray: 'Gray — Slate',
+  gray: 'Gray — Neutral',
+};
+
+/** Extra context shown next to the scale header. */
+const HUE_NOTES: Partial<Record<Hue, string>> = {
+  primary: 'brand accent — interactive state, focus, highlights (aliased as orange / accent)',
+  secondary: 'ink — the default CTA colour; inverts to light greys in dark mode',
+  success: 'aliased as green',
+  info: 'aliased as blue',
+  warning: 'aliased as yellow',
+  danger: 'aliased as red',
 };
 
 function Swatch({
@@ -78,11 +88,17 @@ export function ColorScale({ hue }: { hue: Hue }) {
         <strong>{HUE_LABELS[hue]}</strong>
         {hue !== 'gray' && (
           <span className={styles.scaleNote}>
-            main <code>--ds-{hue}</code> = 600 in light mode, 400 in dark
+            main <code>--ds-{hue}</code> = the 600 stop (mirrored scales make it the lighter tone in dark)
           </span>
         )}
         {hue === 'gray' && (
-          <span className={styles.scaleNote}>numbered stops only, no unsuffixed main</span>
+          <span className={styles.scaleNote}>
+            cool neutrals (no blue cast) · numbered stops only, no unsuffixed main ·
+            hand-tuned in dark so muted text stays AA
+          </span>
+        )}
+        {HUE_NOTES[hue] && (
+          <span className={styles.scaleNote}>{HUE_NOTES[hue]}</span>
         )}
       </div>
       <div className={styles.swatchRow}>
@@ -108,10 +124,19 @@ export function ColorScale({ hue }: { hue: Hue }) {
 }
 
 const SEMANTIC_TOKENS = [
-  { name: '--ds-body-bg', note: 'page background' },
+  { name: '--ds-body-bg', note: 'page background (flat, no gradient)' },
   { name: '--ds-body-color', note: 'default text' },
-  { name: '--ds-border-color', note: 'cards & dividers (gray-200)' },
+  { name: '--ds-ink', note: 'headings & strongest text' },
+  { name: '--ds-ink-secondary', note: 'secondary text, idle nav links' },
+  { name: '--ds-ink-faint', note: 'muted text (AA on white)' },
+  { name: '--ds-accent-text', note: 'orange text — links, accents (primary-700)' },
+  { name: '--ds-card-bg', note: 'card surface' },
+  { name: '--ds-card-border', note: 'hairline card border' },
+  { name: '--ds-border-color', note: 'dividers & cards (gray-200)' },
   { name: '--ds-border-color-subtle', note: 'subtle separators (gray-100)' },
+  { name: '--ds-cta-bg', note: 'default Button background (ink)' },
+  { name: '--ds-cta-color', note: 'default Button text' },
+  { name: '--ds-focus-border', note: 'input border on focus (primary-500)' },
   { name: '--ds-focus-ring-color', note: 'focus ring overlay' },
 ] as const;
 
