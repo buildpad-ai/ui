@@ -9,6 +9,6 @@
 
 .storybook-nav-wrapper {
   width: 260px;
-  border: 1px solid #e8e9ec;
+  border: 1px solid var(--ds-border-color);
   border-radius: 0.5rem;
 }
