@@ -80,7 +80,9 @@
     },
     "overrides": {
       "next>postcss": "^8.5.28",
-      "speech-rule-engine>@xmldom/xmldom": "^0.9.12"
+      "speech-rule-engine>@xmldom/xmldom": "^0.9.12",
+      "zod@>=4.0.0 <4.6.6": "^4.6.6",
+      "body-parser@>=2.0.0 <2.4.0": "^2.4.0"
     },
     "auditConfig": {
       "ignoreGhsas": [
