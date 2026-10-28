@@ -303,25 +303,24 @@ Mantine uses `ColorSchemeScript` and `defaultColorScheme="auto"` in the root lay
 
 All package Storybooks share the same brand look via three shared files at the `packages/` root:
 
-- `storybook-enterprise-theme.ts` — Mantine theme for the canvas (preview). It uses static hex arrays
-  (no CSS variables, since Storybook renders in isolation) with the same scales, hue aliases, `dark`
-  palette and component defaults as `lib/theme.ts`. The default Button uses literal ink hex
-  (`#0a0a0b` / `#2a2b31` / `#ffffff`). `primaryShade` is `{ light: 6, dark: 4 }` because static hex
-  does not mirror. It also exports primitives: `FONT_BODY` (Inter), `FONT_HEADING`
-  (`"Inter Tight", …`), `FONT_MONO`, and colour constants such as `COLOR_BORDER` (`#e8e9ec`) and
-  `COLOR_MUTED` (`#6b6c75`).
+- `storybook-enterprise-theme.ts` — re-exports the shipped `lib/theme.ts` (from
+  `packages/cli/templates/`) as `enterpriseTheme`, so the canvas renders the exact theme `buildpad init`
+  installs. It also exports static primitives for the manager chrome, which cannot read CSS variables:
+  `FONT_BODY` (Inter), `FONT_MONO`, `COLOR_BORDER` (`#e8e9ec`) and `COLOR_MUTED` (`#6b6c75`).
 - `storybook-enterprise-manager.ts` — Storybook UI chrome (sidebar, toolbar): `#fafbfc` app background,
   white content, `#e8e9ec` borders, ink text, ember selection, brand link to buildpad.ai.
-- `storybook-enterprise-preview.css` — Shared CSS for preview wrappers: font import, ember focus ring,
-  ink-plus-ember tabs, hairline cards with the card shadow, and the index-7 light-variant text colours.
+- `storybook-enterprise-preview.css` — imports the shipped `app/design-tokens.css` and `app/globals.css`
+  (tokens in both schemes, variant contrast fixes, tabs, cards, form fields, dark-mode overrides) and adds
+  only the Storybook wrapper layout. Storybooks with a colour-scheme toolbar switch get the real dark theme.
 
 ## How To Customize
 
 1. Update token values in `app/design-tokens.css` (keep the light and dark blocks in step).
 2. Extend `lib/theme.ts` for component-level defaults.
 3. Add any global overrides in `app/globals.css`.
-4. Update `packages/storybook-enterprise-theme.ts` (and the manager / preview files) to match — they use
-   hardcoded values.
+4. Storybook picks up `lib/theme.ts`, `design-tokens.css` and `globals.css` automatically; only the
+   manager chrome (`packages/storybook-enterprise-manager.ts` and the primitives it imports) uses
+   hardcoded values and needs updating by hand.
 
 To re-brand, change the primary and secondary scales and `--ds-cta-*`; the hue aliases, focus tokens and
 app shell follow automatically.

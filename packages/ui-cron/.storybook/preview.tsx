@@ -53,10 +53,7 @@ const preview: Preview = {
         // localStorage, so it cannot leak from one story into the next page load.
         <MantineProvider theme={enterpriseTheme} forceColorScheme={dark ? 'dark' : 'light'}>
           <Notifications />
-          {/* The shared enterprise skin sets light-only colors (its own text
-              and dimmed colors), so the dark scheme is shown without it: what
-              is on screen is then what a dark Mantine app draws. */}
-          <div className={dark ? 'sb-cron-wrapper sb-cron-dark' : 'sb-enterprise-wrapper sb-cron-wrapper'}>
+          <div className="sb-enterprise-wrapper sb-cron-wrapper">
             <Story />
           </div>
         </MantineProvider>
