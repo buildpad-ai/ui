@@ -1,0 +1,106 @@
+---
+title: List page
+description: The Purchase orders list for the Northwind Ops sample app. It shows CollectionList inside the app shell, with search, an inline filter panel, selection and bulk actions, paging, and the loading, empty, error and phone states, all in the theme Buildpad ships.
+---
+
+import { Callout } from 'nextra/components'
+import { Showcase } from '@/components/styleguide'
+import {
+  ListPageTemplate,
+  ListPageFiltered,
+  ListPageEmpty,
+  ListPageLoading,
+  ListPageFirstRun,
+  ListPageError,
+  ListPageOnPhone,
+  ListPageMenus,
+} from '@/components/styleguide/gallery/lazy/templates/list-page'
+
+# List page
+
+People spend most of their day on this screen. They find records, narrow
+them down and act on several at once. This page is composed from the same parts
+as `CollectionList`: a title and CTA, then the list card with its toolbar,
+the table and a paging footer. Search, selection, the filter panel and the
+menus all work.
+
+<Callout type="info">
+This is a list page you compose yourself inside `AuthenticatedShell`, with
+`<CollectionList enableSelection enableFilter bulkActions={…} renderCell={…} />`.
+`buildpad add content-routes` renders `CollectionList` inside `ContentLayout`
+instead: a collection sidebar and a breadcrumb header, with no app shell.
+It enables search and selection with an inline Delete bulk action, VTable rows
+and a "Per page" footer. The filter toggle appears only with `enableFilter`,
+and it opens an inline panel, not a drawer. See the `CollectionList` Storybook.
+The frames are static compositions of the same Mantine parts with sample data.
+</Callout>
+
+<Showcase>
+
+## Purchase orders
+
+The page adds a title and the ink `New order` CTA. Inside the card, the toolbar has search, the filter toggle and refresh. Two rows are selected, so the bulk actions appear on the toolbar's right. Click the filter toggle to open the inline panel. Hover an owner avatar to see the name.
+
+<ListPageTemplate />
+
+## Filters open
+
+The panel opens under the toolbar. It has two rules, an ALL / ANY match toggle and "Add filter". The toggle turns filled ember with a red count, and the footer says what was filtered out.
+
+<ListPageFiltered />
+
+## No results
+
+A search that matches nothing keeps the toolbar and table header. VTable shows one dimmed line. Clear the search to bring the rows back.
+
+<ListPageEmpty />
+
+## Loading
+
+On first load the toolbar is ready. VTable shows "Loading items..." over three 48px `Skeleton` rows, and the footer reads "Loading...".
+
+<ListPageLoading />
+
+## First run
+
+The collection has no records yet. The page renders its own empty state in place of the list, with the ink CTA and a docs link. `CollectionList` on its own keeps its toolbar and shows "No items in this collection".
+
+<ListPageFirstRun />
+
+## Load error
+
+If a fetch fails, a red `Alert` appears under the toolbar. The toolbar stays usable, and Refresh tries again.
+
+<ListPageError />
+
+## On a phone
+
+At 390px, `CollectionList` keeps its columns and the table scrolls sideways. For field staff, your page can render a stacked card list below `sm` instead.
+
+<ListPageOnPhone />
+
+## Menus and toolbar states
+
+The list's overlays pinned open, and the toolbar controls in each state.
+
+<ListPageMenus />
+
+</Showcase>
+
+## Built from
+
+- **[App shell](/styleguide/templates/app-shell)**: sidebar, glass header and user menu from the CLI's `AuthenticatedShell`.
+- **[Page headers](/styleguide/patterns/page-sections#page-headers)**: a `Title`, a dimmed description and the ink CTA, which the page adds above the list.
+- **[Data views](/styleguide/patterns/data-views)**: the `CollectionList` card. Its toolbar (`.collection-list-toolbar`), inline filter panel, table and footer copy `CollectionList.css`. VTable is drawn here with Mantine `Table`. Its checkboxes use the default `sm` size, and selected rows get no tint.
+- **[Badges](/styleguide/components/data-display#badge)** for status, through the page's `renderCell`. `ORDER_STATUS` maps each status to `gray`, `yellow`, `blue`, `green` or `red`, and the theme resolves those to the neutral, warning, info, success and danger scales. Without `renderCell`, `CollectionList` prints the choice label as text.
+- **[Avatar](/styleguide/components/data-display#avatar)** for owners, also through `renderCell`. As in `UserAvatar`, active users get `primary` and everyone else gets `gray`.
+- **[Inputs](/styleguide/components/inputs)** in the filter rules: `Select`s for the field and operator, a `NumberInput` for amounts and a `TextInput` for dates.
+- **[Feedback](/styleguide/components/feedback)**: `Skeleton` rows while loading, and the red `Alert` for load and permission errors.
+
+<Callout type="info">
+**Why the date rule is a text input.** `FilterPanel` gives date fields a
+`TextInput` with a `YYYY-MM-DD` placeholder, not a date picker, so the
+"Due before" rule looks the same in your app. Record forms use the `datetime`
+interface from `@buildpad/ui-interfaces`, which is built on the `@mantine/dates`
+pickers shown on [Inputs](/styleguide/components/inputs#date-pickers).
+</Callout>

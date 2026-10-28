@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   basePath: '/docs',
   trailingSlash: true,
   images: { unoptimized: true },
+  // The styleguide's component gallery imports the shipped Mantine theme
+  // from packages/cli/templates/lib/theme.ts, outside this app.
+  experimental: { externalDir: true },
 };
 
 export default withNextra(nextConfig);

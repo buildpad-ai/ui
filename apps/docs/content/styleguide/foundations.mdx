@@ -1,6 +1,6 @@
 ---
-title: Styleguide
-description: Visual reference for the --ds-* design tokens — colors, typography, spacing, radius, shadows, and interactive states.
+title: Foundations
+description: The --ds-* design tokens — colour, typography, spacing, radius, shadows and focus — rendered from the real design-tokens.css.
 ---
 
 import { Callout } from 'nextra/components'
@@ -14,23 +14,16 @@ import {
   RadiusScale,
   ShadowScale,
   FocusRingDemo,
-  Specimens,
-  StorybookLinks,
 } from '@/components/styleguide'
 
-# Styleguide
+# Foundations
 
-A visual reference for the design tokens. Everything on this page is rendered
+The tokens every Buildpad screen is built from. Everything here is rendered
 from the real `app/design-tokens.css` — the swatches read the live CSS custom
 properties, so this page cannot drift from the shipped values. See
-[Design System](/design-system) for how the token, theme, and override layers
-fit together.
-
-The system is **BuildPad brand — Ink & Ember**, taken from
-[buildpad.ai](https://www.buildpad.ai): **ink** (`#0a0a0b`) is the primary
-action colour, **ember orange** (`#e86a00` / `#fd7f15`) is the brand accent,
-on cool neutral greys with calm flat surfaces, hairline borders, soft long
-shadows, Inter body text and Inter Tight headings.
+[Design System](/design-system) for how the token, theme and override layers
+fit together, and the [styleguide overview](/styleguide) for the rest of the
+showcase.
 
 <Callout type="info">
 **Usage rules**
@@ -52,7 +45,6 @@ chosen for light backgrounds stays legible automatically — ink inverts to ligh
 greys and the neutral scale is hand-tuned so muted text stays AA. Click any
 swatch to copy its variable.
 
-#
 <ColorScale hue="primary" />
 <ColorScale hue="secondary" />
 <ColorScale hue="success" />
@@ -64,7 +56,6 @@ swatch to copy its variable.
 ## Semantic tokens
 
 Prefer these over raw stops — they carry the light/dark switch with them.
-#
 <SemanticTokens />
 
 ## Typography
@@ -74,7 +65,6 @@ for headings and display (`--ds-font-display`, weight 600 with
 `--ds-letter-spacing-tight: -0.02em`, h1 `--ds-letter-spacing-tighter: -0.03em`),
 JetBrains Mono for code (`--ds-font-mono`). App UI runs at the `sm` size
 (`--ds-body-font-size: 0.875rem`) for density.
-#
 <FontFamilies />
 <TypeScale />
 
@@ -82,14 +72,12 @@ JetBrains Mono for code (`--ds-font-mono`). App UI runs at the `sm` size
 
 A 4px base grid (`--ds-spacing-1` … `--ds-spacing-16`), identical to the
 Tailwind spacing scale.
-#
 <SpacingScale />
 
 ## Radius
 
 One radius language: inputs 8px, popovers and menus 12px, cards and modals
 16px, large surfaces 24px, and pill buttons and badges.
-#
 <RadiusScale />
 
 ## Shadows
@@ -97,34 +85,12 @@ One radius language: inputs 8px, popovers and menus 12px, cards and modals
 Ink-tinted, soft and long, like buildpad.ai. Cards use `--ds-card-shadow`
 (a hairline lift plus a long, faint drop); elevation increases with
 interactivity (popovers and menus `lg`, modals `xl`).
-#
 <ShadowScale />
 
 ## Focus & states
 
 Focus is an ember ring (`--ds-focus-ring`) with an ember border on inputs
 (`--ds-focus-border`); hover, disabled, and active states are shared across the system.
-#
 <FocusRingDemo />
 
-## Specimens & Mock Compositions
-
-Below is a live showcase of compositions using solely the system design tokens. These specimens demonstrate interactive components, state mapping, typography, color contrasts, elevation, and layout spacing.
-
-#
-<Specimens />
-
 </Showcase>
-
-## Real components
-
-The actual Mantine components — with every state, prop, and live DaaS data —
-live in the package Storybooks:
-
-<StorybookLinks />
-
-<Callout type="default">
-The links above use production paths. In local development run the Storybooks
-directly: `pnpm storybook:interfaces` (6005), `storybook:form` (6006),
-`storybook:table` (6007), `storybook:collections` (6008).
-</Callout>

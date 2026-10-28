@@ -1,0 +1,89 @@
+---
+title: Navigation
+description: Tabs, breadcrumbs, pagination, steppers, nav links, anchors, the burger and the app sidebar, rendered with the theme Buildpad ships.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  TabsVariants,
+  TabsVertical,
+  BreadcrumbsDemo,
+  PaginationDemo,
+  StepperDemo,
+  NavLinkDemo,
+  SidebarNavPreview,
+  AnchorDemo,
+  BurgerDemo,
+  TableOfContentsDemo,
+} from '@/components/styleguide/gallery/lazy/sections/navigation'
+
+# Navigation
+
+How people move around a Buildpad app: between sections of a record, through
+pages of a list, along a multi-step flow and across the sidebar. Ember marks
+where you are (the active tab underline, the active nav wash, the current
+page); ink stays the text colour.
+
+<Showcase>
+
+## Tabs
+
+Switch between views of the same record. Icons go in `leftSection`, counters in `rightSection`.
+
+<TabsVariants />
+
+## Vertical tabs
+
+Settings-style navigation with many sections, on either side of the panel.
+
+<TabsVertical />
+
+## Breadcrumbs
+
+Show where a record sits; every ancestor is a link, the current page is not.
+
+<BreadcrumbsDemo />
+
+## Pagination
+
+Page through lists. Under tables, use the list footer so the count and page size travel with it.
+
+<PaginationDemo />
+
+## Stepper
+
+Multi-step flows such as approvals, imports and onboarding.
+
+<StepperDemo />
+
+## NavLink
+
+Mantine's NavLink for in-page and secondary navigation: nested groups, descriptions, badges.
+
+<NavLinkDemo />
+
+## Sidebar
+
+The app shell's own navigation, built from the shipped `.bp-nav-link` classes rather than NavLink.
+
+<SidebarNavPreview />
+
+## Anchor
+
+Text links. They use the AA-safe ember text stop and underline on hover by default.
+
+<AnchorDemo />
+
+## Burger
+
+Opens the navigation on small screens.
+
+<BurgerDemo />
+
+## Table of contents
+
+A scroll-spy outline for long records and documents.
+
+<TableOfContentsDemo />
+
+</Showcase>

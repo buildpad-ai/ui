@@ -1,0 +1,292 @@
+/* Layout-only rules for the Record detail template. Every control is a stock
+   Mantine component styled by the shipped theme. The field grid and the
+   edited / invalid markers mirror packages/ui-form/src/VForm.css. The page
+   answers to the frame's width through a container query. */
+
+.root {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-5);
+}
+
+.minw0 {
+  flex: 1;
+  min-width: 0;
+}
+
+.noShrink {
+  flex: none;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ds-spacing-4);
+}
+
+.headerText {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-spacing-2);
+}
+
+/* ── Main / aside bands ──────────────────────────────────────── */
+
+.band {
+  display: grid;
+  gap: var(--ds-spacing-4);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-4);
+  min-width: 0;
+}
+
+@container (min-width: 540px) {
+  .band {
+    grid-template-columns: minmax(0, 1fr) 248px;
+  }
+}
+
+@container (min-width: 900px) {
+  .band {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+.cardBody {
+  margin-top: var(--ds-spacing-4);
+}
+
+/* ── VForm field grid ────────────────────────────────────────── */
+
+.formGrid {
+  display: grid;
+  grid-template-columns: [start] minmax(0, 1fr) [half] minmax(0, 1fr) [full];
+  gap: var(--ds-spacing-4);
+  margin: 0;
+}
+
+.field {
+  min-width: 0;
+}
+
+.field[data-width='full'] {
+  grid-column: start / full;
+}
+
+.field[data-edited] {
+  border-left: 2px solid var(--ds-primary);
+  padding-left: var(--ds-spacing-2);
+}
+
+.field[data-invalid] {
+  border-left: 2px solid var(--ds-danger);
+  padding-left: var(--ds-spacing-2);
+}
+
+.dd {
+  margin: 0;
+}
+
+/* ── Line items ──────────────────────────────────────────────── */
+
+.lineTable td {
+  vertical-align: top;
+}
+
+.lineTable td:nth-child(4) {
+  padding-top: 15px;
+}
+
+.lineTable td:last-child {
+  padding-top: 11px;
+}
+
+.lineTable tr[data-edited] td:first-child {
+  box-shadow: inset 2px 0 0 var(--ds-primary);
+}
+
+.lineTable tr[data-invalid] td:first-child {
+  box-shadow: inset 2px 0 0 var(--ds-danger);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lineFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ds-spacing-4);
+  padding-top: var(--ds-spacing-4);
+}
+
+.totals {
+  display: grid;
+  gap: var(--ds-spacing-1);
+  width: min(100%, 260px);
+  margin: 0 0 0 auto;
+  font-size: var(--ds-font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ds-spacing-4);
+}
+
+.totals dt {
+  color: var(--ds-ink-secondary);
+}
+
+.totals dd {
+  margin: 0;
+  color: var(--ds-ink);
+}
+
+.totals > div[data-total] {
+  margin-top: var(--ds-spacing-2);
+  padding-top: var(--ds-spacing-2);
+  border-top: 1px solid var(--ds-divider);
+  font-family: var(--ds-font-display);
+  font-size: var(--ds-font-size-base);
+  font-weight: var(--ds-font-weight-semibold);
+  letter-spacing: var(--ds-letter-spacing-tight);
+}
+
+.totals > div[data-total] dt {
+  color: var(--ds-ink);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── Attachments ─────────────────────────────────────────────── */
+
+.dropHint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ds-spacing-2);
+  margin-top: var(--ds-spacing-3);
+  padding: var(--ds-spacing-3);
+  border: 1px dashed var(--ds-gray-300);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-gray-50);
+  color: var(--ds-ink-faint);
+  text-align: center;
+}
+
+/* ── Summary strip and side column ─────────────────────────────────────────────── */
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-spacing-4);
+}
+
+.stat {
+  min-width: 0;
+}
+
+@container (min-width: 540px) {
+  .strip {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .stat + .stat {
+    padding-left: var(--ds-spacing-5);
+    margin-left: var(--ds-spacing-5);
+    border-left: 1px solid var(--ds-divider);
+  }
+}
+
+.composer {
+  margin-top: var(--ds-spacing-4);
+}
+
+.quote {
+  margin-top: var(--ds-spacing-2);
+  padding: var(--ds-spacing-2) var(--ds-spacing-3);
+  border-radius: var(--ds-radius);
+  background: var(--ds-gray-50);
+  border: 1px solid var(--ds-border-color);
+  font-size: var(--ds-font-size-xs);
+  line-height: var(--ds-line-height-normal);
+  color: var(--ds-ink);
+}
+
+.related {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-spacing-3);
+  width: 100%;
+  padding: var(--ds-spacing-2);
+  margin: 0 calc(-1 * var(--ds-spacing-2));
+  width: calc(100% + 2 * var(--ds-spacing-2));
+  border-radius: var(--ds-radius);
+  transition: background var(--ds-transition-fast);
+}
+
+.related:hover {
+  background: var(--ds-gray-50);
+}
+
+.related:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-focus-ring);
+}
+
+.chevron {
+  flex: none;
+  color: var(--ds-ink-faint);
+}
+
+/* ── Sticky save bar ─────────────────────────────────────────── */
+
+.saveBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-3);
+  /* Bleed over the shell content's padding so the bar spans the pane. */
+  margin: var(--ds-spacing-6) calc(-1 * var(--ds-spacing-6)) calc(-1 * var(--ds-spacing-6));
+  padding: var(--ds-spacing-3) var(--ds-spacing-6);
+  background: var(--ds-card-bg);
+  border-top: 1px solid var(--ds-border-color);
+  box-shadow: var(--ds-shadow-lg);
+}
+
+/* ── Overlays ────────────────────────────────────────────────── */
+

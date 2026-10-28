@@ -1,0 +1,145 @@
+/* Layout for the app-shell template. Surfaces come from the shipped .bp-*
+   classes; this file only sizes and arranges the slices around them. */
+
+/* A cut-out of the shell (header strip or sidebar column) inside a
+   specimen: hairline outline so the slice reads as part of a window. */
+.slice {
+  width: 100%;
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-lg);
+  overflow: hidden;
+  background: var(--ds-body-bg);
+}
+
+.headerStrip {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-4);
+  padding: 0 var(--ds-spacing-4);
+}
+
+.navColumn {
+  width: 100%;
+  padding: var(--ds-spacing-3);
+}
+
+.navSlice {
+  max-width: 248px;
+  margin: 0 auto;
+}
+
+.navSlice .navColumn {
+  padding: var(--ds-spacing-2);
+}
+
+.tooltipRoom {
+  min-height: 96px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: var(--ds-spacing-2);
+}
+
+.toggleStates {
+  display: flex;
+  justify-content: center;
+  gap: var(--ds-spacing-10);
+}
+
+.toggleState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ds-spacing-2);
+}
+
+/* Profile menu preview: a short sidebar column with the menu pinned open
+   to its right, as position="right-end" places it. */
+/* Contains the absolute dropdown so it scrolls inside the specimen on
+   narrow screens; the end padding leaves room for its shadow. */
+.menuStage {
+  position: relative;
+  display: flex;
+  min-height: 300px;
+  overflow-x: auto;
+  padding: 0 var(--ds-spacing-6) var(--ds-spacing-6) 0;
+}
+
+.menuColumn {
+  width: 248px;
+  flex: none;
+  border-radius: var(--ds-radius-lg);
+  outline: 1px solid var(--ds-border-color);
+  outline-offset: -1px;
+}
+
+/* ── Phone frames ──────────────────────────────────────────── */
+
+.phones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 390px));
+  justify-content: center;
+  gap: var(--ds-spacing-8);
+}
+
+.phone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.phoneHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  flex: none;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-2);
+  padding: 0 var(--ds-spacing-4);
+}
+
+.phoneBody {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.phoneMain {
+  padding: var(--ds-spacing-5);
+}
+
+/* Below the sm breakpoint AppShell.Navbar is full width under the header. */
+.phoneNavbar {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: var(--ds-spacing-3);
+  overflow-y: auto;
+}
+
+.frameLabel {
+  margin-top: var(--ds-spacing-3);
+  font-size: var(--ds-font-size-xs);
+  line-height: var(--ds-line-height-normal);
+  color: var(--ds-ink-secondary);
+}
+
+.frameLabel strong {
+  color: var(--ds-ink);
+  font-weight: var(--ds-font-weight-semibold);
+}
+
+.frameLabel code {
+  font-family: var(--ds-font-mono);
+  font-size: 0.6875rem;
+  padding: 0 4px;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-gray-100);
+  color: var(--ds-ink);
+}

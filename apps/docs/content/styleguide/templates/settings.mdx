@@ -1,0 +1,66 @@
+---
+title: Settings
+description: Workspace settings for the Northwind Ops sample app — general profile and region, a notification matrix, security sessions and API keys, and a guarded danger zone — rendered with the theme Buildpad ships.
+---
+
+import { Callout } from 'nextra/components'
+import { Showcase } from '@/components/styleguide'
+import {
+  SettingsGeneral,
+  SettingsNotifications,
+  SettingsSecurity,
+} from '@/components/styleguide/gallery/lazy/templates/settings'
+
+# Settings
+
+Where administrators configure the workspace. A vertical `NavLink` list picks
+the section. Each section is a stack of cards with the label and description
+on the left and the control on the right. Every control works: edit a field to
+arm the save bar, flip switches, revoke a session or copy an API key.
+
+<Callout type="info">
+**What generates this**
+
+No CLI template produces a settings screen; the shell's **Workspace
+Settings** menu item ships `disabled`. This page is a composition of the parts
+listed under *Built from*, for when you add one.
+</Callout>
+
+<Showcase>
+
+## General
+
+Workspace name, a URL slug with a `.buildpad.app` suffix, the logo, a description, and region defaults. The sticky save bar stays disabled until something changes. Clear the slug or add a capital letter to see its error.
+
+<SettingsGeneral />
+
+## Notifications
+
+How notifications arrive, then a matrix with an email switch and an in-app switch for each event. Security alerts are **Required**, so their switches are on and disabled.
+
+<SettingsNotifications />
+
+## Security and danger zone
+
+Enforced two-factor with an enrolment bar, your sessions with **Revoke** (disabled for the current device), API keys with `CopyButton`, and a danger zone. **Delete workspace** stays disabled until you type the workspace slug.
+
+<SettingsSecurity />
+
+</Showcase>
+
+## Built from
+
+- **[App shell](/styleguide/templates/app-shell)** with `title="Settings"`. Settings isn't a sidebar item, so no nav link is active.
+- **[NavLink](/styleguide/components/navigation#navlink)** for the section list. **Danger zone** uses `color="red"`.
+- **[Settings rows](/styleguide/patterns/forms#settings)**: `Text fw={600}` and a dimmed description beside `TextInput`, `Select` (grouped, searchable time zones), `Textarea`, `SegmentedControl` and `Switch`, with a `Divider` between rows.
+- **[Table](/styleguide/components/data-display#table)** for the notification matrix and the session list. Every `Switch` has an `aria-label` naming the channel and the event.
+- **[Code & Kbd](/styleguide/components/data-display#code--kbd)** with `CopyButton` and a `Tooltip` for the masked API keys.
+- **[Sticky action footers](/styleguide/patterns/page-sections#sticky-action-footers)**: the floating save bar with a dot `Badge` for unsaved changes.
+- Destructive actions use `color="red"`: subtle **Revoke**, light **Sign out all other sessions**, and a filled **Delete workspace** behind a typed confirmation.
+
+<Callout type="info">
+**The danger zone is the only composed surface.** `Card` has no colour prop
+and the theme fixes its border, so the danger zone is a plain `<section>` with
+the card radius and a `--ds-danger-300` border. That token flips in dark mode,
+so the border stays visible. Everything inside it is stock Mantine.
+</Callout>

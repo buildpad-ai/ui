@@ -1,0 +1,310 @@
+/* Layout chrome for the Data views patterns. Only the frames the composed
+   blocks sit in live here; every Mantine component is styled by the shipped
+   theme. Colours are --ds-* tokens so both schemes follow the system. */
+
+/* ── Data table block (mirrors ui-collections CollectionList) ── */
+
+.tableBlock {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-2) var(--ds-spacing-3);
+  border-bottom: 1px solid var(--ds-border-color);
+}
+
+.search {
+  width: 210px;
+}
+
+.statusSelect {
+  width: 160px;
+}
+
+.filterPanel {
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+  border-bottom: 1px solid var(--ds-border-color);
+  background: var(--ds-body-bg);
+}
+
+.pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-2);
+  padding: var(--ds-spacing-2) var(--ds-spacing-4);
+  border-bottom: 1px solid var(--ds-border-color);
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-2) var(--ds-spacing-4);
+  border-bottom: 1px solid var(--ds-border-color);
+  background: var(--ds-primary-50);
+}
+
+.tableScroll {
+  position: relative;
+  overflow-x: auto;
+}
+
+.checkCell {
+  width: 44px;
+}
+
+.menuCell {
+  width: 48px;
+}
+
+.amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.emptyCell {
+  padding: var(--ds-spacing-10) var(--ds-spacing-4);
+  text-align: center;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-2) var(--ds-spacing-4);
+  border-top: 1px solid var(--ds-border-color);
+}
+
+.perPage {
+  width: 72px;
+}
+
+.overlayStage {
+  width: 100%;
+  min-height: 300px;
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Card grid & list ── */
+
+.viewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-3);
+  width: 100%;
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-3);
+  width: 100%;
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+  transition: background var(--ds-transition-fast);
+}
+
+.listRow:hover {
+  background: var(--ds-body-bg);
+}
+
+.listRow + .listRow {
+  border-top: 1px solid var(--ds-divider);
+}
+
+/* ── Description list ── */
+
+.dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-spacing-4) var(--ds-spacing-6);
+  margin: 0;
+}
+
+.dl > div {
+  min-width: 0;
+}
+
+.dl dt {
+  margin: 0 0 2px;
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-ink-faint);
+}
+
+.dl dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.dlFull {
+  grid-column: 1 / -1;
+}
+
+/* ── Charts (composed from Box / Progress) ── */
+
+.chart {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--bars), minmax(0, 1fr));
+  align-items: end;
+  gap: var(--ds-spacing-4);
+  height: 200px;
+  padding-top: var(--ds-spacing-6);
+}
+
+.gridLines {
+  position: absolute;
+  inset: var(--ds-spacing-6) 0 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.gridLines span {
+  border-top: 1px dashed var(--ds-divider);
+}
+
+.gridLines span:last-child {
+  border-top: 1px solid var(--ds-border-color);
+}
+
+.barSlot {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.bar {
+  width: 100%;
+  max-width: 44px;
+  border-radius: 4px 4px 0 0;
+  background: var(--ds-primary-200);
+  transition: background var(--ds-transition-fast);
+  cursor: default;
+}
+
+.bar:hover {
+  background: var(--ds-primary-300);
+}
+
+.bar[data-current] {
+  background: var(--ds-primary);
+}
+
+.barValue {
+  margin-bottom: 4px;
+  font-size: var(--ds-font-size-xs);
+  font-weight: var(--ds-font-weight-semibold);
+  color: var(--ds-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.barLabels {
+  display: grid;
+  grid-template-columns: repeat(var(--bars), minmax(0, 1fr));
+  gap: var(--ds-spacing-4);
+  margin-top: var(--ds-spacing-2);
+  text-align: center;
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-ink-faint);
+}
+
+.barLabels span {
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .chart,
+  .barLabels {
+    gap: var(--ds-spacing-2);
+  }
+}
+
+.spark {
+  display: block;
+  overflow: visible;
+}
+
+.sparkLine {
+  fill: none;
+  stroke: var(--ds-primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sparkLine[data-tone='down'] {
+  stroke: var(--ds-gray-400);
+}
+
+.sparkDot {
+  fill: var(--ds-primary);
+  stroke: var(--ds-card-bg);
+  stroke-width: 2;
+}
+
+.sparkDot[data-tone='down'] {
+  fill: var(--ds-gray-400);
+}
+
+/* ── Feed & comments ── */
+
+.composer {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Kanban ── */
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(176px, 1fr));
+  gap: var(--ds-spacing-3);
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-2);
+  min-width: 0;
+  padding: var(--ds-spacing-3);
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-body-bg);
+}
+
+.dropZone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  border: 1px dashed var(--ds-gray-300);
+  border-radius: var(--ds-radius-md);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-ink-faint);
+}

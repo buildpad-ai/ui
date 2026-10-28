@@ -1,0 +1,83 @@
+---
+title: App shell
+description: The AuthenticatedShell every signed-in Buildpad page renders inside — sidebar, glass header and profile menu — with the generated home page, its anatomy and the phone layout.
+---
+
+import { Callout } from 'nextra/components'
+import { Showcase } from '@/components/styleguide'
+import {
+  AppShellHome,
+  ShellHeaderAnatomy,
+  ShellSidebarAnatomy,
+  ShellProfileMenu,
+  ShellOnPhone,
+} from '@/components/styleguide/gallery/lazy/templates/app-shell'
+
+# App shell
+
+The frame around every signed-in screen: a sidebar with the brand tile
+and grouped navigation, a blurred glass header, and the account menu. Your own
+pages render in the main area. Here it holds the home page that `buildpad init`
+generates.
+
+<Callout type="info">
+**What generates this**
+
+- `buildpad init` installs the `design-system` module. It writes
+  `components/layout/AuthenticatedShell.tsx` from
+  `packages/cli/templates/components/layout/AuthenticatedShell.tsx`, the
+  sidebar entries in `components/layout/navigation.ts`, and the `.bp-*` shell
+  styles in `app/globals.css`. It also writes the home page,
+  `app/[lang]/(authenticated)/page.tsx`, from
+  `packages/cli/templates/app/authenticated-page.tsx`.
+- `buildpad add api-routes` adds `app/[lang]/(authenticated)/layout.tsx`. That
+  layout wraps every page in the route group with the shell. Route modules
+  such as `buildpad add users-routes` add their own sidebar entries.
+</Callout>
+
+<Showcase>
+
+## Home screen
+
+The generated home page, inside the full shell.
+
+<AppShellHome />
+
+## Header anatomy
+
+The breadcrumb on the left and the actions on the right. Each part can be turned off with a prop on `AuthenticatedShell`. In a workspace with several locales the shell adds a `LanguageSwitcher`, and a `ScopeSwitcher` passed through `headerActions` lets a user in several scopes switch between them.
+
+<ShellHeaderAnatomy />
+
+## Sidebar anatomy
+
+The brand tile, the grouped navigation (entries without a `section` go under "Main Menu"), and the profile block at the bottom.
+
+<ShellSidebarAnatomy />
+
+## Profile menu
+
+The account menu opens to the right of the profile button.
+
+<ShellProfileMenu />
+
+## On a phone
+
+Below the `sm` breakpoint the sidebar collapses behind a burger. Opening it covers the page under the header.
+
+<ShellOnPhone />
+
+</Showcase>
+
+## Built from
+
+- [Navigation](/styleguide/components/navigation): sidebar links, the active state and `Burger`
+- [Overlays](/styleguide/components/overlays): the profile `Menu` and the header `Tooltip`s
+- [Selection](/styleguide/components/selection): the scope and language `Select`s
+- [Feedback](/styleguide/components/feedback): the no-scope `Alert`
+- [Buttons](/styleguide/components/buttons): subtle `ActionIcon`s, the ink CTA and `variant="light" color="secondary"`
+- [Data display](/styleguide/components/data-display): `Avatar` and `Card`
+- [Typography](/styleguide/components/typography): the Inter Tight brand name, `Title` and dimmed `Text`
+- [Layout](/styleguide/components/layout): `Stack`, `Group` and `Divider`
+- [Page sections pattern](/styleguide/patterns/page-sections): page headers and content blocks for the main area
+- [Foundations](/styleguide/foundations): `--ds-brand-mark`, `--ds-primary-50` / `-200`, `--ds-border-color` and `--ds-gray-50`

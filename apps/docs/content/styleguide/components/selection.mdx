@@ -1,0 +1,82 @@
+---
+title: Selection controls
+description: Checkbox, Tree, Radio, Switch, Chip, SegmentedControl, Slider, RangeSlider and Rating in every state, size and composition — rendered with the shipped Buildpad theme.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  CheckboxStates,
+  CheckboxGroups,
+  TreeSelection,
+  Radios,
+  Switches,
+  Chips,
+  SegmentedControls,
+  Sliders,
+  Ratings,
+} from '@/components/styleguide/gallery/lazy/sections/selection'
+
+# Selection controls
+
+The controls users pick with rather than type into. Ember (`primaryColor`)
+marks the selected state on every one of them — checks, dots, tracks, thumbs
+and chips — while labels stay ink. Every demo is live: click, drag and use the
+keyboard.
+
+<Showcase>
+
+## Checkbox
+
+Independent on/off choices, with indeterminate for partially selected sets.
+
+<CheckboxStates />
+
+## Checkbox groups and cards
+
+Grouped options share one label and error; `Checkbox.Card` turns each option into a selectable tile.
+
+<CheckboxGroups />
+
+## Tree
+
+Hierarchical choices — categories, folders, permissions — browsed or checked with cascading parents.
+
+<TreeSelection />
+
+## Radio
+
+One choice from a short, visible list — as plain radios or as cards.
+
+<Radios />
+
+## Switch
+
+Settings that take effect immediately, without a Save button.
+
+<Switches />
+
+## Chip
+
+Compact toggles for filters and tags, alone or in single and multiple groups.
+
+<Chips />
+
+## SegmentedControl
+
+A tab-like single choice for switching views or periods.
+
+<SegmentedControls />
+
+## Slider
+
+Choosing a value, or a range, on a continuous scale.
+
+<Sliders />
+
+## Rating
+
+Star ratings for input and for displaying averages.
+
+<Ratings />
+
+</Showcase>

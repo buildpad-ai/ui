@@ -1,0 +1,86 @@
+---
+title: Record detail
+description: A purchase order under review in the Northwind Ops sample app — VForm-style fields, editable line items, attachments, an approval chain and a context column — plus its create, loading, approved and validation states, rendered with the theme Buildpad ships.
+---
+
+import { Callout } from 'nextra/components'
+import { Showcase } from '@/components/styleguide'
+import {
+  RecordDetailTemplate,
+  RecordDetailCreate,
+  RecordDetailLoading,
+  RecordDetailApproved,
+  RecordDetailValidation,
+} from '@/components/styleguide/gallery/lazy/templates/record-detail'
+
+# Record detail
+
+One record, opened from a list: purchase order **PO-2041**. The field layout
+follows `CollectionForm` / `VForm`: a two-column grid of half- and full-width
+fields with divider group headers. Around it sit the pieces that make a detail
+screen work: line items, files, the approval chain, a summary and the activity
+history. Scroll inside each frame to see the whole page.
+
+<Callout type="info">
+**What generates this**
+
+`buildpad add collection-form` gives you `CollectionForm`, which renders the
+field grid from your schema. The rest of this screen (header, line items,
+approval chain, context column) is a composition of the parts listed under
+*Built from*.
+</Callout>
+
+<Showcase>
+
+## Editing, pending approval
+
+PO-2041 as Daniel submitted it, waiting on Priya's budget-owner review (step 2 of the `Stepper`). A default `Request changes` button and the ember `Approve` button sit next to an overflow `Menu`; its **Delete order** item opens the confirmation `Modal`. Edit quantities or prices and the line amounts and totals update.
+
+<RecordDetailTemplate />
+
+## New record
+
+The create route that `buildpad add content-routes` generates: a blank `CollectionForm` with required asterisks and placeholders, one empty line item, an empty attachments drop area, an empty activity card and a sticky footer with **Cancel**, **Save draft** and the ember **Create order**.
+
+<RecordDetailCreate />
+
+## Loading
+
+The first paint while the record loads. `Skeleton` blocks take the shape of the header, the summary strip, the form grid and the activity column, so nothing jumps when the data arrives.
+
+<RecordDetailLoading />
+
+## Approved, read-only
+
+After approval the order is locked. A green `Alert` explains why. Fields become label–value pairs in the same half / full grid, the line items become a plain table, and every approval step is complete.
+
+<RecordDetailApproved />
+
+## Unsaved changes and validation
+
+Edits that fail validation. A red `Alert` lists each problem with a link to its field. Invalid fields show their error and a red left rule. Edited fields show an ember rule, as in `VForm.css`. `Approve` is disabled until the form is valid. The sticky save bar keeps **Discard** and the ink **Save changes** in view.
+
+<RecordDetailValidation />
+
+</Showcase>
+
+## Built from
+
+- **[App shell](/styleguide/templates/app-shell)** with `active="/orders"` and `title="PO-2041"` in the header breadcrumb.
+- **[Page headers](/styleguide/patterns/page-sections#page-headers)**: `Breadcrumbs`, a `Title order={2}`, a status [Badge](/styleguide/components/data-display#badge) from `ORDER_STATUS` and a meta line with an `Avatar`.
+- **[Forms](/styleguide/patterns/forms#validation-states)**: `Select`, `TextInput`, `NumberInput` (`prefix="$"`, `thousandSeparator`) and `Textarea` in the VForm grid. The grid is `[start] 1fr [half] 1fr [full]`, and `Divider label="Delivery"` is a group header.
+- **[Table](/styleguide/components/data-display#table)** in a `Card.Section`, with inline `NumberInput hideControls` cells and a `<dl>` for the totals.
+- **[Stepper](/styleguide/components/navigation#stepper)** with `orientation="vertical"` for the approval chain, and **[Timeline](/styleguide/components/data-display#timeline)** with avatar bullets for activity.
+- **[Banners](/styleguide/patterns/page-sections#banners)**: the green and red `Alert`s. **[Sticky footers](/styleguide/patterns/page-sections#sticky-action-footers)**: the save bar and the create footer.
+- **[Skeleton](/styleguide/components/feedback#skeleton)** for the loading state.
+- **[Overlays](/styleguide/components/overlays)**: the overflow `Menu`, the delete `Modal` and `Tooltip`s on the file actions.
+
+<Callout type="info">
+**Two fields are stand-ins here.** **Due date** is a `TextInput` with a
+calendar icon and the drop area is a dashed box (`--ds-gray-300` on
+`--ds-gray-50`). In your app, `CollectionForm` renders date fields with the
+`datetime` interface (the `@mantine/dates` pickers on
+[Inputs](/styleguide/components/inputs#date-pickers)) and file fields with the
+`upload` interface, a `@mantine/dropzone` drag-and-drop zone. The edited and invalid rules come from `VForm.css`:
+`--ds-primary` for edited fields and `--ds-danger` for invalid ones.
+</Callout>

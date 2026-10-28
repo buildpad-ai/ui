@@ -1,0 +1,96 @@
+---
+title: Buttons & actions
+description: Button, ActionIcon, CloseButton and CopyButton in every variant, colour, size and state, plus toolbar and destructive-confirm compositions — rendered with the shipped Buildpad theme.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  ButtonVariants,
+  ButtonColors,
+  ButtonSizes,
+  ButtonSections,
+  ButtonStates,
+  ButtonGroups,
+  ActionIcons,
+  CloseButtons,
+  CopyButtons,
+  ActionToolbar,
+  DestructiveConfirm,
+} from '@/components/styleguide/gallery/lazy/sections/buttons'
+
+# Buttons & actions
+
+Every way a Buildpad screen asks the user to act. A `Button` with no `color` is
+the **ink CTA** — the one primary action per view — while `color="primary"` is
+the ember brand CTA, reserved for brand moments. Everything else steps down
+through `default`, `light`, `subtle` and `transparent`.
+
+<Showcase>
+
+## Variants
+
+From the ink CTA down to text-only; hover each one to see its state.
+
+<ButtonVariants />
+
+## Colours
+
+The brand and semantic scales across the three variants that carry colour.
+
+<ButtonColors />
+
+## Sizes
+
+Five regular sizes and five compact ones for dense UIs.
+
+<ButtonSizes />
+
+## Icons and sections
+
+`leftSection` and `rightSection` take any node; Tabler icons at 16px fit every size from `sm` up.
+
+<ButtonSections />
+
+## States
+
+Loading, disabled (with and without an explained reason) and full width.
+
+<ButtonStates />
+
+## Button groups
+
+`Button.Group` joins buttons into one control: segmented choices, split buttons and steppers.
+
+<ButtonGroups />
+
+## ActionIcon
+
+Icon-only buttons for toolbars, table rows and headers. They follow the ember `primaryColor` unless given a `color`.
+
+<ActionIcons />
+
+## CloseButton
+
+The standard dismiss control for panels, modals, drawers and removable filters.
+
+<CloseButtons />
+
+## CopyButton
+
+A render-prop helper around the clipboard; pair it with a Tooltip or a label swap for feedback.
+
+<CopyButtons />
+
+## Toolbar
+
+How the pieces combine at the top of a record page.
+
+<ActionToolbar />
+
+## Destructive actions
+
+Deleting is always confirmed, and the confirming button names what is deleted.
+
+<DestructiveConfirm />
+
+</Showcase>

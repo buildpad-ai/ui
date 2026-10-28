@@ -1,0 +1,83 @@
+---
+title: Layout
+description: Container, Group, Stack, Flex, Grid, SimpleGrid, Divider, Space, Center, AspectRatio, ScrollArea, Box and Paper — and the page grids Buildpad screens are built on.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  ContainerSizes,
+  GroupDemo,
+  StackFlexDemo,
+  GridDemo,
+  SimpleGridDemo,
+  SpacingHelpers,
+  ScrollAreaDemo,
+  SurfacesDemo,
+  PageGrids,
+} from '@/components/styleguide/gallery/lazy/sections/layout'
+
+# Layout
+
+The primitives that place everything else. Layout components have no look of
+their own, so the demos draw them as dashed ember guide boxes
+(`--ds-primary-50` fill, `--ds-primary-200` outline). Spacing props take the
+theme scale — `xs` 8px, `sm` 12px, `md` 16px, `lg` 24px, `xl` 32px — from the
+`--ds-spacing-*` tokens.
+
+<Showcase>
+
+## Container
+
+Centres page content at a readable maximum width.
+
+<ContainerSizes />
+
+## Group
+
+Lays children out in a row: toolbars, page headers, button pairs, inline metadata.
+
+<GroupDemo />
+
+## Stack & Flex
+
+Vertical rhythm with Stack; full flexbox control, with responsive props, with Flex.
+
+<StackFlexDemo />
+
+## Grid
+
+A 12-column grid for asymmetric layouts — spans, offsets and responsive breakpoints.
+
+<GridDemo />
+
+## SimpleGrid
+
+Equal-width columns for card and tile grids.
+
+<SimpleGridDemo />
+
+## Divider, Space, Center & AspectRatio
+
+Small helpers for separation, one-off spacing, centring and media shapes.
+
+<SpacingHelpers />
+
+## ScrollArea
+
+Scroll regions with the system's thin overlay scrollbars.
+
+<ScrollAreaDemo />
+
+## Box & Paper surfaces
+
+How surfaces sit on the page background: Paper, Card and the shadow scale.
+
+<SurfacesDemo />
+
+## Common page grids
+
+The three layouts most Buildpad screens start from.
+
+<PageGrids />
+
+</Showcase>

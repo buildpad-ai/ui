@@ -1,0 +1,73 @@
+---
+title: Data views
+description: Tables, card grids, lists, record summaries, KPI cards, composed charts, activity feeds, comments and a kanban board — the ways a Buildpad app shows its records.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  DataTableBlock,
+  TableOverlays,
+  CardGridView,
+  ListAndSummary,
+  KpiCards,
+  Charts,
+  FeedAndComments,
+  KanbanBoard,
+} from '@/components/styleguide/gallery/lazy/sections/data-views'
+
+# Data views
+
+The same Northwind Ops purchase orders, shown every way an internal tool needs
+to show records. The table follows the structure of `CollectionList` from
+`@buildpad/ui-collections`; everything else is stock Mantine composed with the
+shipped theme, and all of it is interactive.
+
+<Showcase>
+
+## Data table
+
+Search, a quick status filter, a collapsible filter panel and a column menu up top; select rows to get the bulk bar; the footer carries the count, page size and pagination. Try filtering until nothing matches.
+
+<DataTableBlock />
+
+The toolbar overlays, pinned open so you can see them without clicking.
+
+<TableOverlays />
+
+## Card grid
+
+The same records as cards — for browsing, or when each record has a picture or a lot of status. A view switcher keeps the dense list one click away.
+
+<CardGridView />
+
+## Lists & record summary
+
+A compact list for people and other small collections, and the description list that sits at the top of a record page.
+
+<ListAndSummary />
+
+## Stat cards
+
+The KPI row at the top of a dashboard. Trend badges say whether a change is good or bad, not just which way it went.
+
+<KpiCards />
+
+## Charts
+
+`@mantine/charts` is not part of the kit, so these are composed from core parts and tokens — enough for a dashboard's headline charts without another dependency.
+
+<Charts />
+
+## Activity & comments
+
+What happened to a record and the conversation about it.
+
+<FeedAndComments />
+
+## Board
+
+Records grouped by status for teams that work a pipeline. Move a card from its menu.
+
+<KanbanBoard />
+
+</Showcase>

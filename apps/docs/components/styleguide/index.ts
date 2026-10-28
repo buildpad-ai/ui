@@ -8,4 +8,4 @@ export {
   ShadowScale,
   FocusRingDemo,
 } from './Scales';
-export { Specimens, StorybookLinks } from './Specimens';
+export { StorybookLinks } from './StorybookLinks';

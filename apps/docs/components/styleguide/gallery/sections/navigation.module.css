@@ -1,0 +1,117 @@
+/* Layout-only helpers for the Navigation demos. Components are never
+   restyled; the only colours are --ds-* tokens on demo surfaces. */
+
+.grow {
+  flex: 1;
+}
+
+.iconLink {
+  display: inline-flex;
+  align-items: center;
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableCard {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Matches the CLI ListFooter's separator. */
+.footer {
+  border-top: var(--ds-table-border);
+}
+
+.navColumn {
+  width: 100%;
+  max-width: 260px;
+}
+
+.sidebar {
+  width: 100%;
+  max-width: 264px;
+  padding: var(--ds-spacing-3);
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-lg);
+}
+
+.brandName {
+  font-family: var(--ds-font-display);
+  letter-spacing: var(--ds-letter-spacing-tight);
+  line-height: 1.2;
+}
+
+.sectionLabel {
+  letter-spacing: 0.05em;
+}
+
+.mobileHeader {
+  width: 100%;
+  max-width: 340px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--ds-spacing-3);
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-lg);
+}
+
+.tocSwitch {
+  align-self: flex-start;
+}
+
+.tocLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: var(--ds-spacing-6);
+  align-items: start;
+}
+
+.tocArticle {
+  position: relative;
+  height: 260px;
+  overflow-y: auto;
+  padding: var(--ds-spacing-4);
+  border: 1px solid var(--ds-border-color);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-body-bg);
+}
+
+.tocArticle:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-focus-ring);
+}
+
+.tocSection {
+  padding-bottom: var(--ds-spacing-8);
+}
+
+.tocSection:last-child {
+  padding-bottom: 120px;
+}
+
+@media (max-width: 640px) {
+  .tocLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sidebarFooter {
+  margin-top: var(--ds-spacing-4);
+  padding-top: var(--ds-spacing-3);
+  border-top: 1px solid var(--ds-border-color);
+}
+
+.profileText {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.chevron {
+  flex: none;
+  color: var(--ds-gray-400);
+}

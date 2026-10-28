@@ -1,0 +1,82 @@
+---
+title: Typography
+description: Headings in Inter Tight, body text in Inter, and every Mantine text component — Title, Text, Highlight, Mark, Blockquote, List, Code, Kbd and rich text — rendered with the theme Buildpad ships.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  TitleScale,
+  TextScale,
+  TextStyles,
+  HighlightMark,
+  BlockquoteDemo,
+  ListDemo,
+  CodeKbd,
+  RichText,
+  ReleaseNotes,
+} from '@/components/styleguide/gallery/lazy/sections/typography'
+
+# Typography
+
+Headings are set in **Inter Tight** with tight tracking, everything else in
+**Inter** at a 14px body size, code in **JetBrains Mono**. Text is ink by
+default, `dimmed` for secondary information, and coloured only at the AA-safe
+700 stop. See [Foundations](/styleguide/foundations) for the raw type tokens.
+
+<Showcase>
+
+## Headings
+
+Six heading levels; the page title is the only h1.
+
+<TitleScale />
+
+## Text sizes & weights
+
+Five sizes on the Mantine scale, four weights.
+
+<TextScale />
+
+## Text styles
+
+Colour, transform, truncation, clamping and inheritance on `Text`.
+
+<TextStyles />
+
+## Highlight & Mark
+
+Draw the eye to matches and changes inside a sentence.
+
+<HighlightMark />
+
+## Blockquote
+
+Quoted comments, decisions and policy excerpts.
+
+<BlockquoteDemo />
+
+## Lists
+
+Bulleted, numbered, nested and icon lists.
+
+<ListDemo />
+
+## Code & Kbd
+
+Field names, values, snippets and keyboard shortcuts in running text.
+
+<CodeKbd />
+
+## Rich text
+
+HTML from a rich-text field or markdown, styled by Mantine's `Typography`.
+
+<RichText />
+
+## Long-form sample
+
+The whole type system in a reading context: a product changelog.
+
+<ReleaseNotes />
+
+</Showcase>

@@ -1,0 +1,73 @@
+---
+title: Dashboard
+description: An operations dashboard for the Northwind Ops sample app — KPIs, a spend chart, budgets, approvals, activity, deliveries and quick actions — composed from stock Mantine parts and rendered with the theme Buildpad ships.
+---
+
+import { Callout } from 'nextra/components'
+import { Showcase } from '@/components/styleguide'
+import { DashboardTemplate, DashboardLoading, DashboardFirstRun } from '@/components/styleguide/gallery/lazy/templates/dashboard'
+
+# Dashboard
+
+A dashboard you would build for your app's home route: what needs doing today,
+how the numbers are moving and where to go next. It is composed entirely from
+stock Mantine components inside the CLI's app shell. `buildpad init` itself
+writes the minimal Welcome page shown on [App shell](/styleguide/templates/app-shell).
+Scroll inside the frame to see the whole page; hover the bars for values.
+
+<Callout type="info">
+**What generates this**
+
+No CLI template produces this screen. `buildpad init` writes
+`app/[lang]/(authenticated)/page.tsx` from
+`packages/cli/templates/app/authenticated-page.tsx`: a Welcome title, an intro
+line and a Next steps card. Replace that page with a composition like this
+one, built from the parts listed under [Built from](#built-from). Only the
+surrounding app shell is generated.
+</Callout>
+
+<Showcase>
+
+## Overview
+
+A greeting with date range and actions, a dismissible budget banner, four KPI cards with sparklines, spend and budget charts, the approvals queue, activity, deliveries and shortcuts.
+
+<DashboardTemplate />
+
+## Loading
+
+The same grid while its queries resolve. Headings and the static quick actions render at once; `Skeleton` blocks hold the place of each KPI, the chart bars (inside a visible axis frame), budget rows, approvals and activity, so nothing jumps when data lands.
+
+<DashboardLoading />
+
+## First-run state
+
+The same screen on a brand-new workspace: a setup checklist leads, KPIs read "No data yet", export is disabled, and each panel explains what will appear.
+
+<DashboardFirstRun />
+
+</Showcase>
+
+## Built from
+
+- **[App shell](/styleguide/templates/app-shell)**: sidebar, glass header and user menu from the CLI's `AuthenticatedShell`.
+- **[Page headers](/styleguide/patterns/page-sections#page-headers)**: title, subtitle, `SegmentedControl` date range, an `Export` default button and the ink `New purchase order` CTA.
+- **[Banners](/styleguide/patterns/page-sections#banners)**: the light yellow `Alert` with a close button.
+- **[Stat cards](/styleguide/patterns/data-views#stat-cards)**: KPI cards whose delta `Badge` is coloured by meaning, not direction. Faster approvals are green; more overdue deliveries are red.
+- **[Charts](/styleguide/patterns/data-views#charts)**: the spend bars and the sparklines.
+- **[Table](/styleguide/components/data-display#table)** in a `Card.Section`, with [Avatar](/styleguide/components/data-display#avatar), status [Badge](/styleguide/components/data-display#badge) and compact [Buttons](/styleguide/components/buttons) for the approvals queue.
+- **[Progress](/styleguide/components/feedback#progress)**: budget by category. Over-budget rows switch to `color="red"` and near-limit rows to `color="yellow"`, and each row also shows a % badge, so colour is never the only signal.
+- **[Timeline](/styleguide/components/data-display#timeline)** with avatar bullets for recent activity, and **[ThemeIcon](/styleguide/components/data-display#themeicon)** for the KPI and quick-action icons.
+- **[Skeleton](/styleguide/components/feedback#skeleton)** blocks for the loading frame, sized to the content they stand in for.
+- **[Onboarding checklist](/styleguide/patterns/page-sections#onboarding-checklist)** and **[empty states](/styleguide/patterns/states)** for the first-run frame.
+
+<Callout type="info">
+**The charts use tokens, not a chart library.** Buildpad doesn't ship
+`@mantine/charts`. The bar chart and sparklines here are plain boxes coloured
+with `--ds-primary-200` (earlier periods) and `--ds-primary-500` (current
+period). Gridlines use `--ds-divider` and the dashed budget line uses
+`--ds-gray-400`. Each bar's hover tooltip is a Mantine `Tooltip.Floating`, and the
+whole column is the hover target. If your app
+needs real charting, add `@mantine/charts` (Recharts) and colour it with the
+same tokens.
+</Callout>

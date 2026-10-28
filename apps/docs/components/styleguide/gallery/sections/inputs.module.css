@@ -1,0 +1,4 @@
+/* Mirrors .rich-text-html-editor--error from the rich-text-html interface. */
+.editorError {
+  border-color: var(--ds-danger);
+}

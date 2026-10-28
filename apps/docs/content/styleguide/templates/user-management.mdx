@@ -1,0 +1,85 @@
+---
+title: Users & roles
+description: The users, role and policy screens for the Northwind Ops sample app. They show the users table, the Update roles dialog, a role's detail page and a policy's permissions matrix, modelled on @buildpad/ui-users and rendered in the theme Buildpad ships.
+---
+
+import { Callout } from 'nextra/components'
+import { Showcase } from '@/components/styleguide'
+import {
+  UsersListTemplate,
+  UpdateRolesTemplate,
+  RoleDetailTemplate,
+  PolicyDetailTemplate,
+  UsersMenus,
+} from '@/components/styleguide/gallery/lazy/templates/user-management'
+
+# Users & roles
+
+Every Buildpad app has an administration area for people and access. These
+frames follow `@buildpad/ui-users`: `UsersManager` for the list and its bulk
+dialog, `RoleDetail` for a role, and `PolicyDetail` with the
+`SystemPermissions` matrix for a policy. The filters, selection, tabs,
+permission pills and menus all work.
+
+<Callout type="info">
+`buildpad add users-routes` generates these pages: `/users` (`UsersManager`),
+`/roles/[id]` (`RoleDetail`) and `/policies/[id]` (`PolicyDetail`), with
+`RolesManager` and `PoliciesManager` for the role and policy lists. The frames
+are static compositions of the same Mantine parts with sample data. The real
+components load users, roles and policies from DaaS and show each action only
+if you have permission for it.
+</Callout>
+
+<Showcase>
+
+## Users
+
+The header is a title and a subtitle. The card's toolbar has search, `Role` and `Status` filters (both clearable), the gray count badge and `Add User`. At this frame's width the toolbar wraps and the table scrolls sideways, as VTable does. Select rows to bring up the bulk toolbar. Its `Update roles` button opens the real `Modal`.
+
+<UsersListTemplate />
+
+## Update roles dialog
+
+The bulk dialog that `UsersManager` ships, open over the users page with two rows selected. It is the themed `Modal`, drawn inside the frame so it can be seen without clicking. You can add and remove roles in one step.
+
+<UpdateRolesTemplate />
+
+## Role detail
+
+`RoleDetail` for the Approver role with unsaved changes. The header has Cancel, a red delete and a Save menu. Below it are the Basic Information, Users and Policies tabs, then `InfoPanel`. Click a tab to switch it. From `md` the page uses an 8 / 4 `Grid` with `InfoPanel` on the right. At this frame's width it sits below the tabs.
+
+<RoleDetailTemplate />
+
+## Policy detail
+
+`PolicyDetail` for the policy attached to that role. It has basic information, the App, Admin and Delegate access switches, and the Record-Level and Module-Level tabs. Click a C / R / U / D pill to change its level, or use all / none for a whole row. It uses the same 8 / 4 grid as the role page, so here too the info panel sits below and the matrix has room.
+
+<PolicyDetailTemplate />
+
+## Menus and statuses
+
+The module's overlays pinned open, and every account status.
+
+<UsersMenus />
+
+</Showcase>
+
+## Built from
+
+- **[App shell](/styleguide/templates/app-shell)**: sidebar, glass header and user menu from the CLI's `AuthenticatedShell`.
+- **[Page headers](/styleguide/patterns/page-sections#page-headers)**: `UsersManager`'s title and subtitle. The detail pages use a title with a yellow `dot` badge for unsaved changes, then Cancel, a red delete `Button` and Save.
+- **[Table](/styleguide/components/data-display#table)** in a bordered card, as in `ManagerTable.css`. The toolbar sits inside the card, and `ListFooter` shows "Showing N of M users" with a page-size `Select`. VTable is drawn here with Mantine `Table`. Its checkboxes use the default `sm` size, and selected rows get no tint.
+- **[Avatar](/styleguide/components/data-display#avatar)**: as in `UserAvatar`, active users get `primary` and everyone else gets `gray`.
+- **[Badges](/styleguide/components/data-display#badge)**: light role badges, `dot` status badges from `USER_STATUS_COLORS`, filled count badges on the role tabs, and the filled or outline permission pills.
+- **[Tabs](/styleguide/components/navigation#tabs)** on both detail pages, and **[Switch](/styleguide/components/selection)** rows for access control and module keys.
+- **[Inputs](/styleguide/components/inputs)**: `TextInput`, `Textarea`, `Select` and `MultiSelect`. The Icon field is `SelectIcon`'s trigger, a full-width `default` Button.
+
+<Callout type="info">
+**Permission pill colours.** The pills use `SystemPermissions`' mapping:
+filled `green` for all access, filled `blue` for custom and an `outline`
+gray pill for no access. The theme resolves those to the success, info and
+neutral scales. A cell that app access requires is drawn by
+`SystemPermissions` with `color="cyan"`, and this page keeps that colour.
+`theme.ts` doesn't alias `cyan`, so those pills render in Mantine's stock
+cyan, not a brand colour.
+</Callout>

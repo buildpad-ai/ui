@@ -1,0 +1,89 @@
+---
+title: Feedback & status
+description: Alerts, notifications, progress, loaders, skeletons and loading overlays — how a Buildpad app tells people what is happening, rendered with the shipped theme.
+---
+
+import { Showcase } from '@/components/styleguide'
+import {
+  AlertSemantic,
+  AlertVariants,
+  NotificationVariants,
+  ToastStack,
+  ProgressBars,
+  CircularProgress,
+  Loaders,
+  ButtonLoading,
+  Skeletons,
+  LoadingOverlayDemo,
+} from '@/components/styleguide/gallery/lazy/sections/feedback'
+
+# Feedback & status
+
+How the app reports what is happening: messages that stay on the page, transient
+notifications, progress for work in flight and placeholders while data loads.
+Status colour always comes from the semantic scales — `blue` info, `green`
+success, `yellow` warning, `red` danger.
+
+<Showcase>
+
+## Alert
+
+Inline, persistent messages tied to a page or form. Light is the default variant.
+
+<AlertSemantic />
+
+## Alert variants
+
+Filled for the one message that must not be missed, outline and default for quieter emphasis.
+
+<AlertVariants />
+
+## Notification
+
+The card a toast is made of — rendered statically here; colour bar or icon, loading and bordered forms.
+
+<NotificationVariants />
+
+## Toast stack
+
+Several notifications composed into the top-right stack an app shows after actions.
+
+<ToastStack />
+
+## Progress
+
+Linear progress for a known ratio — sizes, semantic colours, stacked sections and striped work in flight.
+
+<ProgressBars />
+
+## Ring & semi-circle
+
+Circular forms for a KPI or a single headline ratio.
+
+<CircularProgress />
+
+## Loader
+
+Indeterminate activity indicators for when the duration is unknown.
+
+<Loaders />
+
+## Button loading
+
+Buttons report their own pending action instead of a separate spinner.
+
+<ButtonLoading />
+
+## Skeleton
+
+Placeholders shaped like the content that is about to load.
+
+<Skeletons />
+
+## Loading overlay
+
+Blocks a region that is saving or refreshing while keeping its content in view.
+
+<LoadingOverlayDemo />
+
+</Showcase>

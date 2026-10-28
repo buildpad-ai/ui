@@ -1,0 +1,255 @@
+/* Layout-only rules for the Forms pattern page. Colours come from --ds-*
+   tokens; every control is a stock Mantine component styled by the theme. */
+
+.card {
+  width: 100%;
+}
+
+.scroll {
+  max-height: 620px;
+  overflow-y: auto;
+}
+
+.formHeader {
+  padding: var(--ds-spacing-6);
+}
+
+.formSection {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--ds-spacing-8);
+  padding: var(--ds-spacing-6);
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-spacing-4);
+  align-items: start;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.stickyFooter {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-4) var(--ds-spacing-6);
+  background: var(--ds-card-bg);
+  border-top: 1px solid var(--ds-border-color);
+}
+
+.settingsRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: var(--ds-spacing-8);
+  align-items: center;
+  padding: var(--ds-spacing-5) var(--ds-spacing-6);
+}
+
+.settingsControl {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.settingsControl > * {
+  width: 100%;
+}
+
+.settingsControl[data-inline] > * {
+  width: auto;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ds-spacing-3);
+}
+
+.filterSearch {
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+
+.filterSelect {
+  width: 168px;
+}
+
+.popoverStage {
+  min-height: 430px;
+}
+
+.authCard {
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.narrow {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+@media (max-width: 760px) {
+  .formSection,
+  .settingsRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ds-spacing-4);
+  }
+
+  .fieldGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settingsControl {
+    justify-content: flex-start;
+  }
+}
+
+/* ── Live and pinned overlays ─────────────────────────────── */
+
+/* A transform makes this the containing block for position: fixed, so a
+   pinned-open Modal fills the frame instead of the window. */
+.fixedStage {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.stageBackdrop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-4);
+  min-height: 100%;
+  padding: var(--ds-spacing-6);
+  background: var(--ds-body-bg);
+}
+
+/* ── Relational fields ────────────────────────────────────── */
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.noShrink {
+  flex-shrink: 0;
+}
+
+.noWrap {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.relatedRow[data-dragging],
+.relatedRow[data-removed] {
+  opacity: 0.5;
+}
+
+.grab {
+  cursor: grab;
+  touch-action: none;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.pickRow[data-selected] {
+  background: var(--ds-primary-50);
+}
+
+/* ── File upload ──────────────────────────────────────────── */
+
+/* Mirrors the shipped Upload drop zone: dashed border on a muted wash that
+   turns ember while a file is dragged over it. */
+.dropzone[data-with-border] {
+  --paper-border-color: var(--ds-gray-300);
+  border-style: dashed;
+  background: var(--ds-gray-50);
+  transition:
+    border-color var(--ds-transition-fast),
+    background-color var(--ds-transition-fast);
+}
+
+.dropzone[data-with-border][data-dragover] {
+  --paper-border-color: var(--ds-primary-500);
+  background: var(--ds-primary-50);
+}
+
+.dropzone[data-disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dropIcon {
+  display: flex;
+  color: var(--ds-gray-400);
+}
+
+.dropzone[data-dragover] .dropIcon {
+  color: var(--ds-primary-500);
+}
+
+.photoThumb {
+  display: block;
+  flex-shrink: 0;
+  border-radius: var(--ds-radius-sm);
+}
+
+.libraryBody {
+  min-height: 260px;
+}
+
+.libraryEmpty {
+  height: 260px;
+}
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--ds-spacing-3);
+}
+
+/* Mirrors the shipped LibraryPicker card: ember border on hover and focus. */
+.libraryCard[data-with-border] {
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color var(--ds-transition-fast),
+    box-shadow var(--ds-transition-fast);
+}
+
+.libraryCard[data-with-border]:hover,
+.libraryCard[data-with-border]:focus-visible {
+  --paper-border-color: var(--ds-primary-500);
+}
+
+.libraryCard:focus-visible {
+  outline: none;
+  box-shadow: var(--ds-focus-ring);
+}
+
+.libraryThumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--ds-gray-100);
+}
+
+.libraryThumb .photoThumb {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}

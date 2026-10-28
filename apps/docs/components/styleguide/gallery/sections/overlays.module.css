@@ -1,0 +1,109 @@
+/* Layout-only helpers for the Overlays demos. */
+
+/* A transform makes this the containing block for position: fixed, so a
+   pinned-open Modal / Drawer / Dialog fills the frame instead of the window. */
+.fixedStage {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+/* Room below the trigger so an always-open dropdown is fully visible. */
+.overlayStage {
+  position: relative;
+  width: 100%;
+  min-height: 260px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.menuStage {
+  min-height: 330px;
+}
+
+.hoverStage {
+  min-height: 250px;
+  justify-content: flex-start;
+}
+
+.comboStage {
+  min-height: 360px;
+}
+
+.field {
+  width: 100%;
+  max-width: 260px;
+}
+
+.drawerContent {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawerBody {
+  flex: 1;
+}
+
+.drawerFooter {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ds-spacing-3);
+  padding: var(--ds-spacing-4);
+  border-top: 1px solid var(--ds-divider);
+  background-color: inherit;
+}
+
+.tooltipRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: center;
+  align-items: center;
+  min-height: 140px;
+}
+
+.tooltipStack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ds-spacing-6);
+  padding-right: 110px;
+}
+
+.tooltipMultiline {
+  display: flex;
+  justify-content: center;
+  min-height: 140px;
+  padding-top: var(--ds-spacing-2);
+}
+
+.floatingArea {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border: 1px dashed var(--ds-border-color);
+  border-radius: var(--ds-radius-lg);
+  cursor: crosshair;
+}
+
+.dialogStage {
+  position: relative;
+  min-height: 260px;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.dialogPage {
+  max-width: 280px;
+}
+
+.backdrop {
+  min-height: 100%;
+  padding: var(--ds-spacing-6);
+  background: var(--ds-body-bg);
+}
+
