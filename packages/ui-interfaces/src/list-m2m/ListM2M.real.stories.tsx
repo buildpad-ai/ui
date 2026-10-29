@@ -6,6 +6,9 @@ const meta: Meta<typeof ListM2M> = {
   component: ListM2M,
   tags: ['!autodocs'],
   parameters: {
+    // Every story here loads xtr_app_interfaces from DaaS; the preview shows a
+    // connect notice instead until the host has an instance connected.
+    liveDaaS: true,
     layout: 'padded',
     docs: {
       description: {
