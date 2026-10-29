@@ -22,5 +22,9 @@ const Controlled: React.FC<{ initial?: string }> = ({ initial = '' }) => {
   );
 };
 
-export const Empty: Story = { render: () => <Controlled /> };
+export const Empty: Story = {
+  // Label only: the story ID stays `empty`.
+  name: 'Default',
+  render: () => <Controlled />,
+};
 export const WithValue: Story = { render: () => <Controlled initial="jane" /> };

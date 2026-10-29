@@ -27,7 +27,11 @@ const Controlled = ({ initial, disabled }: { initial: string | null; disabled?: 
 };
 
 /** No token yet — generate placeholder with a plus-icon action. */
-export const Empty: Story = { render: () => <Controlled initial={null} /> };
+export const Empty: Story = {
+  // Label only: the story ID stays `empty`.
+  name: 'Default',
+  render: () => <Controlled initial={null} />,
+};
 
 /**
  * A saved token as the backend returns it: concealed as asterisks →

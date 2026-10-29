@@ -18,9 +18,11 @@ import { DaaSConnectionGate } from './_daasStory';
  * 3. Start this Storybook: `pnpm storybook:users`
  */
 const meta: Meta<typeof RolesManager> = {
-  title: 'Users/RolesManager (DaaS)',
+  title: 'Users/RolesManager',
+  // Keeps the story IDs from the old "RolesManager (DaaS)" title, which the
+  // Playwright specs and existing links use (…-daas--playground).
+  id: 'users-rolesmanager-daas',
   component: RolesManager,
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
     docs: {
@@ -70,5 +72,9 @@ const RolesPlayground: React.FC = () => {
  * Full roles admin against a live backend, with in-story list ↔ detail navigation.
  */
 export const Playground: StoryObj<typeof RolesManager> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <RolesPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };

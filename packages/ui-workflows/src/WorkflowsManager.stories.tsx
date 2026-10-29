@@ -8,14 +8,17 @@ import { manyMockWorkflows } from './_fixtures';
 /**
  * Fixture stories: `WorkflowsManager` loads through `useWorkflowDefinitions`,
  * so these run against an in-memory API (`_mockApi.tsx`) instead of props.
- * For a real backend see `Workflows/WorkflowsManager (DaaS)`.
+ * For a real backend see the Live DaaS story.
  */
 const meta: Meta<typeof WorkflowsManager> = {
   title: 'Workflows/WorkflowsManager',
   component: WorkflowsManager,
-  // One in-memory API at a time: these stories do not share a docs page.
-  tags: ['!autodocs'],
   parameters: {
+    docs: {
+      // One in-memory API per page: each docs story renders in its own frame,
+      // so the stories' mock APIs never share a page.
+      story: { inline: false, iframeHeight: 640 },
+    },
     layout: 'padded',
   },
 };

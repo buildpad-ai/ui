@@ -12,7 +12,11 @@ const meta: Meta<typeof UserAvatar> = {
 export default meta;
 type Story = StoryObj<typeof UserAvatar>;
 
-export const WithFullName: Story = { args: { user: mockUsers[0] } };
+export const WithFullName: Story = {
+  // Label only: the story ID stays `with-full-name`.
+  name: 'Default',
+  args: { user: mockUsers[0] },
+};
 
 export const EmailFallback: Story = {
   args: { user: mockUsers[2] },

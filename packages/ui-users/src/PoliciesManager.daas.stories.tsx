@@ -18,9 +18,11 @@ import { DaaSConnectionGate } from './_daasStory';
  * 3. Start this Storybook: `pnpm storybook:users`
  */
 const meta: Meta<typeof PoliciesManager> = {
-  title: 'Users/PoliciesManager (DaaS)',
+  title: 'Users/PoliciesManager',
+  // Keeps the story IDs from the old "PoliciesManager (DaaS)" title, which the
+  // Playwright specs and existing links use (…-daas--playground).
+  id: 'users-policiesmanager-daas',
   component: PoliciesManager,
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
     docs: {
@@ -69,5 +71,9 @@ const PoliciesPlayground: React.FC = () => {
  * Full policies admin against a live backend, with in-story list ↔ detail navigation.
  */
 export const Playground: StoryObj<typeof PoliciesManager> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <PoliciesPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };

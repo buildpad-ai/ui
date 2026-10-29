@@ -9,14 +9,17 @@ import { manyMockAssignments } from './_fixtures';
  * Fixture stories: `WorkflowAssignmentsManager` loads through
  * `useWorkflowAssignments`, so these run against an in-memory API
  * (`_mockApi.tsx`) instead of props. For a real backend see
- * `Workflows/WorkflowAssignmentsManager (DaaS)`.
+ * the Live DaaS story.
  */
 const meta: Meta<typeof WorkflowAssignmentsManager> = {
   title: 'Workflows/WorkflowAssignmentsManager',
   component: WorkflowAssignmentsManager,
-  // One in-memory API at a time: these stories do not share a docs page.
-  tags: ['!autodocs'],
   parameters: {
+    docs: {
+      // One in-memory API per page: each docs story renders in its own frame,
+      // so the stories' mock APIs never share a page.
+      story: { inline: false, iframeHeight: 640 },
+    },
     layout: 'padded',
   },
 };

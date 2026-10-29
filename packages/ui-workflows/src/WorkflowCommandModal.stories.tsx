@@ -59,6 +59,8 @@ function Harness({
 
 /** A new command drawn from Draft to Published: the target is filled in. */
 export const AddCommand: Story = {
+  // Label only: the story ID stays `add-command`.
+  name: 'Default',
   render: () => (
     <Harness command={null} stateName="Draft" targetState="Published" policies={mockPolicyOptions} />
   ),

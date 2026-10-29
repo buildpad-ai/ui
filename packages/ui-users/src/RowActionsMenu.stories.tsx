@@ -12,6 +12,10 @@ type Story = StoryObj<typeof RowActionsMenu>;
 
 const noop = () => undefined;
 
-export const EditAndDelete: Story = { args: { onEdit: noop, onDelete: noop } };
+export const EditAndDelete: Story = {
+  // Label only: the story ID stays `edit-and-delete`.
+  name: 'Default',
+  args: { onEdit: noop, onDelete: noop },
+};
 export const EditOnly: Story = { args: { onEdit: noop } };
 export const DeleteOnly: Story = { args: { onDelete: noop } };

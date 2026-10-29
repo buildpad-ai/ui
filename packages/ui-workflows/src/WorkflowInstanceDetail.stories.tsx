@@ -8,15 +8,18 @@ import { mockInstances } from './_fixtures';
 /**
  * Fixture stories: `WorkflowInstanceDetail` loads through
  * `useWorkflowInstances`, so these run against an in-memory API
- * (`_mockApi.tsx`). For a real backend see
- * `Workflows/WorkflowInstancesManager (DaaS)`.
+ * (`_mockApi.tsx`). For a real backend see the Live DaaS story of
+ * `Workflows/WorkflowInstancesManager`.
  */
 const meta: Meta<typeof WorkflowInstanceDetail> = {
   title: 'Workflows/WorkflowInstanceDetail',
   component: WorkflowInstanceDetail,
-  // One in-memory API at a time: these stories do not share a docs page.
-  tags: ['!autodocs'],
   parameters: {
+    docs: {
+      // One in-memory API per page: each docs story renders in its own frame,
+      // so the stories' mock APIs never share a page.
+      story: { inline: false, iframeHeight: 820 },
+    },
     layout: 'padded',
   },
 };

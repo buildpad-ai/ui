@@ -17,9 +17,10 @@ import { DaaSConnectionGate } from './_daasStory';
  * 3. Start this Storybook: `pnpm --filter @buildpad/ui-workflows storybook`
  */
 const meta: Meta<typeof WorkflowAssignmentsManager> = {
-  title: 'Workflows/WorkflowAssignmentsManager (DaaS)',
+  // Same title as WorkflowAssignmentsManager.stories.tsx: the live story joins that component
+  // and loads last (see the stories glob in main.ts).
+  title: 'Workflows/WorkflowAssignmentsManager',
   component: WorkflowAssignmentsManager,
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
     docs: {
@@ -66,5 +67,8 @@ const AssignmentsPlayground: React.FC = () => {
  * The assignments list against a live backend, with in-story list ↔ form navigation.
  */
 export const Playground: StoryObj<typeof WorkflowAssignmentsManager> = {
+  name: 'Live DaaS',
   render: () => <AssignmentsPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };

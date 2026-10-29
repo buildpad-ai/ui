@@ -50,6 +50,8 @@ function Harness({
 
 /** A new state in a workflow that already has states. */
 export const AddState: Story = {
+  // Label only: the story ID stays `add-state`.
+  name: 'Default',
   render: () => <Harness state={null} />,
 };
 

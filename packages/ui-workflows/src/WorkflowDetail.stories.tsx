@@ -8,15 +8,18 @@ import { mockWorkflows } from './_fixtures';
 /**
  * Fixture stories: `WorkflowDetail` loads and saves through
  * `useWorkflowDefinitions`, so these run against an in-memory API
- * (`_mockApi.tsx`). For a real backend see `Workflows/WorkflowsManager (DaaS)`
- * and `Workflows/WorkflowDetail (DaaS)`.
+ * (`_mockApi.tsx`). For a real backend see the Live DaaS stories of
+ * `Workflows/WorkflowsManager` and of this component.
  */
 const meta: Meta<typeof WorkflowDetail> = {
   title: 'Workflows/WorkflowDetail',
   component: WorkflowDetail,
-  // One in-memory API at a time: these stories do not share a docs page.
-  tags: ['!autodocs'],
   parameters: {
+    docs: {
+      // One in-memory API per page: each docs story renders in its own frame,
+      // so the stories' mock APIs never share a page.
+      story: { inline: false, iframeHeight: 820 },
+    },
     layout: 'padded',
   },
 };
@@ -46,6 +49,8 @@ function Harness({ api, ...props }: { api?: MockWorkflowApiOptions } & React.Com
 
 /** An existing definition, as an administrator. */
 export const EditWorkflow: Story = {
+  // Label only: the story ID stays `edit-workflow`.
+  name: 'Default',
   render: () => <Harness id={mockWorkflows[0].id} />,
 };
 
