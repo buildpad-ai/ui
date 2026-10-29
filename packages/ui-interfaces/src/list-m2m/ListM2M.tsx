@@ -639,11 +639,15 @@ export const ListM2M: React.FC<ListM2MProps> = ({
     const isMockMode = !!(mockItems || mockRelationInfo);
 
     // ── Relation discovery ──────────────────────────────────────────
+    // Skipped when the relation is passed in (empty args make the hook a
+    // no-op), as ListO2M / ListM2A do in demo mode; otherwise every mock story
+    // requests the relation and toasts "Failed to load relationship
+    // configuration" without a backend.
     const {
         relationInfo: discoveredRelationInfo,
         loading: relationLoading,
         error: relationError,
-    } = useRelationM2M(collection, field);
+    } = useRelationM2M(mockRelationInfo ? '' : collection, mockRelationInfo ? '' : field);
     const relationInfo = mockRelationInfo ?? discoveredRelationInfo;
 
     // ── Permissions ─────────────────────────────────────────────────
