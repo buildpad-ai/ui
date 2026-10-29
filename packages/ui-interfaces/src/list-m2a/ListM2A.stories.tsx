@@ -294,7 +294,7 @@ export const WithMockItems: Story = {
       ],
       junctionCollection: { collection: 'pages_blocks' },
       collectionField: { field: 'collection' },
-      itemField: { field: 'item' },
+      junctionField: { field: 'item' },
       sortField: 'sort',
     },
   },

@@ -2,6 +2,7 @@ import React from 'react';
 import type { Preview } from '@storybook/nextjs-vite';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+import { DaaSProvider } from '@buildpad/services';
 import { enterpriseTheme } from '../../storybook-enterprise-theme';
 import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../storybook-i18n';
 // Relational interfaces (ListO2M/M2M/M2A, relational fields in a standalone
@@ -48,11 +49,16 @@ const preview: Preview = {
     (Story, context) => (
       <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
         <Notifications position="top-right" />
-        <RelationalUI enabled={context.parameters.relationalUI !== false}>
-          <div className="sb-enterprise-wrapper sb-interfaces-pad">
-            <Story />
-          </div>
-        </RelationalUI>
+        {/* ListO2M / M2M / M2A check permissions through usePermissions, which
+            requires a DaaSProvider. Same setup as the ui-form Storybook: proxy
+            mode (the host app's /api), no user fetch on mount. */}
+        <DaaSProvider autoFetchUser={false}>
+          <RelationalUI enabled={context.parameters.relationalUI !== false}>
+            <div className="sb-enterprise-wrapper sb-interfaces-pad">
+              <Story />
+            </div>
+          </RelationalUI>
+        </DaaSProvider>
       </MantineProvider>
     ),
     withBuildpadI18n,
