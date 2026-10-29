@@ -486,7 +486,6 @@ const meta = {
   title: "Collections/CollectionList",
   component: CollectionList,
   decorators: [withMockApi],
-  tags: ["!autodocs"],
   parameters: {
     layout: "padded",
     docs: {
@@ -495,7 +494,7 @@ const meta = {
           "A data-connected list that composes VTable for sorting, resize, reorder, and selection. " +
           "Features an integrated FilterPanel, action toolbar with create button, " +
           "and DaaS-style pagination. Right-click column headers for sort, align, and hide options. " +
-          "These stories use mock data. For live DaaS data, use the **Playground** story.",
+          "These stories use mock data. For live DaaS data, use the **Live DaaS** story.",
       },
     },
   },
