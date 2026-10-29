@@ -29,10 +29,11 @@ function connectUrl(): string {
 }
 
 /**
- * Renders a story that loads real DaaS data (`parameters: { liveDaaS: true }`)
- * only when the Storybook host app reports a connected instance. Otherwise it
- * explains how to connect, in place of the component's own configuration
- * error and its error toast.
+ * Shared by every package Storybook (wrap `<Story />` in the preview
+ * decorator). Renders a story that loads real DaaS data
+ * (`parameters: { liveDaaS: true }`) only when the Storybook host app reports
+ * a connected instance. Otherwise it explains how to connect, in place of the
+ * component's own configuration error, toast or local-dev setup panel.
  */
 export function LiveDaaSGate({ enabled, children }: { enabled: boolean; children: React.ReactNode }) {
   const [status, setStatus] = useState<HostStatus>(enabled ? 'checking' : 'connected');
@@ -63,8 +64,8 @@ export function LiveDaaSGate({ enabled, children }: { enabled: boolean; children
     <Alert color="primary" title="This story uses live DaaS data" maw={520}>
       {status === 'disconnected' ? (
         <Text size="sm" mb="sm">
-          It loads a real relation and its items, and no DaaS instance is connected. Connect one on the Storybook home
-          page, then come back to this story. The other stories use example data and work without one.
+          It loads real data from a DaaS instance, and none is connected. Connect one on the Storybook home page, then
+          come back to this story. The other stories use example data and work without one.
         </Text>
       ) : (
         <Text size="sm" mb="sm">

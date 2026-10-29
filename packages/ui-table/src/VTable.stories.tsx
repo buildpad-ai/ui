@@ -190,6 +190,8 @@ const productItems: Item[] = [
  * Basic table with headers and items
  */
 export const Basic: Story = {
+  // Label only: the story ID stays `basic` (used by the Playwright specs).
+  name: 'Default',
   args: {
     headers: sampleHeaders,
     items: sampleItems,

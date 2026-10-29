@@ -616,8 +616,12 @@ pnpm dev:host
  * Features pagination, sorting, and selection.
  */
 export const Playground: StoryObj<typeof VTable> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <DaaSTablePlayground />,
   parameters: {
+    // Shows the shared connect notice until the host has a DaaS instance.
+    liveDaaS: true,
     docs: {
       description: {
         story: `

@@ -498,8 +498,12 @@ pnpm dev:host
  * Connect to a real DaaS instance and test VForm with actual collection schemas.
  */
 export const Playground: StoryObj<typeof VForm> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <DaaSPlayground />,
   parameters: {
+    // Shows the shared connect notice until the host has a DaaS instance.
+    liveDaaS: true,
     docs: {
       description: {
         story: `

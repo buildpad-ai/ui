@@ -297,6 +297,8 @@ const VFormWrapper: React.FC<VFormWrapperProps> = ({
  * Basic form with essential fields
  */
 export const Basic: Story = {
+  // Label only: the story ID stays `basic` (used by the Playwright specs).
+  name: 'Default',
   render: () => <VFormWrapper fields={basicFields} />,
   parameters: {
     docs: {
