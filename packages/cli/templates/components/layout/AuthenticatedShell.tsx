@@ -2,8 +2,8 @@
  * Authenticated App Shell
  *
  * A modern, token-styled application shell: glass-blur header with a
- * breadcrumb + optional search/notification affordances, a sidebar with
- * brand, primary navigation, and a bottom user-profile menu.
+ * breadcrumb, optional search/notification affordances and the account
+ * menu at the top right, and a sidebar with brand and primary navigation.
  *
  * This is the recommended wrapper for your own app pages (dashboards,
  * custom screens). For schema-driven collection browsing under /content/*,
@@ -19,7 +19,7 @@
  * `headerActions` slot for your own controls.
  *
  * @buildpad/origin: components/layout/AuthenticatedShell
- * @buildpad/version: 2.0.0
+ * @buildpad/version: 2.1.0
  */
 
 "use client";
@@ -311,6 +311,61 @@ export function AuthenticatedShell({
             {headerActions}
             {showLanguageSwitcher && <LanguageSwitcher />}
             <ColorSchemeToggle />
+
+            {/* Account menu, top right */}
+            <Menu position="bottom-end" offset={8} shadow="md" width={240}>
+              <Menu.Target>
+                <UnstyledButton
+                  className="bp-header-user-button"
+                  aria-label={t("app.shell.account")}
+                >
+                  <Avatar
+                    radius="xl"
+                    size={30}
+                    src={user?.avatar ?? undefined}
+                    style={{ border: "2px solid var(--ds-primary-200)" }}
+                  >
+                    {getInitials(user)}
+                  </Avatar>
+                  <Group gap={6} wrap="nowrap" visibleFrom="sm">
+                    <Text size="sm" fw={500} maw={160} truncate>
+                      {displayName}
+                    </Text>
+                    <IconChevronDown size={14} color="var(--ds-gray-400)" />
+                  </Group>
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Stack gap={0} px="sm" py="xs">
+                  <Text size="sm" fw={600} truncate>
+                    {displayName}
+                  </Text>
+                  <Text size="xs" c="dimmed" truncate>
+                    {user?.email ?? t("app.shell.signedIn")}
+                  </Text>
+                </Stack>
+                <Divider my={4} />
+                <Menu.Label>{t("app.shell.profileSettings")}</Menu.Label>
+                <Menu.Item leftSection={<IconUser size={14} />} disabled>
+                  {t("app.shell.accountDetails")}
+                </Menu.Item>
+                <Menu.Item leftSection={<IconSettings size={14} />} disabled>
+                  {t("app.shell.workspaceSettings")}
+                </Menu.Item>
+                <Divider my="xs" />
+                <Menu.Item
+                  color="red"
+                  leftSection={<IconLogout size={14} />}
+                  onClick={() => {
+                    // API path — never locale-prefixed. The logout route
+                    // redirects to /login, which middleware re-prefixes.
+                    window.location.href = "/api/auth/logout";
+                  }}
+                >
+                  {t("app.shell.logout")}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Group>
         </Group>
       </AppShell.Header>
@@ -374,72 +429,6 @@ export function AuthenticatedShell({
           ))}
         </Stack>
 
-        {/* User profile section at the bottom */}
-        <Stack
-          gap={0}
-          pt="sm"
-          style={{
-            borderTop: "1px solid var(--ds-border-color)",
-            width: "100%",
-          }}
-        >
-          <Menu position="right-end" offset={12} withArrow shadow="md" width={220}>
-            <Menu.Target>
-              <UnstyledButton className="bp-user-profile-button">
-                <Group gap="xs" wrap="nowrap">
-                  <Avatar
-                    radius="xl"
-                    size="sm"
-                    src={user?.avatar ?? undefined}
-                    style={{ border: "2px solid var(--ds-primary-200)" }}
-                  >
-                    {getInitials(user)}
-                  </Avatar>
-                  <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                    <Text
-                      size="sm"
-                      fw={600}
-                      lineClamp={1}
-                      style={{ lineHeight: 1.2 }}
-                    >
-                      {displayName}
-                    </Text>
-                    <Text
-                      c="dimmed"
-                      size="xs"
-                      lineClamp={1}
-                      style={{ lineHeight: 1 }}
-                    >
-                      {user?.email ?? t("app.shell.signedIn")}
-                    </Text>
-                  </Stack>
-                  <IconChevronDown size={14} color="var(--ds-gray-400)" />
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>{t("app.shell.profileSettings")}</Menu.Label>
-              <Menu.Item leftSection={<IconUser size={14} />} disabled>
-                {t("app.shell.accountDetails")}
-              </Menu.Item>
-              <Menu.Item leftSection={<IconSettings size={14} />} disabled>
-                {t("app.shell.workspaceSettings")}
-              </Menu.Item>
-              <Divider my="xs" />
-              <Menu.Item
-                color="red"
-                leftSection={<IconLogout size={14} />}
-                onClick={() => {
-                  // API path — never locale-prefixed. The logout route
-                  // redirects to /login, which middleware re-prefixes.
-                  window.location.href = "/api/auth/logout";
-                }}
-              >
-                {t("app.shell.logout")}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Stack>
       </AppShell.Navbar>
 
       <AppShell.Main>{children}</AppShell.Main>

@@ -10,7 +10,7 @@ import { Callout, Steps } from 'nextra/components'
 Buildpad has **two shells for two different jobs** — don't confuse them:
 
 - **`AuthenticatedShell`** — the generic app chrome (glass header, sidebar
-  navigation, profile menu) that `bootstrap` wires around your authenticated
+  navigation, account menu) that `bootstrap` wires around your authenticated
   pages by default. Use it for your own screens — dashboards, settings,
   anything custom. Jump to
   [A standalone shell for your own pages](#a-standalone-shell-for-your-own-pages).
@@ -208,9 +208,9 @@ export default function ItemPage({
 your own screens — a dashboard, a settings page, anything that isn't the
 collection browser — `bootstrap` **wires a generic `AuthenticatedShell` into
 `app/(authenticated)/layout.tsx` for you**, so every authenticated page renders
-with the app chrome out of the box: a glass-blur header with a breadcrumb and
-optional search/notification affordances, a sidebar with a brand mark and
-navigation, and a bottom user-profile menu. The component lives at
+with the app chrome out of the box: a glass-blur header with a breadcrumb,
+optional search/notification affordances and the account menu at the top
+right, and a sidebar with a brand mark and navigation. The component lives at
 `components/layout/AuthenticatedShell.tsx`; its styling lives in `app/globals.css`
 under the `.bp-*` namespace and is built entirely from design tokens, so
 light/dark mode come for free.

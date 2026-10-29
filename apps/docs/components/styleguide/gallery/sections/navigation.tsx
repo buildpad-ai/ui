@@ -817,22 +817,15 @@ export function SidebarNavPreview() {
     );
   };
 
-  const profile = (
-    <UnstyledButton className="bp-user-profile-button">
-      <Group gap="xs" wrap="nowrap">
-        <Avatar radius="xl" size="sm" color="primary">
-          {CURRENT_USER.initials}
-        </Avatar>
-        <Stack gap={0} className={styles.profileText}>
-          <Text size="sm" fw={600} lineClamp={1}>
-            {CURRENT_USER.name}
-          </Text>
-          <Text c="dimmed" size="xs" lineClamp={1}>
-            {CURRENT_USER.email}
-          </Text>
-        </Stack>
-        <IconChevronDown size={14} className={styles.chevron} />
-      </Group>
+  const account = (
+    <UnstyledButton className="bp-header-user-button" aria-label="Account">
+      <Avatar radius="xl" size={30} color="primary" style={{ border: '2px solid var(--ds-primary-200)' }}>
+        {CURRENT_USER.initials}
+      </Avatar>
+      <Text size="sm" fw={500} truncate>
+        {CURRENT_USER.name}
+      </Text>
+      <IconChevronDown size={14} className={styles.chevron} />
     </UnstyledButton>
   );
 
@@ -886,7 +879,6 @@ export function SidebarNavPreview() {
                 </div>
               ))}
             </Stack>
-            <div className={styles.sidebarFooter}>{profile}</div>
           </div>
         </Specimen>
         <Specimen
@@ -897,7 +889,7 @@ export function SidebarNavPreview() {
               Idle: <code>--ds-ink-secondary</code> text. Hover: <code>--ds-gray-100</code> fill,
               ink text. Active (<code>.bp-nav-link-active</code>): <code>--ds-primary-50</code>{' '}
               wash, inset <code>--ds-primary-200</code> ring, semibold ink text, ember icon, filled
-              count badge. Plus <code>.bp-user-profile-button</code>, <code>.bp-search-button</code>{' '}
+              count badge. Plus <code>.bp-header-user-button</code>, <code>.bp-search-button</code>{' '}
               and <code>.bp-notification-dot</code>.
             </>
           }
@@ -919,9 +911,9 @@ export function SidebarNavPreview() {
             ))}
             <div>
               <Text size="xs" c="dimmed" fw={500} mb={6}>
-                Profile (sidebar footer)
+                Account menu (header, top right)
               </Text>
-              {profile}
+              <Group>{account}</Group>
             </div>
             <div>
               <Text size="xs" c="dimmed" fw={500} mb={6}>
