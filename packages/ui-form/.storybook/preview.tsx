@@ -4,6 +4,7 @@ import { MantineProvider } from '@mantine/core';
 import { DaaSProvider } from '@buildpad/services';
 import { enterpriseTheme } from '../../storybook-enterprise-theme';
 import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../storybook-i18n';
+import { LiveDaaSGate } from '../../storybook-live-daas';
 // Relational interfaces (ListO2M/M2M/M2A, relational fields in a standalone
 // VForm) read CollectionForm / CollectionList / VForm from a provider. Imported
 // by relative path on purpose: a package.json edge to @buildpad/ui-collections
@@ -51,7 +52,9 @@ const preview: Preview = {
         <DaaSProvider autoFetchUser={false}>
           <RelationalUI enabled={context.parameters.relationalUI !== false}>
             <div className="sb-enterprise-wrapper sb-form-wrapper">
-              <Story />
+              <LiveDaaSGate enabled={context.parameters.liveDaaS === true}>
+                <Story />
+              </LiveDaaSGate>
             </div>
           </RelationalUI>
         </DaaSProvider>

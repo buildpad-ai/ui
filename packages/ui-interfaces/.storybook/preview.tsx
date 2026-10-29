@@ -10,7 +10,7 @@ import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../sto
 // by relative path on purpose: a package.json edge to @buildpad/ui-collections
 // would re-create the ui-form ⇄ ui-interfaces ⇄ ui-collections dependency cycle.
 import { CollectionsRelationalProvider } from '../../ui-collections/src/CollectionsRelationalProvider';
-import { LiveDaaSGate } from './LiveDaaSGate';
+import { LiveDaaSGate } from '../../storybook-live-daas';
 
 /**
  * Wraps a story in the relational provider unless it opts out with
