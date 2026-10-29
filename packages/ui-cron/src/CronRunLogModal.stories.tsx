@@ -10,10 +10,13 @@ import { mockRuns } from './_fixtures';
 const meta: Meta<typeof CronRunLogModal> = {
   title: 'Cron/CronRunLogModal',
   component: CronRunLogModal,
-  // A dialog covers the page: one per page, so no shared docs page.
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
+    docs: {
+      // The dialog covers the page it opens in: each docs story renders in its
+      // own frame, so one dialog never hides the rest of the docs page.
+      story: { inline: false, iframeHeight: 620 },
+    },
   },
   args: {
     onClose: () => {},
