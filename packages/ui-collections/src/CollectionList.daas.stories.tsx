@@ -424,8 +424,12 @@ pnpm dev:host
  * search, pagination, and selection.
  */
 export const Playground: StoryObj<typeof CollectionList> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <DaaSListPlayground />,
   parameters: {
+    // Shows the shared connect notice until the host has a DaaS instance.
+    liveDaaS: true,
     docs: {
       description: {
         story: `

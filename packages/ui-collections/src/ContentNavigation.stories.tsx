@@ -264,10 +264,12 @@ interface WrapperProps {
 
 const meta = {
   title: 'Collections/ContentNavigation',
-  tags: ['!autodocs'],
   parameters: {
     layout: 'centered',
     docs: {
+      // The sidebar fills its container's height, which is zero inline on the
+      // docs page, so each story renders in its own frame.
+      story: { inline: false, iframeHeight: 560 },
       description: {
         component:
           'Hierarchical sidebar navigation for the content module. ' +

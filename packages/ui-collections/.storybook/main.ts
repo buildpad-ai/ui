@@ -15,7 +15,10 @@ const __dirname = import.meta.dirname;
 const config: StorybookConfig = {
   stories: [
     '../src/**/*.mdx',
-    '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
+    // Live-DaaS stories last, so a component's sidebar reads Docs, Default,
+    // …, Live DaaS (Storybook lists a title's stories in file-load order).
+    '../src/**/!(*.daas).stories.@(js|jsx|mjs|ts|tsx)',
+    '../src/**/*.daas.stories.@(js|jsx|mjs|ts|tsx)',
   ],
   addons: [
     '@storybook/addon-links',

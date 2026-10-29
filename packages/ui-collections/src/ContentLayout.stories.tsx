@@ -176,10 +176,12 @@ interface WrapperProps {
 
 const meta = {
   title: 'Collections/ContentLayout',
-  tags: ['!autodocs'],
   parameters: {
     layout: 'fullscreen',
     docs: {
+      // The layouts fill the viewport (100vh), which collapses to nothing
+      // inline on the docs page, so each story renders in its own frame.
+      story: { inline: false, iframeHeight: 700 },
       description: {
         component:
           'Shell layout for the content module. Provides a responsive sidebar (collapsible), ' +
@@ -208,6 +210,8 @@ export default meta;
  * a create button in the header.
  */
 export const CollectionListView = {
+  // Label only: the story ID stays `collection-list-view`.
+  name: 'Default',
   render: (args: WrapperProps) => (
     <LayoutWrapper
       title={args.title}

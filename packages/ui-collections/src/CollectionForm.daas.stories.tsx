@@ -499,8 +499,12 @@ pnpm dev:host
  * collection schemas. Supports both create and edit modes.
  */
 export const Playground: StoryObj<typeof CollectionForm> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <DaaSFormPlayground />,
   parameters: {
+    // Shows the shared connect notice until the host has a DaaS instance.
+    liveDaaS: true,
     docs: {
       description: {
         story: `

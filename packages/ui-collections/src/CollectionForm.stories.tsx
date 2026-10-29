@@ -184,7 +184,7 @@ const meta = {
       description: {
         component:
           "A CRUD wrapper around VForm that handles data fetching and persistence. " +
-          "These stories use mock data. For live DaaS data, use the **Playground** story.",
+          "These stories use mock data. For live DaaS data, use the **Live DaaS** story.",
       },
     },
   },
@@ -212,6 +212,8 @@ type Story = StoryObj<typeof meta>;
  * Uses mock data — no backend required.
  */
 export const CreateMode: Story = {
+  // Label only: the story ID stays `create-mode`.
+  name: "Default",
   args: {
     collection: "posts",
     mode: "create",

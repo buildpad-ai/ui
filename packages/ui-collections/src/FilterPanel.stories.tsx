@@ -46,7 +46,6 @@ function FilterPanelDemo(props: React.ComponentProps<typeof FilterPanel>) {
 const meta = {
   title: 'Collections/FilterPanel',
   component: FilterPanel,
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
     docs: {
