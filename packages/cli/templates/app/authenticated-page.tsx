@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n/provider";
  * Authenticated home page (served at "/<lang>").
  *
  * Lives under app/[lang]/(authenticated)/ so it renders inside
- * AuthenticatedShell (header, sidebar, profile menu). Add more pages under
+ * AuthenticatedShell (header, sidebar, account menu). Add more pages under
  * app/[lang]/(authenticated)/ and they inherit the same chrome. No
  * ColorSchemeToggle here — the shell provides one; no outer padding —
  * AppShell.Main already pads the content.

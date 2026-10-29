@@ -207,33 +207,44 @@ function BrandTile() {
   );
 }
 
-/** Spreads the props Menu.Target injects (ref, click and aria handlers). */
-const ProfileButton = forwardRef<HTMLButtonElement, ComponentPropsWithoutRef<'button'>>(
-  function ProfileButton(props, ref) {
-    return (
-      <UnstyledButton {...props} ref={ref} className="bp-user-profile-button">
-        <Group gap="xs" wrap="nowrap">
-          <Avatar radius="xl" size="sm" style={{ border: '2px solid var(--ds-primary-200)' }}>
-            {CURRENT_USER.initials}
-          </Avatar>
-          <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-            <Text size="sm" fw={600} lineClamp={1} style={{ lineHeight: 1.2 }}>
-              {CURRENT_USER.name}
-            </Text>
-            <Text c="dimmed" size="xs" lineClamp={1} style={{ lineHeight: 1 }}>
-              {CURRENT_USER.email}
-            </Text>
-          </Stack>
+/**
+ * The header's account trigger. Spreads the props Menu.Target injects (ref,
+ * click and aria handlers). `compact` is the phone layout: the avatar alone,
+ * which the shell gets from `visibleFrom="sm"` on the name and chevron.
+ */
+const AccountButton = forwardRef<
+  HTMLButtonElement,
+  ComponentPropsWithoutRef<'button'> & { compact?: boolean }
+>(function AccountButton({ compact = false, ...props }, ref) {
+  return (
+    <UnstyledButton {...props} ref={ref} className="bp-header-user-button" aria-label="Account">
+      <Avatar radius="xl" size={30} style={{ border: '2px solid var(--ds-primary-200)' }}>
+        {CURRENT_USER.initials}
+      </Avatar>
+      {!compact && (
+        <Group gap={6} wrap="nowrap">
+          <Text size="sm" fw={500} maw={160} truncate>
+            {CURRENT_USER.name}
+          </Text>
           <IconChevronDown size={14} color="var(--ds-gray-400)" />
         </Group>
-      </UnstyledButton>
-    );
-  },
-);
+      )}
+    </UnstyledButton>
+  );
+});
 
-function ProfileMenuItems() {
+function AccountMenuItems() {
   return (
     <>
+      <Stack gap={0} px="sm" py="xs">
+        <Text size="sm" fw={600} truncate>
+          {CURRENT_USER.name}
+        </Text>
+        <Text size="xs" c="dimmed" truncate>
+          {CURRENT_USER.email}
+        </Text>
+      </Stack>
+      <Divider my={4} />
       <Menu.Label>Profile Settings</Menu.Label>
       <Menu.Item leftSection={<IconUser size={14} />} disabled>
         Account details
@@ -249,19 +260,17 @@ function ProfileMenuItems() {
   );
 }
 
-/** The bottom-of-sidebar profile block with its working menu. */
-function ProfileFooter() {
+/** The top-right account menu, as AuthenticatedShell renders it. */
+function AccountMenu({ compact = false }: { compact?: boolean }) {
   return (
-    <Stack gap={0} pt="sm" style={{ borderTop: '1px solid var(--ds-border-color)', width: '100%' }}>
-      <Menu position="right-end" offset={12} withArrow shadow="md" width={220}>
-        <Menu.Target>
-          <ProfileButton />
-        </Menu.Target>
-        <Menu.Dropdown>
-          <ProfileMenuItems />
-        </Menu.Dropdown>
-      </Menu>
-    </Stack>
+    <Menu position="bottom-end" offset={8} shadow="md" width={240}>
+      <Menu.Target>
+        <AccountButton compact={compact} />
+      </Menu.Target>
+      <Menu.Dropdown>
+        <AccountMenuItems />
+      </Menu.Dropdown>
+    </Menu>
   );
 }
 
@@ -395,6 +404,7 @@ export function ShellHeaderAnatomy() {
                 <SearchButton />
                 <NotificationBell />
                 <ThemeToggle />
+                <AccountMenu />
               </Group>
             </div>
           </div>
@@ -410,8 +420,8 @@ export function ShellHeaderAnatomy() {
               <code>size=&quot;sm&quot;</code> <code>Select</code>, 220px wide), then the{' '}
               <code>LanguageSwitcher</code> the shell adds once <code>buildpad init --locales</code> sets
               more than one locale (<code>size=&quot;xs&quot;</code>, 150px, language icon). The scope
-              select hides itself when the user has a single scope. The search pill is left out here so
-              the strip fits.
+              select hides itself when the user has a single scope. The search pill is left out and the
+              account menu shown as its avatar so the strip fits.
             </>
           }
         >
@@ -423,6 +433,7 @@ export function ShellHeaderAnatomy() {
                 <ScopeSwitcher />
                 <LanguageSwitcher />
                 <ThemeToggle />
+                <AccountMenu compact />
               </Group>
             </div>
           </div>
@@ -498,6 +509,22 @@ export function ShellHeaderAnatomy() {
         </Specimen>
 
         <Specimen
+          label="5 · Account menu"
+          note={
+            <>
+              <code>.bp-header-user-button</code> at the far right: the user&apos;s <code>Avatar</code> with
+              a <code>--ds-primary-200</code> ring, then their name and a chevron from <code>sm</code> up
+              (the avatar alone on a phone). It washes to <code>--ds-gray-100</code> on hover and while
+              open. Click it to open the menu.
+            </>
+          }
+        >
+          <Group justify="center">
+            <AccountMenu />
+          </Group>
+        </Specimen>
+
+        <Specimen
           span="full"
           label="No scope access"
           note={
@@ -524,10 +551,10 @@ export function ShellSidebarAnatomy() {
   const mainItems = SHELL_NAV.filter((item) => !item.section).slice(0, 3);
   return (
     <Gallery>
-      <SpecimenGrid cols={3}>
+      <SpecimenGrid cols={2}>
         <Specimen
           surface="muted"
-          label="5 · Brand tile"
+          label="6 · Brand tile"
           note={
             <>
               <code>.bp-brand-icon</code>: the initial on the fixed <code>--ds-brand-mark</code> ember
@@ -545,7 +572,7 @@ export function ShellSidebarAnatomy() {
 
         <Specimen
           surface="muted"
-          label="6 · Sections & links"
+          label="7 · Sections & links"
           note={
             <>
               Uppercase dimmed section labels. <code>.bp-nav-link</code> hovers to{' '}
@@ -561,28 +588,12 @@ export function ShellSidebarAnatomy() {
           </div>
         </Specimen>
 
-        <Specimen
-          surface="muted"
-          label="7 · Profile button"
-          note={
-            <>
-              <code>.bp-user-profile-button</code> above a hairline. The <code>Avatar</code> takes no{' '}
-              <code>color</code>, so it is the default gray with a <code>--ds-primary-200</code> ring. Click it to open the account menu.
-            </>
-          }
-        >
-          <div className={`${styles.slice} ${styles.navSlice}`}>
-            <div className={`bp-navbar ${styles.navColumn}`}>
-              <ProfileFooter />
-            </div>
-          </div>
-        </Specimen>
       </SpecimenGrid>
     </Gallery>
   );
 }
 
-/** The sidebar's account menu, pinned open. */
+/** The header's account menu, pinned open. */
 export function ShellProfileMenu() {
   return (
     <Gallery>
@@ -590,42 +601,46 @@ export function ShellProfileMenu() {
         <Specimen
           surface="muted"
           align="start"
-          label="Profile menu"
+          label="Account menu"
           note={
             <>
-              <code>Menu position=&quot;right-end&quot; offset=&#123;12&#125; withArrow shadow=&quot;md&quot;
-              width=&#123;220&#125;</code>. Account details and Workspace Settings ship{' '}
-              <code>disabled</code> until you build those screens. Logout is a{' '}
+              <code>Menu position=&quot;bottom-end&quot; offset=&#123;8&#125; shadow=&quot;md&quot;
+              width=&#123;240&#125;</code>, right-aligned under the trigger. It opens with the user&apos;s
+              name and email, since the trigger shows only the name. Account details and Workspace
+              Settings ship <code>disabled</code> until you build those screens. Logout is a{' '}
               <code>color=&quot;red&quot;</code> item that calls <code>/api/auth/logout</code>.
             </>
           }
         >
           <div className={styles.menuStage}>
-            <div className={`bp-navbar ${styles.navColumn} ${styles.menuColumn}`}>
-              <BrandTile />
-              <Stack gap={0} pt="sm" style={{ borderTop: '1px solid var(--ds-border-color)', width: '100%' }}>
-                <Menu
-                  {...PINNED_FLOATING}
-                  opened
-                  onChange={noop}
-                  hideDetached={false}
-                  trapFocus={false}
-                  returnFocus={false}
-                  closeOnItemClick={false}
-                  position="right-end"
-                  offset={12}
-                  withArrow
-                  shadow="md"
-                  width={220}
-                >
-                  <Menu.Target>
-                    <ProfileButton />
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <ProfileMenuItems />
-                  </Menu.Dropdown>
-                </Menu>
-              </Stack>
+            <div className={`${styles.slice} ${styles.sliceOpen}`}>
+              <div className={`bp-header ${styles.headerStrip}`}>
+                <Breadcrumb />
+                <Group gap="md" wrap="nowrap">
+                  <NotificationBell />
+                  <ThemeToggle />
+                  <Menu
+                    {...PINNED_FLOATING}
+                    opened
+                    onChange={noop}
+                    hideDetached={false}
+                    trapFocus={false}
+                    returnFocus={false}
+                    closeOnItemClick={false}
+                    position="bottom-end"
+                    offset={8}
+                    shadow="md"
+                    width={240}
+                  >
+                    <Menu.Target>
+                      <AccountButton />
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <AccountMenuItems />
+                    </Menu.Dropdown>
+                  </Menu>
+                </Group>
+              </div>
             </div>
           </div>
         </Specimen>
@@ -646,6 +661,7 @@ function PhoneShell({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
         <Group gap="xs" wrap="nowrap">
           <NotificationBell />
           <ThemeToggle />
+          <AccountMenu compact />
         </Group>
       </header>
       <div className={styles.phoneBody}>
@@ -658,7 +674,6 @@ function PhoneShell({ initiallyOpen = false }: { initiallyOpen?: boolean }) {
               <BrandTile />
               <NavSections />
             </Stack>
-            <ProfileFooter />
           </nav>
         )}
       </div>
@@ -677,8 +692,8 @@ export function ShellOnPhone() {
           </BrowserFrame>
           <FrameCaption>
             <strong>Collapsed.</strong> Below <code>sm</code> the sidebar is hidden and a{' '}
-            <code>Burger</code> leads the header. The search pill drops out at 768px and below. Tap the
-            burger to open the navigation.
+            <code>Burger</code> leads the header. The search pill drops out at 768px and below, and the
+            account menu shows just the avatar. Tap the burger to open the navigation.
           </FrameCaption>
         </div>
         <div>
@@ -687,7 +702,7 @@ export function ShellOnPhone() {
           </BrowserFrame>
           <FrameCaption>
             <strong>Navigation open.</strong> <code>AppShell.Navbar</code> fills the width under the
-            header, with the same brand tile, sections and profile menu. In the app, choosing a link closes it.
+            header, with the same brand tile and sections. In the app, choosing a link closes it.
           </FrameCaption>
         </div>
       </div>

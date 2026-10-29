@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-29T01:54:04.430Z",
+  "generatedAt": "2026-10-29T02:28:47.785Z",
   "version": "3.4.1",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1625,7 +1625,7 @@
         {
           "source": "cli/templates/app/globals.css",
           "target": "app/globals.css",
-          "sourceSha256": "602ade47b93e96cc4bcfdb61234093f578c14453c8df750e33ef286399ec78ff"
+          "sourceSha256": "42e9b7331e98f10b178e898db8de95bdc08b38ee9c8f9976d8ba431bc2f2fcba"
         },
         {
           "source": "cli/templates/lib/theme.ts",
@@ -1645,7 +1645,7 @@
         {
           "source": "cli/templates/components/layout/AuthenticatedShell.tsx",
           "target": "components/layout/AuthenticatedShell.tsx",
-          "sourceSha256": "8c5b8448c90107d7ed9db6443b4e45a9f3a553b90461e6743a0f56a4504877f1"
+          "sourceSha256": "ba2b80287616c19bf6b82c2a73e594d1ad48c0247e0fcebf8826577553881000"
         }
       ],
       "internalDependencies": [
@@ -2707,7 +2707,7 @@
         {
           "source": "ui-interfaces/src/list-m2m/ListM2M.tsx",
           "target": "components/ui/list-m2m.tsx",
-          "sourceSha256": "3679ca947027bffd0f5eb54c8d93b6beecf82d50e54b670a31148ca505e09de9"
+          "sourceSha256": "4c8b48af41feb9069ab4de5ce4e69d27c71da045a26416405ec581a8a99a13f7"
         },
         {
           "source": "ui-interfaces/src/list-m2m/ListM2MInterface.tsx",
@@ -2753,7 +2753,7 @@
       },
       "sourcePackage": "@buildpad/ui-interfaces",
       "version": "3.4.1",
-      "lastChangedIn": "3.0.0"
+      "lastChangedIn": "3.4.1"
     },
     {
       "name": "select-dropdown-m2o",

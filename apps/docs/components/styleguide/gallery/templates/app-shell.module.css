@@ -59,20 +59,15 @@
    to its right, as position="right-end" places it. */
 /* Contains the absolute dropdown so it scrolls inside the specimen on
    narrow screens; the end padding leaves room for its shadow. */
-.menuStage {
-  position: relative;
-  display: flex;
-  min-height: 300px;
-  overflow-x: auto;
-  padding: 0 var(--ds-spacing-6) var(--ds-spacing-6) 0;
+/* Lets the pinned account menu hang below the header strip. */
+.sliceOpen {
+  overflow: visible;
 }
 
-.menuColumn {
-  width: 248px;
-  flex: none;
-  border-radius: var(--ds-radius-lg);
-  outline: 1px solid var(--ds-border-color);
-  outline-offset: -1px;
+.menuStage {
+  min-height: 360px;
+  overflow-x: auto;
+  padding-bottom: var(--ds-spacing-6);
 }
 
 /* ── Phone frames ──────────────────────────────────────────── */

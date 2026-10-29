@@ -1,6 +1,6 @@
 ---
 title: App shell
-description: The AuthenticatedShell every signed-in Buildpad page renders inside — sidebar, glass header and profile menu — with the generated home page, its anatomy and the phone layout.
+description: The AuthenticatedShell every signed-in Buildpad page renders inside — sidebar, glass header and the account menu at its top right — with the generated home page, its anatomy and the phone layout.
 ---
 
 import { Callout } from 'nextra/components'
@@ -16,7 +16,8 @@ import {
 # App shell
 
 The frame around every signed-in screen: a sidebar with the brand tile
-and grouped navigation, a blurred glass header, and the account menu. Your own
+and grouped navigation, and a blurred glass header with the account menu at
+its top right. Your own
 pages render in the main area. Here it holds the home page that `buildpad init`
 generates.
 
@@ -45,19 +46,19 @@ The generated home page, inside the full shell.
 
 ## Header anatomy
 
-The breadcrumb on the left and the actions on the right. Each part can be turned off with a prop on `AuthenticatedShell`. In a workspace with several locales the shell adds a `LanguageSwitcher`, and a `ScopeSwitcher` passed through `headerActions` lets a user in several scopes switch between them.
+The breadcrumb on the left and the actions on the right, ending with the account menu. Search, notifications and the language switcher can each be turned off with a prop on `AuthenticatedShell`. In a workspace with several locales the shell adds a `LanguageSwitcher`, and a `ScopeSwitcher` passed through `headerActions` lets a user in several scopes switch between them.
 
 <ShellHeaderAnatomy />
 
 ## Sidebar anatomy
 
-The brand tile, the grouped navigation (entries without a `section` go under "Main Menu"), and the profile block at the bottom.
+The brand tile and the grouped navigation (entries without a `section` go under "Main Menu").
 
 <ShellSidebarAnatomy />
 
-## Profile menu
+## Account menu
 
-The account menu opens to the right of the profile button.
+The account menu opens under the avatar at the top right of the header.
 
 <ShellProfileMenu />
 
@@ -72,7 +73,7 @@ Below the `sm` breakpoint the sidebar collapses behind a burger. Opening it cove
 ## Built from
 
 - [Navigation](/styleguide/components/navigation): sidebar links, the active state and `Burger`
-- [Overlays](/styleguide/components/overlays): the profile `Menu` and the header `Tooltip`s
+- [Overlays](/styleguide/components/overlays): the account `Menu` and the header `Tooltip`s
 - [Selection](/styleguide/components/selection): the scope and language `Select`s
 - [Feedback](/styleguide/components/feedback): the no-scope `Alert`
 - [Buttons](/styleguide/components/buttons): subtle `ActionIcon`s, the ink CTA and `variant="light" color="secondary"`

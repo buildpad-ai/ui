@@ -128,45 +128,6 @@ export function AppShellFrame({
           ))}
         </Stack>
 
-        <Stack
-          gap={0}
-          pt="sm"
-          style={{ borderTop: '1px solid var(--ds-border-color)', width: '100%' }}
-        >
-          <Menu position="right-end" offset={12} withArrow shadow="md" width={220}>
-            <Menu.Target>
-                  <UnstyledButton className="bp-user-profile-button">
-                <Group gap="xs" wrap="nowrap">
-                  <Avatar radius="xl" size="sm" color="primary" style={{ border: '2px solid var(--ds-primary-200)' }}>
-                    {CURRENT_USER.initials}
-                  </Avatar>
-                  <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                    <Text size="sm" fw={600} lineClamp={1} style={{ lineHeight: 1.2 }}>
-                      {CURRENT_USER.name}
-                    </Text>
-                    <Text c="dimmed" size="xs" lineClamp={1} style={{ lineHeight: 1 }}>
-                      {CURRENT_USER.email}
-                    </Text>
-                  </Stack>
-                  <IconChevronDown size={14} color="var(--ds-gray-400)" />
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Profile Settings</Menu.Label>
-              <Menu.Item leftSection={<IconUser size={14} />} disabled>
-                Account details
-              </Menu.Item>
-              <Menu.Item leftSection={<IconSettings size={14} />} disabled>
-                Workspace Settings
-              </Menu.Item>
-              <Divider my="xs" />
-              <Menu.Item color="red" leftSection={<IconLogout size={14} />}>
-                Logout
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Stack>
       </nav>
 
       <div className={styles.shellMain}>
@@ -203,6 +164,43 @@ export function AppShellFrame({
               {/* ColorSchemeToggle shows the sun in dark, the moon in light. */}
               {scheme === 'dark' ? <IconSun size={18} stroke={1.8} /> : <IconMoon size={18} stroke={1.8} />}
             </ActionIcon>
+            <Menu position="bottom-end" offset={8} shadow="md" width={240}>
+              <Menu.Target>
+                <UnstyledButton className="bp-header-user-button" aria-label="Account">
+                  <Avatar radius="xl" size={30} color="primary" style={{ border: '2px solid var(--ds-primary-200)' }}>
+                    {CURRENT_USER.initials}
+                  </Avatar>
+                  <Group gap={6} wrap="nowrap" visibleFrom="sm">
+                    <Text size="sm" fw={500} maw={160} truncate>
+                      {CURRENT_USER.name}
+                    </Text>
+                    <IconChevronDown size={14} color="var(--ds-gray-400)" />
+                  </Group>
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Stack gap={0} px="sm" py="xs">
+                  <Text size="sm" fw={600} truncate>
+                    {CURRENT_USER.name}
+                  </Text>
+                  <Text size="xs" c="dimmed" truncate>
+                    {CURRENT_USER.email}
+                  </Text>
+                </Stack>
+                <Divider my={4} />
+                <Menu.Label>Profile Settings</Menu.Label>
+                <Menu.Item leftSection={<IconUser size={14} />} disabled>
+                  Account details
+                </Menu.Item>
+                <Menu.Item leftSection={<IconSettings size={14} />} disabled>
+                  Workspace Settings
+                </Menu.Item>
+                <Divider my="xs" />
+                <Menu.Item color="red" leftSection={<IconLogout size={14} />}>
+                  Logout
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Group>
         </header>
         <main className={styles.shellContent}>{children}</main>

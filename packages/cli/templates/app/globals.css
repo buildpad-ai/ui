@@ -485,6 +485,33 @@ body {
   border-color: var(--ds-gray-300) !important;
 }
 
+/* Header account menu trigger (top right): avatar, then the name and a
+   chevron from `sm` up. .bp-user-profile-button above is the full-width
+   sidebar block earlier shell versions render. */
+.bp-header-user-button {
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--ds-spacing-2) !important;
+  padding: 3px 10px 3px 3px !important;
+  border-radius: var(--ds-radius-pill) !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  transition: all var(--ds-transition-fast) !important;
+  cursor: pointer !important;
+}
+
+.bp-header-user-button:hover,
+.bp-header-user-button[data-expanded] {
+  background-color: var(--ds-gray-100) !important;
+  border-color: var(--ds-border-color) !important;
+}
+
+@media (max-width: 48em) {
+  .bp-header-user-button {
+    padding: 3px !important;
+  }
+}
+
 .bp-brand-container {
   display: flex !important;
   align-items: center !important;
