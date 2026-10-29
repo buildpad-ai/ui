@@ -16,6 +16,7 @@
    including the built-in hue aliases, which resolve to the same --ds-*
    scales. Warning/yellow go one stop further (#92400e): amber-700 on
    its own tint over the #fafbfc page is only ~4.4:1.
+   --{c}-text (coloured text, e.g. <Text c="green">) gets the same stop.
 
    The selector and !important are load-bearing for the same reason as
    the dark block below: Mantine declares these variables under
@@ -25,30 +26,43 @@
 :root[data-mantine-color-scheme="light"] {
   --mantine-color-primary-light-color: var(--mantine-color-primary-7) !important;
   --mantine-color-primary-outline: var(--mantine-color-primary-7) !important;
+  --mantine-color-primary-text: var(--mantine-color-primary-7) !important;
   --mantine-color-secondary-light-color: var(--mantine-color-secondary-7) !important;
   --mantine-color-secondary-outline: var(--mantine-color-secondary-7) !important;
+  --mantine-color-secondary-text: var(--mantine-color-secondary-7) !important;
   --mantine-color-accent-light-color: var(--mantine-color-accent-7) !important;
   --mantine-color-accent-outline: var(--mantine-color-accent-7) !important;
+  --mantine-color-accent-text: var(--mantine-color-accent-7) !important;
   --mantine-color-success-light-color: var(--mantine-color-success-7) !important;
   --mantine-color-success-outline: var(--mantine-color-success-7) !important;
+  --mantine-color-success-text: var(--mantine-color-success-7) !important;
   --mantine-color-info-light-color: var(--mantine-color-info-7) !important;
   --mantine-color-info-outline: var(--mantine-color-info-7) !important;
+  --mantine-color-info-text: var(--mantine-color-info-7) !important;
   --mantine-color-warning-light-color: var(--mantine-color-warning-8) !important;
   --mantine-color-warning-outline: var(--mantine-color-warning-8) !important;
+  --mantine-color-warning-text: var(--mantine-color-warning-8) !important;
   --mantine-color-danger-light-color: var(--mantine-color-danger-7) !important;
   --mantine-color-danger-outline: var(--mantine-color-danger-7) !important;
+  --mantine-color-danger-text: var(--mantine-color-danger-7) !important;
   --mantine-color-gray-light-color: var(--mantine-color-gray-7) !important;
   --mantine-color-gray-outline: var(--mantine-color-gray-7) !important;
+  --mantine-color-gray-text: var(--mantine-color-gray-7) !important;
   --mantine-color-red-light-color: var(--mantine-color-red-7) !important;
   --mantine-color-red-outline: var(--mantine-color-red-7) !important;
+  --mantine-color-red-text: var(--mantine-color-red-7) !important;
   --mantine-color-green-light-color: var(--mantine-color-green-7) !important;
   --mantine-color-green-outline: var(--mantine-color-green-7) !important;
+  --mantine-color-green-text: var(--mantine-color-green-7) !important;
   --mantine-color-yellow-light-color: var(--mantine-color-yellow-8) !important;
   --mantine-color-yellow-outline: var(--mantine-color-yellow-8) !important;
+  --mantine-color-yellow-text: var(--mantine-color-yellow-8) !important;
   --mantine-color-blue-light-color: var(--mantine-color-blue-7) !important;
   --mantine-color-blue-outline: var(--mantine-color-blue-7) !important;
+  --mantine-color-blue-text: var(--mantine-color-blue-7) !important;
   --mantine-color-orange-light-color: var(--mantine-color-orange-7) !important;
   --mantine-color-orange-outline: var(--mantine-color-orange-7) !important;
+  --mantine-color-orange-text: var(--mantine-color-orange-7) !important;
 
   /* Mantine derives --mantine-color-default-border from gray-4, which is
      #9b9ca6 in this palette — too dark for the gray-200 hairline
@@ -377,6 +391,17 @@ body {
 .mantine-RadioCard-card[data-checked] {
   border-color: var(--ds-primary-200);
   background-color: var(--ds-primary-50);
+}
+
+/* Calendar days from the previous / next month are still clickable, but
+   @mantine/dates fades them to 50% opacity on top of the dimmed colour
+   (~2.3:1 light, ~3.2:1 dark). Use the placeholder ink unfaded instead:
+   still lighter than the month's own days, and AA in both schemes.
+   Selected and in-range days keep their own colours. Only Mantine's Day
+   button sets data-outside; its class names are hashed. */
+button[data-outside]:not([data-selected], [data-in-range]) {
+  color: var(--mantine-color-placeholder);
+  opacity: 1;
 }
 
 /* Typography: Mantine's per-scheme inline-code chip comes after its

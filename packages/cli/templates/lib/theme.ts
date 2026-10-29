@@ -92,6 +92,25 @@ const dropdownSurface = {
 
 const transitionFast = "var(--ds-transition-fast, 150ms ease)";
 
+// @mantine/dates header controls (previous / next, and the month / year
+// level switch) are icon-only and unnamed. Every picker forwards
+// `ariaLabels` to its calendar; set by component name, so apps without
+// @mantine/dates need nothing extra.
+const calendarAriaLabels = {
+  defaultProps: {
+    ariaLabels: {
+      previousMonth: "Previous month",
+      nextMonth: "Next month",
+      previousYear: "Previous year",
+      nextYear: "Next year",
+      previousDecade: "Previous decade",
+      nextDecade: "Next decade",
+      monthLevelControl: "Choose a month",
+      yearLevelControl: "Choose a year"
+    }
+  }
+};
+
 export const theme = createTheme({
   colors: {
     primary,
@@ -290,6 +309,29 @@ export const theme = createTheme({
         })
       }
     }),
+    Calendar: calendarAriaLabels,
+    DatePicker: calendarAriaLabels,
+    DatePickerInput: calendarAriaLabels,
+    DateTimePicker: calendarAriaLabels,
+    MonthPicker: calendarAriaLabels,
+    MonthPickerInput: calendarAriaLabels,
+    YearPicker: calendarAriaLabels,
+    YearPickerInput: calendarAriaLabels,
+    // TimePicker renders one unnamed spinbutton per segment.
+    TimePicker: {
+      defaultProps: {
+        hoursInputLabel: "Hours",
+        minutesInputLabel: "Minutes",
+        secondsInputLabel: "Seconds",
+        amPmInputLabel: "AM or PM"
+      }
+    },
+    // The eyedropper button next to the colour swatch is icon-only.
+    ColorInput: {
+      defaultProps: {
+        eyeDropperButtonProps: { "aria-label": "Pick a color from the screen" }
+      }
+    },
     Table: {
       defaultProps: { withTableBorder: true },
       styles: {
