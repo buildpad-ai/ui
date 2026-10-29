@@ -66,9 +66,11 @@ export default async function RootLayout({
       <head>
         <ColorSchemeScript />
         <link rel="shortcut icon" href="/favicon.ico" />
+        {/* Keep pinch-zoom: don't disable user scaling or cap the
+            scale (WCAG 1.4.4). */}
         <meta
           name="viewport"
-          content="minimum-scale=1, initial-scale=1, width=device-width, user-scalable=no"
+          content="minimum-scale=1, initial-scale=1, width=device-width"
         />
       </head>
       <body className={inter.variable}>

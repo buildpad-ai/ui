@@ -858,13 +858,13 @@ export function Sliders() {
           <Text size="sm" fw={500}>
             Stock reorder threshold
           </Text>
-          <Slider defaultValue={30} label={(value) => `${value}%`} aria-label="Stock reorder threshold" />
+          <Slider defaultValue={30} label={(value) => `${value}%`} thumbLabel="Stock reorder threshold" />
         </Specimen>
         <Specimen label="labelAlwaysOn" note="Pin the value label when the number itself matters." align="start">
           <Text size="sm" fw={500}>
             Approval quorum
           </Text>
-          <Slider defaultValue={60} labelAlwaysOn label={(value) => `${value}%`} mt="lg" aria-label="Approval quorum" />
+          <Slider defaultValue={60} labelAlwaysOn label={(value) => `${value}%`} mt="lg" thumbLabel="Approval quorum" />
         </Specimen>
         <Specimen
           label="marks · step"
@@ -884,15 +884,15 @@ export function Sliders() {
             marks={PERCENT_MARKS}
             label={(value) => `${value}%`}
             mb="lg"
-            aria-label="Budget alert at"
+            thumbLabel="Budget alert at"
           />
         </Specimen>
         <Specimen label="disabled · sizes" note="Disabled track, then xs, md and xl thickness." align="start">
           <Stack gap="lg">
-            <Slider defaultValue={40} disabled aria-label="Disabled slider" />
-            <Slider defaultValue={40} size="xs" aria-label="Slider xs" />
-            <Slider defaultValue={40} size="md" aria-label="Slider md" />
-            <Slider defaultValue={40} size="xl" aria-label="Slider xl" />
+            <Slider defaultValue={40} disabled thumbLabel="Disabled slider" />
+            <Slider defaultValue={40} size="xs" thumbLabel="Slider xs" />
+            <Slider defaultValue={40} size="md" thumbLabel="Slider md" />
+            <Slider defaultValue={40} size="xl" thumbLabel="Slider xl" />
           </Stack>
         </Specimen>
         <Specimen
