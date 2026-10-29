@@ -4,6 +4,7 @@ import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { enterpriseTheme } from '../../storybook-enterprise-theme';
 import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../storybook-i18n';
+import { LiveDaaSGate } from '../../storybook-live-daas';
 
 // Mantine CSS
 import '@mantine/core/styles.css';
@@ -29,11 +30,13 @@ const preview: Preview = {
   globalTypes: i18nGlobalTypes,
   initialGlobals: i18nInitialGlobals,
   decorators: [
-    (Story: React.ComponentType) => (
+    (Story: React.ComponentType, context: { parameters: Record<string, unknown> }) => (
       <MantineProvider theme={enterpriseTheme} defaultColorScheme="light">
         <Notifications />
         <div className="sb-enterprise-wrapper sb-forms-wrapper">
-          <Story />
+          <LiveDaaSGate enabled={context.parameters.liveDaaS === true}>
+            <Story />
+          </LiveDaaSGate>
         </div>
       </MantineProvider>
     ),

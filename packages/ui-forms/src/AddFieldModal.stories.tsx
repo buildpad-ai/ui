@@ -50,7 +50,7 @@ const Harness: React.FC<{
 };
 
 const meta: Meta<typeof Harness> = {
-  title: 'ui-forms/AddFieldModal',
+  title: 'Forms/AddFieldModal',
   component: Harness,
 };
 export default meta;

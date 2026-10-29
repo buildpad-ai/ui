@@ -214,9 +214,11 @@ const DaaSDynamicFormPlayground: React.FC = () => {
 };
 
 const meta: Meta<typeof DynamicForm> = {
-  title: 'Forms/DynamicForm (DaaS)',
+  title: 'Forms/DynamicForm',
+  // Keeps the story IDs from the old "DynamicForm (DaaS)" title, which
+  // the Playwright specs and existing links use (…-daas--playground).
+  id: 'forms-dynamicform-daas',
   component: DynamicForm,
-  tags: ['!autodocs'],
   parameters: { layout: 'padded' },
 };
 
@@ -224,5 +226,9 @@ export default meta;
 
 /** Connected playground for the runtime renderer and the live preview. */
 export const Playground: StoryObj<typeof DynamicForm> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <DaaSDynamicFormPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };

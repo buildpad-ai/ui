@@ -29,7 +29,11 @@ function ModalHarness(props: { count: number; noun?: string }) {
   );
 }
 
-export const SingleFile: Story = { render: () => <ModalHarness count={1} /> };
+export const SingleFile: Story = {
+  // Label only: the story ID stays `single-file`.
+  name: 'Default',
+  render: () => <ModalHarness count={1} />,
+};
 
 export const Folder: Story = {
   render: () => <ModalHarness count={1} noun="folder" />,

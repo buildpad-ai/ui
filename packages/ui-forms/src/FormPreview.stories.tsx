@@ -69,7 +69,6 @@ const allInterfacesDefinition: FormDefinition = {
 const meta: Meta<typeof FormPreview> = {
   title: 'Forms/FormPreview',
   component: FormPreview,
-  tags: ['!autodocs'],
   parameters: { layout: 'padded' },
 };
 

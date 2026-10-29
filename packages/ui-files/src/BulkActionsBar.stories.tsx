@@ -15,7 +15,10 @@ const meta: Meta<typeof BulkActionsBar> = {
 export default meta;
 type Story = StoryObj<typeof BulkActionsBar>;
 
-export const Selection: Story = {};
+export const Selection: Story = {
+  // Label only: the story ID stays `selection`.
+  name: 'Default',
+};
 
 /** Delete in progress — the button shows a loading spinner. */
 export const Deleting: Story = {
