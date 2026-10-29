@@ -393,6 +393,15 @@ body {
   background-color: var(--ds-primary-50);
 }
 
+/* Timeline bullets that hold content get a gray-3 fill from Mantine. An
+   Avatar there (an activity feed) has a translucent light-variant tint,
+   so its initials composite onto gray: #b34d00 on ~#d7d9df is ~3.7:1.
+   On the surface colour the same avatar reads 4.7:1. Icon-only bullets
+   keep the gray fill. */
+.mantine-Timeline-itemBullet[data-with-child]:has(> .mantine-Avatar-root) {
+  background-color: var(--mantine-color-body);
+}
+
 /* Calendar days from the previous / next month are still clickable, but
    @mantine/dates fades them to 50% opacity on top of the dimmed colour
    (~2.3:1 light, ~3.2:1 dark). Use the placeholder ink unfaded instead:
