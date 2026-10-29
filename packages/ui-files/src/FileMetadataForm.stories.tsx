@@ -22,7 +22,10 @@ const meta: Meta<typeof FileMetadataForm> = {
 export default meta;
 type Story = StoryObj<typeof FileMetadataForm>;
 
-export const Editable: Story = {};
+export const Editable: Story = {
+  // Label only: the story ID stays `editable`.
+  name: 'Default',
+};
 
 /** Images additionally expose focal-point inputs. */
 export const WithFocalPoint: Story = {

@@ -69,6 +69,8 @@ type Story = StoryObj<typeof ConditionsEditor>;
 
 /** No conditions yet — the field always renders with its default settings. */
 export const Empty: Story = {
+  // Label only: the story ID stays `empty`.
+  name: 'Default',
   render: () => <ConditionsEditorHarness initial={[]} />,
 };
 

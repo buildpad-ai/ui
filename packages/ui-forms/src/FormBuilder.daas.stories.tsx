@@ -182,9 +182,11 @@ const DaaSFormBuilderPlayground: React.FC = () => {
 };
 
 const meta: Meta<typeof FormBuilder> = {
-  title: 'Forms/FormBuilder (DaaS)',
+  title: 'Forms/FormBuilder',
+  // Keeps the story IDs from the old "FormBuilder (DaaS)" title, which
+  // the Playwright specs and existing links use (…-daas--playground).
+  id: 'forms-formbuilder-daas',
   component: FormBuilder,
-  tags: ['!autodocs'],
   parameters: { layout: 'padded' },
 };
 
@@ -200,5 +202,9 @@ export default meta;
  * saved screen (populated canvas).
  */
 export const Playground: StoryObj<typeof FormBuilder> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <DaaSFormBuilderPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };

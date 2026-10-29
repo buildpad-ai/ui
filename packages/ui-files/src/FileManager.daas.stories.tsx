@@ -43,9 +43,11 @@ const PROXY_DAAS_CONFIG = { url: '' } as const;
  * 3. Start this Storybook: `pnpm storybook:files`
  */
 const meta: Meta<typeof FileManager> = {
-  title: 'Files/FileManager (DaaS)',
+  title: 'Files/FileManager',
+  // Keeps the story IDs from the old "FileManager (DaaS)" title, which
+  // the Playwright specs and existing links use (…-daas--playground).
+  id: 'files-filemanager-daas',
   component: FileManager,
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
     docs: {
@@ -295,5 +297,9 @@ pnpm dev:host
  * Connect to a real DaaS instance and manage files with the full FileManager.
  */
 export const Playground: StoryObj<typeof FileManager> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <DaaSFileManagerPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };

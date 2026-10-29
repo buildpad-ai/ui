@@ -32,7 +32,11 @@ function DialogHarness(props: {
   );
 }
 
-export const Create: Story = { render: () => <DialogHarness /> };
+export const Create: Story = {
+  // Label only: the story ID stays `create`.
+  name: 'Default',
+  render: () => <DialogHarness />,
+};
 
 export const Rename: Story = {
   render: () => (
