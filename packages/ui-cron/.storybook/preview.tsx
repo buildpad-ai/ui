@@ -4,6 +4,7 @@ import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { enterpriseTheme } from '../../storybook-enterprise-theme';
 import { i18nGlobalTypes, i18nInitialGlobals, withBuildpadI18n } from '../../storybook-i18n';
+import { LiveDaaSGate } from '../../storybook-live-daas';
 
 // Mantine CSS
 import '@mantine/core/styles.css';
@@ -46,7 +47,7 @@ const preview: Preview = {
   },
   initialGlobals: { ...i18nInitialGlobals, colorScheme: 'light' },
   decorators: [
-    (Story: React.ComponentType, context: { globals: Record<string, unknown> }) => {
+    (Story: React.ComponentType, context: { globals: Record<string, unknown>; parameters: Record<string, unknown> }) => {
       const dark = context.globals.colorScheme === 'dark';
       return (
         // Forced, not default: a forced scheme is never written to
@@ -54,7 +55,9 @@ const preview: Preview = {
         <MantineProvider theme={enterpriseTheme} forceColorScheme={dark ? 'dark' : 'light'}>
           <Notifications />
           <div className="sb-enterprise-wrapper sb-cron-wrapper">
-            <Story />
+            <LiveDaaSGate enabled={context.parameters.liveDaaS === true}>
+              <Story />
+            </LiveDaaSGate>
           </div>
         </MantineProvider>
       );

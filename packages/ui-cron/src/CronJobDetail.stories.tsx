@@ -8,15 +8,18 @@ import { JOB_REPORT_ID, JOB_SYNC_ID } from './_fixtures';
 /**
  * Fixture stories: `CronJobDetail` loads through `useCronJobs`, so these run
  * against an in-memory API (`_mockApi.tsx`) instead of props. For a real
- * backend see `Cron/CronJobDetail (DaaS)`.
+ * backend see the Live DaaS story.
  */
 const meta: Meta<typeof CronJobDetail> = {
   title: 'Cron/CronJobDetail',
   component: CronJobDetail,
-  // One in-memory API at a time: these stories do not share a docs page.
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
+    docs: {
+      // One in-memory API per page: each docs story renders in its own frame,
+      // so the stories' mock APIs never share a page.
+      story: { inline: false, iframeHeight: 820 },
+    },
   },
 };
 
@@ -60,6 +63,8 @@ function Harness({
  * Now is answered when the run has ended, and then opens the History tab.
  */
 export const Existing: Story = {
+  // Label only: the story ID stays `existing`.
+  name: 'Default',
   render: () => <Harness />,
 };
 

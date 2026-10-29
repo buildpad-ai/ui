@@ -13,10 +13,13 @@ import { JOB_REPORT_ID, JOB_SWEEP_ID, longTextJobs, longTextRuns, manyMockRuns }
 const meta: Meta<typeof CronRunsTable> = {
   title: 'Cron/CronRunsTable',
   component: CronRunsTable,
-  // One in-memory API at a time: these stories do not share a docs page.
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
+    docs: {
+      // One in-memory API per page: each docs story renders in its own frame,
+      // so the stories' mock APIs never share a page.
+      story: { inline: false, iframeHeight: 560 },
+    },
   },
 };
 
@@ -33,6 +36,8 @@ function Harness({ api, ...props }: { api?: MockCronApiOptions } & React.Compone
 
 /** The runs of every job, with the Job column. A row, or its View logs button, opens the run log. */
 export const AllJobs: Story = {
+  // Label only: the story ID stays `all-jobs`.
+  name: 'Default',
   render: () => <Harness />,
 };
 

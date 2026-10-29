@@ -17,9 +17,10 @@ import { DaaSConnectionGate } from './_daasStory';
  * 3. Start this Storybook: `pnpm --filter @buildpad/ui-cron storybook`
  */
 const meta: Meta<typeof CronJobDetail> = {
-  title: 'Cron/CronJobDetail (DaaS)',
+  // Same title as CronJobDetail.stories.tsx: the live story joins that component
+  // and loads last (see the stories glob in main.ts).
+  title: 'Cron/CronJobDetail',
   component: CronJobDetail,
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
     docs: {
@@ -82,5 +83,8 @@ const DetailPlayground: React.FC = () => {
  * One cron job against a live backend.
  */
 export const Playground: StoryObj<typeof CronJobDetail> = {
+  name: 'Live DaaS',
   render: () => <DetailPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };
