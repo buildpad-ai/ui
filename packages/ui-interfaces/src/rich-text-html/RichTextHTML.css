@@ -15,13 +15,6 @@
   min-height: 120px;
 }
 
-/* Ensure the editor has a visible background when mounted inside containers
-   that may not inherit a background (e.g. accordion sections). */
-.rich-text-html-wrapper .ProseMirror:focus,
-.rich-text-html-wrapper .ProseMirror {
-  background-color: var(--mantine-color-body, #fff);
-}
-
 .rich-text-html-label {
   font-size: 14px;
   font-weight: 500;

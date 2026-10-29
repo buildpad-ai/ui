@@ -33,7 +33,7 @@ import { ListM2A } from '@buildpad/ui-interfaces';
 />
 \`\`\`
 
-**Note:** This component requires configured relationship hooks for live data.`,
+**Note:** The stories below use example data, so they need no backend. In an app, ListM2A loads the relation and its items from DaaS. To try that here, connect a DaaS instance on the Storybook home page and open the **Live DaaS** story.`,
       },
     },
   },
@@ -123,8 +123,42 @@ import { ListM2A } from '@buildpad/ui-interfaces';
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * Example relation and junction rows. The demo stories pass them as
+ * `mockItems` / `mockRelationInfo`, which puts ListM2A in demo mode: no DaaS
+ * requests, so the docs render without a live instance. Only the Live DaaS
+ * story loads real data.
+ */
+const demoRelationInfo = {
+  allowedCollections: [
+    { collection: 'text_blocks', meta: { display_template: '{{title}}' } },
+    { collection: 'image_blocks', meta: { display_template: '{{title}}' } },
+    { collection: 'video_blocks', meta: { display_template: '{{title}}' } },
+    { collection: 'cta_blocks', meta: { display_template: '{{title}}' } },
+  ],
+  junctionCollection: { collection: 'pages_blocks' },
+  collectionField: { field: 'collection', type: 'string' },
+  junctionField: { field: 'item', type: 'string' },
+  reverseJunctionField: { field: 'pages_id', type: 'string' },
+  junctionPrimaryKeyField: { field: 'id', type: 'integer' },
+  sortField: 'sort',
+};
+
+const demoItems = [
+  { id: 1, collection: 'text_blocks', item: { id: '101', title: 'Introduction' }, sort: 1 },
+  { id: 2, collection: 'image_blocks', item: { id: '201', title: 'Hero image' }, sort: 2 },
+  { id: 3, collection: 'video_blocks', item: { id: '301', title: 'Product demo' }, sort: 3 },
+  { id: 4, collection: 'text_blocks', item: { id: '102', title: 'Key features' }, sort: 4 },
+  { id: 5, collection: 'image_blocks', item: { id: '202', title: 'Customer logos' }, sort: 5 },
+  { id: 6, collection: 'cta_blocks', item: { id: '401', title: 'Start a free trial' }, sort: 6 },
+  { id: 7, collection: 'text_blocks', item: { id: '103', title: 'Conclusion' }, sort: 7 },
+];
+
+const demo = { mockItems: demoItems, mockRelationInfo: demoRelationInfo };
+
 export const Default: Story = {
   args: {
+    ...demo,
     label: 'Content Blocks',
     collection: 'pages',
     field: 'blocks',
@@ -134,6 +168,7 @@ export const Default: Story = {
 
 export const ListLayout: Story = {
   args: {
+    ...demo,
     label: 'Page Sections',
     collection: 'pages',
     field: 'sections',
@@ -145,6 +180,7 @@ export const ListLayout: Story = {
 
 export const TableLayout: Story = {
   args: {
+    ...demo,
     label: 'Related Content',
     collection: 'articles',
     field: 'related',
@@ -155,6 +191,7 @@ export const TableLayout: Story = {
 
 export const WithSearch: Story = {
   args: {
+    ...demo,
     label: 'Media Items',
     collection: 'galleries',
     field: 'items',
@@ -166,6 +203,7 @@ export const WithSearch: Story = {
 
 export const CreateEnabled: Story = {
   args: {
+    ...demo,
     label: 'Content Blocks',
     collection: 'pages',
     field: 'blocks',
@@ -178,6 +216,7 @@ export const CreateEnabled: Story = {
 
 export const SelectEnabled: Story = {
   args: {
+    ...demo,
     label: 'Related Items',
     collection: 'posts',
     field: 'related',
@@ -190,6 +229,7 @@ export const SelectEnabled: Story = {
 
 export const BothEnabled: Story = {
   args: {
+    ...demo,
     label: 'Page Components',
     collection: 'pages',
     field: 'components',
@@ -201,6 +241,7 @@ export const BothEnabled: Story = {
 
 export const AllowDuplicates: Story = {
   args: {
+    ...demo,
     label: 'Playlist',
     collection: 'playlists',
     field: 'tracks',
@@ -212,6 +253,7 @@ export const AllowDuplicates: Story = {
 
 export const NoDuplicates: Story = {
   args: {
+    ...demo,
     label: 'Unique Items',
     collection: 'collections',
     field: 'items',
@@ -223,6 +265,7 @@ export const NoDuplicates: Story = {
 
 export const WithPagination: Story = {
   args: {
+    ...demo,
     label: 'Gallery Items',
     collection: 'galleries',
     field: 'items',
@@ -234,6 +277,7 @@ export const WithPagination: Story = {
 
 export const Required: Story = {
   args: {
+    ...demo,
     label: 'Required Blocks',
     collection: 'pages',
     field: 'blocks',
@@ -244,6 +288,7 @@ export const Required: Story = {
 
 export const WithError: Story = {
   args: {
+    ...demo,
     label: 'Content',
     collection: 'pages',
     field: 'content',
@@ -254,6 +299,7 @@ export const WithError: Story = {
 
 export const Disabled: Story = {
   args: {
+    ...demo,
     label: 'Disabled',
     collection: 'pages',
     field: 'blocks',
@@ -264,6 +310,7 @@ export const Disabled: Story = {
 
 export const ReadOnly: Story = {
   args: {
+    ...demo,
     label: 'Read Only',
     collection: 'pages',
     field: 'blocks',
@@ -294,7 +341,7 @@ export const WithMockItems: Story = {
       ],
       junctionCollection: { collection: 'pages_blocks' },
       collectionField: { field: 'collection' },
-      itemField: { field: 'item' },
+      junctionField: { field: 'item' },
       sortField: 'sort',
     },
   },
@@ -309,6 +356,7 @@ export const WithMockItems: Story = {
 
 export const PageBuilder: Story = {
   args: {
+    ...demo,
     label: 'Page Content',
     collection: 'pages',
     field: 'content',
@@ -330,6 +378,7 @@ export const PageBuilder: Story = {
 
 export const FullFeatured: Story = {
   args: {
+    ...demo,
     label: 'Flexible Content',
     collection: 'pages',
     field: 'sections',
@@ -407,6 +456,7 @@ export const LocalFirstStates: Story = {
  * - Create, edit, remove, and select existing items
  */
 export const LiveDaaS: Story = {
+  name: 'Live DaaS',
   args: {
     label: 'Page Blocks (Live DaaS)',
     collection: 'test_m2a_pages',
@@ -419,6 +469,8 @@ export const LiveDaaS: Story = {
     description: 'Live M2A interface connected to DaaS test collections',
   },
   parameters: {
+    // Shows a connect notice instead of the story until the host has a DaaS instance.
+    liveDaaS: true,
     docs: {
       description: {
         story: `Live DaaS story — connects to **test_m2a_pages** with junction **test_m2a_page_blocks** and related collections **test_m2a_text_blocks** / **test_m2a_image_blocks**. Exercises full DaaS relation discovery, item loading, and junction-based edit modal.`,

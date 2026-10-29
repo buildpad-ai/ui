@@ -753,6 +753,94 @@ export const VersionedContent: Story = {
 };
 
 /**
+ * Live DaaS stories (moved from ListM2M.real.stories.tsx so the sidebar keeps
+ * the Docs → Default → … order). They load the `xtr_app_interfaces.m2m`
+ * relation through the Storybook host's /api proxy:
+ * - junction `xtr_app_interfaces_xtr_app_tickets`, related `xtr_app_tickets`
+ * - junction field `xtr_app_tickets_id`, reverse field `xtr_app_interfaces_id`
+ *
+ * `liveDaaS: true` makes the preview show a connect notice until the host has
+ * a DaaS instance connected. Only the first one appears on the docs page.
+ */
+const liveDaaSArgs = {
+    collection: 'xtr_app_interfaces',
+    field: 'm2m',
+    primaryKey: 'test-uuid-12345',
+};
+
+export const LiveDaaS: Story = {
+    name: 'Live DaaS',
+    args: {
+        ...liveDaaSArgs,
+        layout: 'table',
+        fields: ['id', 'title', 'status', 'priority', 'created_at'],
+        enableCreate: true,
+        enableSelect: true,
+        enableSearchFilter: true,
+        enableLink: true,
+        label: 'Related Tickets (Live DaaS)',
+        description: 'Many-to-many relationship between app interfaces and tickets',
+    },
+    parameters: {
+        liveDaaS: true,
+        docs: {
+            description: {
+                story: 'Live DaaS story — loads **xtr_app_interfaces.m2m** (junction **xtr_app_interfaces_xtr_app_tickets**, related **xtr_app_tickets**) with full create / select / edit. Connect a DaaS instance on the Storybook home page to use it.',
+            },
+        },
+    },
+};
+
+export const LiveDaaSListLayout: Story = {
+    name: 'Live DaaS: List Layout',
+    tags: ['!autodocs'],
+    args: {
+        ...liveDaaSArgs,
+        layout: 'list',
+        template: '{{title}} - {{status}} ({{priority}})',
+        enableCreate: true,
+        enableSelect: true,
+        label: 'Related Tickets (Live DaaS)',
+        description: 'List layout with custom template for ticket display',
+    },
+    parameters: { liveDaaS: true },
+};
+
+export const LiveDaaSReadOnly: Story = {
+    name: 'Live DaaS: Read Only',
+    tags: ['!autodocs'],
+    args: {
+        ...liveDaaSArgs,
+        layout: 'table',
+        fields: ['title', 'status', 'created_at'],
+        enableCreate: false,
+        enableSelect: false,
+        disabled: true,
+        label: 'Related Tickets (Read Only)',
+        description: 'Read-only view of the M2M relationship',
+    },
+    parameters: { liveDaaS: true },
+};
+
+export const LiveDaaSSearch: Story = {
+    name: 'Live DaaS: Search Enabled',
+    tags: ['!autodocs'],
+    args: {
+        ...liveDaaSArgs,
+        layout: 'table',
+        fields: ['title', 'status', 'assignee', 'due_date'],
+        enableCreate: true,
+        enableSelect: true,
+        enableSearchFilter: true,
+        enableLink: true,
+        limit: 10,
+        label: 'Searchable Tickets',
+        description: 'Interface with search functionality enabled',
+    },
+    parameters: { liveDaaS: true },
+};
+
+/**
  * Rendered without `CollectionsRelationalProvider` (the decorator opts out):
  * the field still lists and removes items, but shows the translated
  * missing-provider alert and hides create, select and edit.
