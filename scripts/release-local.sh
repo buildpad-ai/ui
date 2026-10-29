@@ -593,48 +593,85 @@ else
     # ("- @buildpad/utils@3.4.1") are dropped. At 3.4.1 that was 13 of the 15
     # packages, and keeping them buried the two real entries.
     NOTES_FILE="$(mktemp -t buildpad-release-notes)"
-    node -e '
-      const fs = require("fs"), path = require("path");
-      const v = process.argv[1], out = [];
-      let bumpedOnly = 0;
-      for (const d of fs.readdirSync("packages").sort()) {
-        const cl = path.join("packages", d, "CHANGELOG.md");
-        const pj = path.join("packages", d, "package.json");
-        if (!fs.existsSync(cl) || !fs.existsSync(pj)) continue;
-        const lines = fs.readFileSync(cl, "utf8").split("\n");
-        const i = lines.findIndex((l) => l.trim() === "## " + v);
-        if (i === -1) continue;
-        let j = i + 1;
-        while (j < lines.length && !/^## /.test(lines[j])) j++;
-        const body = lines.slice(i + 1, j).join("\n").trim();
-        if (!body) continue;
-        const meaty = body.split("\n").some((l) => {
-          const t = l.trim();
-          return t && !/^###\s/.test(t) && !/^-\s+@buildpad\/[\w-]+@\d/.test(t);
-        });
-        if (!meaty) { bumpedOnly++; continue; }
-        out.push("## " + JSON.parse(fs.readFileSync(pj, "utf8")).name + "\n\n" + body);
-      }
-      if (bumpedOnly) {
-        out.push("## Lockstep\n\n" + bumpedOnly +
-          " further package(s) ship at " + v + " with no changes of their own.");
-      }
-      let notes = out.length
-        ? out.join("\n\n")
-        : "See each package CHANGELOG.md for " + v + ".";
-      // GitHub rejects a release body over 125,000 characters. The 3.0.0 notes
-      // came to 113,759 — 9% short of it — so a large major WILL cross it.
-      // Truncate on a section boundary and point at the changelogs.
-      const LIMIT = 100000;
-      if (notes.length > LIMIT) {
-        const cut = notes.lastIndexOf("\n\n## ", LIMIT);
-        notes =
-          notes.slice(0, cut > 0 ? cut : LIMIT) +
-          "\n\n## …\n\nThese notes were truncated to fit GitHub's release-body limit. " +
-          "The full entries for " + v + " are in each package's CHANGELOG.md at tag v" + v + ".";
-      }
-      process.stdout.write(notes);
-    ' "$NEW" > "$NOTES_FILE"
+    NOTES_JS="$(mktemp -t buildpad-release-notes-js)"
+
+    # The generator goes in a file via a QUOTED heredoc, not `node -e '...'`.
+    # Embedded in a single-quoted shell string, one apostrophe in a comment or
+    # message silently closes the quote and hands node a truncated program —
+    # which is how this step shipped broken in #198 and aborted the 3.5.0
+    # release at step 8. `bash -n` cannot catch it, because the shell stays
+    # syntactically valid; the quote just ends somewhere else. A quoted
+    # heredoc passes the body through literally, so JS quoting is free.
+    cat > "$NOTES_JS" <<'NOTES_GENERATOR'
+const fs = require("fs");
+const path = require("path");
+
+const v = process.argv[2];
+const out = [];
+let bumpedOnly = 0;
+
+for (const d of fs.readdirSync("packages").sort()) {
+  const changelog = path.join("packages", d, "CHANGELOG.md");
+  const manifest = path.join("packages", d, "package.json");
+  if (!fs.existsSync(changelog) || !fs.existsSync(manifest)) continue;
+
+  const lines = fs.readFileSync(changelog, "utf8").split("\n");
+  const i = lines.findIndex((l) => l.trim() === "## " + v);
+  if (i === -1) continue;
+  let j = i + 1;
+  while (j < lines.length && !/^## /.test(lines[j])) j++;
+  const body = lines.slice(i + 1, j).join("\n").trim();
+  if (!body) continue;
+
+  // Drop sections whose only content is the lockstep dependency bump
+  // ("- @buildpad/utils@3.5.0"). At 3.4.1 that was 12 of 14 packages, and
+  // keeping them buried the entries that said something.
+  const meaty = body.split("\n").some((l) => {
+    const t = l.trim();
+    return t && !/^###\s/.test(t) && !/^-\s+@buildpad\/[\w-]+@\d/.test(t);
+  });
+  if (!meaty) {
+    bumpedOnly++;
+    continue;
+  }
+
+  const name = JSON.parse(fs.readFileSync(manifest, "utf8")).name;
+  out.push("## " + name + "\n\n" + body);
+}
+
+if (bumpedOnly) {
+  out.push(
+    "## Lockstep\n\n" + bumpedOnly +
+      " further package(s) ship at " + v + " with no changes of their own."
+  );
+}
+
+let notes = out.length
+  ? out.join("\n\n")
+  : "See each package CHANGELOG.md for " + v + ".";
+
+// GitHub rejects a release body over 125,000 characters. The 3.0.0 notes came
+// to 113,759 — 9% short of it — so a large major will cross it. Truncate on a
+// section boundary and point at the changelogs.
+const LIMIT = 100000;
+if (notes.length > LIMIT) {
+  const cut = notes.lastIndexOf("\n\n## ", LIMIT);
+  notes =
+    notes.slice(0, cut > 0 ? cut : LIMIT) +
+    "\n\n## ...\n\nThese notes were truncated to fit the GitHub release-body limit. " +
+    "The full entries for " + v + " are in each package CHANGELOG.md at tag v" + v + ".";
+}
+
+process.stdout.write(notes);
+NOTES_GENERATOR
+
+    # Notes are cosmetic: a generator failure must not abort a release that has
+    # already published. `set -e` would, so handle the failure explicitly.
+    if ! node "$NOTES_JS" "$NEW" > "$NOTES_FILE" 2>/dev/null; then
+      warn "could not assemble the release notes — falling back to a pointer"
+      printf 'See each package CHANGELOG.md at tag v%s.' "$NEW" > "$NOTES_FILE"
+    fi
+    rm -f "$NOTES_JS"
 
     {
       printf '\n---\n\n'
