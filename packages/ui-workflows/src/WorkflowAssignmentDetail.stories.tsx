@@ -8,15 +8,18 @@ import { manyMockWorkflows, mockAssignments } from './_fixtures';
 /**
  * Fixture stories: `WorkflowAssignmentDetail` loads and saves through
  * `useWorkflowAssignments`, so these run against an in-memory API
- * (`_mockApi.tsx`). For a real backend see
- * `Workflows/WorkflowAssignmentsManager (DaaS)`.
+ * (`_mockApi.tsx`). For a real backend see the Live DaaS story of
+ * `Workflows/WorkflowAssignmentsManager`.
  */
 const meta: Meta<typeof WorkflowAssignmentDetail> = {
   title: 'Workflows/WorkflowAssignmentDetail',
   component: WorkflowAssignmentDetail,
-  // One in-memory API at a time: these stories do not share a docs page.
-  tags: ['!autodocs'],
   parameters: {
+    docs: {
+      // One in-memory API per page: each docs story renders in its own frame,
+      // so the stories' mock APIs never share a page.
+      story: { inline: false, iframeHeight: 820 },
+    },
     layout: 'padded',
   },
 };
@@ -48,6 +51,8 @@ function Harness({
 
 /** An existing assignment with a filter rule, as an administrator. */
 export const EditAssignment: Story = {
+  // Label only: the story ID stays `edit-assignment`.
+  name: 'Default',
   render: () => <Harness id={mockAssignments[0].id} />,
 };
 

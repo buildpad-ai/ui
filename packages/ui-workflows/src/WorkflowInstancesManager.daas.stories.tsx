@@ -18,9 +18,10 @@ import { DaaSConnectionGate } from './_daasStory';
  * 3. Start this Storybook: `pnpm --filter @buildpad/ui-workflows storybook`
  */
 const meta: Meta<typeof WorkflowInstancesManager> = {
-  title: 'Workflows/WorkflowInstancesManager (DaaS)',
+  // Same title as WorkflowInstancesManager.stories.tsx: the live story joins that component
+  // and loads last (see the stories glob in main.ts).
+  title: 'Workflows/WorkflowInstancesManager',
   component: WorkflowInstancesManager,
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
     docs: {
@@ -61,5 +62,8 @@ const InstancesPlayground: React.FC = () => {
  * The instances list against a live backend, with in-story list ↔ detail navigation.
  */
 export const Playground: StoryObj<typeof WorkflowInstancesManager> = {
+  name: 'Live DaaS',
   render: () => <InstancesPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };

@@ -11,6 +11,8 @@ export default meta;
 type Story = StoryObj<typeof ListEmptyState>;
 
 export const NoData: Story = {
+  // Label only: the story ID stays `no-data`.
+  name: 'Default',
   args: { title: 'No users found', hint: 'Get started by adding your first user' },
 };
 

@@ -17,9 +17,11 @@ import { DaaSConnectionGate } from './_daasStory';
  * 3. Start this Storybook: `pnpm storybook:users`
  */
 const meta: Meta<typeof UsersManager> = {
-  title: 'Users/UsersManager (DaaS)',
+  title: 'Users/UsersManager',
+  // Keeps the story IDs from the old "UsersManager (DaaS)" title, which the
+  // Playwright specs and existing links use (…-daas--playground).
+  id: 'users-usersmanager-daas',
   component: UsersManager,
-  tags: ['!autodocs'],
   parameters: {
     layout: 'padded',
     docs: {
@@ -64,7 +66,11 @@ const UsersPlayground: React.FC = () => {
  * Full users admin against a live backend, with in-story list ↔ detail navigation.
  */
 export const Playground: StoryObj<typeof UsersManager> = {
+  // Label only: the story ID stays `playground`.
+  name: 'Live DaaS',
   render: () => <UsersPlayground />,
+  // Shows the shared connect notice until the host has a DaaS instance.
+  parameters: { liveDaaS: true },
 };
 
 /**
@@ -72,6 +78,9 @@ export const Playground: StoryObj<typeof UsersManager> = {
  * for surfaces that already have their own; the Add User button stays.
  */
 export const Headerless: StoryObj<typeof UsersManager> = {
+  // Label only: the story ID stays `headerless`.
+  name: 'Live DaaS: Headerless',
+  parameters: { liveDaaS: true },
   render: () => (
     <DaaSConnectionGate>
       <Paper p="md" withBorder>

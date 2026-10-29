@@ -7,8 +7,8 @@ import { mockPolicies } from './_fixtures';
 /**
  * `PolicyPickerModal` fetches live policies via `usePolicies()`. Outside a
  * `DaaSProvider` + backend connection the fetch fails gracefully to an empty
- * list — see `UserPoliciesManager (DaaS)` / `RolePoliciesManager (DaaS)` for
- * a fully connected picker. This fixture story documents the shell UI
+ * list — see the Live DaaS stories of `UsersManager` / `RolesManager` for a
+ * fully connected picker. This fixture story documents the shell UI
  * (search input, selection table, footer actions) in isolation.
  */
 const meta: Meta<typeof PolicyPickerModal> = {
@@ -18,7 +18,7 @@ const meta: Meta<typeof PolicyPickerModal> = {
     docs: {
       description: {
         component:
-          'Searchable policy list excluding already-attached policies. Requires a DaaSProvider-connected backend to list real policies; see the `(DaaS)` stories for `UserPoliciesManager`/`RolePoliciesManager` for a live example.',
+          'Searchable policy list excluding already-attached policies. Requires a DaaSProvider-connected backend to list real policies; see the **Live DaaS** stories of `UsersManager` / `RolesManager` for a live example.',
       },
     },
   },
