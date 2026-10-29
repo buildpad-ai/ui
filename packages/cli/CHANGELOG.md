@@ -1,5 +1,31 @@
 # @buildpad/cli
 
+## 3.5.0
+
+### Minor Changes
+
+- 248298c: The `AuthenticatedShell` account menu moves from the bottom of the sidebar to the top right of the header. The trigger shows the user's avatar, name and a chevron (the avatar alone below `sm`), and the menu opens underneath with the name and email at the top. The new `.bp-header-user-button` style ships in `app/globals.css`; `.bp-user-profile-button` stays for shells generated before this change. Existing apps pick up the new shell when they re-add `components/layout/AuthenticatedShell.tsx`.
+- 86f8e3b: Rebrand the design system to BuildPad "Ink & Ember", aligned with buildpad.ai. Default buttons are now ink pills and badges default to the light variant. The brand orange (`#fd7f15` / `#e86a00`) marks interactive state and focus. Neutrals are cool greys, and headings use Inter Tight. Mantine's built-in `red` / `green` / `yellow` / `blue` / `orange` hues now resolve to the semantic danger / success / warning / info / primary scales. Light, outline and dark-mode filled variants are tuned for WCAG AA. Adds `--ds-cta-*`, `--ds-focus-border`, `--ds-shadow-xs` and `--ds-letter-spacing-*` tokens; `--ds-brand-navy-*` remain as deprecated aliases. Existing apps pick it up with `buildpad upgrade --design`. Components that used blue for "selected" states now use the theme primary.
+
+  Theme fixes in the same release:
+
+  - Default tabs get a 1px hairline rail and a square-ended ember indicator.
+  - Every input, not just TextInput / NumberInput / Select, gets the shared field-label style.
+  - Subtle ActionIcons keep the neutral hover wash, and filled ones keep their own hover colour.
+  - Unchecked Checkbox / Radio stay visible in dark mode.
+  - Checked Checkbox.Card / Radio.Card get the ember selected wash.
+  - Pagination's first / previous / next / last controls have accessible names.
+  - The sign-in hero no longer mentions Tailwind slate.
+
+### Patch Changes
+
+- 07a9608: Accessibility fixes in the shipped theme and root layout (WCAG 2.2 AA):
+  - Coloured text (`<Text c="green">` and the other theme colours) uses the AA text stop in light mode, as it already did in dark mode. It was the fill stop (~3.2–3.8:1).
+  - An Avatar inside a Timeline bullet (an activity feed) sits on the surface colour instead of Mantine's gray fill, so its initials read 4.7:1 instead of ~3.7:1.
+  - Calendar days from the previous / next month are no longer faded to 50% opacity (~2.3:1); they use the placeholder colour (5.2:1 light).
+  - Date-picker header controls, TimePicker segments and the ColorInput eyedropper button get accessible names by default.
+  - The root layout no longer sets `user-scalable=no`, so pages can be pinch-zoomed.
+
 ## 3.4.1
 
 ### Patch Changes
