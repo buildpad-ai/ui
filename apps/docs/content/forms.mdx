@@ -27,7 +27,7 @@ It gives you four routes:
 - **`/forms/[id]/fill`** — renders the form with `DynamicForm` to create a
   real item in the target collection.
 
-![The /forms list — saved forms, each with a Fill out and Edit action, and a New form button](/forms-list.png)
+![The /forms list — saved forms, each with its target collection and optional key, a Fill out button and an Edit action, under a New form button (sample data)](/forms-list.png)
 
 ## The pieces
 
@@ -88,7 +88,7 @@ buildpad add form-builder forms-routes
 ```
 
 This copies the builder + renderer into `components/ui/form-builder/`, the
-`/forms` page shells into `app/forms/`, and the `useFormDefinitions` hook into
+`/forms` page shells into `app/[lang]/(authenticated)/forms/`, and the `useFormDefinitions` hook into
 `lib/buildpad/hooks/`.
 
 ### Add the API routes
@@ -110,32 +110,40 @@ DaaS directly, so no extra routes are needed.
 
 ## The routes
 
-Four files give you the whole module:
+Four files give you the whole module. They live under the `(authenticated)`
+route group, so they render inside the [App Shell](/app-shell):
 
 ```
-app/forms/
+app/[lang]/(authenticated)/forms/
 ├── page.tsx            # /forms          — list of saved definitions
 ├── new/page.tsx        # /forms/new      — create (auto-create or bind existing)
 ├── [id]/page.tsx       # /forms/[id]     — the FormBuilder editor
 └── [id]/fill/page.tsx  # /forms/[id]/fill — render with DynamicForm to create an item
 ```
 
+The examples below are trimmed to the wiring. The generated pages also add
+breadcrumbs, loading states, and translated strings (`app.forms.*`).
+
 <Steps>
 
 ### The list view
 
-`app/forms/page.tsx` loads definitions with `useFormDefinitions().list()` and, if
+`app/[lang]/(authenticated)/forms/page.tsx` loads definitions with `useFormDefinitions().list()` and, if
 the collection is missing, renders `FormsEmptyState`. Each row links to the builder
 and the fill page.
 
-```tsx filename="app/forms/page.tsx" copy
+```tsx filename="app/[lang]/(authenticated)/forms/page.tsx" copy
 "use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
+import { useI18n } from '@/lib/i18n/provider';
 import { FormsEmptyState, type FormDefinition } from '@/components/ui/form-builder';
 import { useFormDefinitions } from '@/lib/buildpad/hooks';
 
 export default function FormsListPage() {
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const { list } = useFormDefinitions();
   const [definitions, setDefinitions] = useState<FormDefinition[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -143,26 +151,31 @@ export default function FormsListPage() {
   useEffect(() => {
     list()
       .then(setDefinitions)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load forms'));
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : t('app.forms.loadFailed')));
   }, []);
 
   if (error) return <FormsEmptyState error={error} />;
-  // …render one row per definition, linking to `/forms/${def.id}` and `/forms/${def.id}/fill`
+  // …a "New form" button (router.push('/forms/new')) and one row per definition,
+  // linking to `/forms/${def.id}` and `/forms/${def.id}/fill`
 }
 ```
 
 ### Create a form
 
-`app/forms/new/page.tsx` picks how the target collection comes to be, then hands
+`app/[lang]/(authenticated)/forms/new/page.tsx` picks how the target collection comes to be, then hands
 off to `FormBuilder`. **Start from scratch** passes no `targetCollection` (the builder
 auto-creates a full `fb_` collection on save); **Use an existing collection** binds to
 one you already have. Non-admins (no schema rights) only see the *existing collection*
 path.
 
-![/forms/new — two storage choices as selectable cards: Start from scratch, and Use an existing collection](/forms-new.png)
+![/forms/new — two storage choices as selectable cards: Start from scratch, and Use an existing collection (sample data)](/forms-new.png)
 
-```tsx filename="app/forms/new/page.tsx" copy
+```tsx filename="app/[lang]/(authenticated)/forms/new/page.tsx" copy
 import { FormBuilder } from '@/components/ui/form-builder';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
+
+// inside the page component:
+const router = useLocaleRouter();
 
 // auto-create on save (needs schema rights):
 <FormBuilder onSaved={(def) => router.push(`/forms/${def.id}`)} />
@@ -173,43 +186,46 @@ import { FormBuilder } from '@/components/ui/form-builder';
 
 ### The builder (edit)
 
-`app/forms/[id]/page.tsx` loads a saved definition into `FormBuilder` by id — the
+`app/[lang]/(authenticated)/forms/[id]/page.tsx` loads a saved definition into `FormBuilder` by id — the
 target collection comes from the definition. The **Build** tab is a three-pane
 workspace — a field-type palette (plus **Add extra field** and any existing
 collection fields) on the left, the section canvas in the middle, and a
 per-field settings panel (width / required / hidden / conditions) on the right —
 and a **Preview** tab renders the in-progress form live.
 
-![FormBuilder — Form name and Key inputs, a Build/Preview tab bar, and the three-pane palette / canvas / settings workspace](/forms-builder.png)
+![FormBuilder — Form name and Key inputs, a Build/Preview tab bar, and the three-pane palette / canvas / settings workspace with the Category field selected (sample data)](/forms-builder.png)
 
-```tsx filename="app/forms/[id]/page.tsx" copy
+```tsx filename="app/[lang]/(authenticated)/forms/[id]/page.tsx" copy
 "use client";
 
-import { use } from 'react';
+import React, { use } from 'react';
 import { FormBuilder } from '@/components/ui/form-builder';
 
 export default function EditFormPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  // …breadcrumbs and a "Fill out" button (router.push(`/forms/${id}/fill`))
   return <FormBuilder definitionId={id} />;
 }
 ```
 
 ### The fill view
 
-`app/forms/[id]/fill/page.tsx` renders the saved definition as a live create form
+`app/[lang]/(authenticated)/forms/[id]/fill/page.tsx` renders the saved definition as a live create form
 with `DynamicForm`. Submitting creates a real item in the target collection. Pass
 `itemId` to edit an existing item instead.
 
-```tsx filename="app/forms/[id]/fill/page.tsx" copy
+![DynamicForm filling out the Supplier onboarding form — the ISO 9001 toggle is on, so the conditional Certificate expiry field is shown and required (sample data)](/forms-fill.png)
+
+```tsx filename="app/[lang]/(authenticated)/forms/[id]/fill/page.tsx" copy
 "use client";
 
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { use } from 'react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { DynamicForm } from '@/components/ui/form-builder';
 
 export default function FillFormPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
   return (
     <DynamicForm
       definitionId={id}
@@ -278,7 +294,7 @@ query across it natively (e.g. `filter[project][_eq]=…&filter[issue_type][_eq]
 ## Prerequisites
 
 - The module must live under your authenticated layout so `DaaSProvider` is above
-  it — `buildpad init` generates this as `app/(authenticated)/` with a
+  it — `buildpad init` generates this as `app/[lang]/(authenticated)/` with a
   `DaaSProviderWrapper`. The hooks call your `/api/items/*` (and, when provisioning
   in proxy mode, `/api/fields/*` and `/api/collections/*`) proxy routes.
 - No extra styling is needed: the components consume the design tokens through the

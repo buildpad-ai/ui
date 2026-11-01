@@ -34,6 +34,8 @@ It gives you six screens:
   (item filters, field access, validation, presets) behind each toggle's
   "Use Custom" option.
 
+![UsersManager — the Users list with search, Role and Status filters and Add User, showing each user's avatar, email, roles, status and last access (sample data)](/users-list.png)
+
 ## The pieces
 
 | Piece | Package | Role |
@@ -47,6 +49,7 @@ It gives you six screens:
 | `SystemToken` | `@buildpad/ui-interfaces` | The underlying token interface (server-side generation by default; accepts a custom `generate` producer) |
 | `SelectIcon` / `IconDisplay` | `@buildpad/ui-interfaces` | Icon picker for roles and policies, plus the read-only renderer the lists use — both driven by the same icon map, so anything pickable displays correctly |
 | `SearchInput` / `ListFooter` / `ListEmptyState` / `RowActionsMenu` | `@buildpad/ui-users` | Shared list chrome used by all three managers (search box, "Showing N of M" + page-size + pagination footer, empty/error states, row kebab menu) |
+| `ModuleAccessKeysManager` | `@buildpad/ui-users` | The registry of module-level access keys that policies can grant |
 | `useUsers` / `useRoles` / `usePolicies` / `useAccess` | `@buildpad/hooks` | CRUD, bulk role membership, and policy attach/detach against `/api/users`, `/api/roles`, `/api/policies`, `/api/access` |
 
 <Callout type="info">
@@ -69,8 +72,8 @@ app the imports point at your local copies (`@/components/ui/users-management`,
 buildpad add users-routes
 ```
 
-This copies six page shells into `app/users/`, `app/roles/`, and
-`app/policies/`, the components into `components/ui/users-management/`, the
+This copies seven page shells into `app/[lang]/(authenticated)/` (`users/`,
+`roles/`, `policies/`, and `module-access-keys/`), the components into `components/ui/users-management/`, the
 `system-permissions`, `select-icon`, and `system-token` interfaces into
 `components/ui/`, and the
 `useUsers` / `useRoles` / `usePolicies` / `useAccess` hooks into
@@ -98,18 +101,22 @@ collections).
 
 ## The routes
 
-Six files give you the whole module:
+Seven files give you the whole module. They live under the `(authenticated)`
+route group, so they render inside the [App Shell](/app-shell):
 
 ```
-app/users/
-├── page.tsx            # /users          — the UsersManager list
-└── [id]/page.tsx       # /users/[id]     — UserDetail (use /users/new to create)
-app/roles/
-├── page.tsx            # /roles          — the RolesManager list
-└── [id]/page.tsx       # /roles/[id]     — RoleDetail (use /roles/new to create)
-app/policies/
-├── page.tsx            # /policies       — the PoliciesManager list
-└── [id]/page.tsx       # /policies/[id]  — PolicyDetail (use /policies/new to create)
+app/[lang]/(authenticated)/
+├── users/
+│   ├── page.tsx            # /users              — the UsersManager list
+│   └── [id]/page.tsx       # /users/[id]         — UserDetail (use /users/new to create)
+├── roles/
+│   ├── page.tsx            # /roles              — the RolesManager list
+│   └── [id]/page.tsx       # /roles/[id]         — RoleDetail (use /roles/new to create)
+├── policies/
+│   ├── page.tsx            # /policies           — the PoliciesManager list
+│   └── [id]/page.tsx       # /policies/[id]      — PolicyDetail (use /policies/new to create)
+└── module-access-keys/
+    └── page.tsx            # /module-access-keys — the ModuleAccessKeysManager registry
 ```
 
 <Steps>
@@ -119,14 +126,15 @@ app/policies/
 Each list page renders its manager wired to the router. Clicking a row opens
 the detail page; "Add" navigates to the `new` sentinel route.
 
-```tsx filename="app/users/page.tsx" copy
+```tsx filename="app/[lang]/(authenticated)/users/page.tsx" copy
 "use client";
 
-import { useRouter } from 'next/navigation';
+import React from 'react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { UsersManager } from '@/components/ui/users-management';
 
 export default function UsersPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return (
     <UsersManager
@@ -200,15 +208,17 @@ change and after every bulk action.
 
 ### The detail views
 
+![RoleDetail — the Approver role on its Users tab, listing three members with move, remove and open actions, beside an Information panel with the parent role and user and policy counts (sample data)](/users-role.png)
+
 Detail pages read the route param (with `'new'` meaning create) and hand
 navigation back to the router. `RoleDetail`'s Save menu reports which action
 the admin chose:
 
-```tsx filename="app/roles/[id]/page.tsx" copy
+```tsx filename="app/[lang]/(authenticated)/roles/[id]/page.tsx" copy
 "use client";
 
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { use } from 'react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { RoleDetail } from '@/components/ui/users-management';
 
 export default function RoleDetailPage({
@@ -217,7 +227,7 @@ export default function RoleDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return (
     <RoleDetail
@@ -255,6 +265,29 @@ has nowhere to go.
 card). Omit it and the hierarchy renders as plain text. Children are derived
 client-side from the fetched roles list — the DaaS API has no reverse
 `children` relation.
+
+### The module access keys
+
+`/module-access-keys` renders `ModuleAccessKeysManager`, the registry of
+application capability flags (`daas_module_access_keys`). Policies grant these
+keys as a second permission dimension next to per-collection CRUD: every key
+registered here becomes a toggle on the **Module-Level Access** tab of
+`/policies/[id]`. Admins and users with read permission on
+`daas_module_access_keys` can open it.
+
+```tsx filename="app/[lang]/(authenticated)/module-access-keys/page.tsx" copy
+"use client";
+
+import React from 'react';
+import { ModuleAccessKeysManager } from '@/components/ui/users-management';
+
+export default function ModuleAccessKeysPage() {
+  return <ModuleAccessKeysManager />;
+}
+```
+
+`users-routes` does not add this page to the sidebar. Add a `navigation.ts`
+entry for it if your admins need one.
 
 </Steps>
 
@@ -294,6 +327,8 @@ it). The same applies to `app_access` on roles.
 </Callout>
 
 ## Custom permission rules
+
+![PolicyDetail — the Access Control switches and the Record-Level Access permissions matrix, with create, read, update, delete and share pills per collection and a System collections group (sample data)](/users-policy.png)
 
 Beyond the matrix's **All / None** toggles, each cell's menu has **Use Custom**,
 which opens a tabbed editor for that collection/action pair. The tabs depend on
@@ -361,7 +396,7 @@ the editor. The field lists come from `app/api/fields/*` and
 ## Prerequisites
 
 - The module must live under your authenticated layout so `DaaSProvider` is
-  above it — `buildpad init` generates this as `app/(authenticated)/` with a
+  above it — `buildpad init` generates this as `app/[lang]/(authenticated)/` with a
   `DaaSProviderWrapper`.
 - Deleting a user also deletes their auth account; the confirm modals make
   destructive actions explicit.

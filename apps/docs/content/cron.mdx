@@ -26,6 +26,8 @@ The module gives you two screens:
 A row of either history opens the **run log**: the outcome, the trigger, the
 time, the duration, the error, and the console output line by line.
 
+![CronJobsManager — the Jobs tab with search, refresh and New Cron Job, listing each job's schedule, timezone, status, last run, last status and next run (from the Cron Jobs Storybook)](/cron-list.png)
+
 ## The pieces
 
 | Piece | Package | Role |
@@ -195,6 +197,8 @@ The History tab's page, and the tab of the editor, are not kept in the URL.
 The detail page reads the route parameter and passes it as `id`. `id="new"`
 means create.
 
+![CronJobDetail — editing the Nightly report job: the job code in the code editor beside Job Settings (name, description, schedule, timezone, timeout, memory limit, status), with Run Now, Deactivate and Save (from the Cron Jobs Storybook)](/cron-detail.png)
+
 ```tsx filename="app/[lang]/(authenticated)/cron/[id]/page.tsx" copy
 "use client";
 
@@ -297,6 +301,8 @@ import { CronRunsTable } from '@/components/ui/cron-management';
 ### `CronRunLogModal`
 
 `CronRunsTable` renders it. Use it directly only when you list runs yourself.
+
+![CronRunLogModal — the run log of a successful manual run: trigger time, duration and the console output line by line (from the Cron Jobs Storybook)](/cron-run-log.png)
 
 | Prop | Default | Purpose |
 |---|---|---|
