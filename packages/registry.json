@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-10-29T07:29:33.556Z",
+  "generatedAt": "2026-11-01T14:33:14.552Z",
   "version": "3.5.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -189,7 +189,7 @@
         {
           "source": "utils/src/build-fields-from-definition.ts",
           "target": "lib/buildpad/build-fields-from-definition.ts",
-          "sourceSha256": "c09e507e2fafa4c941f681f37724d5defd35e0dd9e53b4933eec9e9f02360e85"
+          "sourceSha256": "22758979cb0eb9a84bc2d620c7e37c3a8662f11b06382939b0917330b868ba57"
         },
         {
           "source": "utils/src/field-spec-mapper.ts",
@@ -532,7 +532,7 @@
       ],
       "sourcePackage": "@buildpad/cli",
       "version": "3.5.0",
-      "lastChangedIn": "3.4.0"
+      "lastChangedIn": "3.5.0"
     },
     "types": {
       "name": "types",
@@ -541,7 +541,7 @@
         {
           "source": "types/src/core.ts",
           "target": "lib/buildpad/types/core.ts",
-          "sourceSha256": "c98eee2f04e87fde3d2379d072a4c0449ca88d7fec49e6e2628c08631eaedcc5"
+          "sourceSha256": "a284a314fd6470ef7f4116e7845b61496cb92e01bb2d22d2325b56845d7beea7"
         },
         {
           "source": "types/src/file.ts",
@@ -591,7 +591,7 @@
       ],
       "sourcePackage": "@buildpad/types",
       "version": "3.5.0",
-      "lastChangedIn": "3.1.0"
+      "lastChangedIn": "3.5.0"
     },
     "services": {
       "name": "services",
@@ -630,7 +630,7 @@
         {
           "source": "services/src/daas-context.tsx",
           "target": "lib/buildpad/services/daas-context.tsx",
-          "sourceSha256": "ed3223a1b50997081f6a620ddbcaa459851a205d2b4c4b421017003762c02bf0"
+          "sourceSha256": "4453832cd927c520fd261aaa99372122710be03e6bf8df7870cf09482aac7e38"
         },
         {
           "source": "services/src/buildpad-i18n-context.tsx",
@@ -683,7 +683,7 @@
       ],
       "sourcePackage": "@buildpad/services",
       "version": "3.5.0",
-      "lastChangedIn": "3.4.0"
+      "lastChangedIn": "3.5.0"
     },
     "hooks": {
       "name": "hooks",
@@ -3321,7 +3321,7 @@
         {
           "source": "ui-form/src/utils/get-form-fields.ts",
           "target": "components/ui/vform/utils/get-form-fields.ts",
-          "sourceSha256": "21d8b0d5cfa8e7106b0bc88fa6e1d74a362006d6a24cd28716ea62e945963f11"
+          "sourceSha256": "f4bd232a36fc942781e3370ea297e1147e31611db66c9717e245516c25fd8a90"
         },
         {
           "source": "ui-form/src/utils/update-field-widths.ts",
@@ -3576,7 +3576,7 @@
         {
           "source": "ui-collections/src/FilterPanel.tsx",
           "target": "components/ui/filter-panel.tsx",
-          "sourceSha256": "032239fc77fcad9a0afe0b0f4d9998d0088e466a0f7551a4c8a70230549458f8"
+          "sourceSha256": "caa8a19328a92f5e8d4dbb37b5b46dd7b03bcc465449a3ffb1369d7f8f3e2bf1"
         }
       ],
       "dependencies": [
@@ -3588,7 +3588,7 @@
       ],
       "sourcePackage": "@buildpad/ui-collections",
       "version": "3.5.0",
-      "lastChangedIn": "3.3.0"
+      "lastChangedIn": "3.5.0"
     },
     {
       "name": "content-navigation",
@@ -3876,7 +3876,7 @@
         {
           "source": "ui-files/src/FileInfoPanel.tsx",
           "target": "components/ui/file-manager/file-info-panel.tsx",
-          "sourceSha256": "86e0f170721a712d87795f02db0e545f7f9667723548b45efc66c141ea29c33f"
+          "sourceSha256": "90ba1cf16e5b2e3110838b3af5a1f1f0aa3ef44dab36f393996f92dc4d0b6334"
         },
         {
           "source": "ui-files/src/index.ts",
@@ -3900,7 +3900,7 @@
       ],
       "sourcePackage": "@buildpad/ui-files",
       "version": "3.5.0",
-      "lastChangedIn": "3.3.0"
+      "lastChangedIn": "3.5.0"
     },
     {
       "name": "users-management",

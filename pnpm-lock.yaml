@@ -283,6 +283,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2
         version: 2.93.3
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.1(@testing-library/dom@10.4.0)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@types/node':
         specifier: ^22
         version: 22.19.2
@@ -295,6 +298,9 @@ importers:
       dayjs:
         specifier: ^1.11.19
         version: 1.11.19
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
       react:
         specifier: ^19
         version: 19.2.0
@@ -5414,8 +5420,8 @@ packages:
   flatted@3.4.4:
     resolution: {integrity: sha512-5+ybhBZANEJxaH3X5evAFatUxLfEHSr7n6kYJ+1Qd0mUqr4eu9gIf6GDbWHf8RJijHrjjO8G+la14SlL2SeS1Q==}
 
-  follow-redirects@1.16.1:
-    resolution: {integrity: sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==}
+  follow-redirects@1.16.2:
+    resolution: {integrity: sha512-/kVP2U8z596Ia0gwFrwyIeo74ta5aVmSeU1FfAUMAmcEP5EP7zydmag3SLiN64NaRKef3lxsq7i/g7ltJQDGow==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -11478,7 +11484,7 @@ snapshots:
 
   axios@1.20.0:
     dependencies:
-      follow-redirects: 1.16.1
+      follow-redirects: 1.16.2
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -12563,7 +12569,7 @@ snapshots:
 
   flatted@3.4.4: {}
 
-  follow-redirects@1.16.1: {}
+  follow-redirects@1.16.2: {}
 
   foreground-child@3.3.1:
     dependencies:

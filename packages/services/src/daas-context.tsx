@@ -188,7 +188,8 @@ export function DaaSProvider({
 
   /** Fetch current user */
   const refreshUser = useCallback(async (): Promise<void> => {
-    if (!resolvedUrl) return;
+    // '' is a valid base: same-origin requests through the app's /api proxy.
+    if (resolvedUrl == null) return;
     try {
       setAuthLoading(true);
       setAuthError(null);
@@ -218,7 +219,7 @@ export function DaaSProvider({
   }, [resolvedUrl, buildUrl, getHeaders, onAuthenticated, onAuthError]);
 
   useEffect(() => {
-    if (autoFetchUser && resolvedUrl) {
+    if (autoFetchUser && resolvedUrl != null) {
       refreshUser();
     } else {
       // Won't fetch (auto-fetch disabled or no URL) — don't leave authLoading stuck on.
