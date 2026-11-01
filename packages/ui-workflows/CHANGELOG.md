@@ -1,5 +1,16 @@
 # @buildpad/ui-workflows
 
+## 3.5.1
+
+### Patch Changes
+
+- Updated dependencies [138dd01]
+  - @buildpad/types@3.5.1
+  - @buildpad/utils@3.5.1
+  - @buildpad/services@3.5.1
+  - @buildpad/hooks@3.5.1
+  - @buildpad/ui-table@3.5.1
+
 ## 3.5.0
 
 ### Patch Changes
