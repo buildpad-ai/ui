@@ -17,8 +17,10 @@
  *
  * Every emitted data field carries `meta.store` so the save path can route the
  * value to a real column or the `extras` jsonb tail. Each section is emitted as a
- * synthesized `group-raw` alias field. Schema fields absent from the definition
- * are dropped.
+ * synthesized `group-raw` alias field, headed by a titled `presentation-divider`
+ * when the section has a title. A field's label override (`note`) becomes its
+ * rendered label (`meta.name`), as in the builder. Schema fields absent from the
+ * definition are dropped.
  *
  * @package @buildpad/utils
  */
@@ -68,6 +70,50 @@ function synthesizeGroupField(
   };
 }
 
+/**
+ * Synthesize a titled `presentation-divider` that heads a section's members, so
+ * the section title the builder shows also appears on the rendered form
+ * (`group-raw` itself draws no header).
+ */
+function synthesizeSectionHeading(
+  section: FormSection,
+  collection: string,
+  sort: number,
+): Field {
+  const field = `${section.id}__heading`;
+  return {
+    collection,
+    field,
+    type: 'alias',
+    meta: {
+      id: -1,
+      collection,
+      field,
+      special: ['alias', 'no-data'],
+      interface: 'presentation-divider',
+      options: { title: section.title },
+      readonly: false,
+      hidden: false,
+      sort,
+      width: 'full',
+      note: null,
+      group: section.id,
+      required: false,
+    },
+  };
+}
+
+/**
+ * Promote the builder's label to the rendered label: the builder shows
+ * `note` as a field's label, so the form does too, instead of showing it as a
+ * help tooltip next to the column name.
+ */
+function applyLabel(meta: FieldMeta, label: string | null | undefined): void {
+  if (!label) return;
+  meta.name = label;
+  meta.note = null;
+}
+
 /** Overlay a per-field config onto its schema field, producing a new Field. */
 function applyConfig(
   base: Field,
@@ -87,7 +133,8 @@ function applyConfig(
   if (config.required !== undefined) meta.required = config.required;
   if (config.readonly !== undefined) meta.readonly = config.readonly;
   if (config.hidden !== undefined) meta.hidden = config.hidden;
-  if (config.note !== undefined) meta.note = config.note;
+  // The same precedence as the builder's field row: override, then schema note.
+  applyLabel(meta, config.note || base.meta?.note);
   if (config.conditions !== undefined) meta.conditions = config.conditions;
 
   return { ...base, meta };
@@ -117,12 +164,13 @@ function synthesizeExtraField(
     hidden: config.hidden ?? false,
     sort,
     width: config.width ?? 'full',
-    note: config.note ?? extra.label ?? null,
+    note: null,
     group,
     required: config.required ?? false,
     store: 'extras',
   };
 
+  applyLabel(meta, config.note || extra.label);
   if (config.conditions !== undefined) meta.conditions = config.conditions;
 
   return { collection, field: config.field, type, meta };
@@ -184,6 +232,7 @@ export function buildFieldsFromDefinition(
 
   for (const section of def.sections ?? []) {
     result.push(synthesizeGroupField(section, collection, sort++));
+    if (section.title) result.push(synthesizeSectionHeading(section, collection, sort++));
 
     for (const config of section.fields ?? []) {
       if (config.store === 'extras') {

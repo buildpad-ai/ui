@@ -59,15 +59,17 @@ describe('buildFieldsFromDefinition', () => {
 
     const result = buildFieldsFromDefinition(schema, def);
 
-    // group(main), issue_type, title, group(details), severity
+    // group(main), heading, issue_type, title, group(details), heading, severity
     expect(result.map((f) => f.field)).toEqual([
       'main',
+      'main__heading',
       'issue_type',
       'title',
       'details',
+      'details__heading',
       'severity',
     ]);
-    expect(result.map((f) => f.meta?.sort)).toEqual([0, 1, 2, 3, 4]);
+    expect(result.map((f) => f.meta?.sort)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
   it('synthesizes a group-raw alias field per section with its title', () => {
@@ -84,6 +86,34 @@ describe('buildFieldsFromDefinition', () => {
     expect(group.meta?.interface).toBe('group-raw');
     expect(group.meta?.special).toContain('group');
     expect(group.meta?.note).toBe('Main');
+  });
+
+  it('heads a titled section with a presentation-divider inside its group', () => {
+    const def: FormDefinition = {
+      name: 'S',
+      target_collection: 'issues',
+      sections: [{ id: 'main', title: 'Main', fields: [{ field: 'title' }] }],
+    };
+
+    const [, heading, title] = buildFieldsFromDefinition(schema, def);
+
+    expect(heading.field).toBe('main__heading');
+    expect(heading.type).toBe('alias');
+    expect(heading.meta?.interface).toBe('presentation-divider');
+    expect(heading.meta?.special).toEqual(['alias', 'no-data']);
+    expect(heading.meta?.options).toEqual({ title: 'Main' });
+    expect(heading.meta?.group).toBe('main');
+    expect(title.field).toBe('title');
+  });
+
+  it('adds no heading to an untitled section', () => {
+    const def: FormDefinition = {
+      name: 'S',
+      target_collection: 'issues',
+      sections: [{ id: 'main', fields: [{ field: 'title' }] }],
+    };
+
+    expect(buildFieldsFromDefinition(schema, def).map((f) => f.field)).toEqual(['main', 'title']);
   });
 
   it('assigns section membership via meta.group', () => {
@@ -128,7 +158,27 @@ describe('buildFieldsFromDefinition', () => {
     expect(title?.meta?.required).toBe(true);
     expect(title?.meta?.readonly).toBe(true);
     expect(title?.meta?.hidden).toBe(true);
-    expect(title?.meta?.note).toBe('Short summary');
+    // The builder shows the override as the label, so the form does too.
+    expect(title?.meta?.name).toBe('Short summary');
+    expect(title?.meta?.note).toBeNull();
+  });
+
+  it("labels a field with its schema note when there is no override, as the builder does", () => {
+    const noted = [makeField('title', { meta: { ...makeField('title').meta!, note: 'Headline' } })];
+    const def: FormDefinition = {
+      name: 'S',
+      target_collection: 'issues',
+      sections: [{ id: 'main', fields: [{ field: 'title' }, { field: 'severity' }] }],
+    };
+
+    const result = buildFieldsFromDefinition([...noted, makeField('severity')], def);
+    const title = result.find((f) => f.field === 'title');
+    const severity = result.find((f) => f.field === 'severity');
+
+    expect(title?.meta?.name).toBe('Headline');
+    expect(title?.meta?.note).toBeNull();
+    // No note and no override: the form falls back to translations / the column name.
+    expect(severity?.meta?.name).toBeUndefined();
   });
 
   it('merges conditions verbatim into meta.conditions', () => {
@@ -216,7 +266,8 @@ describe('buildFieldsFromDefinition', () => {
     expect(browser?.schema).toBeUndefined(); // not a real column
     expect(browser?.meta?.store).toBe('extras');
     expect(browser?.meta?.interface).toBe('select-dropdown');
-    expect(browser?.meta?.note).toBe('Browser');
+    expect(browser?.meta?.name).toBe('Browser');
+    expect(browser?.meta?.note).toBeNull();
     expect(browser?.meta?.required).toBe(true);
     expect(browser?.meta?.width).toBe('half');
     expect(browser?.meta?.options).toEqual({

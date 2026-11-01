@@ -283,6 +283,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2
         version: 2.93.3
+      '@testing-library/react':
+        specifier: ^16.3.0
+        version: 16.3.1(@testing-library/dom@10.4.0)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@types/node':
         specifier: ^22
         version: 22.19.2
@@ -295,6 +298,9 @@ importers:
       dayjs:
         specifier: ^1.11.19
         version: 1.11.19
+      jsdom:
+        specifier: ^25.0.0
+        version: 25.0.1
       react:
         specifier: ^19
         version: 19.2.0
