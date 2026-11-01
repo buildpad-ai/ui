@@ -35,6 +35,8 @@ This module administers workflows. The button that runs a command on one item
 is a different component: the `workflow-button` interface
 ([Component Map](/components)).
 
+![WorkflowsManager — the Workflow Definitions list with search, Add Workflow, and each definition's initial state, state count and description (from the Workflows Storybook)](/workflows-list.png)
+
 ## The pieces
 
 | Piece | Package | Role |
@@ -216,6 +218,8 @@ Turn it off for an embedded list with `urlParams={false}`. Use
 A detail page reads the route parameter and passes it as `id`. For
 definitions and assignments, `id="new"` means create.
 
+![WorkflowDetail — the Article review definition: name, description, statistics and states overview beside the state diagram with Draft, Review and Published and their Submit, Approve and Reject commands (from the Workflows Storybook)](/workflows-detail.png)
+
 ```tsx filename="app/[lang]/(authenticated)/workflows/[id]/page.tsx" copy
 "use client";
 
@@ -321,6 +325,8 @@ The Filter Rule is a DaaS filter object. Valid JSON that is not an object
 field means no rule.
 
 ### `WorkflowInstanceDetail`
+
+![WorkflowInstanceDetail — an active Article review instance in the Review state: workflow, collection, item, dates and instance ID above the read-only state diagram (from the Workflows Storybook)](/workflows-instance.png)
 
 | Prop | Default | Purpose |
 |---|---|---|

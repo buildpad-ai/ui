@@ -9,6 +9,7 @@ const meta: MetaRecord = {
   installation: 'Installation',
   cli: 'CLI',
   mcp: 'MCP',
+  'app-shell': 'App Shell',
   '--- architecture': {
     type: 'separator',
     title: 'Architecture',
@@ -17,17 +18,25 @@ const meta: MetaRecord = {
   'design-system': 'Design System',
   styleguide: 'Styleguide',
   distribution: 'Distribution',
+  '--- modules': {
+    type: 'separator',
+    title: 'Modules',
+  },
+  content: 'Content',
+  files: 'Files',
+  forms: 'Forms',
+  users: 'Users',
+  workflows: 'Workflows',
+  cron: 'Cron Jobs',
   '--- reference': {
     type: 'separator',
     title: 'Reference',
   },
   components: 'Component Map',
-  'app-shell': 'App Shell Recipe',
-  files: 'Files Module Recipe',
-  forms: 'Forms Module Recipe',
-  users: 'Users Module Recipe',
-  workflows: 'Workflows Module Recipe',
-  cron: 'Cron Jobs Module Recipe',
+  '--- contributing': {
+    type: 'separator',
+    title: 'Contributing',
+  },
   testing: 'Testing Guide',
 };
 

@@ -21,6 +21,8 @@ It gives you two screens:
   audio, and PDF rendered inline) and a **Details** tab with an editable metadata
   form (title, description, tags, location, download filename), plus single delete.
 
+![FileManager at the library root — search, New Folder and grid/list toggle, the upload drop zone with Upload from device and Import from URL, then three folders and image and document tiles (sample data)](/files-manager.png)
+
 ## The pieces
 
 | Piece | Package | Role |
@@ -33,7 +35,7 @@ It gives you two screens:
 
 <Callout type="info">
 This recipe is **opt-in** — it is *not* part of `bootstrap`. Generate the
-`app/files/` module with `buildpad add files-routes`; it pulls in the
+`app/[lang]/(authenticated)/files/` module with `buildpad add files-routes`; it pulls in the
 `file-manager` component (which in turn pulls the `upload` component and the
 `types` / `hooks` / `services` lib modules). The code below is that generated
 module, shown so you understand the wiring. In a generated app the imports point
@@ -52,7 +54,7 @@ when consuming the packages directly, import from `@buildpad/ui-files` and
 buildpad add files-routes
 ```
 
-This copies the page shells into `app/files/`, the component into
+This copies the page shells into `app/[lang]/(authenticated)/files/`, the component into
 `components/ui/file-manager/`, the `upload` component into `components/ui/`, and
 the `useFiles` / `useFolders` hooks into `lib/buildpad/hooks/`.
 
@@ -74,11 +76,11 @@ This includes the routes the module needs: `app/api/files/route.ts`,
 
 ## The routes
 
-Three files give you the whole module:
+Two files give you the whole module. They live under the `(authenticated)`
+route group, so they render inside the [App Shell](/app-shell):
 
 ```
-app/files/
-├── layout.tsx          # optional shell wrapper (centers content)
+app/[lang]/(authenticated)/files/
 ├── page.tsx            # /files       — the FileManager library view
 └── [id]/page.tsx       # /files/[id]  — the FileDetail preview + metadata view
 ```
@@ -87,18 +89,19 @@ app/files/
 
 ### The list view
 
-`app/files/page.tsx` renders `FileManager` wired to the router so clicking a file
+`app/[lang]/(authenticated)/files/page.tsx` renders `FileManager` wired to the router so clicking a file
 opens its detail page. Upload, folders, search, view toggle, and bulk delete are
 all built in.
 
-```tsx filename="app/files/page.tsx" copy
+```tsx filename="app/[lang]/(authenticated)/files/page.tsx" copy
 "use client";
 
-import { useRouter } from 'next/navigation';
+import React from 'react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { FileManager } from '@/components/ui/file-manager';
 
 export default function FilesPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return <FileManager onFileClick={(file) => router.push(`/files/${file.id}`)} />;
 }
@@ -131,14 +134,16 @@ page. Defaults (empty search, root folder, page 1) stay off the URL entirely.
 
 ### The detail view
 
-`app/files/[id]/page.tsx` renders `FileDetail`, which fetches the file, shows the
+`app/[lang]/(authenticated)/files/[id]/page.tsx` renders `FileDetail`, which fetches the file, shows the
 Preview/Details tabs, saves metadata, and handles deletion.
 
-```tsx filename="app/files/[id]/page.tsx" copy
+![FileDetail for an image — Preview tab with the image, a File info panel (ID, type, size, dimensions, storage, dates) and Download, Open in new tab and Replace file actions (sample data)](/files-detail.png)
+
+```tsx filename="app/[lang]/(authenticated)/files/[id]/page.tsx" copy
 "use client";
 
-import { use } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { use } from 'react';
+import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { FileDetail } from '@/components/ui/file-manager';
 
 export default function FileDetailPage({
@@ -147,7 +152,7 @@ export default function FileDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   return (
     <FileDetail
@@ -232,7 +237,7 @@ The Preview tab renders inline based on MIME type:
 ## Prerequisites
 
 - The module must live under your authenticated layout so `DaaSProvider` is
-  above it — `buildpad init` generates this as `app/(authenticated)/` with a
+  above it — `buildpad init` generates this as `app/[lang]/(authenticated)/` with a
   `DaaSProviderWrapper`. The hooks call your `/api/files/*`, `/api/folders/*`,
   and `/api/assets/*` proxy routes.
 - No extra styling is needed: the components consume the design tokens through
