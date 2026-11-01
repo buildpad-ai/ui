@@ -281,8 +281,9 @@ const RuleRow: React.FC<RuleRowProps> = ({ rule, fields, disabled, onChange, onR
     const operatorData = operators.map((o) => ({ value: o.value, label: t.operators[o.labelKey] }));
     const currentOp = operators.find((o) => o.value === rule.operator);
 
+    // Wraps in narrow hosts (the form builder's settings pane) instead of overflowing.
     return (
-        <Group gap="xs" wrap="nowrap" data-testid="filter-rule">
+        <Group gap="xs" wrap="wrap" data-testid="filter-rule">
             <Select
                 value={rule.field}
                 onChange={(val) => {

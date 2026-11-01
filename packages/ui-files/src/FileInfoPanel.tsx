@@ -44,7 +44,8 @@ const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, ch
     <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
       {label}
     </Text>
-    <Text size="xs" fw={500} ta="right" style={{ wordBreak: 'break-word' }}>
+    {/* A div, not Text's default <p>: the ID row nests a Group and a Text in it. */}
+    <Text component="div" size="xs" fw={500} ta="right" style={{ wordBreak: 'break-word' }}>
       {children}
     </Text>
   </Group>

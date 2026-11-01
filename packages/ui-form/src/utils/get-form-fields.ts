@@ -77,6 +77,8 @@ export function getFormFields(
     const formField: FormField = {
       ...field,
       name: meta?.name ?? getFieldDisplayName(field, locale),
+      // A divider is its own heading: no field label above it (DaaS parity).
+      ...(meta?.interface === 'presentation-divider' ? { hideLabel: true } : {}),
     };
 
     // Categorize as system or user field

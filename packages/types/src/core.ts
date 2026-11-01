@@ -107,6 +107,11 @@ export interface FieldMeta {
     translation: string;
   }> | null;
   note?: string | null;
+  /**
+   * Display label that takes precedence over `translations` and the column
+   * name. Set by `buildFieldsFromDefinition` from a form builder label override.
+   */
+  name?: string;
   conditions?: unknown;
   required?: boolean;
   group?: string | null;
