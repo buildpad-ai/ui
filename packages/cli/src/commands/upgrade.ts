@@ -356,8 +356,13 @@ async function installMissingLibDeps(
   externalDeps: Set<string>
 ): Promise<boolean> {
   let installed = false;
-  for (const dep of deps ?? []) {
-    if (config.installedLib.includes(dep) || !registry.lib[dep]) continue;
+  const backend = readProjectBackend(cwd);
+  for (const declared of deps ?? []) {
+    // On an Engine project a missing dependency with an Engine variant is
+    // installed as that variant. An installed Supabase variant still counts:
+    // upgrade does not switch it (the warning above says how).
+    const dep = libForBackend(declared, registry, backend);
+    if (config.installedLib.includes(declared) || config.installedLib.includes(dep) || !registry.lib[dep]) continue;
     if (dryRun) {
       console.log(chalk.dim(`    would install missing lib dependency: ${dep}`));
       continue;

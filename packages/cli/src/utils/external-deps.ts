@@ -98,16 +98,23 @@ export function toInstallSpec(dep: string): string {
   return range ? `"${dep}@${range}"` : dep;
 }
 
-/** Build the install command for the package manager the app's lockfile implies. */
+/**
+ * Build the install command for the package manager the app's lockfile implies.
+ * With no lockfile, pnpm — as bootstrap's own install step and `fix` choose.
+ * Falling back to npm here wrote a package-lock.json during bootstrap's
+ * component step, before its `pnpm install` wrote pnpm-lock.yaml beside it.
+ */
 export function detectInstallCommand(cwd: string, specs: string[]): string {
   const hasYarnLock = fs.existsSync(path.join(cwd, 'yarn.lock'));
   const hasPnpmLock = fs.existsSync(path.join(cwd, 'pnpm-lock.yaml'));
   const hasBunLock = fs.existsSync(path.join(cwd, 'bun.lockb'));
+  const hasNpmLock = fs.existsSync(path.join(cwd, 'package-lock.json'));
 
   if (hasPnpmLock) return `pnpm add ${specs.join(' ')}`;
   if (hasYarnLock) return `yarn add ${specs.join(' ')}`;
   if (hasBunLock) return `bun add ${specs.join(' ')}`;
-  return `npm install ${specs.join(' ')}`;
+  if (hasNpmLock) return `npm install ${specs.join(' ')}`;
+  return `pnpm add ${specs.join(' ')}`;
 }
 
 /** Registry deps not present in the app's package.json (deps or devDeps). */

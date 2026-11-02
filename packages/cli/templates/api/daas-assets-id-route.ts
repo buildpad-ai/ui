@@ -40,6 +40,11 @@ export async function GET(
 
     const responseHeaders = new Headers({ 'Content-Type': contentType });
     if (cacheControl) responseHeaders.set('Cache-Control', cacheControl);
+    // Download saves with the file's name only when Content-Disposition comes through.
+    for (const name of ['content-disposition', 'content-length', 'etag', 'last-modified']) {
+      const value = response.headers.get(name);
+      if (value) responseHeaders.set(name, value);
+    }
 
     return new NextResponse(response.body, { status: 200, headers: responseHeaders });
   } catch (error) {
