@@ -13,10 +13,8 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import {
-  TextInput,
-  PasswordInput,
   Button,
   Title,
   Text,
@@ -25,11 +23,11 @@ import {
   Group,
   Anchor,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useI18n } from '@/lib/i18n/provider';
 import { useLocaleRouter } from '@/lib/i18n/navigation';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { Input } from '@/components/ui/input';
 import { IconMail, IconLock, IconCheck, IconShield } from '@tabler/icons-react';
 
 export default function LoginPage() {
@@ -37,19 +35,26 @@ export default function LoginPage() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
 
-  const form = useForm({
-    initialValues: {
-      email: '',
-      password: '',
-    },
-    validate: {
-      email: (value) =>
-        !value ? t('app.login.emailRequired') : /^\S+@\S+$/.test(value) ? null : t('app.login.emailInvalid'), // NOSONAR: simple two-quantifier regex on a short, self-typed form field, no exponential backtracking
-      password: (value) => (!value ? t('app.login.passwordRequired') : null),
-    },
-  });
+  const [values, setValues] = useState({ email: '', password: '' });
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
-  const handleLogin = async (values: { email: string; password: string }) => {
+  const setField = (field: 'email' | 'password', value: string | number | null) => {
+    setValues((prev) => ({ ...prev, [field]: String(value ?? '') }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const validate = () => {
+    const next: { email?: string; password?: string } = {};
+    if (!values.email) next.email = t('app.login.emailRequired');
+    else if (!/^\S+@\S+$/.test(values.email)) next.email = t('app.login.emailInvalid'); // NOSONAR: simple two-quantifier regex on a short, self-typed form field, no exponential backtracking
+    if (!values.password) next.password = t('app.login.passwordRequired');
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!validate()) return;
     setLoading(true);
 
     try {
@@ -306,24 +311,27 @@ export default function LoginPage() {
               <LanguageSwitcher />
             </Group>
 
-            <form onSubmit={form.onSubmit(handleLogin)}>
+            <form onSubmit={handleLogin} noValidate>
               <Stack gap="md">
-                <TextInput
+                <Input
                   label={t('app.login.email')}
                   placeholder={t('app.login.emailPlaceholder')}
                   required
-                  size="md"
-                  leftSection={<IconMail size={18} stroke={1.5} />}
-                  {...form.getInputProps('email')}
+                  iconLeft={<IconMail size={18} stroke={1.5} />}
+                  value={values.email}
+                  onChange={(v) => setField('email', v)}
+                  error={errors.email}
                 />
 
-                <PasswordInput
+                <Input
                   label={t('app.login.password')}
                   placeholder="••••••••"
                   required
-                  size="md"
-                  leftSection={<IconLock size={18} stroke={1.5} />}
-                  {...form.getInputProps('password')}
+                  masked
+                  iconLeft={<IconLock size={18} stroke={1.5} />}
+                  value={values.password}
+                  onChange={(v) => setField('password', v)}
+                  error={errors.password}
                 />
 
                 <Group justify="flex-end" mt={-5}>

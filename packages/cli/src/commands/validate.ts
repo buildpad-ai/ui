@@ -195,7 +195,7 @@ async function checkI18nLayout(
     });
   }
 
-  const needsI18n = ['supabase-auth', 'design-system', 'api-routes'].filter(m =>
+  const needsI18n = ['supabase-auth', 'design-system', 'api-routes', 'api-routes-engine'].filter(m =>
     config.installedLib.includes(m)
   );
   const i18nInstalled = config.installedLib.includes('i18n');

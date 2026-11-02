@@ -753,6 +753,7 @@
     "api-routes": {
       "name": "api-routes",
       "description": "Server-side Supabase auth routes (login, logout, callback, user) + DaaS API proxy routes for Next.js (fields, items, relations, files) + DaaSProviderWrapper client component + authenticated route-group layout (wrapped in CollectionsRelationalProvider, so it installs collection-form), all under app/[lang]",
+      "engineVariant": "api-routes-engine",
       "files": [
         {
           "source": "cli/templates/api/auth-login-route.ts",
@@ -854,7 +855,136 @@
         "hooks"
       ],
       "registryDependencies": [
-        "collection-form"
+        "collection-form",
+        "input"
+      ]
+    },
+    "api-routes-engine": {
+      "name": "api-routes-engine",
+      "description": "api-routes for an Engine project (.buildpad/project.json backend \"engine\"): the same auth routes, proxy routes and authenticated layout, but every browser call goes through the app's own /api routes, which forward the session's access token to the Engine as Bearer (the Engine accepts no cookie session and no credentialed cross-origin request). DaaSProviderWrapper uses url \"\" (same origin); the assets route forwards to the Engine's /api/files/assets/:id; lib/api/forward.ts backs extra proxies for /api/users/me and /api/files/signed-url, and a catch-all app/api/[...path] that forwards every other /api path (users, roles, policies, permissions, workflows, cron, …) to the Engine; the login page has no password-recovery link. `add api-routes` installs this module on an Engine project.",
+      "backend": "engine",
+      "replaces": [
+        "api-routes"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/api/auth-login-route.ts",
+          "target": "app/api/auth/login/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-logout-route.ts",
+          "target": "app/api/auth/logout/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-user-route.ts",
+          "target": "app/api/auth/user/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-callback-route.ts",
+          "target": "app/api/auth/callback/route.ts"
+        },
+        {
+          "source": "cli/templates/api/login-page-engine.tsx",
+          "target": "app/[lang]/login/page.tsx"
+        },
+        {
+          "source": "cli/templates/lib/api-auth-headers.ts",
+          "target": "lib/api/auth-headers.ts"
+        },
+        {
+          "source": "cli/templates/lib/api-forward.ts",
+          "target": "lib/api/forward.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-fields-route.ts",
+          "target": "app/api/fields/[collection]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-fields-id-route.ts",
+          "target": "app/api/fields/[collection]/[field]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-collections-route.ts",
+          "target": "app/api/collections/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-collections-id-route.ts",
+          "target": "app/api/collections/[collection]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-items-collection-route.ts",
+          "target": "app/api/items/[collection]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-items-id-route.ts",
+          "target": "app/api/items/[collection]/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-relations-route.ts",
+          "target": "app/api/relations/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-route.ts",
+          "target": "app/api/files/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-id-route.ts",
+          "target": "app/api/files/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-id-download-route.ts",
+          "target": "app/api/files/[id]/download/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-import-route.ts",
+          "target": "app/api/files/import/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-folders-route.ts",
+          "target": "app/api/folders/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-folders-id-route.ts",
+          "target": "app/api/folders/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-assets-id-engine-route.ts",
+          "target": "app/api/assets/[id]/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-permissions-me-route.ts",
+          "target": "app/api/permissions/me/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-users-me-engine-route.ts",
+          "target": "app/api/users/me/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-files-signed-url-engine-route.ts",
+          "target": "app/api/files/signed-url/route.ts"
+        },
+        {
+          "source": "cli/templates/api/daas-catch-all-engine-route.ts",
+          "target": "app/api/[...path]/route.ts"
+        },
+        {
+          "source": "cli/templates/components/DaaSProviderWrapperEngine.tsx",
+          "target": "components/DaaSProviderWrapper.tsx"
+        },
+        {
+          "source": "cli/templates/app/authenticated-layout.tsx",
+          "target": "app/[lang]/(authenticated)/layout.tsx"
+        }
+      ],
+      "internalDependencies": [
+        "supabase-auth",
+        "i18n",
+        "design-system",
+        "hooks"
+      ],
+      "registryDependencies": [
+        "collection-form",
+        "input"
       ]
     },
     "content-routes": {
@@ -1201,14 +1331,15 @@
       "backend": "engine",
       "replaces": [
         "external-oauth",
-        "api-routes"
+        "api-routes",
+        "api-routes-engine"
       ],
       "dependencies": [
         "jose"
       ],
       "internalDependencies": [
         "supabase-auth",
-        "api-routes"
+        "api-routes-engine"
       ],
       "files": [
         {

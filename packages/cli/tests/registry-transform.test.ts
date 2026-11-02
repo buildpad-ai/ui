@@ -73,6 +73,10 @@ const CLOSURE_ALLOWLIST: Record<string, string> = {
   // `add --with-api` / bootstrap install both explicitly (add.ts).
   'lib:api-routes app/api/auth/logout/route.ts @/lib/oauth/config':
     'api-routes ↔ external-oauth: needs the OAuth helpers moved out of external-oauth',
+  // The same logout route in the Engine variant; external-oauth-engine depends
+  // on api-routes-engine, so the reverse edge would cycle the same way.
+  'lib:api-routes-engine app/api/auth/logout/route.ts @/lib/oauth/config':
+    'api-routes-engine ↔ external-oauth-engine: needs the OAuth helpers moved out of external-oauth',
   // supabase-auth → i18n → services, so services → supabase-auth would close a
   // cycle copyLibModule cannot install. enforce.ts belongs in supabase-auth or
   // api-routes, which is a target-owner move.

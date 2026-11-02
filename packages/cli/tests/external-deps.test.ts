@@ -79,8 +79,13 @@ describe('detectInstallCommand', () => {
     expect(detectInstallCommand(tmpdir, ['a'])).toBe('yarn add a');
   });
 
-  test('no lockfile → npm install', () => {
+  test('package-lock.json → npm install', async () => {
+    await fs.writeFile(path.join(tmpdir, 'package-lock.json'), '{}');
     expect(detectInstallCommand(tmpdir, ['a'])).toBe('npm install a');
+  });
+
+  test('no lockfile → pnpm add (as bootstrap installs), never writing a package-lock.json', () => {
+    expect(detectInstallCommand(tmpdir, ['a'])).toBe('pnpm add a');
   });
 });
 
@@ -165,7 +170,7 @@ describe('ensureExternalDeps — confirming the install', () => {
     expect(out).toContain('- marked');
     expect(out).toContain('- dompurify');
     expect(out).toContain('no terminal to confirm on');
-    expect(out).toContain(`npm install "marked@${DEPENDENCY_VERSIONS.marked}" "dompurify@${DEPENDENCY_VERSIONS.dompurify}"`);
+    expect(out).toContain(`pnpm add "marked@${DEPENDENCY_VERSIONS.marked}" "dompurify@${DEPENDENCY_VERSIONS.dompurify}"`);
   });
 
   test('without a terminal the command is the one for the project\'s package manager', async () => {

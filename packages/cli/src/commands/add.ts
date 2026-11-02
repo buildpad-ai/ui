@@ -20,7 +20,7 @@ import { renderComponentsIndex } from '../utils/components-index.js';
 import { componentFilePath, sourceRoot } from '../utils/paths.js';
 import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
-import { libBackendMismatch, libForBackend, readProjectBackend } from '../utils/project-backend.js';
+import { libBackendMismatch, libForBackend, readProjectBackend, type ProjectBackend } from '../utils/project-backend.js';
 import { validate } from './validate.js';
 import {
   getRegistry as fetchRegistry,
@@ -265,9 +265,12 @@ export async function copyLibModule(
   // First, install dependencies. Always recurse — copyLibModule self-skips
   // when the module is installed AND complete, but re-copies when the
   // registry has since gained files (e.g. hooks gaining useUsers.ts).
+  // A dependency with an Engine variant is swapped for it on an Engine
+  // project (files-routes → api-routes-engine there).
   if (libModule.internalDependencies) {
+    const backend = readProjectBackend(cwd);
     for (const dep of libModule.internalDependencies) {
-      await copyLibModule(dep, registry, config, cwd, spinner, false, opts);
+      await copyLibModule(libForBackend(dep, registry, backend), registry, config, cwd, spinner, false, opts);
     }
   }
 
@@ -908,6 +911,7 @@ export function libComponentDependencies(
   name: string,
   registry: Pick<Registry, 'lib'>,
   installedLib: readonly string[],
+  backend: ProjectBackend | null = null,
 ): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -918,7 +922,7 @@ export function libComponentDependencies(
     if (!mod) return;
     if (!direct && installedLib.includes(lib)) return;
     for (const dep of mod.registryDependencies ?? []) if (!out.includes(dep)) out.push(dep);
-    for (const dep of mod.internalDependencies ?? []) visit(dep, false);
+    for (const dep of mod.internalDependencies ?? []) visit(libForBackend(dep, registry, backend), false);
   };
   visit(name, true);
   return out;
@@ -962,6 +966,7 @@ export async function add(
   // `.buildpad/project.json` (a Buildpad starter's Backend_Signal) picks the
   // Engine variant of a lib module that has one (external-oauth).
   const backend = readProjectBackend(cwd);
+  const apiLib = libForBackend('api-routes', registry, backend);
   const oauthLib = libForBackend('external-oauth', registry, backend);
 
   // If --with-api flag is set, add api-routes and supabase-auth lib modules
@@ -975,9 +980,9 @@ export async function add(
     console.log(chalk.bold('\n🔌 Installing API routes and Supabase auth...\n'));
     const spinner = ora('Processing lib modules...').start();
 
-    for (const libName of ['supabase-auth', 'i18n', 'api-routes', oauthLib]) {
+    for (const libName of ['supabase-auth', 'i18n', apiLib, oauthLib]) {
       if (!registry.lib[libName] || config.installedLib.includes(libName)) continue;
-      for (const dep of libComponentDependencies(libName, registry, config.installedLib)) {
+      for (const dep of libComponentDependencies(libName, registry, config.installedLib, backend)) {
         if (!apiComponentDeps.includes(dep)) apiComponentDeps.push(dep);
       }
     }
@@ -995,9 +1000,14 @@ export async function add(
       await copyLibModule('i18n', registry, config, cwd, spinner);
     }
 
-    // Install api-routes
-    if (registry.lib['api-routes'] && !config.installedLib.includes('api-routes')) {
-      await copyLibModule('api-routes', registry, config, cwd, spinner);
+    // Install api-routes. On an Engine project this is api-routes-engine:
+    // DaaSProviderWrapper calls the app's own /api routes, which carry the
+    // session's token to the Engine (it refuses credentialed browser calls).
+    if (registry.lib[apiLib] && !config.installedLib.includes(apiLib)) {
+      if (apiLib !== 'api-routes') {
+        spinner.info(`Engine project (.buildpad/project.json): installing ${apiLib}`);
+      }
+      await copyLibModule(apiLib, registry, config, cwd, spinner);
     }
 
     // Install external-oauth. The api-routes auth handlers (logout/login/callback)
@@ -1053,7 +1063,7 @@ export async function add(
         // users-management, files-routes → file-manager) — queue them so a
         // single `add <module>-routes` installs the whole feature. So can a
         // lib module it pulls in (external-oauth → api-routes → collection-form).
-        for (const depName of libComponentDependencies(name, registry, config.installedLib)) {
+        for (const depName of libComponentDependencies(name, registry, config.installedLib, backend)) {
           const depComponent = registry.components.find(c => c.name === depName);
           if (depComponent && !componentsToAdd.some(c => c.name === depComponent.name)) {
             componentsToAdd.push(depComponent);
