@@ -1,5 +1,12 @@
 # @buildpad/services
 
+## 3.5.2
+
+### Patch Changes
+
+- @buildpad/types@3.5.2
+- @buildpad/utils@3.5.2
+
 ## 3.5.1
 
 ### Patch Changes

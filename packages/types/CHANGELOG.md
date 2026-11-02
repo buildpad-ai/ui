@@ -1,5 +1,7 @@
 # @buildpad/types
 
+## 3.5.2
+
 ## 3.5.1
 
 ### Patch Changes

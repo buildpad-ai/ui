@@ -1,5 +1,15 @@
 # @buildpad/ui-collections
 
+## 3.5.2
+
+### Patch Changes
+
+- @buildpad/services@3.5.2
+- @buildpad/types@3.5.2
+- @buildpad/ui-form@3.5.2
+- @buildpad/ui-table@3.5.2
+- @buildpad/utils@3.5.2
+
 ## 3.5.1
 
 ### Patch Changes
