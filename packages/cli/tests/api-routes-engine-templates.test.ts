@@ -58,8 +58,8 @@ describe('registry: api-routes and its Engine variant', () => {
     const engine = new Set(apiRoutesEngine.files!.map(f => f.target));
     for (const target of supabase) expect(engine).toContain(target);
     expect([...engine].filter(t => !supabase.has(t)).sort()).toEqual([
+      'app/api/[...path]/route.ts',
       'app/api/files/signed-url/route.ts',
-      'app/api/permissions/[collection]/route.ts',
       'app/api/users/me/route.ts',
       'lib/api/forward.ts',
     ]);
@@ -259,6 +259,17 @@ describe('forwardToEngine', () => {
     expect(await res.json()).toEqual({ errors: [{ message: 'nope' }] });
   });
 
+  test('passes a binary answer back byte for byte', async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0xff, 0x00, 0xfe]);
+    answer = () => new Response(bytes, { headers: { 'content-type': 'image/png' } });
+    const { forwardToEngine } = await import('../templates/lib/api-forward');
+
+    const res = await forwardToEngine(request('/api/x'), '/api/x');
+
+    expect(res.headers.get('content-type')).toBe('image/png');
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+  });
+
   test('forwards a multipart body with its own content type', async () => {
     const { forwardToEngine } = await import('../templates/lib/api-forward');
 
@@ -341,14 +352,44 @@ describe('Engine-only proxy routes', () => {
     ]);
   });
 
-  test('GET /api/permissions/[collection] forwards to the collection, encoded', async () => {
-    answer = () => Response.json({ errors: [{ message: 'Forbidden' }] }, { status: 403 });
-    const { GET } = await import('../templates/api/daas-permissions-collection-engine-route');
+  test('the catch-all forwards any other /api path with its method, query and body', async () => {
+    const { GET, POST, PATCH, PUT, DELETE } = await import('../templates/api/daas-catch-all-engine-route');
+    const json = { 'content-type': 'application/json' };
 
-    const res = await GET(request('/api/permissions/daas_files'), params({ collection: 'daas files' }));
+    await GET(request('/api/roles?fields=id'), params({ path: ['roles'] }));
+    await POST(request('/api/permissions', { method: 'POST', headers: json, body: '[{"collection":"a"}]' }), params({ path: ['permissions'] }));
+    await PATCH(request('/api/permissions/7', { method: 'PATCH', headers: json, body: '{"action":"read"}' }), params({ path: ['permissions', '7'] }));
+    await PUT(request('/api/workflows/w1', { method: 'PUT', headers: json, body: '{}' }), params({ path: ['workflows', 'w1'] }));
+    await DELETE(request('/api/cron/c1', { method: 'DELETE' }), params({ path: ['cron', 'c1'] }));
+
+    expect(calls.map(c => [c.method, c.url, c.body])).toEqual([
+      ['GET', 'https://engine.test/api/roles?fields=id', null],
+      ['POST', 'https://engine.test/api/permissions', '[{"collection":"a"}]'],
+      ['PATCH', 'https://engine.test/api/permissions/7', '{"action":"read"}'],
+      ['PUT', 'https://engine.test/api/workflows/w1', '{}'],
+      ['DELETE', 'https://engine.test/api/cron/c1', null],
+    ]);
+    expect(calls[0].headers.Authorization).toBe('Bearer user-access-token');
+  });
+
+  test('the catch-all encodes each segment and passes the Engine’s status back', async () => {
+    answer = () => Response.json({ errors: [{ message: 'Forbidden' }] }, { status: 403 });
+    const { GET } = await import('../templates/api/daas-catch-all-engine-route');
+
+    const res = await GET(request('/api/permissions/daas_files'), params({ path: ['permissions', 'daas files'] }));
 
     expect(calls[0].url).toBe('https://engine.test/api/permissions/daas%20files');
     // usePermissions reads a 403 as "no extra rules" — it must reach the hook as a 403.
     expect(res.status).toBe(403);
+  });
+
+  test('the catch-all refuses a dot segment that would leave /api on the Engine', async () => {
+    const { GET } = await import('../templates/api/daas-catch-all-engine-route');
+
+    for (const segment of ['..', '.']) {
+      const res = await GET(request('/api/x'), params({ path: [segment, 'health'] }));
+      expect(res.status).toBe(404);
+    }
+    expect(calls).toEqual([]);
   });
 });

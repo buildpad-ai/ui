@@ -229,8 +229,10 @@ Bootstrap installs everything non-interactively, including:
   the Engine accepts no cookie session and no credentialed cross-origin request, so
   `DaaSProviderWrapper` uses `url: ""` and every browser call goes through the app's `/api`
   routes, which forward the session's token as `Authorization: Bearer`. It adds
-  `lib/api/forward.ts` and proxies for `/api/users/me`, `/api/files/signed-url` and
-  `/api/permissions/[collection]`, forwards `/api/assets/:id` to the Engine's
+  `lib/api/forward.ts`, proxies for `/api/users/me` and `/api/files/signed-url`, and a
+  catch-all `app/api/[...path]` that forwards every other `/api` path (users, roles,
+  policies, permissions, workflows, cron, …) to the same path on the Engine, so the Users,
+  Workflows and Cron modules work there too. It forwards `/api/assets/:id` to the Engine's
   `/api/files/assets/:id`, and leaves out the login page's password-recovery link (an
   administrator resets passwords in the Studio). A route module that depends on api-routes
   (`files-routes`, `users-routes`, …) gets `api-routes-engine` there; it replaces unmodified

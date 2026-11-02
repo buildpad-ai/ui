@@ -52,7 +52,8 @@ export async function forwardToEngine(
     });
 
     if (response.status === 204) return new NextResponse(null, { status: 204 });
-    return new NextResponse(await response.text(), {
+    // As bytes, so a binary answer (a file, an export) reaches the browser intact.
+    return new NextResponse(await response.arrayBuffer(), {
       status: response.status,
       headers: {
         'Content-Type': response.headers.get('content-type') ?? 'application/json',
