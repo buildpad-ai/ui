@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-11-02T15:35:23.379Z",
+  "generatedAt": "2026-11-02T22:58:53.145Z",
   "version": "3.5.1",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1114,7 +1114,7 @@
     },
     "api-routes-engine": {
       "name": "api-routes-engine",
-      "description": "api-routes for an Engine project (.buildpad/project.json backend \"engine\"): the same auth routes, proxy routes and authenticated layout, but every browser call goes through the app's own /api routes, which forward the session's access token to the Engine as Bearer (the Engine accepts no cookie session and no credentialed cross-origin request). DaaSProviderWrapper uses url \"\" (same origin); the assets route forwards to the Engine's /api/files/assets/:id; lib/api/forward.ts backs extra proxies for /api/users/me, /api/files/signed-url and /api/permissions/[collection]; the login page has no password-recovery link. `add api-routes` installs this module on an Engine project.",
+      "description": "api-routes for an Engine project (.buildpad/project.json backend \"engine\"): the same auth routes, proxy routes and authenticated layout, but every browser call goes through the app's own /api routes, which forward the session's access token to the Engine as Bearer (the Engine accepts no cookie session and no credentialed cross-origin request). DaaSProviderWrapper uses url \"\" (same origin); the assets route forwards to the Engine's /api/files/assets/:id; lib/api/forward.ts backs extra proxies for /api/users/me and /api/files/signed-url, and a catch-all app/api/[...path] that forwards every other /api path (users, roles, policies, permissions, workflows, cron, …) to the Engine; the login page has no password-recovery link. `add api-routes` installs this module on an Engine project.",
       "backend": "engine",
       "replaces": [
         "api-routes"
@@ -1153,7 +1153,7 @@
         {
           "source": "cli/templates/lib/api-forward.ts",
           "target": "lib/api/forward.ts",
-          "sourceSha256": "031a50ef508c6efb59117d09d377dc6d4952980f5e901524d0f7ad61f73f6f27"
+          "sourceSha256": "e4c12cb61ddf36d4da93ebbdcd03d78fce0e13a06750af68e8758f571f0dd195"
         },
         {
           "source": "cli/templates/api/daas-fields-route.ts",
@@ -1231,11 +1231,6 @@
           "sourceSha256": "bc5f0b43e7d3495d351361e634b9da21d2957e1ad16ff76bc59a47376baab9ff"
         },
         {
-          "source": "cli/templates/api/daas-permissions-collection-engine-route.ts",
-          "target": "app/api/permissions/[collection]/route.ts",
-          "sourceSha256": "00fda11f376da7588ed10ed155056e3a41151789f3bf5b7680b3aa9afcd96bb1"
-        },
-        {
           "source": "cli/templates/api/daas-users-me-engine-route.ts",
           "target": "app/api/users/me/route.ts",
           "sourceSha256": "cb42b9596740eb8de78d9c85be357550df98cf3628bfe9b287c2eaab4cb46f01"
@@ -1244,6 +1239,11 @@
           "source": "cli/templates/api/daas-files-signed-url-engine-route.ts",
           "target": "app/api/files/signed-url/route.ts",
           "sourceSha256": "d35f6c24a61f830aca9d3e68243ab1ba28030fb147fc0ad09dc4f7d903e865ae"
+        },
+        {
+          "source": "cli/templates/api/daas-catch-all-engine-route.ts",
+          "target": "app/api/[...path]/route.ts",
+          "sourceSha256": "5aaa981f9b526c1ed067da9ae14a24417626fd88e27841dd594ca182ed37f007"
         },
         {
           "source": "cli/templates/components/DaaSProviderWrapperEngine.tsx",
