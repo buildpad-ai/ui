@@ -11,9 +11,10 @@
 #   ├── files/              ← ui-files Storybook
 #   ├── users/              ← ui-users Storybook
 #   ├── workflows/          ← ui-workflows Storybook
-#   └── cron/               ← ui-cron Storybook
+#   ├── cron/               ← ui-cron Storybook
+#   └── chat/               ← ui-chat Storybook
 #
-# The landing page with links to all 9 is the Next.js host app itself.
+# The landing page with links to all 10 is the Next.js host app itself.
 
 set -euo pipefail
 
@@ -104,13 +105,22 @@ npx storybook build -o "${OUTPUT_DIR}/workflows" 2>&1 || {
 echo "   ✅ ui-workflows done"
 
 # Build ui-cron Storybook
-echo "📦 [9/9] Building ui-cron Storybook..."
+echo "📦 [9/10] Building ui-cron Storybook..."
 cd "${ROOT_DIR}/packages/ui-cron"
 npx storybook build -o "${OUTPUT_DIR}/cron" 2>&1 || {
   echo "❌ ui-cron Storybook build failed"
   exit 1
 }
 echo "   ✅ ui-cron done"
+
+# Build ui-chat Storybook
+echo "📦 [10/10] Building ui-chat Storybook..."
+cd "${ROOT_DIR}/packages/ui-chat"
+npx storybook build -o "${OUTPUT_DIR}/chat" 2>&1 || {
+  echo "❌ ui-chat Storybook build failed"
+  exit 1
+}
+echo "   ✅ ui-chat done"
 
 # No landing page needed — the Next.js host app serves as the landing page
 
@@ -125,7 +135,8 @@ echo "   ├── collections/     (CollectionForm & CollectionList)"
 echo "   ├── files/           (file manager components)"
 echo "   ├── users/           (users/roles/policies admin)"
 echo "   ├── workflows/       (workflow definitions, assignments, instances)"
-echo "   └── cron/            (cron jobs list, job editor, run history)"
+echo "   ├── cron/            (cron jobs list, job editor, run history)"
+echo "   └── chat/            (AI chat panel and widget)"
 echo ""
 echo "   Served by the Next.js host app at /storybook/*"
 echo "   To preview: pnpm build:host && pnpm start:host"

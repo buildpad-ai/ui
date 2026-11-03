@@ -17,6 +17,7 @@ import { filesDefaults } from './namespaces/files';
 import { usersDefaults } from './namespaces/users';
 import { workflowsDefaults } from './namespaces/workflows';
 import { cronDefaults } from './namespaces/cron';
+import { chatDefaults } from './namespaces/chat';
 import { formsDefaults } from './namespaces/forms';
 import { hooksDefaults } from './namespaces/hooks';
 
@@ -30,6 +31,7 @@ export const defaultTranslations: BuildpadTranslations = {
   users: usersDefaults,
   workflows: workflowsDefaults,
   cron: cronDefaults,
+  chat: chatDefaults,
   forms: formsDefaults,
   hooks: hooksDefaults,
 };

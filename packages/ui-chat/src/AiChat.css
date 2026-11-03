@@ -1,0 +1,750 @@
+/*
+ * @buildpad/ui-chat — plain CSS with `bp-ai-chat-*` classes, drawn with Mantine
+ * variables (and the `--ds-*` design tokens where the app defines them), so it
+ * follows the app's theme and colour scheme.
+ *
+ * Shells: `AiChatPanel` docks to the right edge at full height (on wide screens
+ * the app makes room with `margin-inline-end: var(--bp-ai-chat-offset, 0)`, so an
+ * answer sits beside the screen it explains; narrower, it overlays; on phones it
+ * fills the screen). `AiChatWidget` is a launcher bubble with a floating window.
+ */
+
+.bp-ai-chat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--mantine-color-body);
+    color: var(--mantine-color-text);
+}
+
+/* ── Docked panel ── */
+
+.bp-ai-chat-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--bp-ai-chat-width, 420px);
+    z-index: var(--bp-ai-chat-z-index, 180); /* above sidebars, below Mantine modals (200) */
+    border-left: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    box-shadow: -12px 0 32px rgba(15, 23, 42, 0.08);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 200ms ease, visibility 0s linear 200ms;
+}
+
+.bp-ai-chat-panel[data-opened] {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform 200ms ease, visibility 0s;
+}
+
+@media (max-width: 48em) {
+    .bp-ai-chat-panel {
+        width: 100vw;
+        border-left: 0;
+    }
+}
+
+/* ── Floating widget ── */
+
+.bp-ai-chat-launcher {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: var(--bp-ai-chat-z-index, 180);
+    box-shadow: var(--mantine-shadow-md);
+}
+
+.bp-ai-chat-widget[data-position='bottom-left'] .bp-ai-chat-launcher,
+.bp-ai-chat-widget[data-position='bottom-left'] .bp-ai-chat-window {
+    right: auto;
+    left: 20px;
+}
+
+.bp-ai-chat-window {
+    position: fixed;
+    bottom: 88px;
+    right: 20px;
+    z-index: var(--bp-ai-chat-z-index, 180);
+    width: min(var(--bp-ai-chat-width, 400px), calc(100vw - 40px));
+    height: min(640px, calc(100dvh - 120px));
+    border: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--mantine-shadow-xl);
+    transform: translateY(12px) scale(0.98);
+    transform-origin: bottom right;
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 160ms ease, opacity 160ms ease, visibility 0s linear 160ms;
+}
+
+.bp-ai-chat-window[data-opened] {
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    transition: transform 160ms ease, opacity 160ms ease, visibility 0s;
+}
+
+@media (max-width: 48em) {
+    .bp-ai-chat-window {
+        inset: 0;
+        width: 100vw;
+        height: 100dvh;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .bp-ai-chat-widget .bp-ai-chat-window[data-opened] ~ .bp-ai-chat-launcher {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bp-ai-chat-panel,
+    .bp-ai-chat-panel[data-opened],
+    .bp-ai-chat-window,
+    .bp-ai-chat-window[data-opened] {
+        transition: none;
+    }
+}
+
+/* Taking a screenshot: every shell off screen at once, out of the shot and out of the way of the selection. */
+html[data-ai-chat-capturing] .bp-ai-chat-panel,
+html[data-ai-chat-capturing] .bp-ai-chat-window,
+html[data-ai-chat-capturing] .bp-ai-chat-launcher {
+    visibility: hidden;
+    transition: none;
+}
+
+.bp-ai-chat-drop-overlay {
+    position: absolute;
+    inset: 8px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 2px dashed var(--mantine-primary-color-filled);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--mantine-color-body) 88%, transparent);
+    color: var(--mantine-primary-color-filled);
+    pointer-events: none;
+}
+
+.bp-ai-chat-header {
+    height: var(--bp-ai-chat-header-height, 60px); /* line it up with the app header beside a docked panel */
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 12px 0 16px;
+    border-bottom: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+}
+
+.bp-ai-chat-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 8px;
+    color: var(--mantine-color-white);
+    background: linear-gradient(135deg, var(--mantine-color-primary-6), var(--mantine-color-violet-6));
+}
+
+.bp-ai-chat-mark {
+    width: 26px;
+    height: 26px;
+}
+
+.bp-ai-chat-mark[data-size='lg'] {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+}
+
+.bp-ai-chat-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.bp-ai-chat-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+}
+
+/* ── Empty state ── */
+
+.bp-ai-chat-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 4px 8px;
+}
+
+.bp-ai-chat-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 24px;
+}
+
+.bp-ai-chat-suggestion {
+    padding: 10px 12px;
+    border: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    border-radius: 10px;
+    font-size: var(--mantine-font-size-sm);
+    line-height: 1.4;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.bp-ai-chat-suggestion:hover {
+    background: var(--mantine-color-default-hover);
+    border-color: var(--mantine-color-primary-3);
+}
+
+.bp-ai-chat-suggestion:focus-visible {
+    outline: 2px solid var(--mantine-primary-color-filled);
+    outline-offset: 2px;
+}
+
+/* ── Messages ── */
+
+.bp-ai-chat-user-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.bp-ai-chat-sent-images {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    max-width: 85%;
+}
+
+.bp-ai-chat-sent-image {
+    display: block;
+    padding: 0;
+    border: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--mantine-color-default-hover);
+    cursor: zoom-in;
+}
+
+.bp-ai-chat-sent-image img {
+    display: block;
+    max-width: 220px;
+    max-height: 140px;
+    object-fit: cover;
+}
+
+.bp-ai-chat-user-bubble {
+    max-width: 85%;
+    padding: 8px 12px;
+    border-radius: 14px 14px 4px 14px;
+    background: var(--mantine-primary-color-light);
+    font-size: var(--mantine-font-size-sm);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* Answers run full width without a bubble: long, structured text reads better that way. */
+.bp-ai-chat-assistant-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.bp-ai-chat-message-actions {
+    margin-left: -4px;
+}
+
+/* The working word: a sparkle and one shimmering word while the agent searches and thinks. */
+.bp-ai-chat-working {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 2px;
+    font-size: var(--mantine-font-size-sm);
+}
+
+.bp-ai-chat-working-mark {
+    flex-shrink: 0;
+    color: var(--mantine-primary-color-filled);
+    animation: bp-ai-chat-pulse 1.6s ease-in-out infinite;
+}
+
+.bp-ai-chat-working-word {
+    background: linear-gradient(
+        90deg,
+        var(--mantine-color-dimmed) 0%,
+        var(--mantine-color-dimmed) 40%,
+        var(--mantine-color-text) 50%,
+        var(--mantine-color-dimmed) 60%,
+        var(--mantine-color-dimmed) 100%
+    );
+    background-size: 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: bp-ai-chat-shimmer 2s linear infinite;
+}
+
+@keyframes bp-ai-chat-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -150% 0; }
+}
+
+@keyframes bp-ai-chat-pulse {
+    0%, 100% { opacity: 0.45; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bp-ai-chat-working-mark,
+    .bp-ai-chat-working-word {
+        animation: none;
+    }
+
+    .bp-ai-chat-working-word {
+        color: var(--mantine-color-dimmed);
+        background: none;
+    }
+}
+
+/* ── Markdown ── */
+
+.bp-ai-chat-markdown {
+    font-size: var(--mantine-font-size-sm);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.bp-ai-chat-markdown > :first-child {
+    margin-top: 0;
+}
+
+.bp-ai-chat-markdown > :last-child {
+    margin-bottom: 0;
+}
+
+.bp-ai-chat-markdown p,
+.bp-ai-chat-markdown ul,
+.bp-ai-chat-markdown ol,
+.bp-ai-chat-markdown blockquote {
+    margin: 0 0 10px;
+}
+
+.bp-ai-chat-markdown ul,
+.bp-ai-chat-markdown ol {
+    padding-left: 20px;
+}
+
+/* Apps often reset list markers globally; steps need their numbers back. */
+.bp-ai-chat-markdown ul {
+    list-style: disc;
+}
+
+.bp-ai-chat-markdown ol {
+    list-style: decimal;
+}
+
+.bp-ai-chat-markdown li + li {
+    margin-top: 4px;
+}
+
+.bp-ai-chat-markdown h1,
+.bp-ai-chat-markdown h2,
+.bp-ai-chat-markdown h3,
+.bp-ai-chat-markdown h4 {
+    margin: 16px 0 8px;
+    font-size: var(--mantine-font-size-sm);
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.bp-ai-chat-markdown h1,
+.bp-ai-chat-markdown h2 {
+    font-size: var(--mantine-font-size-md);
+}
+
+.bp-ai-chat-markdown a {
+    color: var(--mantine-color-anchor);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.bp-ai-chat-markdown blockquote {
+    padding-left: 12px;
+    border-left: 3px solid var(--ds-border-color, var(--mantine-color-default-border));
+    color: var(--mantine-color-dimmed);
+}
+
+.bp-ai-chat-markdown hr {
+    border: 0;
+    border-top: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    margin: 16px 0;
+}
+
+.bp-ai-chat-external-icon {
+    margin-left: 2px;
+    vertical-align: -1px;
+}
+
+.bp-ai-chat-code-block {
+    position: relative;
+    margin: 0 0 10px;
+}
+
+.bp-ai-chat-code-block pre {
+    margin: 0;
+    padding-right: 36px;
+    font-size: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.bp-ai-chat-code-copy {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+}
+
+.bp-ai-chat-table-scroll {
+    overflow-x: auto;
+    margin: 0 0 10px;
+}
+
+.bp-ai-chat-table-scroll table {
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.bp-ai-chat-table-scroll th,
+.bp-ai-chat-table-scroll td {
+    padding: 6px 8px;
+    border: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    text-align: left;
+    vertical-align: top;
+}
+
+/* Docs screenshots in answers */
+.bp-ai-chat-figure {
+    display: block;
+    width: 100%;
+    margin: 4px 0 12px;
+    padding: 0;
+    border: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--mantine-color-default-hover);
+    cursor: zoom-in;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+}
+
+.bp-ai-chat-figure:focus-visible {
+    outline: 2px solid var(--ds-focus-border, var(--mantine-primary-color-filled));
+    outline-offset: 2px;
+}
+
+.bp-ai-chat-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 320px;
+    object-fit: contain;
+    object-position: top left;
+    background: var(--mantine-color-body);
+}
+
+.bp-ai-chat-image-caption {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    padding: 6px 8px;
+    border-top: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--mantine-color-dimmed);
+}
+
+.bp-ai-chat-image-full {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 76vh;
+    object-fit: contain;
+    border-radius: 6px;
+}
+
+.bp-ai-chat-image-blocked {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--mantine-color-dimmed);
+}
+
+/* ── Sources ── */
+
+.bp-ai-chat-sources {
+    margin-top: 2px;
+}
+
+.bp-ai-chat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 2px 8px;
+    border: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    border-radius: var(--ds-radius-pill, 999px);
+    font-size: 12px;
+    color: inherit;
+}
+
+.bp-ai-chat-chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bp-ai-chat-jump {
+    position: absolute;
+    left: 50%;
+    bottom: 150px;
+    transform: translateX(-50%);
+    box-shadow: var(--mantine-shadow-sm);
+}
+
+/* ── Composer ── */
+
+.bp-ai-chat-composer {
+    flex-shrink: 0;
+    padding: 8px 12px 12px;
+    border-top: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+}
+
+.bp-ai-chat-context {
+    display: flex;
+    margin-bottom: 6px;
+}
+
+.bp-ai-chat-context-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 2px 4px 2px 8px;
+    border-radius: var(--ds-radius-pill, 999px);
+    font-size: 12px;
+    color: var(--mantine-color-dimmed);
+}
+
+.bp-ai-chat-context-chip {
+    background: var(--mantine-color-default-hover);
+}
+
+.bp-ai-chat-context-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bp-ai-chat-context-remove {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 50%;
+    color: inherit;
+}
+
+.bp-ai-chat-context-remove:hover {
+    color: var(--mantine-color-text);
+    background: var(--mantine-color-default-border);
+}
+
+.bp-ai-chat-input-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid var(--mantine-color-default-border);
+    border-radius: 14px;
+    background: var(--mantine-color-body);
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.bp-ai-chat-input-box:focus-within {
+    /* Stands in for the focus ring, which the textarea itself doesn't draw. */
+    border-color: var(--ds-focus-border, var(--mantine-primary-color-filled));
+    box-shadow: 0 0 0 1px var(--ds-focus-border, var(--mantine-primary-color-filled));
+}
+
+.bp-ai-chat-input-box[data-error] {
+    border-color: var(--mantine-color-red-6);
+}
+
+.bp-ai-chat-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.bp-ai-chat-input-tools {
+    flex-shrink: 0;
+}
+
+.bp-ai-chat-textarea {
+    flex: 1;
+    min-width: 0;
+}
+
+.bp-ai-chat-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 2px 2px 0;
+    list-style: none;
+}
+
+.bp-ai-chat-attachment {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--mantine-color-default-hover);
+}
+
+.bp-ai-chat-attachment img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.bp-ai-chat-attachment-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #fff;
+}
+
+.bp-ai-chat-attachment-remove:hover {
+    background: rgba(15, 23, 42, 0.9);
+}
+
+.bp-ai-chat-attachment-annotate {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #fff;
+}
+
+.bp-ai-chat-attachment-annotate:hover {
+    background: rgba(15, 23, 42, 0.9);
+}
+
+/* The design system rings a focused Mantine input; here the box around the
+   textarea already shows focus, so a second ring inside it is noise. */
+.bp-ai-chat .bp-ai-chat-input-box .bp-ai-chat-textarea .mantine-Input-input:focus,
+.bp-ai-chat .bp-ai-chat-input-box .bp-ai-chat-textarea .mantine-Input-input:focus-within {
+    box-shadow: none;
+    outline: none;
+}
+
+/* One line is exactly as tall as the 28 px buttons beside it (21 px line + 2 × 3.5 px),
+   so text and icons share a centre line; Mantine's 36 px input minimum put the text
+   above the icons. Taller text keeps the icons level with its last line. */
+.bp-ai-chat-textarea textarea {
+    outline: none;
+    min-height: 28px;
+    padding: 3.5px 0;
+    font-size: var(--mantine-font-size-sm);
+    line-height: 21px;
+}
+
+/* ── Recent chats ── */
+
+.bp-ai-chat-recent-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.bp-ai-chat-recent-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-right: 4px;
+    border-radius: 6px;
+}
+
+.bp-ai-chat-recent-row:hover,
+.bp-ai-chat-recent-row:focus-within,
+.bp-ai-chat-recent-row[data-current] {
+    background: var(--mantine-color-default-hover);
+}
+
+.bp-ai-chat-recent-open {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+/* Pointer users get the remove button on hover; touch screens always show it. */
+@media (hover: hover) {
+    .bp-ai-chat-recent-remove {
+        opacity: 0;
+    }
+
+    .bp-ai-chat-recent-row:hover .bp-ai-chat-recent-remove,
+    .bp-ai-chat-recent-row:focus-within .bp-ai-chat-recent-remove {
+        opacity: 1;
+    }
+}
+
+.bp-ai-chat-recent-note {
+    border-top: 1px solid var(--ds-border-color, var(--mantine-color-default-border));
+    line-height: 1.4;
+}

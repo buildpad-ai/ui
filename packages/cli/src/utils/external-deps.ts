@@ -78,6 +78,14 @@ export const DEPENDENCY_VERSIONS: Record<string, string> = {
   '@mapbox/mapbox-gl-draw': '^1.5.2',
   // State diagram (workflow-management; the range @buildpad/ui-workflows is developed against)
   '@xyflow/react': '^12.9.3',
+  // AI chat (ai-chat; the ranges @buildpad/ui-chat is developed against). ai 5.0.282 is the
+  // first to accept the finishReason Chocolate Factory sends on its stream's finish chunk.
+  'ai': '^5.0.282',
+  '@ai-sdk/react': '^2.0.285',
+  'react-markdown': '^10.1.0',
+  'remark-gfm': '^4.0.1',
+  'use-stick-to-bottom': '^1.1.1',
+  '@zumer/snapdom': '^2.24.18',
   // Misc (aligned with the init template / services)
   '@tabler/icons-react': '^3.0.0',
   '@supabase/ssr': '^0.5',

@@ -4,7 +4,7 @@ export default {
   siteTitle: "Buildpad UI Docs",
   summary:
     "Buildpad UI is the React (Mantine) component library and CLI that Buildpad apps are built from: " +
-    "collection forms and lists, field interfaces, files, users, workflows and cron modules, the app shell, " +
+    "collection forms and lists, field interfaces, files, users, workflows, cron and AI chat modules, the app shell, " +
     "the design system and styleguide, and an MCP server for browsing and installing components.",
   baseUrl: "https://ui.buildpad.ai/docs",
   contentDir: "../content",

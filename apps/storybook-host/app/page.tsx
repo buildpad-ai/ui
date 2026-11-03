@@ -123,6 +123,14 @@ const catalog: CatalogTier[] = [
         blurb:
           "Cron jobs list with row actions, the job editor & run history with logs.",
       },
+      {
+        emoji: "💬",
+        name: "AI Chat",
+        path: "/storybook/chat",
+        port: 6015,
+        blurb:
+          "A docked panel or floating widget that streams answers from a Chocolate Factory agent.",
+      },
     ],
   },
 ];
@@ -548,7 +556,8 @@ pnpm storybook:collections  # Port 6008
 pnpm storybook:files        # Port 6009
 pnpm storybook:users        # Port 6011 (users/roles/policies)
 pnpm storybook:workflows    # Port 6013 (workflow definitions/assignments/instances)
-pnpm storybook:cron         # Port 6014 (cron jobs/editor/run history)`}</pre>
+pnpm storybook:cron         # Port 6014 (cron jobs/editor/run history)
+pnpm storybook:chat         # Port 6015 (AI chat panel and widget)`}</pre>
               </div>
             )}
           </section>

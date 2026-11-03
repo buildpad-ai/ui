@@ -9,6 +9,7 @@
       "@buildpad/hooks",
       "@buildpad/services",
       "@buildpad/types",
+      "@buildpad/ui-chat",
       "@buildpad/ui-collections",
       "@buildpad/ui-cron",
       "@buildpad/ui-files",
