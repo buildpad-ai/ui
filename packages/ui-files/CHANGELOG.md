@@ -1,5 +1,16 @@
 # @buildpad/ui-files
 
+## 3.6.0
+
+### Patch Changes
+
+- Updated dependencies [4b2e73f]
+  - @buildpad/utils@3.6.0
+  - @buildpad/hooks@3.6.0
+  - @buildpad/services@3.6.0
+  - @buildpad/ui-interfaces@3.6.0
+  - @buildpad/types@3.6.0
+
 ## 3.5.2
 
 ### Patch Changes
