@@ -188,6 +188,10 @@
           "target": "lib/buildpad/i18n/namespaces/cron.ts"
         },
         {
+          "source": "utils/src/i18n/namespaces/chat.ts",
+          "target": "lib/buildpad/i18n/namespaces/chat.ts"
+        },
+        {
           "source": "utils/src/i18n/namespaces/forms.ts",
           "target": "lib/buildpad/i18n/namespaces/forms.ts"
         },
@@ -1244,6 +1248,40 @@
           "labelKey": "app.nav.cron",
           "sectionKey": "app.nav.automation"
         }
+      ]
+    },
+    "ai-chat-routes": {
+      "name": "ai-chat-routes",
+      "description": "AI chat, browser-direct (the default): GET /api/ai-chat/config hands the browser the Chocolate Factory settings (CHOCOLATE_FACTORY_BASE_URL, CHOCOLATE_FACTORY_AGENT_ID, and CHOCOLATE_FACTORY_AGENT_KEY or CHOCOLATE_FACTORY_API_KEY) for useChocolateFactoryConfig() + chocolateFactoryBackend(), which call the agent straight from the browser, so answers stream on Amplify Hosting. The key is visible to the browser. Requires the ai-chat component.",
+      "files": [
+        {
+          "source": "cli/templates/api/ai-chat-config-route.ts",
+          "target": "app/api/ai-chat/config/route.ts"
+        }
+      ],
+      "registryDependencies": [
+        "ai-chat"
+      ]
+    },
+    "ai-chat-proxy-routes": {
+      "name": "ai-chat-proxy-routes",
+      "description": "AI chat through the app's own server: POST /api/ai-chat streams a turn from the Chocolate Factory agent with the key added on the server, GET /api/ai-chat/history loads a conversation back, and lib/ai-chat/server.ts holds the settings and the signed conversation tokens (AI_CHAT_SECRET; the owner is an HttpOnly cookie, or your user id). Use with routeBackend(). Streams only on a long-lived Node server; on Amplify Hosting the route is a buffered Lambda (~30 s), so prefer ai-chat-routes there. Requires the ai-chat component.",
+      "files": [
+        {
+          "source": "cli/templates/api/ai-chat-route.ts",
+          "target": "app/api/ai-chat/route.ts"
+        },
+        {
+          "source": "cli/templates/api/ai-chat-history-route.ts",
+          "target": "app/api/ai-chat/history/route.ts"
+        },
+        {
+          "source": "cli/templates/lib/ai-chat-server.ts",
+          "target": "lib/ai-chat/server.ts"
+        }
+      ],
+      "registryDependencies": [
+        "ai-chat"
       ]
     },
     "supabase-auth": {
@@ -3872,6 +3910,111 @@
         "vtable",
         "input-code"
       ]
+    },
+    {
+      "name": "ai-chat",
+      "title": "AiChat",
+      "excludeFromAll": true,
+      "description": "AI chat backed by a Chocolate Factory agent — a docked side panel (AiChatPanel) or a floating widget (AiChatWidget), opened by AiChatButton and the ⌘I / Ctrl+I shortcut through AiChatProvider; AiChat is the chat itself, for other shells. Streaming Markdown answers, one working word while the agent searches, stop and try again, copy, starter suggestions, recent chats, image attachments (paper clip, paste, drag and drop) and annotated screenshots of the page. Backends: chocolateFactoryBackend (browser-direct, streams on Amplify; the key is visible to the browser) and routeBackend (the app's own proxy route from ai-chat-proxy-routes; the key stays on the server). Install ai-chat-routes or ai-chat-proxy-routes to get the route as well.",
+      "category": "ai",
+      "files": [
+        {
+          "source": "ui-chat/src/AiChat.tsx",
+          "target": "components/ui/ai-chat/ai-chat.tsx"
+        },
+        {
+          "source": "ui-chat/src/AiChat.css",
+          "target": "components/ui/ai-chat/ai-chat.css"
+        },
+        {
+          "source": "ui-chat/src/AiChatPanel.tsx",
+          "target": "components/ui/ai-chat/ai-chat-panel.tsx"
+        },
+        {
+          "source": "ui-chat/src/AiChatWidget.tsx",
+          "target": "components/ui/ai-chat/ai-chat-widget.tsx"
+        },
+        {
+          "source": "ui-chat/src/AiChatButton.tsx",
+          "target": "components/ui/ai-chat/ai-chat-button.tsx"
+        },
+        {
+          "source": "ui-chat/src/AiChatContextChip.tsx",
+          "target": "components/ui/ai-chat/ai-chat-context-chip.tsx"
+        },
+        {
+          "source": "ui-chat/src/AiChatProvider.tsx",
+          "target": "components/ui/ai-chat/ai-chat-provider.tsx"
+        },
+        {
+          "source": "ui-chat/src/AiChatMessage.tsx",
+          "target": "components/ui/ai-chat/ai-chat-message.tsx"
+        },
+        {
+          "source": "ui-chat/src/AiChatMarkdown.tsx",
+          "target": "components/ui/ai-chat/ai-chat-markdown.tsx"
+        },
+        {
+          "source": "ui-chat/src/AiChatImage.tsx",
+          "target": "components/ui/ai-chat/ai-chat-image.tsx"
+        },
+        {
+          "source": "ui-chat/src/backends.ts",
+          "target": "components/ui/ai-chat/backends.ts"
+        },
+        {
+          "source": "ui-chat/src/useChocolateFactoryConfig.ts",
+          "target": "components/ui/ai-chat/use-chocolate-factory-config.ts"
+        },
+        {
+          "source": "ui-chat/src/attachments.ts",
+          "target": "components/ui/ai-chat/attachments.ts"
+        },
+        {
+          "source": "ui-chat/src/capture.ts",
+          "target": "components/ui/ai-chat/capture.ts"
+        },
+        {
+          "source": "ui-chat/src/history.ts",
+          "target": "components/ui/ai-chat/history.ts"
+        },
+        {
+          "source": "ui-chat/src/storage.ts",
+          "target": "components/ui/ai-chat/storage.ts"
+        },
+        {
+          "source": "ui-chat/src/screenshot/annotator.ts",
+          "target": "components/ui/ai-chat/screenshot/annotator.ts"
+        },
+        {
+          "source": "ui-chat/src/screenshot/capture-page.ts",
+          "target": "components/ui/ai-chat/screenshot/capture-page.ts"
+        },
+        {
+          "source": "ui-chat/src/screenshot/region-selector.ts",
+          "target": "components/ui/ai-chat/screenshot/region-selector.ts"
+        },
+        {
+          "source": "ui-chat/src/index.ts",
+          "target": "components/ui/ai-chat/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react",
+        "ai",
+        "@ai-sdk/react",
+        "react-markdown",
+        "remark-gfm",
+        "use-stick-to-bottom",
+        "@zumer/snapdom"
+      ],
+      "internalDependencies": [
+        "services",
+        "utils"
+      ],
+      "registryDependencies": []
     }
   ],
   "categories": [
@@ -3929,6 +4072,11 @@
       "name": "admin",
       "title": "Administration",
       "description": "Administration modules: users, roles and policies, and cron jobs"
+    },
+    {
+      "name": "ai",
+      "title": "AI",
+      "description": "AI assistants: chat with an agent"
     }
   ]
 }

@@ -15,6 +15,7 @@ export type {
   UsersTranslations,
   WorkflowsTranslations,
   CronTranslations,
+  ChatTranslations,
   FormsTranslations,
   HooksTranslations,
   DateTimeTranslations,

@@ -1,0 +1,4 @@
+/* ui-chat — the docked panel and floating widget are fixed-position; give the page room to show them */
+.sb-chat-wrapper {
+  min-height: 640px;
+}

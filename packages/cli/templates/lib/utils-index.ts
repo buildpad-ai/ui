@@ -233,6 +233,7 @@ export {
   type UsersTranslations,
   type WorkflowsTranslations,
   type CronTranslations,
+  type ChatTranslations,
   type FormsTranslations,
   type HooksTranslations,
   type DateTimeTranslations,

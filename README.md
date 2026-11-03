@@ -54,6 +54,7 @@ buildpad-ui/
     ├── ui-files/           # File manager module (Storybook port 6009)
     ├── ui-workflows/       # Workflow admin module (Storybook port 6013)
     ├── ui-cron/            # Cron jobs admin module (Storybook port 6014)
+    ├── ui-chat/            # AI chat panel and widget (Storybook port 6015)
     ├── types/              # Shared TypeScript types
     ├── services/           # Shared service classes
     ├── hooks/              # Shared React hooks
@@ -702,7 +703,8 @@ Buildpad uses a **per-file checksum** system so updates only touch files you hav
 | `pnpm storybook:files`       | Run Files Storybook (port 6009)                  |
 | `pnpm storybook:workflows`   | Run Workflows Storybook (port 6013)              |
 | `pnpm storybook:cron`        | Run Cron Jobs Storybook (port 6014)              |
-| `pnpm build:storybook`       | Build all 9 Storybooks to host app's public dir  |
+| `pnpm storybook:chat`        | Run AI Chat Storybook (port 6015)                |
+| `pnpm build:storybook`       | Build all 10 Storybooks to host app's public dir |
 | `pnpm dev:host`              | Start Storybook host app in dev mode (port 3000) |
 | `pnpm build:host`            | Build the Storybook host app for production      |
 | `pnpm start:host`            | Start production Storybook host app              |
@@ -725,6 +727,7 @@ pnpm storybook:collections    # Collections (port 6005)
 pnpm storybook:files          # File manager (port 6009)
 pnpm storybook:workflows      # Workflow admin (port 6013)
 pnpm storybook:cron           # Cron jobs admin (port 6014)
+pnpm storybook:chat           # AI chat (port 6015)
 
 # Build all Storybooks for hosting
 pnpm build:storybook

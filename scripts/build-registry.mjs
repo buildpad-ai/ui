@@ -51,6 +51,7 @@ export const PACKAGE_FOLDERS = {
   '@buildpad/ui-users': 'ui-users',
   '@buildpad/ui-workflows': 'ui-workflows',
   '@buildpad/ui-cron': 'ui-cron',
+  '@buildpad/ui-chat': 'ui-chat',
   '@buildpad/hooks': 'hooks',
   '@buildpad/services': 'services',
   '@buildpad/types': 'types',
@@ -258,6 +259,7 @@ export function inferSourcePackage(source) {
   if (source.startsWith('ui-users/'))       return '@buildpad/ui-users';
   if (source.startsWith('ui-workflows/'))   return '@buildpad/ui-workflows';
   if (source.startsWith('ui-cron/'))        return '@buildpad/ui-cron';
+  if (source.startsWith('ui-chat/'))        return '@buildpad/ui-chat';
   if (source.startsWith('hooks/'))          return '@buildpad/hooks';
   if (source.startsWith('services/'))       return '@buildpad/services';
   if (source.startsWith('types/'))          return '@buildpad/types';
