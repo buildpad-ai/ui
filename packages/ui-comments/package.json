@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-comments",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "Comments for any record in a Buildpad app: threaded replies, edit, delete, resolve, light formatting and emoji reactions, behind a small adapter",
   "type": "module",
   "main": "./dist/index.js",

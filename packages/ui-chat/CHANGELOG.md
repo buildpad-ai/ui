@@ -1,5 +1,13 @@
 # @buildpad/ui-chat
 
+## 3.7.0
+
+### Patch Changes
+
+- Updated dependencies [d67b55a]
+  - @buildpad/utils@3.7.0
+  - @buildpad/services@3.7.0
+
 ## 3.6.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-chat",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "AI chat for Buildpad apps: a docked panel or floating widget that streams answers from a Chocolate Factory agent, with image attachments and annotated screenshots",
   "type": "module",
   "main": "./dist/index.js",
