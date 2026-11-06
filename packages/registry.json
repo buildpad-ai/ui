@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-11-06T04:04:17.410Z",
+  "generatedAt": "2026-11-06T04:32:14.177Z",
   "version": "3.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -287,7 +287,7 @@
         {
           "source": "utils/src/i18n/namespaces/comments.ts",
           "target": "lib/buildpad/i18n/namespaces/comments.ts",
-          "sourceSha256": "d7206ec1328e27c26b04294eee6a44c453119d4e42e953155970b0bd78f19b48"
+          "sourceSha256": "1ab9916fda7849561aff66560163d11e02b21507ff17ea768a1f40804c030dba"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -4814,12 +4814,12 @@
         {
           "source": "ui-comments/src/CommentsKit.tsx",
           "target": "components/ui/comments/comments-kit.tsx",
-          "sourceSha256": "636e05fcb741b26d792c280137286b9fa9f6d6eb1fab3ca01fbc317b80caaae5"
+          "sourceSha256": "5e538912ee12513046fa8df455a2c592b400fec6f4bdbeb4a9615a22a4c8f7f8"
         },
         {
           "source": "ui-comments/src/Comments.css",
           "target": "components/ui/comments/comments.css",
-          "sourceSha256": "e9fdb2352257854445a094828099c822120276d25bd88e002421d5133604d200"
+          "sourceSha256": "30d3b82402a04489106a980b79aebdac09e9d52b4526bc44ffdd60da8503f93d"
         },
         {
           "source": "ui-comments/src/CommentsAdapter.ts",
@@ -4839,12 +4839,12 @@
         {
           "source": "ui-comments/src/Composer.tsx",
           "target": "components/ui/comments/composer.tsx",
-          "sourceSha256": "5ab78b78fb93501c0576909e51b3dcf305de7f288b0e9e0468ea4667ca5c84ee"
+          "sourceSha256": "54285767d369c718641a6385a6b9eddd43c29a2a074264b6c75407cc1ceab21f"
         },
         {
           "source": "ui-comments/src/CommentMessage.tsx",
           "target": "components/ui/comments/comment-message.tsx",
-          "sourceSha256": "1f468885fe959ca827070f224d3ac41afc86c6d2ea6660e2440414874947ff9a"
+          "sourceSha256": "ac74807ff9f616e4e1843f6396adc14296d8d514a68cc9d10729199585f8e0d8"
         },
         {
           "source": "ui-comments/src/CommentBody.tsx",
@@ -4854,12 +4854,12 @@
         {
           "source": "ui-comments/src/ReactionBar.tsx",
           "target": "components/ui/comments/reaction-bar.tsx",
-          "sourceSha256": "8837f6a94696327b7339a9ac04301c65798d1a1cc03df54810782258a273c3df"
+          "sourceSha256": "e07ccb859d26ff9c3225cc119b4c9e471d95243c1e285d346c857b81c685265c"
         },
         {
           "source": "ui-comments/src/EmojiPicker.tsx",
           "target": "components/ui/comments/emoji-picker.tsx",
-          "sourceSha256": "967b85535ea7357d8f7a99fbd15224c8b207938ce58acd8c80e3113fae568ac4"
+          "sourceSha256": "3f16c8da42d2e782b6eb8e4aaf3addc39c92d40f2fc88237bd4b0ff8f30cab45"
         },
         {
           "source": "ui-comments/src/MentionPicker.tsx",
@@ -4869,7 +4869,7 @@
         {
           "source": "ui-comments/src/PhotoStrip.tsx",
           "target": "components/ui/comments/photo-strip.tsx",
-          "sourceSha256": "7689c771a22e8bed30bc2f5d97f8a6e818e0796a3b49623e1bcfa902e5d4dae8"
+          "sourceSha256": "7a1fa5d921547874f112d7e60716a84d9569a65b540de3e34524af96f75235fc"
         },
         {
           "source": "ui-comments/src/core/richtext.ts",
