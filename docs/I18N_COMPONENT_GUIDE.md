@@ -17,6 +17,7 @@ packages/utils/src/i18n/
 │   ├── workflows.ts              ui-workflows
 │   ├── cron.ts                   ui-cron
 │   ├── chat.ts                   ui-chat
+│   ├── comments.ts               ui-comments
 │   ├── forms.ts                  ui-forms (builder chrome only)
 │   ├── interfaces.ts             composer — one sub-namespace per interface folder
 │   └── interfaces/<folder>.ts    ui-interfaces: list-m2m.ts → interfaces.listM2M, upload.ts → interfaces.upload, …

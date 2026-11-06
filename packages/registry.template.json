@@ -192,6 +192,10 @@
           "target": "lib/buildpad/i18n/namespaces/chat.ts"
         },
         {
+          "source": "utils/src/i18n/namespaces/comments.ts",
+          "target": "lib/buildpad/i18n/namespaces/comments.ts"
+        },
+        {
           "source": "utils/src/i18n/namespaces/forms.ts",
           "target": "lib/buildpad/i18n/namespaces/forms.ts"
         },
@@ -4015,6 +4019,113 @@
         "utils"
       ],
       "registryDependencies": []
+    },
+    {
+      "name": "comments",
+      "title": "CommentsKit",
+      "excludeFromAll": true,
+      "description": "Comments for any record: threads with replies at any depth, a comment box with bold, italic, underline, bullets and an emoji picker, and one-click emoji reactions (CommentsKit). It talks to its data through a CommentsAdapter; itemsAdapter is the default, over the app's /api/items routes, with the column names of the add-comments skill (parent, root, author, body, photos, created_at; reactions with emoji, reacted_by, target_comment) and the skill's create hook stamping author, thread root and access. Comments are immutable unless the adapter offers edit, remove or resolve; without react the chips are read-only. Optimistic reactions, and the list stays on screen while it refreshes. @mentions with a picker (people from /api/users) and chips. Pictures: a picture button and paste from the clipboard (PNG, JPEG, GIF, WebP up to 10 MB, at most 20), uploaded to /api/files and stored as file ids in photos, shown as thumbnails that open a viewer. Emails are not in this version.",
+      "category": "collaboration",
+      "files": [
+        {
+          "source": "ui-comments/src/CommentsKit.tsx",
+          "target": "components/ui/comments/comments-kit.tsx"
+        },
+        {
+          "source": "ui-comments/src/Comments.css",
+          "target": "components/ui/comments/comments.css"
+        },
+        {
+          "source": "ui-comments/src/CommentsAdapter.ts",
+          "target": "components/ui/comments/comments-adapter.ts"
+        },
+        {
+          "source": "ui-comments/src/useComments.ts",
+          "target": "components/ui/comments/use-comments.ts"
+        },
+        {
+          "source": "ui-comments/src/useCommentsStrings.ts",
+          "target": "components/ui/comments/use-comments-strings.ts"
+        },
+        {
+          "source": "ui-comments/src/Composer.tsx",
+          "target": "components/ui/comments/composer.tsx"
+        },
+        {
+          "source": "ui-comments/src/CommentMessage.tsx",
+          "target": "components/ui/comments/comment-message.tsx"
+        },
+        {
+          "source": "ui-comments/src/CommentBody.tsx",
+          "target": "components/ui/comments/comment-body.tsx"
+        },
+        {
+          "source": "ui-comments/src/ReactionBar.tsx",
+          "target": "components/ui/comments/reaction-bar.tsx"
+        },
+        {
+          "source": "ui-comments/src/EmojiPicker.tsx",
+          "target": "components/ui/comments/emoji-picker.tsx"
+        },
+        {
+          "source": "ui-comments/src/MentionPicker.tsx",
+          "target": "components/ui/comments/mention-picker.tsx"
+        },
+        {
+          "source": "ui-comments/src/PhotoStrip.tsx",
+          "target": "components/ui/comments/photo-strip.tsx"
+        },
+        {
+          "source": "ui-comments/src/core/richtext.ts",
+          "target": "components/ui/comments/core/richtext.ts"
+        },
+        {
+          "source": "ui-comments/src/core/reactions.ts",
+          "target": "components/ui/comments/core/reactions.ts"
+        },
+        {
+          "source": "ui-comments/src/core/thread.ts",
+          "target": "components/ui/comments/core/thread.ts"
+        },
+        {
+          "source": "ui-comments/src/core/validation.ts",
+          "target": "components/ui/comments/core/validation.ts"
+        },
+        {
+          "source": "ui-comments/src/core/people.ts",
+          "target": "components/ui/comments/core/people.ts"
+        },
+        {
+          "source": "ui-comments/src/core/mentions.ts",
+          "target": "components/ui/comments/core/mentions.ts"
+        },
+        {
+          "source": "ui-comments/src/core/caret.ts",
+          "target": "components/ui/comments/core/caret.ts"
+        },
+        {
+          "source": "ui-comments/src/core/images.ts",
+          "target": "components/ui/comments/core/images.ts"
+        },
+        {
+          "source": "ui-comments/src/core/types.ts",
+          "target": "components/ui/comments/core/types.ts"
+        },
+        {
+          "source": "ui-comments/src/index.ts",
+          "target": "components/ui/comments/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "services",
+        "utils"
+      ],
+      "registryDependencies": []
     }
   ],
   "categories": [
@@ -4077,6 +4188,11 @@
       "name": "ai",
       "title": "AI",
       "description": "AI assistants: chat with an agent"
+    },
+    {
+      "name": "collaboration",
+      "title": "Collaboration",
+      "description": "Working together on a record: comments, replies and reactions"
     }
   ]
 }

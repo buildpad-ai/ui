@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-11-03T08:14:50.485Z",
+  "generatedAt": "2026-11-06T04:32:14.177Z",
   "version": "3.6.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -128,6 +128,10 @@
     "@buildpad/ui-chat": {
       "version": "3.6.0",
       "changelogUrl": "ui-chat/CHANGELOG.md"
+    },
+    "@buildpad/ui-comments": {
+      "version": "3.6.0",
+      "changelogUrl": "ui-comments/CHANGELOG.md"
     },
     "@buildpad/hooks": {
       "version": "3.6.0",
@@ -279,6 +283,11 @@
           "source": "utils/src/i18n/namespaces/chat.ts",
           "target": "lib/buildpad/i18n/namespaces/chat.ts",
           "sourceSha256": "51c914ae58f2dec922763ef76a7940dc6cd9e87ab31d91f8b0aab1e0c79960af"
+        },
+        {
+          "source": "utils/src/i18n/namespaces/comments.ts",
+          "target": "lib/buildpad/i18n/namespaces/comments.ts",
+          "sourceSha256": "1ab9916fda7849561aff66560163d11e02b21507ff17ea768a1f40804c030dba"
         },
         {
           "source": "utils/src/i18n/namespaces/forms.ts",
@@ -478,12 +487,12 @@
         {
           "source": "utils/src/i18n/types.ts",
           "target": "lib/buildpad/i18n/types.ts",
-          "sourceSha256": "a3b2c226b2923939966c8cee5bcd5a5bf23aff397a19b1fcac48d79ceeb49a34"
+          "sourceSha256": "e00c24e8bf3675f4b4c7e9f1de9fc4337a73ddf4f98617a75e98ee1acd89abd0"
         },
         {
           "source": "utils/src/i18n/defaults.ts",
           "target": "lib/buildpad/i18n/defaults.ts",
-          "sourceSha256": "602e6a09e9ab452e992b4a80a1cc6a36591a1af8614ed6c90d0820c5245d8b9c"
+          "sourceSha256": "f41d0af86ea9c9f0c8b51aaab27861d56c11eb0584a6b0e0a92ad63976486576"
         },
         {
           "source": "utils/src/i18n/merge.ts",
@@ -508,7 +517,7 @@
         {
           "source": "utils/src/i18n/locales/id.ts",
           "target": "lib/buildpad/i18n/locales/id.ts",
-          "sourceSha256": "d0382fd48cf2338ca47fc706d2d9893edc70bc644bee620ba5e2aabd1fc8ba61"
+          "sourceSha256": "7af8bf367da7cfc53472bab611c72171349943b63b428b461129d94d0de6e5c4"
         },
         {
           "source": "utils/src/i18n/locales/index.ts",
@@ -518,12 +527,12 @@
         {
           "source": "utils/src/i18n/index.ts",
           "target": "lib/buildpad/i18n/index.ts",
-          "sourceSha256": "9de1a7a7dce6d14e40e69aff88b6de47b871c9ce1529e2a4d21b5e43528f0049"
+          "sourceSha256": "73d11b786af8e4aed0ac5edb314e7f68ce71969b24b720c7580c0376252fb94f"
         },
         {
           "source": "cli/templates/lib/utils-index.ts",
           "target": "lib/buildpad/utils/index.ts",
-          "sourceSha256": "6b2d0fe7e2c9ce253236437cf430059be06dc546d7702aa192f9fdd184e33303"
+          "sourceSha256": "2f1134321fb507fa982337df6bb6d21eeae2de8a7393bcf05720fc621ac3273d"
         },
         {
           "source": "cli/templates/lib/utils.ts",
@@ -4794,6 +4803,138 @@
       "sourcePackage": "@buildpad/ui-chat",
       "version": "3.6.0",
       "lastChangedIn": "3.6.0"
+    },
+    {
+      "name": "comments",
+      "title": "CommentsKit",
+      "excludeFromAll": true,
+      "description": "Comments for any record: threads with replies at any depth, a comment box with bold, italic, underline, bullets and an emoji picker, and one-click emoji reactions (CommentsKit). It talks to its data through a CommentsAdapter; itemsAdapter is the default, over the app's /api/items routes, with the column names of the add-comments skill (parent, root, author, body, photos, created_at; reactions with emoji, reacted_by, target_comment) and the skill's create hook stamping author, thread root and access. Comments are immutable unless the adapter offers edit, remove or resolve; without react the chips are read-only. Optimistic reactions, and the list stays on screen while it refreshes. @mentions with a picker (people from /api/users) and chips. Pictures: a picture button and paste from the clipboard (PNG, JPEG, GIF, WebP up to 10 MB, at most 20), uploaded to /api/files and stored as file ids in photos, shown as thumbnails that open a viewer. Emails are not in this version.",
+      "category": "collaboration",
+      "files": [
+        {
+          "source": "ui-comments/src/CommentsKit.tsx",
+          "target": "components/ui/comments/comments-kit.tsx",
+          "sourceSha256": "5e538912ee12513046fa8df455a2c592b400fec6f4bdbeb4a9615a22a4c8f7f8"
+        },
+        {
+          "source": "ui-comments/src/Comments.css",
+          "target": "components/ui/comments/comments.css",
+          "sourceSha256": "30d3b82402a04489106a980b79aebdac09e9d52b4526bc44ffdd60da8503f93d"
+        },
+        {
+          "source": "ui-comments/src/CommentsAdapter.ts",
+          "target": "components/ui/comments/comments-adapter.ts",
+          "sourceSha256": "c0403bbcbe777cfa107692c5b9af74864a140b5d23c08ff658c0056cafec0c48"
+        },
+        {
+          "source": "ui-comments/src/useComments.ts",
+          "target": "components/ui/comments/use-comments.ts",
+          "sourceSha256": "a1fdf34a9bbc0fa116945e236aab73599247afb854a7389d4cb9d31481a4938e"
+        },
+        {
+          "source": "ui-comments/src/useCommentsStrings.ts",
+          "target": "components/ui/comments/use-comments-strings.ts",
+          "sourceSha256": "046cd60985d3e07bd84658fa8852060a4b8ec10ec4f483faa633ca4d532848b2"
+        },
+        {
+          "source": "ui-comments/src/Composer.tsx",
+          "target": "components/ui/comments/composer.tsx",
+          "sourceSha256": "54285767d369c718641a6385a6b9eddd43c29a2a074264b6c75407cc1ceab21f"
+        },
+        {
+          "source": "ui-comments/src/CommentMessage.tsx",
+          "target": "components/ui/comments/comment-message.tsx",
+          "sourceSha256": "ac74807ff9f616e4e1843f6396adc14296d8d514a68cc9d10729199585f8e0d8"
+        },
+        {
+          "source": "ui-comments/src/CommentBody.tsx",
+          "target": "components/ui/comments/comment-body.tsx",
+          "sourceSha256": "b0f6879d7f9c9fe9c9641e74a7d6da6a72189b2cd38dca686b20a52b37116a14"
+        },
+        {
+          "source": "ui-comments/src/ReactionBar.tsx",
+          "target": "components/ui/comments/reaction-bar.tsx",
+          "sourceSha256": "e07ccb859d26ff9c3225cc119b4c9e471d95243c1e285d346c857b81c685265c"
+        },
+        {
+          "source": "ui-comments/src/EmojiPicker.tsx",
+          "target": "components/ui/comments/emoji-picker.tsx",
+          "sourceSha256": "3f16c8da42d2e782b6eb8e4aaf3addc39c92d40f2fc88237bd4b0ff8f30cab45"
+        },
+        {
+          "source": "ui-comments/src/MentionPicker.tsx",
+          "target": "components/ui/comments/mention-picker.tsx",
+          "sourceSha256": "debd2c6ed7279cc8354a8fc26d498af454cf1a8b3c39e46442661066caa25e6f"
+        },
+        {
+          "source": "ui-comments/src/PhotoStrip.tsx",
+          "target": "components/ui/comments/photo-strip.tsx",
+          "sourceSha256": "7a1fa5d921547874f112d7e60716a84d9569a65b540de3e34524af96f75235fc"
+        },
+        {
+          "source": "ui-comments/src/core/richtext.ts",
+          "target": "components/ui/comments/core/richtext.ts",
+          "sourceSha256": "94022b94033c2536d0691b2f052a3eceee34c73d5163fbcde206a2aa4ec5fc47"
+        },
+        {
+          "source": "ui-comments/src/core/reactions.ts",
+          "target": "components/ui/comments/core/reactions.ts",
+          "sourceSha256": "7a4ba40895c353096da85a2071284577f7d5dead6b926845f30b2ec7d22daa40"
+        },
+        {
+          "source": "ui-comments/src/core/thread.ts",
+          "target": "components/ui/comments/core/thread.ts",
+          "sourceSha256": "839b2a7e3994fb6790e9f593922fdf6179c7f432bd59172748d0d3fa273b1e33"
+        },
+        {
+          "source": "ui-comments/src/core/validation.ts",
+          "target": "components/ui/comments/core/validation.ts",
+          "sourceSha256": "7c92c2a10c432c5d869f8b31792525830fb64192d60030408d1453145ae2f21c"
+        },
+        {
+          "source": "ui-comments/src/core/people.ts",
+          "target": "components/ui/comments/core/people.ts",
+          "sourceSha256": "be9cf6f8e978c56f1a0286972328202067af95360f09bf240721b5d22fe97149"
+        },
+        {
+          "source": "ui-comments/src/core/mentions.ts",
+          "target": "components/ui/comments/core/mentions.ts",
+          "sourceSha256": "42b891f1771f4d72dc33e9c6acdf4717cb3bfe50b0c409f2cb347108f32b8824"
+        },
+        {
+          "source": "ui-comments/src/core/caret.ts",
+          "target": "components/ui/comments/core/caret.ts",
+          "sourceSha256": "d60c993522eca31b650750c7a847bf0f2e1ce4820039a63195fabf4cfcd97d70"
+        },
+        {
+          "source": "ui-comments/src/core/images.ts",
+          "target": "components/ui/comments/core/images.ts",
+          "sourceSha256": "47131f6c3f5ba354b6d125d0e326109a5e4abced41dea6d0469f49f952abd037"
+        },
+        {
+          "source": "ui-comments/src/core/types.ts",
+          "target": "components/ui/comments/core/types.ts",
+          "sourceSha256": "c87cd2c1fafa380af1d05464a21a9816b36013399b04770b2d798bf2ec41a3d3"
+        },
+        {
+          "source": "ui-comments/src/index.ts",
+          "target": "components/ui/comments/index.ts",
+          "sourceSha256": "8948d8c7055d6166a0f43ddc87dbaba470f8ca87da1a7d4006363b0411888865"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "services",
+        "utils"
+      ],
+      "registryDependencies": [],
+      "sourcePackage": "@buildpad/ui-comments",
+      "version": "3.6.0",
+      "lastChangedIn": "3.6.0"
     }
   ],
   "categories": [
@@ -4856,6 +4997,11 @@
       "name": "ai",
       "title": "AI",
       "description": "AI assistants: chat with an agent"
+    },
+    {
+      "name": "collaboration",
+      "title": "Collaboration",
+      "description": "Working together on a record: comments, replies and reactions"
     }
   ]
 }

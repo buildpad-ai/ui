@@ -36,6 +36,7 @@
     "storybook:workflows": "pnpm --filter @buildpad/ui-workflows storybook",
     "storybook:cron": "pnpm --filter @buildpad/ui-cron storybook",
     "storybook:chat": "pnpm --filter @buildpad/ui-chat storybook",
+    "storybook:comments": "pnpm --filter @buildpad/ui-comments storybook",
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r --if-present test:coverage",
     "test:e2e": "playwright test --project=chromium",

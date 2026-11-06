@@ -1,0 +1,69 @@
+{
+  "$comment": "Schema for the collections CommentsKit reads and writes. Nothing applies this file for you: create the collections and fields with your backend's own tools (the DaaS MCP / Studio, or the Engine equivalent), then create EVERY foreign key with a relation call (a field with a relation block does not create the constraint). Replace <host> with the collection being commented on (ticket, document, order...). Column names follow the add-comments skill (buildpad-ai/skills); itemsAdapter's `fields` option maps other names.",
+  "version": 1,
+  "collections": [
+    {
+      "collection": "<host>_comments",
+      "note": "One row per comment or reply. The create hook stamps author, root, access and created_at; the browser sends only host, parent, body and photos.",
+      "fields": [
+        { "field": "id", "type": "uuid", "primaryKey": true },
+        { "field": "<host>", "type": "uuid", "required": true, "note": "The thing commented on. Pass this column name as itemsAdapter's hostField." },
+        { "field": "parent", "type": "uuid", "note": "The comment answered; null on a top-level comment" },
+        { "field": "root", "type": "uuid", "note": "The first comment of the thread; null on a top-level comment. Stamped by the hook as parent.root ?? parent.id. Backfill it for existing replies before the kit reads them." },
+        { "field": "author", "type": "uuid", "note": "Stamped by the hook, never sent by the browser" },
+        { "field": "body", "type": "text", "required": false, "note": "Plain-text markup: **bold**, *italic*, ++underline++, '- ' bullets. Up to 20 000 characters (the hook trims and bounds it). May be empty only when photos is non-empty." },
+        { "field": "photos", "type": "json", "note": "List of file ids (from POST /api/files), null when none, at most 20. The hook should check it is a list of at most 20 strings. A picture alone is a valid comment, so body may be empty when photos is not. Deleting a comment does not delete its files." },
+        { "field": "resolved", "type": "boolean", "default": false, "optional": true, "note": "Only if you want Resolve/Reopen on top-level comments. Pass fields.resolved: 'resolved' to itemsAdapter." },
+        { "field": "created_at", "type": "timestamp", "note": "Stamped by the hook" }
+      ],
+      "relations": [
+        { "field": "<host>", "related_collection": "<host>", "on_delete": "CASCADE" },
+        { "field": "parent", "related_collection": "<host>_comments", "on_delete": "CASCADE", "note": "CASCADE, not the add-comments skill's SET NULL: the kit's delete asks 'Delete this comment and its replies?', so the replies must go with it. With SET NULL they would turn into top-level comments." },
+        { "field": "root", "related_collection": "<host>_comments", "on_delete": "CASCADE" },
+        { "field": "author", "related_collection": "daas_users", "on_delete": "SET NULL" }
+      ]
+    },
+    {
+      "collection": "<host>_comment_reactions",
+      "note": "One row per person per emoji per comment, from the fixed list of twelve. Reactions send no email.",
+      "fields": [
+        { "field": "id", "type": "uuid", "primaryKey": true },
+        { "field": "target_comment", "type": "uuid", "required": true },
+        { "field": "emoji", "type": "string", "required": true, "maxLength": 16, "note": "One of 👍 👎 ❤️ 🎉 😄 😮 😢 🙏 👀 🚀 ✅ 🔥. The hook compares with the variation selector removed and stores the list's form." },
+        { "field": "reacted_by", "type": "uuid", "required": true, "note": "Stamped by the hook. Never name this column 'user': it is reserved." },
+        { "field": "created_at", "type": "timestamp" }
+      ],
+      "relations": [
+        { "field": "target_comment", "related_collection": "<host>_comments", "on_delete": "CASCADE" },
+        { "field": "reacted_by", "related_collection": "daas_users", "on_delete": "CASCADE" }
+      ],
+      "alias": {
+        "collection": "<host>_comments",
+        "field": "reactions",
+        "type": "o2m",
+        "related_collection": "<host>_comment_reactions",
+        "related_field": "target_comment",
+        "note": "Lets one read nest reactions.id, reactions.emoji and reactions.reacted_by with the comment"
+      },
+      "indexes": [
+        { "unique": true, "fields": ["target_comment", "reacted_by", "emoji"], "note": "Stops two quick clicks inserting a duplicate" }
+      ]
+    }
+  ],
+  "permissions": {
+    "<host>_comments": {
+      "read": "By the same rule as the thing commented on",
+      "create": "Only the fields the browser sends: <host>, parent, body, photos. A view-only person may reply but not start a thread, if your app wants that rule (enforce it in the hook).",
+      "update": "None by default (comments are immutable). If you enable itemsAdapter's allowEdit, allow update of body where author = $CURRENT_USER.",
+      "delete": "None by default. If you enable allowDelete: author = $CURRENT_USER, plus a moderator rule (a module access key, checked with hasModuleAccess, not a role name)."
+    },
+    "<host>_comment_reactions": {
+      "read": "By access to the comment",
+      "create": "target_comment and emoji only",
+      "update": "None",
+      "delete": "Only where reacted_by = $CURRENT_USER"
+    }
+  },
+  "hooks": "The create hooks that stamp the author, the thread root and the access, and bound the text, the photos and the reaction emoji, are written once per project: step 3 of the add-comments skill (they apply your own access rule, so they are not copied here). Notification emails: ./services/comment_mail.js and ./hooks/*.hook.js, installed as described in ./README.md.",
+  "proof": "Create a throwaway comment with a reply and a reaction, delete the parent, and count the child rows. Reading the relation does not show on_delete, so a delete test is the only proof the cascade exists."
+}

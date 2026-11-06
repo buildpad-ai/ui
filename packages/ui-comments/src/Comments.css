@@ -1,0 +1,361 @@
+/*
+ * Text colors that reach WCAG AA (4.5:1) in both schemes. Mantine's `dimmed` is 3.3:1 on white and
+ * 4.0:1 on dark, and its light-variant text (primary-6 on its own tint) is 3.2:1 on white. Set on the
+ * root, not on .bp-cm, because the emoji and reaction pickers render in a portal outside it.
+ *   light: muted gray-7 8.2:1 on white, accent primary-9 5.4:1 on the primary tint
+ *   dark:  muted dark-1 7.8:1 on dark-7, accent stays primary light-color 6.6:1 on its tint
+ */
+:root {
+  --bp-cm-muted: var(--mantine-color-gray-7);
+  --bp-cm-accent-text: var(--mantine-primary-color-9);
+}
+
+[data-mantine-color-scheme='dark'] {
+  --bp-cm-muted: var(--mantine-color-dark-1);
+  --bp-cm-accent-text: var(--mantine-primary-color-light-color);
+}
+
+/*
+ * ui-comments — built on Mantine's CSS variables, so light and dark follow the app's theme.
+ * Classes are prefixed bp-cm-.
+ */
+.bp-cm {
+  display: block;
+  width: 100%;
+}
+
+.bp-cm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bp-cm-list--root > .bp-cm-item {
+  padding: var(--mantine-spacing-sm) 0;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.bp-cm-item > .bp-cm-list {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+.bp-cm-item + .bp-cm-item {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+.bp-cm-msg {
+  padding: 2px 0;
+  border-radius: var(--mantine-radius-sm);
+  scroll-margin-block: 80px;
+}
+
+.bp-cm-msg[data-linked] {
+  background: var(--mantine-color-yellow-light);
+  outline: 2px solid var(--mantine-color-yellow-light-color);
+  outline-offset: 2px;
+}
+
+.bp-cm-msg[data-new] {
+  border-inline-start: 3px solid var(--mantine-primary-color-filled);
+  padding-inline-start: var(--mantine-spacing-xs);
+}
+
+.bp-cm-body {
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.bp-cm-body p {
+  margin: 0;
+  min-height: 1.5em;
+}
+
+.bp-cm-body ul {
+  margin: 2px 0;
+  padding-inline-start: 1.25rem;
+}
+
+.bp-cm-actions {
+  opacity: 0.85;
+}
+
+.bp-cm-reply-box,
+.bp-cm-new {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+.bp-cm-new {
+  padding-top: var(--mantine-spacing-sm);
+}
+
+/* Reactions */
+.bp-cm-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.bp-cm-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px; /* 25px tall: clears the 24px target minimum */
+  font: inherit;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.6;
+  color: var(--mantine-color-text);
+  background: var(--mantine-color-default);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 999px;
+  cursor: default;
+}
+
+button.bp-cm-reaction {
+  cursor: pointer;
+}
+
+button.bp-cm-reaction:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.bp-cm-reaction[aria-pressed='true'] {
+  color: var(--bp-cm-accent-text);
+  background: var(--mantine-primary-color-light);
+  border-color: var(--mantine-primary-color-filled);
+}
+
+.bp-cm-reaction-n {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Emoji picker and reaction picker */
+.bp-cm-emoji-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: var(--mantine-spacing-xs);
+}
+
+.bp-cm-emoji-tab {
+  padding: 3px 8px; /* 24.6px tall */
+  font: inherit;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--bp-cm-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
+}
+
+.bp-cm-emoji-tab[data-active] {
+  color: var(--bp-cm-accent-text);
+  background: var(--mantine-primary-color-light);
+}
+
+.bp-cm-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  max-width: 320px;
+}
+
+.bp-cm-emoji-grid--reactions {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.bp-cm-emoji-grid button {
+  padding: 4px;
+  font-size: 18px;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
+}
+
+.bp-cm-emoji-grid button:hover,
+.bp-cm-emoji-grid button[aria-pressed='true'] {
+  background: var(--mantine-color-default-hover);
+}
+
+@media (max-width: 480px) {
+  .bp-cm-emoji-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}
+
+/* @mentions */
+.bp-cm-field {
+  position: relative;
+}
+
+.bp-cm-mention {
+  padding: 0 4px;
+  font-weight: 500;
+  color: var(--bp-cm-accent-text);
+  background: var(--mantine-primary-color-light);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.bp-cm-mention[data-me] {
+  color: var(--mantine-color-white);
+  background: var(--mantine-primary-color-8); /* white on it: 5.0:1 (primary-6 was 3.6:1) */
+}
+
+.bp-cm-mentions {
+  position: absolute;
+  z-index: 300;
+  min-width: 220px;
+  max-width: min(320px, 100%);
+  max-height: 210px;
+  overflow-y: auto;
+  background: var(--mantine-color-body);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: var(--mantine-shadow-md);
+}
+
+.bp-cm-mentions ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+}
+
+.bp-cm-mention-opt {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px;
+  border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
+}
+
+.bp-cm-mention-opt[data-active] {
+  background: var(--mantine-primary-color-light);
+}
+
+.bp-cm-mention-name {
+  font-size: var(--mantine-font-size-sm);
+}
+
+.bp-cm-mention-email {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--bp-cm-muted);
+}
+
+.bp-cm-mention-note {
+  padding: 8px 12px;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--bp-cm-muted);
+}
+
+/* Pictures */
+.bp-cm-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.bp-cm-photo {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  background: var(--mantine-color-default-hover);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+.bp-cm-photo--wait {
+  animation: bp-cm-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes bp-cm-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.bp-cm-photo-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: zoom-in;
+}
+
+.bp-cm-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bp-cm-photo-remove {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 4px;
+}
+
+.bp-cm-viewer {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* The title only names the dialog; it takes no room. */
+.bp-cm-viewer-header {
+  min-height: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-bottom: 0 !important;
+}
+
+.bp-cm-viewer-body {
+  padding: 0 !important;
+}
+
+.bp-cm-viewer-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bp-cm-viewer-frame img {
+  display: block;
+  max-width: min(92vw, 1100px);
+  max-height: 86vh;
+  border-radius: var(--mantine-radius-md);
+}
+
+.bp-cm-viewer-close {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+}
+
+.bp-cm-viewer-prev,
+.bp-cm-viewer-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.bp-cm-viewer-prev {
+  inset-inline-start: 8px;
+}
+
+.bp-cm-viewer-next {
+  inset-inline-end: 8px;
+}
+
+/* The upload placeholder pulses; hold it still for people who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .bp-cm-photo--wait {
+    animation: none;
+  }
+}

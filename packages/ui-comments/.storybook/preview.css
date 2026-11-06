@@ -1,0 +1,4 @@
+/* ui-comments — room for the thread and its composer */
+.sb-comments-wrapper {
+  min-height: 480px;
+}

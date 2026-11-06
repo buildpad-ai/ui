@@ -29,6 +29,7 @@ const meta: MetaRecord = {
   workflows: 'Workflows',
   cron: 'Cron Jobs',
   'ai-chat': 'AI Chat',
+  comments: 'Comments',
   '--- reference': {
     type: 'separator',
     title: 'Reference',

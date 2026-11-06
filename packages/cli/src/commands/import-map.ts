@@ -78,6 +78,7 @@ export const BUILDPAD_PACKAGES: Readonly<Record<string, PackageTarget>> = {
   },
   '@buildpad/ui-cron': { folder: 'ui-cron', alias: 'components', root: 'cron-management', subpaths: 'kebab' },
   '@buildpad/ui-chat': { folder: 'ui-chat', alias: 'components', root: 'ai-chat', subpaths: 'kebab' },
+  '@buildpad/ui-comments': { folder: 'ui-comments', alias: 'components', root: 'comments', subpaths: 'kebab' },
 };
 
 /**

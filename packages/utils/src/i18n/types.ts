@@ -28,6 +28,7 @@ import type { UsersTranslations } from './namespaces/users';
 import type { WorkflowsTranslations } from './namespaces/workflows';
 import type { CronTranslations } from './namespaces/cron';
 import type { ChatTranslations } from './namespaces/chat';
+import type { CommentsTranslations } from './namespaces/comments';
 import type { FormsTranslations } from './namespaces/forms';
 import type { HooksTranslations } from './namespaces/hooks';
 
@@ -42,6 +43,7 @@ export type { UsersTranslations } from './namespaces/users';
 export type { WorkflowsTranslations } from './namespaces/workflows';
 export type { CronTranslations } from './namespaces/cron';
 export type { ChatTranslations } from './namespaces/chat';
+export type { CommentsTranslations } from './namespaces/comments';
 export type { FormsTranslations } from './namespaces/forms';
 export type { HooksTranslations, HooksRelationsTranslations } from './namespaces/hooks';
 
@@ -56,6 +58,7 @@ export interface BuildpadTranslations {
   workflows: WorkflowsTranslations;
   cron: CronTranslations;
   chat: ChatTranslations;
+  comments: CommentsTranslations;
   forms: FormsTranslations;
   hooks: HooksTranslations;
 }
