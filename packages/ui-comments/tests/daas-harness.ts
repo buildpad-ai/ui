@@ -86,6 +86,10 @@ export interface FakeDaaS {
   failTo: string[];
   /** Make every items read throw. */
   breakReads: boolean;
+  /** How long each `services.mail` call takes, in ms (0: it resolves at once). */
+  mailLatencyMs: number;
+  /** The most `services.mail` calls that were in progress at the same moment. */
+  maxMailsInFlight: number;
   env: Record<string, string>;
   /** Run a hook body with a create event. */
   runHook(file: string, meta: Record<string, unknown>): Promise<void>;
@@ -100,7 +104,30 @@ const project = (row: Row, fields?: string[]) => {
   return out;
 };
 
-export function fakeDaaS(store: Store, serviceFile = 'services/comment_mail.js'): FakeDaaS {
+/**
+ * The edit an integrator makes to `CONFIG` before pasting the service. The default is the documented
+ * setup: the add-comments create hook (step 3) already turns mentions of non-readers into text.
+ * Throws if the line it edits has moved, so a test can never quietly run the unconfigured service.
+ */
+export const trustCreateHook = (code: string) => {
+  const from = 'mentionsCheckedByCreateHook: false,';
+  if (!code.includes(from)) throw new Error(`comment_mail CONFIG no longer contains "${from}"`);
+  return code.replace(from, 'mentionsCheckedByCreateHook: true,');
+};
+
+/** The service exactly as shipped: no access rule configured. */
+export const asShipped = (code: string) => code;
+
+export interface FakeDaaSOptions {
+  serviceFile?: string;
+  /** Applied to the service's source before it is compiled. Defaults to `trustCreateHook`. */
+  configure?: (code: string) => string;
+}
+
+export function fakeDaaS(
+  store: Store,
+  { serviceFile = 'services/comment_mail.js', configure = trustCreateHook }: FakeDaaSOptions = {},
+): FakeDaaS {
   const logger = makeLogger();
   const daas: FakeDaaS = {
     logger,
@@ -110,6 +137,8 @@ export function fakeDaaS(store: Store, serviceFile = 'services/comment_mail.js')
     mailBehaviour: 'ok',
     failTo: [],
     breakReads: false,
+    mailLatencyMs: 0,
+    maxMailsInFlight: 0,
     env: {},
     runHook: async () => {},
     service: () => {
@@ -117,6 +146,7 @@ export function fakeDaaS(store: Store, serviceFile = 'services/comment_mail.js')
     },
   };
 
+  let inFlight = 0;
   const services = {
     async items(collection: string, opts?: { elevated?: boolean }) {
       daas.access.push({ collection, elevated: !!opts?.elevated });
@@ -137,10 +167,17 @@ export function fakeDaaS(store: Store, serviceFile = 'services/comment_mail.js')
       };
     },
     async mail(message: Sent) {
-      if (daas.mailBehaviour === 'throw') throw new Error('smtp is down');
-      if (daas.mailBehaviour === 'result-failure' || daas.failTo.includes(message.to)) return { success: false, error: 'mailbox full' };
-      daas.sent.push(message);
-      return { success: true };
+      inFlight += 1;
+      daas.maxMailsInFlight = Math.max(daas.maxMailsInFlight, inFlight);
+      try {
+        if (daas.mailLatencyMs > 0) await new Promise((r) => setTimeout(r, daas.mailLatencyMs));
+        if (daas.mailBehaviour === 'throw') throw new Error('smtp is down');
+        if (daas.mailBehaviour === 'result-failure' || daas.failTo.includes(message.to)) return { success: false, error: 'mailbox full' };
+        daas.sent.push(message);
+        return { success: true };
+      } finally {
+        inFlight -= 1;
+      }
     },
     async custom(name: string) {
       if (name !== 'comment_mail') throw new Error(`No such service: ${name}`);
@@ -151,7 +188,7 @@ export function fakeDaaS(store: Store, serviceFile = 'services/comment_mail.js')
   let instance: ReturnType<FakeDaaS['service']> | null = null;
   daas.service = () => {
     // The real services object is built per call, so env is read when the service is made.
-    const factory = compile(readSchemaFile(serviceFile), ['context'], false, logger);
+    const factory = compile(configure(readSchemaFile(serviceFile)), ['context'], false, logger);
     instance ??= factory({ services: { ...services, env: daas.env }, env: daas.env }) as ReturnType<FakeDaaS['service']>;
     return instance;
   };

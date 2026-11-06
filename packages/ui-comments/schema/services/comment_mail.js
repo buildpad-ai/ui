@@ -38,13 +38,20 @@ const CONFIG = {
   maxMentions: 10,
   // Shown to someone who has never signed in.
   firstTimeHint: 'This looks like your first time here: sign in with this email address to see it.',
-  // The access rule of your app. The create hook (add-comments skill, step 3) already turns the
-  // token of a person who may not read the record into plain text, so every id that reaches this
-  // service is a reader. If your hook does not do that, return false here for people who cannot
-  // read `host` (the record, as read from CONFIG.host). Runs with the person's id.
-  canRead(host, userId) {
-    return true;
-  },
+  // Who may be emailed about a record. This FAILS CLOSED: until you set one of the two below, no
+  // mention or reply email is sent, and each attempt logs why.
+  //
+  //   mentionsCheckedByCreateHook: true
+  //     Your create hook (add-comments skill, step 3) already turns the token of anyone who may not
+  //     read the record into plain text, so every id that reaches this service is a reader.
+  //   canRead(host, userId) { ... }
+  //     Your own access rule: return true only for people who may read `host` (the record, as read
+  //     from CONFIG.host). When set, it decides, whatever the flag says.
+  //
+  // Without one of them, anyone who may comment could have the record's title and the comment text
+  // mailed to any active user, just by typing a mention token for that person's id.
+  mentionsCheckedByCreateHook: false,
+  canRead: null,
 };
 
 // ── helpers ─────────────────────────────────────────────────────────────
@@ -93,6 +100,20 @@ function undeliverable(email) {
 }
 
 const deliverable = (user) => !!user && user.status === 'active' && !undeliverable(user.email);
+
+/** True when CONFIG says who may be emailed. Otherwise logs why nothing is sent (see CONFIG). */
+function accessRuleConfigured() {
+  if (typeof CONFIG.canRead === 'function' || CONFIG.mentionsCheckedByCreateHook === true) return true;
+  console.error(
+    'comment mail: nothing sent, because no access rule is configured. Set ' +
+      'CONFIG.mentionsCheckedByCreateHook or CONFIG.canRead in the comment_mail service.',
+  );
+  return false;
+}
+
+/** Whether this person may be emailed about this record. A rule that returns nothing refuses. */
+const mayRead = (host, userId) =>
+  typeof CONFIG.canRead === 'function' ? !!CONFIG.canRead(host, userId) : CONFIG.mentionsCheckedByCreateHook === true;
 
 // A new RegExp each time: a shared /g regex keeps its position between calls.
 const tokenRe = () => /@\[([^\[\]()\n]{1,100})\]\(user:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)/gi;
@@ -233,6 +254,10 @@ return {
       const authorId = comment[f.author] ? String(comment[f.author]).toLowerCase() : null;
       const ids = mentionIds(comment[f.body]).slice(0, CONFIG.maxMentions);
       if (ids.length === 0) return result;
+      if (!accessRuleConfigured()) {
+        result.skipped.push(...ids);
+        return result;
+      }
 
       const parent = comment[f.parent]
         ? await readItem(CONFIG.comments, comment[f.parent], ['id', f.author, f.body])
@@ -242,10 +267,15 @@ return {
       const author = authorId ? people.get(authorId) : null;
       const authorName = personName(author);
 
+      // Decide everyone first, then send all at once. The service and its hooks run under a time
+      // limit (20 s and 25 s), and sending one after another let a slow mail server run out the
+      // clock partway down the list: the rest were dropped without a word, and there is no record
+      // to retry from.
+      const outgoing = [];
       for (const id of ids) {
         const person = people.get(id);
         // Yourself, someone who cannot get mail, someone who may not read the record: no email.
-        if (id === authorId || !deliverable(person) || !CONFIG.canRead(host, id)) {
+        if (id === authorId || !deliverable(person) || !mayRead(host, id)) {
           result.skipped.push(id);
           continue;
         }
@@ -259,15 +289,22 @@ return {
           link: linkTo(hostId, comment.id),
           note: person.last_access ? '' : CONFIG.firstTimeHint,
         });
-        const status = await send({
-          to: person.email,
-          subject: authorName + ' mentioned you in “' + hostTitle + '”',
-          text: mail.text,
-          html: mail.html,
-          replyTo: author && !undeliverable(author.email) ? author.email : undefined,
+        outgoing.push({
+          id,
+          message: {
+            to: person.email,
+            subject: authorName + ' mentioned you in “' + hostTitle + '”',
+            text: mail.text,
+            html: mail.html,
+            replyTo: author && !undeliverable(author.email) ? author.email : undefined,
+          },
         });
-        (status === 'sent' ? result.sent : result.skipped).push(id);
       }
+      const settled = await Promise.allSettled(outgoing.map((o) => send(o.message)));
+      outgoing.forEach((o, i) => {
+        const sent = settled[i].status === 'fulfilled' && settled[i].value === 'sent';
+        (sent ? result.sent : result.skipped).push(o.id);
+      });
     } catch (error) {
       console.error('comment mention mail failed:', String((error && error.message) || error).slice(0, 300));
     }
@@ -290,10 +327,14 @@ return {
       const recipientId = String(parent[f.author]).toLowerCase();
       // Never the replier themself, and not someone this reply already @mentions (they get that email).
       if (recipientId === authorId || mentionIds(comment[f.body]).indexOf(recipientId) !== -1) return result;
+      if (!accessRuleConfigured()) {
+        result.skipped.push(recipientId);
+        return result;
+      }
 
       const people = await readPeople([authorId, recipientId].concat(mentionIds(comment[f.body])));
       const recipient = people.get(recipientId);
-      if (!deliverable(recipient) || !CONFIG.canRead(host, recipientId)) {
+      if (!deliverable(recipient) || !mayRead(host, recipientId)) {
         result.skipped.push(recipientId);
         return result;
       }

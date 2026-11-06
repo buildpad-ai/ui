@@ -45,7 +45,8 @@ service and the hooks catch every error. A mail server that is down loses the em
 2. **Edit `CONFIG`** at the top of `services/comment_mail.js`: your comment collection and the column
    that points at the thing commented on, the thing's collection and title column, the app name and
    noun, and `linkPath` (where *Open the comment* goes; `{host}` and `{comment}` are replaced by the
-   ids). If your comment columns are not the skill's defaults, set `fields` too.
+   ids). If your comment columns are not the skill's defaults, set `fields` too. Then set **who may
+   be emailed** (next section): until you do, the service sends nothing.
 3. **Expose the app's URL** to services: `RUNTIME_ENV_WHITELIST_CUSTOM_SERVICE=APP_URL` on the DaaS,
    with `APP_URL=https://your-app.example.com`. Without it the `appUrl` fallback in `CONFIG` is used.
 4. **Create the service** (the `services` tool, `create`): name `comment_mail`, `status: active`,
@@ -56,17 +57,25 @@ service and the hooks catch every error. A mail server that is down loses the em
    `code`.
 6. **SMTP** must be configured on the DaaS (`services.mail` sends through it).
 
-### Make it only as strict as your app is
+### Say who may be emailed
 
-The service sends to every person whose token reaches it, on the assumption that the create hook
-already turned the token of anyone who may not read the record into plain text. If your hook does not,
-fill in `CONFIG.canRead(host, userId)` with your access rule; people it refuses are skipped.
+The service **fails closed**: as shipped it sends no mention or reply email, and every attempt writes
+`comment mail: nothing sent, because no access rule is configured` to the DaaS log. A mention token is
+just text, so without a rule anyone who may comment could have the record's title and the comment
+mailed to any active user. Set one of these in `CONFIG`:
+
+- `mentionsCheckedByCreateHook: true` when your create hook (the `add-comments` skill, step 3) already
+  turns the token of anyone who may not read the record into plain text. Every id that reaches the
+  service is then a reader.
+- `canRead(host, userId)` with your own access rule, returning `true` only for people who may read
+  `host` (the record, as read from `CONFIG.host`). When set, it decides, whatever the flag says. A rule
+  that returns nothing refuses.
 
 ### How this was checked
 
 `tests/daas-mail.test.ts` runs these exact files in a sandbox built like the DaaS's own
 (`lib/utils/code-sandbox.ts`: `process`, `require`, timers and `fetch` blocked, the builtins frozen,
-strict-mode function bodies, the same parameter lists) against fake in-memory services. 31 tests,
+strict-mode function bodies, the same parameter lists) against fake in-memory services. 40 tests,
 and nine deliberate bugs in the service and a hook (no escaping, no self-skip, reads not elevated, no
 dedupe, no cap, test addresses mailed, a mail failure counted as sent, a hook that does not swallow
 errors) are each caught.

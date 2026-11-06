@@ -243,9 +243,12 @@ the install steps; in short: edit `CONFIG` at the top of the service, expose `AP
   server that is down loses the email, not the comment. Failures are written to the DaaS log
   (`/logs`); a failed email is not retried, and there is no record of what was sent.
 - **Safe HTML.** Every value in the email card is escaped; the text part is plain text.
-- **Who may be emailed is your access rule.** The service assumes the create hook already turned
-  the mention of anyone who may not read the record into plain text. If yours does not, fill in
-  `CONFIG.canRead`.
+- **Nothing is sent until you say who may be emailed.** As shipped, the service fails closed and logs
+  why. Set `CONFIG.mentionsCheckedByCreateHook: true` when your create hook already turns the mention
+  of anyone who may not read the record into plain text, or fill in `CONFIG.canRead` with your own
+  access rule.
+- **Everyone is emailed at once.** Mentions are sent in parallel, so a slow mail server cannot run out
+  the service's time limit partway down the list.
 
 <Callout type="warning">
 These files were tested by running them in a sandbox built like the DaaS's own, against fake

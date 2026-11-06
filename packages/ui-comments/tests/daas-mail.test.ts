@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fakeDaaS, runSandboxed, type FakeDaaS, type Row, type Store } from './daas-harness';
+import { asShipped, fakeDaaS, runSandboxed, type FakeDaaS, type Row, type Store } from './daas-harness';
 
 const id = (n: number) => `${String(n).padStart(8, '0')}-0000-4000-8000-000000000000`;
 const ANA = id(1); // writes the comments
@@ -49,6 +49,20 @@ describe('notifyMentions', () => {
     expect(first.replyTo).toBe('ana@acme.io');
     expect(first.html).toContain('href="https://app.example.com/tickets/T1?comment=C1"');
     expect(first.text).toContain('Open the comment: https://app.example.com/tickets/T1?comment=C1');
+  });
+
+  // The service runs under a 20 s limit. Sent one after another, a slow mail server would run out the
+  // clock partway down the list and the rest would get nothing, silently.
+  it('sends every mention at once, not one after another', async () => {
+    const store = world({
+      ticket_comments: [comment('C1', `${tok('Budi X', BUDI)} ${tok('Citra X', CITRA)} ${tok('Dewi X', DEWI)}`)],
+    });
+    const d = fakeDaaS(store);
+    d.mailLatencyMs = 20;
+    const out = await d.service().notifyMentions('C1');
+    expect(d.maxMailsInFlight).toBe(3);
+    // Order still follows the comment, whatever order the sends finish in.
+    expect(out.sent).toEqual([BUDI, CITRA, DEWI]);
   });
 
   it('shows the first-time hint only to someone who has never signed in', async () => {
@@ -294,6 +308,71 @@ describe('notifyReply', () => {
     });
     const d = await run(store, async (d) => void (await d.service().notifyReply('C2')));
     expect(d.sent[0].text).toContain('first time here');
+  });
+});
+
+describe('who may be emailed (fails closed)', () => {
+  const mentions = () => world({ ticket_comments: [comment('C1', `${tok('Budi X', BUDI)} ${tok('Citra X', CITRA)}`)] });
+  const reply = () =>
+    world({
+      ticket_comments: [
+        comment('C1', 'Top comment by Budi', { author: BUDI }),
+        comment('C2', 'Reply by Citra', { parent: 'C1', author: CITRA }),
+      ],
+    });
+  /** An integrator's access rule, written into CONFIG the way the README says to. */
+  const rule = (body: string) => (code: string) => {
+    const from = 'canRead: null,';
+    if (!code.includes(from)) throw new Error(`comment_mail CONFIG no longer contains "${from}"`);
+    return code.replace(from, `canRead(host, userId) { ${body} },`);
+  };
+
+  // As shipped, the service has no way to know who may read the record. Sending anyway would let
+  // anyone who may comment mail the record's title and text to any active user, by typing a token.
+  it('sends no mention email until an access rule is configured, and logs why', async () => {
+    const d = fakeDaaS(mentions(), { configure: asShipped });
+    const out = await d.service().notifyMentions('C1');
+    expect(out).toEqual({ sent: [], skipped: [BUDI, CITRA] });
+    expect(d.sent).toEqual([]);
+    expect(d.logger.errors.join('\n')).toContain('no access rule is configured');
+  });
+
+  it('sends no reply email until an access rule is configured, and logs why', async () => {
+    const d = fakeDaaS(reply(), { configure: asShipped });
+    const out = await d.service().notifyReply('C2');
+    expect(out).toEqual({ sent: [], skipped: [BUDI] });
+    expect(d.sent).toEqual([]);
+    expect(d.logger.errors.join('\n')).toContain('no access rule is configured');
+  });
+
+  it('logs nothing for a comment that mentions nobody', async () => {
+    const d = fakeDaaS(world({ ticket_comments: [comment('C1', 'no mentions here')] }), { configure: asShipped });
+    await d.service().notifyMentions('C1');
+    expect(d.logger.errors).toEqual([]);
+  });
+
+  it('lets a canRead rule decide per person, without the create-hook flag', async () => {
+    const d = fakeDaaS(mentions(), { configure: rule(`return userId !== '${BUDI}';`) });
+    const out = await d.service().notifyMentions('C1');
+    expect(out).toEqual({ sent: [CITRA], skipped: [BUDI] });
+    expect(d.sent.map((m) => m.to)).toEqual(['citra@acme.io']);
+  });
+
+  it('applies canRead to replies too', async () => {
+    const d = fakeDaaS(reply(), { configure: rule('return false;') });
+    expect(await d.service().notifyReply('C2')).toEqual({ sent: [], skipped: [BUDI] });
+  });
+
+  it('treats a canRead that returns nothing as a refusal', async () => {
+    const d = fakeDaaS(mentions(), { configure: rule('/* forgot to return */') });
+    expect(await d.service().notifyMentions('C1')).toEqual({ sent: [], skipped: [BUDI, CITRA] });
+  });
+
+  it('hands canRead the record it is asked about', async () => {
+    const d = fakeDaaS(mentions(), {
+      configure: rule(`return host.id === 'T1' && host.title === 'Export drops the last row';`),
+    });
+    expect((await d.service().notifyMentions('C1')).sent).toEqual([BUDI, CITRA]);
   });
 });
 
