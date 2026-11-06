@@ -14,7 +14,20 @@ import noUntranslatedLiteral from './scripts/eslint/no-untranslated-literal.mjs'
 const I18N_MIGRATED = ['ui-form', 'ui-table', 'ui-collections', 'ui-interfaces', 'ui-files', 'ui-users', 'ui-forms', 'ui-workflows', 'ui-cron', 'ui-chat', 'ui-comments', 'hooks'];
 
 export default [
-  { ignores: ['**/dist/', '**/.next/', '**/storybook-static/', '**/coverage/', 'apps/storybook-host/public/storybook/'] },
+  {
+    ignores: [
+      '**/dist/',
+      '**/.next/',
+      '**/storybook-static/',
+      '**/coverage/',
+      'apps/storybook-host/public/storybook/',
+      // Stored DaaS code (hooks, services): each file is the BODY of a function the DaaS compiles
+      // (a top-level `return` or `await`), not a module, so a module parser rejects it. It is
+      // checked instead by packages/ui-comments/tests/daas-mail.test.ts, which runs it in a
+      // sandbox built like the DaaS's.
+      'packages/ui-comments/schema/',
+    ],
+  },
   {
     files: ['packages/*/src/**/*.{ts,tsx}'],
     languageOptions: {

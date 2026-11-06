@@ -27,6 +27,9 @@ export default defineConfig({
         'src/_mockAdapter.ts',
         'src/css.d.ts',
         '.storybook/**',
+        // Stored DaaS code (hook and service bodies). It is run through a vm sandbox, not imported,
+        // so it cannot be instrumented; tests/daas-mail.test.ts covers it by behaviour instead.
+        'schema/**',
         'tests/**',
         'dist/**',
         'storybook-static/**',

@@ -64,6 +64,6 @@
       "delete": "Only where reacted_by = $CURRENT_USER"
     }
   },
-  "hooks": "The create hooks (comments and reactions) are written once per project: see the add-comments skill, step 3. They use only services.items.",
+  "hooks": "The create hooks that stamp the author, the thread root and the access, and bound the text, the photos and the reaction emoji, are written once per project: step 3 of the add-comments skill (they apply your own access rule, so they are not copied here). Notification emails: ./services/comment_mail.js and ./hooks/*.hook.js, installed as described in ./README.md.",
   "proof": "Create a throwaway comment with a reply and a reaction, delete the parent, and count the child rows. Reading the relation does not show on_delete, so a delete test is the only proof the cascade exists."
 }

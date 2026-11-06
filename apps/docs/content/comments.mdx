@@ -35,10 +35,12 @@ at any depth, and lets them react with an emoji.
 ![CommentsKit on a ticket — a thread four levels deep with reactions, a bulleted reply and the comment box (from the Comments Storybook)](/comments-thread.png)
 
 <Callout type="info">
-This version covers threads, formatting, emoji, @mentions, pictures and reactions.
-**Notification emails are not in it yet.** The
+This version covers threads, formatting, emoji, @mentions, pictures and reactions on
+the screen, and ships the DaaS code for the **notification emails** (a mention emails the
+person mentioned, a reply emails the author answered) as a service and two hooks you paste
+into your DaaS. See [Notification emails](#notification-emails). The
 [`add-comments` skill](https://github.com/buildpad-ai/skills) describes the full
-standard comment field; this module is being built up to it in steps.
+standard comment field.
 </Callout>
 
 ## The pieces
@@ -217,6 +219,41 @@ the day it was written.
 - **Editing** changes the text only. Pictures cannot be added to or taken off a
   posted comment.
 
+## Notification emails
+
+Emails are sent by the DaaS, not by the browser. The package ships three small files in its
+`schema/` folder (and in the npm package): a custom service, `services/comment_mail.js`, and two
+action hooks, `hooks/notify-on-mention.hook.js` and `hooks/notify-on-reply.hook.js`. They are
+**pasted into your DaaS**; `buildpad add comments` does not copy them. The folder's `README.md` has
+the install steps; in short: edit `CONFIG` at the top of the service, expose `APP_URL` to services
+(`RUNTIME_ENV_WHITELIST_CUSTOM_SERVICE`), create the service, then the two hooks on
+`<your comment collection>.items.create`, with SMTP configured.
+
+| When | Who is emailed |
+|---|---|
+| A comment mentions people | Each person mentioned (at most 10): “Ana mentioned you in “Title””, with the comment, what it replies to and an **Open the comment** button |
+| A comment answers another | The author of the comment answered: “Ana replied to your post in “Title”” |
+
+- **Never the author themself, and never twice for one comment.** A person a reply already
+  mentions gets the mention email only. The hooks fire once, on create: editing a comment emails
+  nobody.
+- **Skipped, not failed:** people who are not `active`, who have no email, or whose address cannot
+  receive mail (`.test`, `example.com`, `daas.internal`, a service account).
+- **The comment is never affected.** The hooks run after the write and catch every error. A mail
+  server that is down loses the email, not the comment. Failures are written to the DaaS log
+  (`/logs`); a failed email is not retried, and there is no record of what was sent.
+- **Safe HTML.** Every value in the email card is escaped; the text part is plain text.
+- **Who may be emailed is your access rule.** The service assumes the create hook already turned
+  the mention of anyone who may not read the record into plain text. If yours does not, fill in
+  `CONFIG.canRead`.
+
+<Callout type="warning">
+These files were tested by running them in a sandbox built like the DaaS's own, against fake
+services, with deliberate bugs to prove the tests fail when they should. They have **not** been run
+against a real DaaS or mail server. Send a test mention and a test reply between two real accounts
+before relying on them.
+</Callout>
+
 ## How it loads
 
 A whole thread is read in two requests however deep it is: the top-level
@@ -232,7 +269,7 @@ English and Bahasa Indonesia. Override them with `BuildpadI18nProvider` or the
 
 ## Not in this version
 
-- **Emails** to a person mentioned (the hook that sends them), an unread marker
-  and a Mentioned page. The mention itself is stored and shown.
-- **Emails** to the author of the comment that was answered.
+- An **unread marker** for mentions and a **Mentioned page**. The mention itself is stored,
+  shown as a chip, and emailed (see above), but nothing tracks whether it was read.
+- A record of the emails sent, or a retry of a failed one.
 - Guests on a public link, and highlight or pin anchors on a document.
