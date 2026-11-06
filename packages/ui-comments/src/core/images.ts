@@ -2,9 +2,9 @@
  * Pictures attached to a comment: which files are accepted and how they are picked up from a file
  * input, a drop or the clipboard. Pure helpers; the upload itself belongs to the adapter.
  */
-export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const;
+export const COMMENT_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const;
 /** What the file input offers. */
-export const IMAGE_ACCEPT = IMAGE_TYPES.join(',');
+export const IMAGE_ACCEPT = COMMENT_IMAGE_TYPES.join(',');
 /** Pictures are refused above this size (the add-comments skill's bound). */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -12,7 +12,7 @@ export type ImageProblem = 'not-image' | 'too-big';
 
 /** Null when the file can be attached. SVG is not accepted: it can carry script. */
 export function checkImage(file: { type: string; size: number }): ImageProblem | null {
-  if (!(IMAGE_TYPES as readonly string[]).includes(file.type)) return 'not-image';
+  if (!(COMMENT_IMAGE_TYPES as readonly string[]).includes(file.type)) return 'not-image';
   if (file.size > MAX_IMAGE_BYTES) return 'too-big';
   return null;
 }

@@ -60,7 +60,7 @@ export {
 } from './core/mentions';
 export type { Segment, Token } from './core/mentions';
 export { caretOffset } from './core/caret';
-export { IMAGE_TYPES, IMAGE_ACCEPT, MAX_IMAGE_BYTES, checkImage, nameFor, pictureFiles } from './core/images';
+export { COMMENT_IMAGE_TYPES, IMAGE_ACCEPT, MAX_IMAGE_BYTES, checkImage, nameFor, pictureFiles } from './core/images';
 export type { ImageProblem } from './core/images';
 export { MAX_BODY, MAX_PHOTOS } from './core/types';
 export type { Comment, CommentAuthor, NewComment, Person, ThreadNode } from './core/types';
