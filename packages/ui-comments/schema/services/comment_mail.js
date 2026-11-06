@@ -36,6 +36,10 @@ const CONFIG = {
   appUrl: 'https://app.example.com',
   // At most this many people are emailed for one comment (the kit keeps at most 10 as mentions).
   maxMentions: 10,
+  // Put the commenter's address in Reply-To, so answering the email reaches them. Off by default:
+  // it shows that address to everyone emailed, and many apps keep people's addresses from each other.
+  // Turn it on when people in your app may see each other's email addresses anyway.
+  replyToAuthor: false,
   // Shown to someone who has never signed in.
   firstTimeHint: 'This looks like your first time here: sign in with this email address to see it.',
   // Who may be emailed about a record. This FAILS CLOSED: until you set one of the two below, no
@@ -296,7 +300,7 @@ return {
             subject: authorName + ' mentioned you in “' + hostTitle + '”',
             text: mail.text,
             html: mail.html,
-            replyTo: author && !undeliverable(author.email) ? author.email : undefined,
+            replyTo: CONFIG.replyToAuthor && author && !undeliverable(author.email) ? author.email : undefined,
           },
         });
       }
@@ -357,7 +361,7 @@ return {
         subject: heading,
         text: mail.text,
         html: mail.html,
-        replyTo: author && !undeliverable(author.email) ? author.email : undefined,
+        replyTo: CONFIG.replyToAuthor && author && !undeliverable(author.email) ? author.email : undefined,
       });
       (status === 'sent' ? result.sent : result.skipped).push(recipientId);
     } catch (error) {

@@ -46,7 +46,9 @@ service and the hooks catch every error. A mail server that is down loses the em
    that points at the thing commented on, the thing's collection and title column, the app name and
    noun, and `linkPath` (where *Open the comment* goes; `{host}` and `{comment}` are replaced by the
    ids). If your comment columns are not the skill's defaults, set `fields` too. Then set **who may
-   be emailed** (next section): until you do, the service sends nothing.
+   be emailed** (next section): until you do, the service sends nothing. To let people answer an
+   email straight to the commenter, set `replyToAuthor: true`: it is off because it shows the
+   commenter's address to everyone emailed.
 3. **Expose the app's URL** to services: `RUNTIME_ENV_WHITELIST_CUSTOM_SERVICE=APP_URL` on the DaaS,
    with `APP_URL=https://your-app.example.com`. Without it the `appUrl` fallback in `CONFIG` is used.
 4. **Create the service** (the `services` tool, `create`): name `comment_mail`, `status: active`,
@@ -75,7 +77,7 @@ mailed to any active user. Set one of these in `CONFIG`:
 
 `tests/daas-mail.test.ts` runs these exact files in a sandbox built like the DaaS's own
 (`lib/utils/code-sandbox.ts`: `process`, `require`, timers and `fetch` blocked, the builtins frozen,
-strict-mode function bodies, the same parameter lists) against fake in-memory services. 40 tests,
+strict-mode function bodies, the same parameter lists) against fake in-memory services. 43 tests,
 and nine deliberate bugs in the service and a hook (no escaping, no self-skip, reads not elevated, no
 dedupe, no cap, test addresses mailed, a mail failure counted as sent, a hook that does not swallow
 errors) are each caught.

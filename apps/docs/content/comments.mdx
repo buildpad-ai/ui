@@ -247,6 +247,8 @@ the install steps; in short: edit `CONFIG` at the top of the service, expose `AP
   why. Set `CONFIG.mentionsCheckedByCreateHook: true` when your create hook already turns the mention
   of anyone who may not read the record into plain text, or fill in `CONFIG.canRead` with your own
   access rule.
+- **The commenter's address stays private.** Emails have no Reply-To unless you set
+  `CONFIG.replyToAuthor: true`, which shows the commenter's address to everyone emailed.
 - **Everyone is emailed at once.** Mentions are sent in parallel, so a slow mail server cannot run out
   the service's time limit partway down the list.
 

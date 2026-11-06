@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asShipped, fakeDaaS, runSandboxed, type FakeDaaS, type Row, type Store } from './daas-harness';
+import { asShipped, fakeDaaS, runSandboxed, trustCreateHook, type FakeDaaS, type Row, type Store } from './daas-harness';
 
 const id = (n: number) => `${String(n).padStart(8, '0')}-0000-4000-8000-000000000000`;
 const ANA = id(1); // writes the comments
@@ -46,7 +46,8 @@ describe('notifyMentions', () => {
     expect(d.sent.map((m) => m.to)).toEqual(['budi@acme.io', 'citra@acme.io']);
     const [first] = d.sent;
     expect(first.subject).toBe('Ana X mentioned you in “Export drops the last row”');
-    expect(first.replyTo).toBe('ana@acme.io');
+    // As shipped, the commenter's address is not handed to the people emailed (see the Reply-To tests).
+    expect(first.replyTo).toBeUndefined();
     expect(first.html).toContain('href="https://app.example.com/tickets/T1?comment=C1"');
     expect(first.text).toContain('Open the comment: https://app.example.com/tickets/T1?comment=C1');
   });
@@ -227,7 +228,7 @@ describe('notifyReply', () => {
     const [mail] = d.sent;
     expect(mail.to).toBe('budi@acme.io');
     expect(mail.subject).toBe('Citra X replied to your post in “Export drops the last row”');
-    expect(mail.replyTo).toBe('citra@acme.io');
+    expect(mail.replyTo).toBeUndefined();
     expect(mail.text).toContain('Your post:');
     expect(mail.text).toContain('> Top comment by Budi');
     expect(mail.text).toContain('Reply by Citra');
@@ -373,6 +374,40 @@ describe('who may be emailed (fails closed)', () => {
       configure: rule(`return host.id === 'T1' && host.title === 'Export drops the last row';`),
     });
     expect((await d.service().notifyMentions('C1')).sent).toEqual([BUDI, CITRA]);
+  });
+});
+
+describe('Reply-To (the commenter’s address)', () => {
+  /** The documented setup, plus Reply-To turned on. */
+  const withReplyTo = (code: string) => {
+    const from = 'replyToAuthor: false,';
+    if (!code.includes(from)) throw new Error(`comment_mail CONFIG no longer contains "${from}"`);
+    return trustCreateHook(code).replace(from, 'replyToAuthor: true,');
+  };
+
+  it('puts the commenter in Reply-To of a mention email when turned on', async () => {
+    const d = fakeDaaS(world({ ticket_comments: [comment('C1', tok('Budi X', BUDI))] }), { configure: withReplyTo });
+    await d.service().notifyMentions('C1');
+    expect(d.sent[0].replyTo).toBe('ana@acme.io');
+  });
+
+  it('puts the replier in Reply-To of a reply email when turned on', async () => {
+    const store = world({
+      ticket_comments: [comment('C1', 'Top', { author: BUDI }), comment('C2', 'Answer', { parent: 'C1', author: CITRA })],
+    });
+    const d = fakeDaaS(store, { configure: withReplyTo });
+    await d.service().notifyReply('C2');
+    expect(d.sent[0].replyTo).toBe('citra@acme.io');
+  });
+
+  it('never puts an address that cannot receive mail in Reply-To, even when turned on', async () => {
+    const store = world({
+      daas_users: [user(ANA, 'Ana', 'ana@example.com'), user(BUDI, 'Budi', 'budi@acme.io')],
+      ticket_comments: [comment('C1', tok('Budi X', BUDI))],
+    });
+    const d = fakeDaaS(store, { configure: withReplyTo });
+    await d.service().notifyMentions('C1');
+    expect(d.sent[0].replyTo).toBeUndefined();
   });
 });
 
