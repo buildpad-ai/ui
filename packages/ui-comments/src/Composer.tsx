@@ -2,15 +2,17 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { ActionIcon, Button, Group, Text, Textarea, Tooltip } from '@mantine/core';
-import { IconBold, IconItalic, IconList, IconUnderline } from '@tabler/icons-react';
+import { IconBold, IconItalic, IconList, IconPhoto, IconUnderline } from '@tabler/icons-react';
 import { useBuildpadI18n } from '@buildpad/services';
 import { interpolate, type CommentsTranslations } from '@buildpad/utils';
 import { EmojiPicker } from './EmojiPicker';
 import { MentionPicker } from './MentionPicker';
+import { PhotoStrip } from './PhotoStrip';
 import { caretOffset } from './core/caret';
+import { IMAGE_ACCEPT, MAX_IMAGE_BYTES, checkImage, nameFor, pictureFiles } from './core/images';
 import { capMentions, findTrigger, toDisplay, toStored } from './core/mentions';
 import { continueBullet, toggleBullets, toggleMark } from './core/richtext';
-import { MAX_BODY, type Person } from './core/types';
+import { MAX_BODY, MAX_PHOTOS, type Person } from './core/types';
 import { checkBody, type CommentError } from './core/validation';
 
 export interface ComposerProps {
@@ -19,7 +21,7 @@ export interface ComposerProps {
   /** Label of the primary button: "Comment", "Reply" or "Save". */
   submitLabel: string;
   /** Sends the stored text (mentions as tokens). Reject to keep the box as it is (the caller reports it). */
-  onSubmit: (body: string) => Promise<void>;
+  onSubmit: (body: string, photos: string[]) => Promise<void>;
   onCancel?: () => void;
   /** The stored text to start from, when editing (mention tokens are shown as plain `@Name`). */
   initial?: string;
@@ -27,6 +29,12 @@ export interface ComposerProps {
   maxLength?: number;
   /** People for the @ picker. Leave out and `@` is just text. */
   searchPeople?: (query: string) => Promise<Person[]>;
+  /** Uploads one picture and returns its file id. Leave out and there is no picture button and no paste. */
+  uploadImage?: (file: File) => Promise<string>;
+  /** Where a stored picture loads from (needed with `uploadImage`, to show thumbnails). */
+  photoUrl?: (fileId: string, size: 'thumb' | 'full') => string;
+  /** Most pictures per comment. */
+  maxPhotos?: number;
 }
 
 const SEARCH_DELAY = 150;
@@ -60,8 +68,17 @@ export function Composer({
   autoFocus,
   maxLength = MAX_BODY,
   searchPeople,
+  uploadImage,
+  photoUrl,
+  maxPhotos = MAX_PHOTOS,
 }: ComposerProps) {
   const start = useRef(toDisplay(initial));
+  // Pictures attached so far (file ids) and how many are still uploading.
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(0);
+  const filePicker = useRef<HTMLInputElement>(null);
+  // Counted in a ref as well: a paste of several pictures must not outrun the state.
+  const slots = useRef(0);
   const [text, setText] = useState(start.current.text);
   // Who each `@Name` in the box stands for. The box shows plain names; tokens exist only when sending.
   const [picked, setPicked] = useState<Record<string, string>>(start.current.picked);
@@ -159,20 +176,59 @@ export function Composer({
     setFound(null);
   };
 
+  /** Upload each picture, up to the limit. A refused or failed one says why and the others carry on. */
+  const attach = (files: File[]) => {
+    if (!uploadImage || files.length === 0) return;
+    // Clear the old message once for the whole batch; a refusal below then stays on screen even
+    // though the next, valid file in the same choice still uploads.
+    setProblem(null);
+    for (const original of files) {
+      if (slots.current >= maxPhotos) {
+        setProblem(strings.errors.tooManyPhotos);
+        return;
+      }
+      const refused = checkImage(original);
+      if (refused) {
+        setProblem(
+          refused === 'not-image'
+            ? strings.errors.notImage
+            : interpolate(strings.errors.tooBig, { max: `${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))} MB` })
+        );
+        continue;
+      }
+      slots.current++;
+      setUploading((count) => count + 1);
+      uploadImage(nameFor(original))
+        .then((id) => setPhotos((current) => (current.includes(id) ? current : [...current, id])))
+        .catch(() => {
+          slots.current--;
+          setProblem(strings.errors.uploadFailed);
+        })
+        .finally(() => setUploading((count) => count - 1));
+    }
+  };
+
+  const removePhoto = (id: string) => {
+    slots.current--;
+    setPhotos((current) => current.filter((item) => item !== id));
+  };
+
   const send = async () => {
-    if (busy) return;
+    if (busy || uploading > 0) return;
     // Only names still in the box count: a person whose @Name was deleted is no longer picked.
     const stored = capMentions(toStored(text, picked));
-    const checked = checkBody(stored, false, maxLength);
+    const checked = checkBody(stored, photos.length > 0, maxLength);
     if (!checked.ok) {
       setProblem(errorText(checked.error, strings, maxLength));
       return;
     }
     setBusy(true);
     try {
-      await onSubmit(checked.value);
+      await onSubmit(checked.value, photos);
       setText('');
       setPicked({});
+      setPhotos([]);
+      slots.current = 0;
       setTrigger(null);
       setProblem(null);
     } catch {
@@ -227,7 +283,18 @@ export function Composer({
   );
 
   return (
-    <div className="bp-cm-composer">
+    <div
+      className="bp-cm-composer"
+      // In the capture phase, so a paste works whether the textarea or the toolbar has focus. Only a
+      // clipboard that really holds a picture is taken over: a plain-text paste is left alone.
+      onPasteCapture={(event) => {
+        if (!uploadImage) return;
+        const files = pictureFiles(event.clipboardData?.items);
+        if (files.length === 0) return;
+        event.preventDefault();
+        attach(files);
+      }}
+    >
       <div className="bp-cm-field">
         <Textarea
           ref={field}
@@ -266,6 +333,9 @@ export function Composer({
           />
         )}
       </div>
+      {photoUrl && (
+        <PhotoStrip photos={photos} url={photoUrl} strings={strings} onRemove={removePhoto} pending={uploading} />
+      )}
       <Group justify="space-between" mt={6} wrap="nowrap">
         <Group gap={2} role="toolbar" aria-label={strings.toolbar.label}>
           {tool(strings.toolbar.bold, <IconBold size={16} />, () => mark('**'))}
@@ -276,6 +346,24 @@ export function Composer({
             apply(toggleBullets(text, from, to));
           })}
           <EmojiPicker onPick={insert} strings={strings} disabled={busy} />
+          {uploadImage && (
+            <>
+              {tool(strings.images.attach, <IconPhoto size={16} />, () => filePicker.current?.click())}
+              <input
+                ref={filePicker}
+                type="file"
+                accept={IMAGE_ACCEPT}
+                multiple
+                hidden
+                data-testid="bp-cm-file-input"
+                onChange={(event) => {
+                  attach(Array.from(event.currentTarget.files ?? []));
+                  // So choosing the same file again fires a change.
+                  event.currentTarget.value = '';
+                }}
+              />
+            </>
+          )}
         </Group>
         <Group gap="xs" wrap="nowrap">
           <Text size="xs" c="dimmed" visibleFrom="sm">
@@ -286,7 +374,7 @@ export function Composer({
               {strings.composer.cancel}
             </Button>
           )}
-          <Button size="xs" onClick={() => void send()} disabled={busy || over > 0}>
+          <Button size="xs" onClick={() => void send()} disabled={busy || uploading > 0 || over > 0}>
             {busy ? strings.composer.saving : submitLabel}
           </Button>
         </Group>

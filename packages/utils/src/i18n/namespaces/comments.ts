@@ -101,8 +101,28 @@ export interface CommentsTranslations {
     /** While the first search is running */
     searching: string;
   };
+  images: {
+    /** Button and its accessible name */
+    attach: string;
+    /** Remove a picture before sending — "{n}" is its number, e.g. "2" */
+    remove: string;
+    uploading: string;
+    /** The viewer */
+    viewerLabel: string;
+    close: string;
+    previous: string;
+    next: string;
+    /** Accessible name of a thumbnail — "{n}" of "{total}" */
+    open: string;
+    /** Alt text of a picture */
+    alt: string;
+  };
   errors: {
     empty: string;
+    notImage: string;
+    /** "{max}" is the size, e.g. "10 MB" */
+    tooBig: string;
+    uploadFailed: string;
     /** "{max}" is the limit */
     tooLong: string;
     tooManyPhotos: string;
@@ -180,8 +200,22 @@ export const commentsDefaults: CommentsTranslations = {
     none: 'No one named “{query}”.',
     searching: 'Searching…',
   },
+  images: {
+    attach: 'Add picture',
+    remove: 'Remove picture {n}',
+    uploading: 'Uploading picture',
+    viewerLabel: 'Picture viewer',
+    close: 'Close',
+    previous: 'Previous picture',
+    next: 'Next picture',
+    open: 'Open picture {n} of {total}',
+    alt: 'Picture {n}',
+  },
   errors: {
     empty: 'Write a comment',
+    notImage: 'Use a PNG, JPEG, GIF or WebP picture',
+    tooBig: 'Pictures can be up to {max}',
+    uploadFailed: "Couldn't upload that picture.",
     tooLong: 'Comments can be up to {max} characters',
     tooManyPhotos: 'Attach fewer pictures',
     photosInvalid: 'Those pictures could not be attached',
@@ -258,8 +292,22 @@ export const commentsId: CommentsTranslations = {
     none: 'Tidak ada yang bernama “{query}”.',
     searching: 'Mencari…',
   },
+  images: {
+    attach: 'Tambah gambar',
+    remove: 'Hapus gambar {n}',
+    uploading: 'Mengunggah gambar',
+    viewerLabel: 'Penampil gambar',
+    close: 'Tutup',
+    previous: 'Gambar sebelumnya',
+    next: 'Gambar berikutnya',
+    open: 'Buka gambar {n} dari {total}',
+    alt: 'Gambar {n}',
+  },
   errors: {
     empty: 'Tulis komentar',
+    notImage: 'Gunakan gambar PNG, JPEG, GIF, atau WebP',
+    tooBig: 'Gambar maksimal {max}',
+    uploadFailed: 'Gambar tidak dapat diunggah.',
     tooLong: 'Komentar maksimal {max} karakter',
     tooManyPhotos: 'Lampirkan lebih sedikit gambar',
     photosInvalid: 'Gambar tersebut tidak dapat dilampirkan',

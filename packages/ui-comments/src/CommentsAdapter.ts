@@ -10,7 +10,7 @@
  * A method an adapter leaves out switches that feature off in the UI: no `react` hides the
  * reaction picker (chips stay read-only), no `edit`/`remove`/`resolve` hides those buttons.
  */
-import { apiRequest } from '@buildpad/services';
+import { apiRequest, buildApiUrl, getApiHeadersAsync } from '@buildpad/services';
 import { summarize, type ReactionSummary } from './core/reactions';
 import { displayName, type PersonRow } from './core/people';
 import type { Comment, NewComment, Person } from './core/types';
@@ -32,7 +32,32 @@ export interface CommentsAdapter {
    * read the record into plain text.
    */
   searchPeople?(query: string): Promise<Person[]>;
+  /** Upload one picture and return its file id (stored in `photos`). Leave out and there is no picture button and no paste. */
+  uploadImage?(file: File): Promise<string>;
+  /** Where to load a stored picture from. `thumb` is the small version shown in the comment. */
+  photoUrl?(fileId: string, size?: 'thumb' | 'full'): string;
 }
+
+/** Upload one file to the app's `/api/files` route (multipart) and return its id. */
+export async function uploadToFiles(file: File, folder?: string): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  if (folder) form.append('folder', folder);
+  // The multipart boundary is set by the browser: no Content-Type here.
+  const { 'Content-Type': _type, ...headers } = (await getApiHeadersAsync()) as Record<string, string>;
+  const response = await fetch(buildApiUrl('/api/files'), { method: 'POST', headers, body: form });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { errors?: Array<{ message?: string }> } | null;
+    throw new Error(body?.errors?.[0]?.message || 'Upload failed');
+  }
+  const { data } = (await response.json()) as { data?: { id?: string } };
+  if (!data?.id) throw new Error('Upload failed');
+  return data.id;
+}
+
+/** `/api/assets/<id>`, resized for a thumbnail. */
+export const assetUrl = (fileId: string, size: 'thumb' | 'full' = 'full') =>
+  `/api/assets/${encodeURIComponent(fileId)}${size === 'thumb' ? '?width=320&height=320&fit=inside' : ''}`;
 
 /** People search over the app's `/api/users` route (active users, matched on name and email). */
 export function usersSearch(request: Request = (path, init) => apiRequest(path, init), limit = 8) {
@@ -90,6 +115,11 @@ export interface ItemsAdapterOptions {
    * `@` is just text.
    */
   mentions?: boolean | ((query: string) => Promise<Person[]>);
+  /**
+   * Pictures: `true` uploads to `/api/files` and shows `/api/assets/<id>`; `folder` puts the files
+   * in a folder; `upload` replaces the upload. Leave out and there is no picture button.
+   */
+  images?: boolean | { folder?: string; upload?: (file: File) => Promise<string> };
   /** Edit and delete are off unless asked for: comments are immutable by default. */
   allowEdit?: boolean;
   allowDelete?: boolean;
@@ -219,6 +249,12 @@ export function itemsAdapter(options: ItemsAdapterOptions): CommentsAdapter {
   };
 
   if (options.linkFor) adapter.linkFor = options.linkFor;
+
+  if (options.images) {
+    const custom = typeof options.images === 'object' ? options.images : {};
+    adapter.uploadImage = custom.upload ?? ((file) => uploadToFiles(file, custom.folder));
+    adapter.photoUrl = assetUrl;
+  }
 
   if (options.mentions) {
     adapter.searchPeople = typeof options.mentions === 'function' ? options.mentions : usersSearch(request);

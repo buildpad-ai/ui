@@ -15,7 +15,7 @@
 export { CommentsKit } from './CommentsKit';
 export type { CommentsKitProps } from './CommentsKit';
 
-export { itemsAdapter, usersSearch, DEFAULT_FIELDS, REPLY_CHUNK } from './CommentsAdapter';
+export { itemsAdapter, usersSearch, uploadToFiles, assetUrl, DEFAULT_FIELDS, REPLY_CHUNK } from './CommentsAdapter';
 export type { CommentsAdapter, CommentFields, ItemsAdapterOptions } from './CommentsAdapter';
 
 export { useComments } from './useComments';
@@ -28,6 +28,8 @@ export { CommentMessage, relativeTime } from './CommentMessage';
 export type { CommentMessageProps } from './CommentMessage';
 export { CommentBody } from './CommentBody';
 export type { CommentBodyProps } from './CommentBody';
+export { PhotoStrip } from './PhotoStrip';
+export type { PhotoStripProps } from './PhotoStrip';
 export { MentionPicker } from './MentionPicker';
 export type { MentionPickerProps } from './MentionPicker';
 export { ReactionBar } from './ReactionBar';
@@ -58,5 +60,7 @@ export {
 } from './core/mentions';
 export type { Segment, Token } from './core/mentions';
 export { caretOffset } from './core/caret';
+export { IMAGE_TYPES, IMAGE_ACCEPT, MAX_IMAGE_BYTES, checkImage, nameFor, pictureFiles } from './core/images';
+export type { ImageProblem } from './core/images';
 export { MAX_BODY, MAX_PHOTOS } from './core/types';
 export type { Comment, CommentAuthor, NewComment, Person, ThreadNode } from './core/types';

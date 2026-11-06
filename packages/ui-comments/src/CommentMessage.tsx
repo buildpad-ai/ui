@@ -7,6 +7,7 @@ import { useBuildpadI18n } from '@buildpad/services';
 import { interpolate, type CommentsTranslations } from '@buildpad/utils';
 import { CommentBody } from './CommentBody';
 import { Composer } from './Composer';
+import { PhotoStrip } from './PhotoStrip';
 import { ReactionBar } from './ReactionBar';
 import type { Comment, Person } from './core/types';
 
@@ -32,6 +33,8 @@ export interface CommentMessageProps {
   meId?: string;
   /** People for the @ picker (also used when editing). */
   searchPeople?: (query: string) => Promise<Person[]>;
+  /** Where a stored picture loads from. Leave out and pictures are not shown. */
+  photoUrl?: (fileId: string, size: 'thumb' | 'full') => string;
   /** The link for "Copy link", or undefined to hide the button. */
   link?: string;
 }
@@ -76,6 +79,7 @@ export function CommentMessage({
   link,
   meId,
   searchPeople,
+  photoUrl,
 }: CommentMessageProps) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -155,6 +159,7 @@ export function CommentMessage({
       ) : (
         <>
           <CommentBody body={comment.body} meId={meId} />
+          {photoUrl && comment.photos && <PhotoStrip photos={comment.photos} url={photoUrl} strings={strings} />}
           <ReactionBar chips={comment.reactions ?? []} onToggle={onReact} strings={strings} />
           <Group gap={2} mt={4} className="bp-cm-actions">
             {canReply &&

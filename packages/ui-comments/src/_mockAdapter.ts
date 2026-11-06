@@ -19,7 +19,9 @@ export interface MockOptions {
   /** Milliseconds each call takes, so a story can show the in-between states. */
   latency?: number;
   /** Which calls fail, to show the error states. */
-  failOn?: Array<'list' | 'add' | 'react' | 'edit' | 'remove' | 'resolve'>;
+  failOn?: Array<'list' | 'add' | 'react' | 'edit' | 'remove' | 'resolve' | 'upload'>;
+  /** Offer picture upload (default true). Uploads are kept in memory and drawn as coloured tiles. */
+  images?: boolean;
   edit?: boolean;
   remove?: boolean;
   resolve?: boolean;
@@ -149,6 +151,25 @@ export function mockAdapter(options: MockOptions): MockAdapter {
       );
       if (on && at === -1) reactions.push({ commentId, emoji: canonical, by: options.me.id });
       if (!on && at !== -1) reactions.splice(at, 1);
+    };
+  }
+
+  if (options.images !== false) {
+    adapter.uploadImage = async (file) => {
+      adapter.calls.push(`upload:${file.name}:${file.type}`);
+      await guard('upload');
+      serial++;
+      return `file-${serial}`;
+    };
+    // A coloured tile with the file's number: real pixels for Storybook, no network.
+    adapter.photoUrl = (fileId, size = 'full') => {
+      const hue = [...fileId].reduce((sum, ch) => sum + ch.charCodeAt(0) * 37, 0) % 360;
+      const side = size === 'thumb' ? 160 : 720;
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${Math.round(side * 0.66)}">` +
+        `<rect width="100%" height="100%" fill="hsl(${hue} 55% 62%)"/>` +
+        `<text x="50%" y="52%" text-anchor="middle" font-family="sans-serif" font-size="${side / 9}" fill="white">${fileId}</text></svg>`;
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     };
   }
 

@@ -12,7 +12,7 @@
         { "field": "root", "type": "uuid", "note": "The first comment of the thread; null on a top-level comment. Stamped by the hook as parent.root ?? parent.id. Backfill it for existing replies before the kit reads them." },
         { "field": "author", "type": "uuid", "note": "Stamped by the hook, never sent by the browser" },
         { "field": "body", "type": "text", "required": false, "note": "Plain-text markup: **bold**, *italic*, ++underline++, '- ' bullets. Up to 20 000 characters (the hook trims and bounds it). May be empty only when photos is non-empty." },
-        { "field": "photos", "type": "json", "note": "List of file ids, null when none, at most 20. Not used by this version of the kit." },
+        { "field": "photos", "type": "json", "note": "List of file ids (from POST /api/files), null when none, at most 20. The hook should check it is a list of at most 20 strings. A picture alone is a valid comment, so body may be empty when photos is not. Deleting a comment does not delete its files." },
         { "field": "resolved", "type": "boolean", "default": false, "optional": true, "note": "Only if you want Resolve/Reopen on top-level comments. Pass fields.resolved: 'resolved' to itemsAdapter." },
         { "field": "created_at", "type": "timestamp", "note": "Stamped by the hook" }
       ],

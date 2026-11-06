@@ -109,3 +109,19 @@ export const Mentions: Story = { render: () => <Kit adapter={{ latency: 250 }} /
 
 /** No people search on the adapter: @ is just text. */
 export const NoMentions: Story = { render: () => <Kit adapter={{ mentions: false }} /> };
+
+/** Pictures: use the picture button or paste a screenshot (Ctrl+V) into the box. Thumbnails open a viewer. */
+export const Pictures: Story = { render: () => <Kit adapter={{ latency: 400, comments: withPictures() }} /> };
+
+/** No upload on the adapter: no picture button, and pasting a picture does nothing. */
+export const NoPictures: Story = { render: () => <Kit adapter={{ images: false }} /> };
+
+/** Uploads fail: the message says so and the text stays in the box. */
+export const WhenUploadFails: Story = { render: () => <Kit adapter={{ failOn: ['upload'] }} /> };
+
+function withPictures(): Comment[] {
+  const base = seed();
+  base[0] = { ...base[0], photos: ['file-a', 'file-b', 'file-c'] };
+  base[2] = { ...base[2], photos: ['file-d'] };
+  return base;
+}

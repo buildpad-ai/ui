@@ -19,6 +19,11 @@ at any depth, and lets them react with an emoji.
   sends, <kbd>Esc</kbd> cancels a reply, and <kbd>Enter</kbd> inside a bullet
   starts the next one.
 - **@Mentions.** Type `@` and a name: people are searched after a short pause, <kbd>↑</kbd> <kbd>↓</kbd> move, <kbd>Enter</kbd> or <kbd>Tab</kbd> chooses, <kbd>Esc</kbd> closes the list. A mention is stored in the text as `@[Name](user:<uuid>)` and shown as a chip; a mention of you stands out.
+- **Pictures.** A picture button, and **paste from the clipboard** (a screenshot
+  works). PNG, JPEG, GIF or WebP up to 10 MB, at most 20 per comment, shown as
+  thumbnails that open a viewer with previous, next and <kbd>←</kbd> <kbd>→</kbd>.
+  A picture alone is a valid comment. They are uploaded to the Files API and
+  stored as file ids in `photos`.
 - **Reactions.** Twelve fixed emoji, one chip per emoji in use with its count,
   highlighted when it is yours, with the names in the tooltip. They change at
   once and roll back if the server refuses.
@@ -30,8 +35,8 @@ at any depth, and lets them react with an emoji.
 ![CommentsKit on a ticket — a thread four levels deep with reactions, a bulleted reply and the comment box (from the Comments Storybook)](/comments-thread.png)
 
 <Callout type="info">
-This version covers threads, formatting, emoji, @mentions and reactions.
-**Pictures and notification emails are not in it yet.** The
+This version covers threads, formatting, emoji, @mentions, pictures and reactions.
+**Notification emails are not in it yet.** The
 [`add-comments` skill](https://github.com/buildpad-ai/skills) describes the full
 standard comment field; this module is being built up to it in steps.
 </Callout>
@@ -57,7 +62,7 @@ standard comment field; this module is being built up to it in steps.
 buildpad add comments
 ```
 
-This copies 17 files into `components/ui/comments/` and installs
+This copies 22 files into `components/ui/comments/` and installs
 `@mantine/core`, `@mantine/hooks` and `@tabler/icons-react` if they are missing,
 plus the `services` and `utils` lib modules it needs. In a generated
 app the imports point at your local copy (`@/components/ui/comments`). The
@@ -142,6 +147,7 @@ A method an adapter leaves out switches that feature off:
 | To get | Give the adapter |
 |---|---|
 | @Mentions | `mentions: true` (searches `/api/users`), or a function `(query) => Promise<Person[]>` |
+| Pictures | `images: true` (uploads to `/api/files`, shows `/api/assets/<id>`), `images: { folder }` to choose the folder, or `images: { upload }` to replace the upload |
 | Reactions | `reactionsCollection` (without it the chips are not shown) |
 | Edit your own comment | `allowEdit: true` |
 | Delete (your own, or anyone's with `canModerate`) | `allowDelete: true` |
@@ -191,6 +197,26 @@ become mentions in one comment; the rest stay plain text. The text is the source
 truth: there is no separate mentions column. A name inside a token is the name on
 the day it was written.
 
+## Pictures: what to know
+
+- **Where they go.** `itemsAdapter({ images: true })` posts each picture to
+  `POST /api/files` as multipart (the same route the files module uses) and keeps
+  the returned file id. The comment stores the ids in `photos`; the thumbnails and
+  the viewer load `/api/assets/<id>`, resized for the thumbnail.
+- **What is accepted.** The browser checks the type (PNG, JPEG, GIF, WebP; **SVG is
+  refused**, because it can carry script), 10 MB and 20 pictures, and says why when
+  it refuses one. A refused picture does not stop the others in the same choice.
+  Send waits while a picture is still uploading.
+- **The server must check too.** The create hook bounds `photos` (a list of at most
+  20 strings), as in step 3 of the `add-comments` skill. The browser checks are for
+  the person typing, not for security.
+- **Who can see a picture** is decided by the Files permissions of the viewer, not by
+  who may read the comment. Anyone who may read that file can open it by its id.
+- **Deleting a comment does not delete its pictures.** The files stay in the
+  library; clean them up with your own job if that matters.
+- **Editing** changes the text only. Pictures cannot be added to or taken off a
+  posted comment.
+
 ## How it loads
 
 A whole thread is read in two requests however deep it is: the top-level
@@ -208,8 +234,5 @@ English and Bahasa Indonesia. Override them with `BuildpadI18nProvider` or the
 
 - **Emails** to a person mentioned (the hook that sends them), an unread marker
   and a Mentioned page. The mention itself is stored and shown.
-- **Pictures**: an Image button, paste from the clipboard, thumbnails and a
-  viewer. The `photos` column exists and the kit validates it, but nothing
-  attaches to it yet.
 - **Emails** to the author of the comment that was answered.
 - Guests on a public link, and highlight or pin anchors on a document.

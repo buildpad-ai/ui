@@ -117,6 +117,7 @@ export function CommentsKit({
           link={adapter.linkFor?.(comment.id)}
           meId={meId}
           searchPeople={adapter.searchPeople}
+          photoUrl={adapter.photoUrl}
           onReply={() => setReplyTo((open) => (open === comment.id ? null : comment.id))}
           onEdit={(body) => edit(comment.id, body)}
           onDelete={guarded(() => remove(comment.id))}
@@ -130,10 +131,12 @@ export function CommentsKit({
               placeholder={strings.composer.replyPlaceholder}
               submitLabel={strings.composer.reply}
               searchPeople={adapter.searchPeople}
+              uploadImage={adapter.uploadImage}
+              photoUrl={adapter.photoUrl}
               autoFocus
               onCancel={() => setReplyTo(null)}
-              onSubmit={async (body) => {
-                await add({ body, parent: comment.id });
+              onSubmit={async (body, photos) => {
+                await add({ body, parent: comment.id, photos });
                 setReplyTo(null);
               }}
             />
@@ -182,9 +185,11 @@ export function CommentsKit({
             placeholder={strings.composer.placeholder}
             submitLabel={strings.composer.submit}
             searchPeople={adapter.searchPeople}
-            onSubmit={async (body) => {
+            uploadImage={adapter.uploadImage}
+            photoUrl={adapter.photoUrl}
+            onSubmit={async (body, photos) => {
               setProblem(null);
-              await add({ body });
+              await add({ body, photos });
             }}
           />
         </div>
