@@ -250,7 +250,7 @@ describe('CommentsKit: the box', () => {
     const box = boxes().at(-1)! as HTMLTextAreaElement;
     await userEvent.type(box, 'great');
     await userEvent.click(screen.getByRole('button', { name: 'Add emoji' }));
-    await userEvent.click(await screen.findByRole('tab', { name: 'Other' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Other' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Insert 🎉' }));
     expect(box).toHaveValue('great🎉');
   });

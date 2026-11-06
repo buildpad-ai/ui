@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Badge, Button, Group, Text } from '@mantine/core';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Badge, Button, Group, Text, VisuallyHidden } from '@mantine/core';
 import { IconCheck } from '@tabler/icons-react';
 import { useBuildpadI18n } from '@buildpad/services';
 import { interpolate, type CommentsTranslations } from '@buildpad/utils';
@@ -25,6 +25,8 @@ export interface CommentMessageProps {
   canDelete: boolean;
   canResolve: boolean;
   onReply: () => void;
+  /** Whether this comment's reply box is open: Reply is a toggle. */
+  replyOpen?: boolean;
   onEdit: (body: string) => Promise<void>;
   onDelete: () => Promise<void>;
   onResolve: (resolved: boolean) => Promise<void>;
@@ -72,6 +74,7 @@ export function CommentMessage({
   canDelete,
   canResolve,
   onReply,
+  replyOpen,
   onEdit,
   onDelete,
   onResolve,
@@ -85,6 +88,26 @@ export function CommentMessage({
   const [confirming, setConfirming] = useState(false);
   const [copied, setCopied] = useState(false);
   const { formatCount } = useBuildpadI18n();
+  const replyButton = useRef<HTMLButtonElement>(null);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const cancelDelete = useRef<HTMLButtonElement>(null);
+  const confirmId = useId();
+
+  // Opening the delete confirmation replaces the Delete button, and closing the editor, the reply box
+  // or the confirmation removes whatever had focus: either way focus would fall to the page. Put it
+  // on the control that belongs to the moment — but on closing, only if focus really was lost.
+  // Opening another comment's reply box closes this one, and that box has just taken focus.
+  const before = useRef({ editing, confirming, replyOpen: !!replyOpen });
+  useEffect(() => {
+    const was = before.current;
+    const lost = !document.activeElement || document.activeElement === document.body;
+    if (!was.confirming && confirming) cancelDelete.current?.focus();
+    else if (lost && was.confirming && !confirming) deleteButton.current?.focus();
+    if (lost && was.editing && !editing) editButton.current?.focus();
+    if (lost && was.replyOpen && !replyOpen) replyButton.current?.focus();
+    before.current = { editing, confirming, replyOpen: !!replyOpen };
+  }, [editing, confirming, replyOpen]);
   const name = comment.author?.name ?? strings.message.someone;
 
   const copy = async () => {
@@ -98,8 +121,14 @@ export function CommentMessage({
     }
   };
 
-  const action = (label: string, run: () => void, extra?: { color?: string; label?: string }) => (
+  const action = (
+    label: string,
+    run: () => void,
+    extra?: { color?: string; label?: string; ref?: React.Ref<HTMLButtonElement>; expanded?: boolean }
+  ) => (
     <Button
+      ref={extra?.ref}
+      aria-expanded={extra?.expanded}
       variant="subtle"
       size="compact-xs"
       color={extra?.color ?? 'gray'}
@@ -165,18 +194,24 @@ export function CommentMessage({
             {canReply &&
               action(strings.message.reply, onReply, {
                 label: interpolate(strings.message.replyTo, { name }),
+                ref: replyButton,
+                expanded: !!replyOpen,
               })}
             {link && action(copied ? strings.message.linkCopied : strings.message.copyLink, () => void copy())}
-            {canEdit && action(strings.message.edit, () => setEditing(true))}
+            {canEdit && action(strings.message.edit, () => setEditing(true), { ref: editButton })}
             {canResolve && top &&
               action(comment.resolved ? strings.message.reopen : strings.message.resolve, () =>
                 void onResolve(!comment.resolved)
               )}
-            {canDelete && !confirming && action(strings.message.delete, () => setConfirming(true), { color: 'red' })}
+            {canDelete && !confirming && action(strings.message.delete, () => setConfirming(true), { color: 'red', ref: deleteButton })}
           </Group>
+          {/* The button's own text changes too, but a screen reader may not say so. */}
+          <VisuallyHidden role="status">{copied ? strings.message.linkCopied : ''}</VisuallyHidden>
           {confirming && (
-            <Group gap="xs" mt={4} role="alertdialog" aria-label={strings.message.deleteConfirm}>
-              <Text size="xs">{strings.message.deleteConfirm}</Text>
+            <Group gap="xs" mt={4} role="alertdialog" aria-labelledby={confirmId}>
+              <Text size="xs" id={confirmId}>
+                {strings.message.deleteConfirm}
+              </Text>
               <Button
                 size="compact-xs"
                 color="red"
@@ -187,7 +222,7 @@ export function CommentMessage({
               >
                 {strings.message.delete}
               </Button>
-              <Button size="compact-xs" variant="subtle" color="gray" onClick={() => setConfirming(false)}>
+              <Button ref={cancelDelete} size="compact-xs" variant="subtle" color="gray" onClick={() => setConfirming(false)}>
                 {strings.composer.cancel}
               </Button>
             </Group>

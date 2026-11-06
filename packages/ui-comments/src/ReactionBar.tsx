@@ -60,7 +60,12 @@ export function ReactionBar({ chips, onToggle, strings }: ReactionBarProps) {
       })}
 
       {onToggle && (
-        <Popover opened={opened} onChange={setOpened} position="bottom-start" withArrow shadow="md" trapFocus={false}>
+        // Focus moves into the picker and back to "+" when it closes: the popover renders in a portal
+        // at the end of the page, so without this Tab from "+" never reaches the emoji. There is no
+        // text selection here to protect, unlike the comment box's emoji picker. withRoles={false}:
+        // Mantine would label the dialog by the "+" button, overriding "Choose a reaction"; the roles
+        // and states it would add are set by hand below.
+        <Popover opened={opened} onChange={setOpened} position="bottom-start" withArrow shadow="md" trapFocus returnFocus withRoles={false}>
           <Popover.Target>
             <ActionIcon
               variant="subtle"

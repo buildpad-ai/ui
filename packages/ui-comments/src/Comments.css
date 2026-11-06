@@ -1,4 +1,21 @@
 /*
+ * Text colors that reach WCAG AA (4.5:1) in both schemes. Mantine's `dimmed` is 3.3:1 on white and
+ * 4.0:1 on dark, and its light-variant text (primary-6 on its own tint) is 3.2:1 on white. Set on the
+ * root, not on .bp-cm, because the emoji and reaction pickers render in a portal outside it.
+ *   light: muted gray-7 8.2:1 on white, accent primary-9 5.4:1 on the primary tint
+ *   dark:  muted dark-1 7.8:1 on dark-7, accent stays primary light-color 6.6:1 on its tint
+ */
+:root {
+  --bp-cm-muted: var(--mantine-color-gray-7);
+  --bp-cm-accent-text: var(--mantine-primary-color-9);
+}
+
+[data-mantine-color-scheme='dark'] {
+  --bp-cm-muted: var(--mantine-color-dark-1);
+  --bp-cm-accent-text: var(--mantine-primary-color-light-color);
+}
+
+/*
  * ui-comments — built on Mantine's CSS variables, so light and dark follow the app's theme.
  * Classes are prefixed bp-cm-.
  */
@@ -85,7 +102,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 8px;
+  padding: 2px 8px; /* 25px tall: clears the 24px target minimum */
   font: inherit;
   font-size: var(--mantine-font-size-xs);
   line-height: 1.6;
@@ -105,7 +122,7 @@ button.bp-cm-reaction:hover {
 }
 
 .bp-cm-reaction[aria-pressed='true'] {
-  color: var(--mantine-primary-color-light-color);
+  color: var(--bp-cm-accent-text);
   background: var(--mantine-primary-color-light);
   border-color: var(--mantine-primary-color-filled);
 }
@@ -122,10 +139,10 @@ button.bp-cm-reaction:hover {
 }
 
 .bp-cm-emoji-tab {
-  padding: 2px 8px;
+  padding: 3px 8px; /* 24.6px tall */
   font: inherit;
   font-size: var(--mantine-font-size-xs);
-  color: var(--mantine-color-dimmed);
+  color: var(--bp-cm-muted);
   background: transparent;
   border: 0;
   border-radius: var(--mantine-radius-sm);
@@ -133,7 +150,7 @@ button.bp-cm-reaction:hover {
 }
 
 .bp-cm-emoji-tab[data-active] {
-  color: var(--mantine-primary-color-light-color);
+  color: var(--bp-cm-accent-text);
   background: var(--mantine-primary-color-light);
 }
 
@@ -177,14 +194,14 @@ button.bp-cm-reaction:hover {
 .bp-cm-mention {
   padding: 0 4px;
   font-weight: 500;
-  color: var(--mantine-primary-color-light-color);
+  color: var(--bp-cm-accent-text);
   background: var(--mantine-primary-color-light);
   border-radius: var(--mantine-radius-sm);
 }
 
 .bp-cm-mention[data-me] {
   color: var(--mantine-color-white);
-  background: var(--mantine-primary-color-filled);
+  background: var(--mantine-primary-color-8); /* white on it: 5.0:1 (primary-6 was 3.6:1) */
 }
 
 .bp-cm-mentions {
@@ -224,13 +241,13 @@ button.bp-cm-reaction:hover {
 
 .bp-cm-mention-email {
   font-size: var(--mantine-font-size-xs);
-  color: var(--mantine-color-dimmed);
+  color: var(--bp-cm-muted);
 }
 
 .bp-cm-mention-note {
   padding: 8px 12px;
   font-size: var(--mantine-font-size-xs);
-  color: var(--mantine-color-dimmed);
+  color: var(--bp-cm-muted);
 }
 
 /* Pictures */
@@ -334,4 +351,11 @@ button.bp-cm-reaction:hover {
 
 .bp-cm-viewer-next {
   inset-inline-end: 8px;
+}
+
+/* The upload placeholder pulses; hold it still for people who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .bp-cm-photo--wait {
+    animation: none;
+  }
 }

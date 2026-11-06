@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Badge, Group, Loader, Text } from '@mantine/core';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Alert, Badge, Group, Loader, Text, VisuallyHidden } from '@mantine/core';
 import { useBuildpadI18n } from '@buildpad/services';
 import type { CommentsTranslations, DeepPartial } from '@buildpad/utils';
 import './Comments.css';
@@ -28,6 +28,8 @@ export interface CommentsKitProps {
   newIds?: ReadonlySet<string> | readonly string[];
   /** Replaces the heading. */
   title?: string;
+  /** Level of the heading (default 2), to fit the page the kit sits in. */
+  headingLevel?: 2 | 3 | 4 | 5 | 6;
   /** Called after a failure, besides the message the kit shows. */
   onError?: (action: CommentsAction, error: unknown) => void;
   translations?: DeepPartial<CommentsTranslations>;
@@ -47,6 +49,7 @@ export function CommentsKit({
   focusId,
   newIds,
   title,
+  headingLevel = 2,
   onError,
   translations,
 }: CommentsKitProps) {
@@ -84,9 +87,21 @@ export function CommentsKit({
     const target = root.current?.querySelector(`[data-comment-id="${CSS.escape(focusId)}"]`);
     if (target) {
       scrolled.current = focusId;
-      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const still = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+      target.scrollIntoView({ block: 'center', behavior: still ? 'auto' : 'smooth' });
     }
   }, [focusId, loading, comments]);
+
+  // A deleted comment takes its focused button with it. Once the list has changed, land on the
+  // heading rather than the page (only if focus really was lost).
+  const heading = useRef<HTMLHeadingElement>(null);
+  const headingId = useId();
+  const afterDelete = useRef(false);
+  useEffect(() => {
+    if (!afterDelete.current) return;
+    afterDelete.current = false;
+    if (!document.activeElement || document.activeElement === document.body) heading.current?.focus();
+  }, [comments]);
 
   const guarded = (run: () => Promise<void>) => async () => {
     try {
@@ -119,8 +134,17 @@ export function CommentsKit({
           searchPeople={adapter.searchPeople}
           photoUrl={adapter.photoUrl}
           onReply={() => setReplyTo((open) => (open === comment.id ? null : comment.id))}
+          replyOpen={replyTo === comment.id}
           onEdit={(body) => edit(comment.id, body)}
-          onDelete={guarded(() => remove(comment.id))}
+          onDelete={guarded(async () => {
+            afterDelete.current = true;
+            try {
+              await remove(comment.id);
+            } catch (error) {
+              afterDelete.current = false;
+              throw error;
+            }
+          })}
           onResolve={(resolved) => guarded(() => resolve(comment.id, resolved))()}
           onReact={adapter.react && canComment ? (emoji, on) => void react(comment.id, emoji, on) : undefined}
         />
@@ -150,9 +174,19 @@ export function CommentsKit({
   const total = comments.length;
 
   return (
-    <section ref={root} className="bp-cm" aria-label={title ?? strings.title}>
+    <section ref={root} className="bp-cm" aria-labelledby={headingId}>
       <Group gap="xs" mb="sm">
-        <Text fw={600}>{title ?? strings.title}</Text>
+        {/* A heading, so a screen reader can jump to it; it looks the same as before. */}
+        <Text
+          ref={heading}
+          component={`h${headingLevel}` as 'h2'}
+          id={headingId}
+          tabIndex={-1}
+          fw={600}
+          m={0}
+        >
+          {title ?? strings.title}
+        </Text>
         {total > 0 && (
           <Badge variant="light" color="gray" size="sm">
             {formatCount(total, strings.count)}
@@ -167,8 +201,9 @@ export function CommentsKit({
       )}
 
       {loading ? (
-        <Group justify="center" py="md">
-          <Loader size="sm" />
+        <Group justify="center" py="md" role="status">
+          <Loader size="sm" aria-hidden="true" />
+          <VisuallyHidden>{strings.loading}</VisuallyHidden>
         </Group>
       ) : threads.length === 0 ? (
         <Text size="sm" c="dimmed" mb="sm">

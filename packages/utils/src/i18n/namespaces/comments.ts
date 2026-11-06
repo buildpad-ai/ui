@@ -13,6 +13,8 @@ export interface CommentsTranslations {
   title: string;
   /** "{count} comments" next to the heading */
   count: PluralForms;
+  /** Announced to screen readers while the thread loads */
+  loading: string;
   empty: {
     /** No comments yet, and the viewer may write one */
     canWrite: string;
@@ -137,6 +139,7 @@ export interface CommentsTranslations {
 export const commentsDefaults: CommentsTranslations = {
   title: 'Comments',
   count: { one: '{count} comment', other: '{count} comments' },
+  loading: 'Loading comments…',
   empty: {
     canWrite: 'No comments yet. Start the conversation.',
     readOnly: 'No comments yet.',
@@ -229,6 +232,7 @@ export const commentsDefaults: CommentsTranslations = {
 export const commentsId: CommentsTranslations = {
   title: 'Komentar',
   count: { other: '{count} komentar' },
+  loading: 'Memuat komentar…',
   empty: {
     canWrite: 'Belum ada komentar. Mulai percakapan.',
     readOnly: 'Belum ada komentar.',

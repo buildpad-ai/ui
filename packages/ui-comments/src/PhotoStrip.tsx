@@ -51,7 +51,9 @@ export function PhotoStrip({ photos, url, strings, onRemove, pending = 0 }: Phot
             </button>
             {onRemove && (
               <ActionIcon
-                size="xs"
+                // 24px: it sits on top of the thumbnail's own button, so the target-size exception for
+                // well-spaced small targets cannot apply.
+                size={24}
                 radius="xl"
                 variant="filled"
                 color="dark"
@@ -59,7 +61,7 @@ export function PhotoStrip({ photos, url, strings, onRemove, pending = 0 }: Phot
                 aria-label={interpolate(strings.images.remove, { n: index + 1 })}
                 onClick={() => onRemove(id)}
               >
-                <IconX size={10} />
+                <IconX size={12} />
               </ActionIcon>
             )}
           </div>
@@ -83,6 +85,10 @@ export function PhotoStrip({ photos, url, strings, onRemove, pending = 0 }: Phot
         {open !== null && photos[open] && (
           <div className="bp-cm-viewer-frame">
             <img src={url(photos[open], 'full')} alt={interpolate(strings.images.alt, { n: open + 1 })} />
+            {/* Paging keeps focus on Previous/Next, so say which picture is showing now. */}
+            <VisuallyHidden aria-live="polite" aria-atomic="true">
+              {interpolate(strings.images.alt, { n: open + 1 })}
+            </VisuallyHidden>
             <ActionIcon
               variant="filled"
               color="dark"

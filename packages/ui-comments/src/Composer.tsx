@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { ActionIcon, Button, Group, Text, Textarea, Tooltip } from '@mantine/core';
+import { ActionIcon, Button, Group, Text, Textarea, Tooltip, VisuallyHidden } from '@mantine/core';
 import { IconBold, IconItalic, IconList, IconPhoto, IconUnderline } from '@tabler/icons-react';
 import { useBuildpadI18n } from '@buildpad/services';
 import { interpolate, type CommentsTranslations } from '@buildpad/utils';
@@ -235,6 +235,9 @@ export function Composer({
       // The caller has reported it; the text stays so nothing is lost.
     } finally {
       setBusy(false);
+      // Send disables itself while saving, which drops focus to the page. Bring it back to the box
+      // (a box that closes on success, like a reply, is gone by now and this does nothing).
+      if (!document.activeElement || document.activeElement === document.body) field.current?.focus();
     }
   };
 
@@ -308,8 +311,12 @@ export function Composer({
           minRows={3}
           autosize
           maxRows={12}
-          disabled={busy}
+          // Read-only while saving, not disabled: disabling the focused field drops focus to the page.
+          readOnly={busy}
           error={problem ?? (over > 0 ? formatCount(over, strings.composer.overLimit) : undefined)}
+          // A problem comes from an action (a refused or failed upload, an empty send), not from
+          // typing, so it is announced. The over-limit count is not: it changes on every keystroke.
+          errorProps={problem ? { role: 'alert' } : undefined}
           onChange={(event) => {
             setText(event.currentTarget.value);
             setProblem(null);
@@ -336,6 +343,8 @@ export function Composer({
       {photoUrl && (
         <PhotoStrip photos={photos} url={photoUrl} strings={strings} onRemove={removePhoto} pending={uploading} />
       )}
+      {/* Send waits while a picture uploads; say so, or the disabled button is a mystery. */}
+      <VisuallyHidden role="status">{uploading > 0 ? strings.images.uploading : ''}</VisuallyHidden>
       <Group justify="space-between" mt={6} wrap="nowrap">
         <Group gap={2} role="toolbar" aria-label={strings.toolbar.label}>
           {tool(strings.toolbar.bold, <IconBold size={16} />, () => mark('**'))}
@@ -355,6 +364,7 @@ export function Composer({
                 accept={IMAGE_ACCEPT}
                 multiple
                 hidden
+                aria-label={strings.images.attach}
                 data-testid="bp-cm-file-input"
                 onChange={(event) => {
                   attach(Array.from(event.currentTarget.files ?? []));
