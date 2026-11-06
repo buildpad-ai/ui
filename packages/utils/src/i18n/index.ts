@@ -16,6 +16,7 @@ export type {
   WorkflowsTranslations,
   CronTranslations,
   ChatTranslations,
+  CommentsTranslations,
   FormsTranslations,
   HooksTranslations,
   DateTimeTranslations,

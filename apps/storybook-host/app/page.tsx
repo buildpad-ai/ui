@@ -131,6 +131,14 @@ const catalog: CatalogTier[] = [
         blurb:
           "A docked panel or floating widget that streams answers from a Chocolate Factory agent.",
       },
+      {
+        emoji: "🗨️",
+        name: "Comments",
+        path: "/storybook/comments",
+        port: 6016,
+        blurb:
+          "Comment threads with replies at any depth, formatting, an emoji picker and one-click reactions.",
+      },
     ],
   },
 ];
@@ -557,7 +565,8 @@ pnpm storybook:files        # Port 6009
 pnpm storybook:users        # Port 6011 (users/roles/policies)
 pnpm storybook:workflows    # Port 6013 (workflow definitions/assignments/instances)
 pnpm storybook:cron         # Port 6014 (cron jobs/editor/run history)
-pnpm storybook:chat         # Port 6015 (AI chat panel and widget)`}</pre>
+pnpm storybook:chat         # Port 6015 (AI chat panel and widget)
+pnpm storybook:comments     # Port 6016 (comment threads, replies and reactions)`}</pre>
               </div>
             )}
           </section>

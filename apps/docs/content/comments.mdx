@@ -1,0 +1,202 @@
+---
+title: Comments Module Recipe
+description: Add a comment thread to any record with one CLI command — replies at any depth, a comment box with formatting and an emoji picker, and one-click reactions, behind a small adapter.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Comments Module Recipe
+
+The Comments module puts a discussion on any record — a ticket, a document, an
+order, a page. It shows the comments as threads, lets people answer any comment
+at any depth, and lets them react with an emoji.
+
+- **Threads.** Every comment has a **Reply** button, not only the top one. Each
+  level is indented a little less than the one before (41 px for the first, 22 px
+  for each deeper one), so a long thread stays on screen.
+- **A comment box** with bold, italic, underline, bulleted lists and an emoji
+  picker. <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS)
+  sends, <kbd>Esc</kbd> cancels a reply, and <kbd>Enter</kbd> inside a bullet
+  starts the next one.
+- **Reactions.** Twelve fixed emoji, one chip per emoji in use with its count,
+  highlighted when it is yours, with the names in the tooltip. They change at
+  once and roll back if the server refuses.
+- **No blank screen.** Posting, replying and reacting never clear the list. It
+  stays on screen and is replaced quietly when the server has answered.
+- **Safe text.** A comment is drawn as React nodes only. Anything that is not
+  one of the marks stays plain text, so a comment cannot inject markup.
+
+![CommentsKit on a ticket — a thread four levels deep with reactions, a bulleted reply and the comment box (from the Comments Storybook)](/comments-thread.png)
+
+<Callout type="info">
+This version covers threads, formatting, emoji and reactions. **@mentions,
+pictures and notification emails are not in it yet.** The
+[`add-comments` skill](https://github.com/buildpad-ai/skills) describes the full
+standard comment field; this module is being built up to it in steps.
+</Callout>
+
+## The pieces
+
+| Piece | Role |
+|---|---|
+| `CommentsKit` | The thread, the comment box and the reactions for one record |
+| `itemsAdapter` | The default adapter: reads and writes through your app's `/api/items/...` routes |
+| `CommentsAdapter` | The interface the kit talks to; write your own for another data source |
+| `useComments` | The state behind the kit (list, quiet refetch, optimistic reactions), for a shell of your own |
+| `Composer`, `CommentMessage`, `ReactionBar`, `EmojiPicker`, `CommentBody` | The parts, for a shell of your own |
+| Strings | The `comments` namespace of `@buildpad/utils` (English and Bahasa Indonesia) |
+
+## Install
+
+<Steps>
+
+### Add the component
+
+```bash copy
+buildpad add comments
+```
+
+This copies 17 files into `components/ui/comments/` and installs
+`@mantine/core`, `@mantine/hooks` and `@tabler/icons-react` if they are missing,
+plus the `services` and `utils` lib modules it needs. In a generated
+app the imports point at your local copy (`@/components/ui/comments`). The
+component is opt-in: it is not part of `bootstrap`.
+
+### Create the collections
+
+The kit needs two collections next to the record it comments on: the comments,
+and their reactions. Nothing creates them for you. The package ships a
+description of both — fields, foreign keys, permissions and the unique index —
+in `packages/ui-comments/schema/comments.schema.json`. Create them with your
+backend's own tools, and create **every foreign key with a relation call**: a
+field with a relation block does not create the constraint.
+
+| Collection | Columns |
+|---|---|
+| `<host>_comments` | `id`, `<host>` (the record), `parent`, `root`, `author`, `body`, `photos`, `created_at`, optionally `resolved` |
+| `<host>_comment_reactions` | `id`, `target_comment`, `emoji`, `reacted_by`, `created_at` |
+
+Give `target_comment` an alias on the comments collection named `reactions`
+(a one-to-many field), so one read can nest `reactions.id`, `reactions.emoji`
+and `reactions.reacted_by` with each comment. Prove the cascade by deleting a
+throwaway parent comment and counting its child rows.
+
+<Callout type="warning">
+`parent` and `root` are set to `CASCADE` here, so deleting a comment deletes its
+replies, which is what the kit's "Delete this comment and its replies?" says.
+The `add-comments` skill uses `SET NULL`; with that, the replies of a deleted
+comment would become top-level comments.
+</Callout>
+
+### Add the create hooks
+
+The browser sends only the record, `parent`, `body` and `photos`. A create hook
+on each collection stamps the author, the thread root (`parent.root ?? parent.id`),
+the access and the time, trims and bounds the text, and checks the reaction's
+emoji against the fixed list. Write them once per project; the code is in step 3
+of the [`add-comments` skill](https://github.com/buildpad-ai/skills), and uses
+only `services.items`.
+
+Permissions: read comments by the same rule as the record; create with only the
+columns above; **no update or delete** unless you enable edit or delete below.
+On reactions, delete only where `reacted_by` is the signed-in user.
+
+</Steps>
+
+## Mount it
+
+```tsx filename="components/tickets/ticket-comments.tsx" copy
+'use client';
+
+import { useMemo } from 'react';
+import { CommentsKit, itemsAdapter } from '@/components/ui/comments';
+
+export function TicketComments({ ticketId, user }: { ticketId: string; user: { id: string; name: string } }) {
+  const adapter = useMemo(
+    () =>
+      itemsAdapter({
+        collection: 'ticket_comments',
+        reactionsCollection: 'ticket_comment_reactions',
+        hostField: 'ticket',
+        hostId: ticketId,
+        meId: user.id,
+        linkFor: (commentId) => `${location.origin}/tickets/${ticketId}?comment=${commentId}`,
+      }),
+    [ticketId, user.id]
+  );
+
+  return <CommentsKit adapter={adapter} meId={user.id} meName={user.name} />;
+}
+```
+
+Keep the adapter stable (`useMemo`): the kit reloads when it gets a different
+one, which is how it switches to another record. `itemsAdapter` calls
+`apiRequest`, so it works whether the app talks to DaaS through its own
+`/api/items/...` routes or directly, as `DaaSProvider` is set up.
+
+### What the adapter decides
+
+A method an adapter leaves out switches that feature off:
+
+| To get | Give the adapter |
+|---|---|
+| Reactions | `reactionsCollection` (without it the chips are not shown) |
+| Edit your own comment | `allowEdit: true` |
+| Delete (your own, or anyone's with `canModerate`) | `allowDelete: true` |
+| Resolve and reopen a thread | `fields: { resolved: 'resolved' }` |
+| Copy link | `linkFor` |
+
+Comments are **immutable by default**: a correction is a new reply.
+
+### Props of `CommentsKit`
+
+| Prop | Meaning |
+|---|---|
+| `adapter` | Where the comments come from (required) |
+| `meId`, `meName` | The signed-in user: their comments are theirs to edit, and their name shows on their own reactions (required) |
+| `canComment` | `false` for a read-only viewer: the list and chips stay, the box and Reply go. Default `true` |
+| `canModerate` | May delete and resolve anyone's comment. Default `false` |
+| `focusId` | Scroll to and highlight a comment (from a `?comment=` link) |
+| `newIds` | Comments to mark **New** |
+| `title` | Replaces the heading |
+| `onError` | Called after a failed load, save, reaction or delete, besides the message the kit shows |
+| `translations` | Overrides for the strings |
+
+### Other column names
+
+`itemsAdapter` defaults to the names of the `add-comments` skill. Map your own
+with `fields`:
+
+```ts
+itemsAdapter({
+  // …
+  fields: {
+    parent: 'reply_to',
+    createdAt: 'made_at',
+    reaction: { reactedBy: 'user_id' },
+  },
+});
+```
+
+## How it loads
+
+A whole thread is read in two requests however deep it is: the top-level
+comments, then every reply whose `root` is one of them (in groups of 40 ids), with
+the reactions and the authors nested. A reply whose parent is not loaded stays at
+the top and says so. Replies deeper than 40 levels are not drawn.
+
+## Strings
+
+Every word comes from the `comments` namespace of the shared dictionary, in
+English and Bahasa Indonesia. Override them with `BuildpadI18nProvider` or the
+`translations` prop.
+
+## Not in this version
+
+- **@mentions**, with a picker, chips, access and an email to the person
+  mentioned.
+- **Pictures**: an Image button, paste from the clipboard, thumbnails and a
+  viewer. The `photos` column exists and the kit validates it, but nothing
+  attaches to it yet.
+- **Emails** to the author of the comment that was answered.
+- Guests on a public link, and highlight or pin anchors on a document.

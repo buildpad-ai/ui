@@ -1747,7 +1747,7 @@ describe('MCP: hardcoded registry tables', () => {
     const mcpCategories = readToolEnum(F.mcpIndex, 'get_install_command', 'category');
     expect(minus(mcpCategories, registry.categories.map((c) => c.name))).toEqual([]);
     // The enum is a hand copy; the registry has since gained these categories.
-    expect(minus(registry.categories.map((c) => c.name), mcpCategories)).toEqual(['admin', 'ai', 'workflow']);
+    expect(minus(registry.categories.map((c) => c.name), mcpCategories)).toEqual(['admin', 'ai', 'collaboration', 'workflow']);
   });
 });
 

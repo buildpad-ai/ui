@@ -234,6 +234,7 @@ export {
   type WorkflowsTranslations,
   type CronTranslations,
   type ChatTranslations,
+  type CommentsTranslations,
   type FormsTranslations,
   type HooksTranslations,
   type DateTimeTranslations,

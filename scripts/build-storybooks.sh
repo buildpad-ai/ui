@@ -12,9 +12,10 @@
 #   ├── users/              ← ui-users Storybook
 #   ├── workflows/          ← ui-workflows Storybook
 #   ├── cron/               ← ui-cron Storybook
-#   └── chat/               ← ui-chat Storybook
+#   ├── chat/               ← ui-chat Storybook
+#   └── comments/           ← ui-comments Storybook
 #
-# The landing page with links to all 10 is the Next.js host app itself.
+# The landing page with links to all 11 is the Next.js host app itself.
 
 set -euo pipefail
 
@@ -33,7 +34,7 @@ rm -rf "${OUTPUT_DIR}"
 mkdir -p "${OUTPUT_DIR}"
 
 # Build ui-interfaces Storybook
-echo "📦 [1/9] Building ui-interfaces Storybook..."
+echo "📦 [1/11] Building ui-interfaces Storybook..."
 cd "${ROOT_DIR}/packages/ui-interfaces"
 npx storybook build -o "${OUTPUT_DIR}/interfaces" 2>&1 || {
   echo "❌ ui-interfaces Storybook build failed"
@@ -42,7 +43,7 @@ npx storybook build -o "${OUTPUT_DIR}/interfaces" 2>&1 || {
 echo "   ✅ ui-interfaces done"
 
 # Build ui-form Storybook
-echo "📦 [2/9] Building ui-form Storybook..."
+echo "📦 [2/11] Building ui-form Storybook..."
 cd "${ROOT_DIR}/packages/ui-form"
 npx storybook build -o "${OUTPUT_DIR}/form" 2>&1 || {
   echo "❌ ui-form Storybook build failed"
@@ -51,7 +52,7 @@ npx storybook build -o "${OUTPUT_DIR}/form" 2>&1 || {
 echo "   ✅ ui-form done"
 
 # Build ui-forms Storybook (form builder)
-echo "📦 [3/9] Building ui-forms Storybook..."
+echo "📦 [3/11] Building ui-forms Storybook..."
 cd "${ROOT_DIR}/packages/ui-forms"
 npx storybook build -o "${OUTPUT_DIR}/forms" 2>&1 || {
   echo "❌ ui-forms Storybook build failed"
@@ -60,7 +61,7 @@ npx storybook build -o "${OUTPUT_DIR}/forms" 2>&1 || {
 echo "   ✅ ui-forms done"
 
 # Build ui-table Storybook
-echo "📦 [4/9] Building ui-table Storybook..."
+echo "📦 [4/11] Building ui-table Storybook..."
 cd "${ROOT_DIR}/packages/ui-table"
 npx storybook build -o "${OUTPUT_DIR}/table" 2>&1 || {
   echo "❌ ui-table Storybook build failed"
@@ -69,7 +70,7 @@ npx storybook build -o "${OUTPUT_DIR}/table" 2>&1 || {
 echo "   ✅ ui-table done"
 
 # Build ui-collections Storybook
-echo "📦 [5/9] Building ui-collections Storybook..."
+echo "📦 [5/11] Building ui-collections Storybook..."
 cd "${ROOT_DIR}/packages/ui-collections"
 npx storybook build -o "${OUTPUT_DIR}/collections" 2>&1 || {
   echo "❌ ui-collections Storybook build failed"
@@ -78,7 +79,7 @@ npx storybook build -o "${OUTPUT_DIR}/collections" 2>&1 || {
 echo "   ✅ ui-collections done"
 
 # Build ui-files Storybook
-echo "📦 [6/9] Building ui-files Storybook..."
+echo "📦 [6/11] Building ui-files Storybook..."
 cd "${ROOT_DIR}/packages/ui-files"
 npx storybook build -o "${OUTPUT_DIR}/files" 2>&1 || {
   echo "❌ ui-files Storybook build failed"
@@ -87,7 +88,7 @@ npx storybook build -o "${OUTPUT_DIR}/files" 2>&1 || {
 echo "   ✅ ui-files done"
 
 # Build ui-users Storybook
-echo "📦 [7/9] Building ui-users Storybook..."
+echo "📦 [7/11] Building ui-users Storybook..."
 cd "${ROOT_DIR}/packages/ui-users"
 npx storybook build -o "${OUTPUT_DIR}/users" 2>&1 || {
   echo "❌ ui-users Storybook build failed"
@@ -96,7 +97,7 @@ npx storybook build -o "${OUTPUT_DIR}/users" 2>&1 || {
 echo "   ✅ ui-users done"
 
 # Build ui-workflows Storybook
-echo "📦 [8/9] Building ui-workflows Storybook..."
+echo "📦 [8/11] Building ui-workflows Storybook..."
 cd "${ROOT_DIR}/packages/ui-workflows"
 npx storybook build -o "${OUTPUT_DIR}/workflows" 2>&1 || {
   echo "❌ ui-workflows Storybook build failed"
@@ -105,7 +106,7 @@ npx storybook build -o "${OUTPUT_DIR}/workflows" 2>&1 || {
 echo "   ✅ ui-workflows done"
 
 # Build ui-cron Storybook
-echo "📦 [9/10] Building ui-cron Storybook..."
+echo "📦 [9/11] Building ui-cron Storybook..."
 cd "${ROOT_DIR}/packages/ui-cron"
 npx storybook build -o "${OUTPUT_DIR}/cron" 2>&1 || {
   echo "❌ ui-cron Storybook build failed"
@@ -114,13 +115,22 @@ npx storybook build -o "${OUTPUT_DIR}/cron" 2>&1 || {
 echo "   ✅ ui-cron done"
 
 # Build ui-chat Storybook
-echo "📦 [10/10] Building ui-chat Storybook..."
+echo "📦 [10/11] Building ui-chat Storybook..."
 cd "${ROOT_DIR}/packages/ui-chat"
 npx storybook build -o "${OUTPUT_DIR}/chat" 2>&1 || {
   echo "❌ ui-chat Storybook build failed"
   exit 1
 }
 echo "   ✅ ui-chat done"
+
+# Build ui-comments Storybook
+echo "📦 [11/11] Building ui-comments Storybook..."
+cd "${ROOT_DIR}/packages/ui-comments"
+npx storybook build -o "${OUTPUT_DIR}/comments" 2>&1 || {
+  echo "❌ ui-comments Storybook build failed"
+  exit 1
+}
+echo "   ✅ ui-comments done"
 
 # No landing page needed — the Next.js host app serves as the landing page
 
@@ -136,7 +146,8 @@ echo "   ├── files/           (file manager components)"
 echo "   ├── users/           (users/roles/policies admin)"
 echo "   ├── workflows/       (workflow definitions, assignments, instances)"
 echo "   ├── cron/            (cron jobs list, job editor, run history)"
-echo "   └── chat/            (AI chat panel and widget)"
+echo "   ├── chat/            (AI chat panel and widget)"
+echo "   └── comments/        (comment threads, replies and reactions)"
 echo ""
 echo "   Served by the Next.js host app at /storybook/*"
 echo "   To preview: pnpm build:host && pnpm start:host"

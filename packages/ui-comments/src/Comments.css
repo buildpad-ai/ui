@@ -1,0 +1,170 @@
+/*
+ * ui-comments — built on Mantine's CSS variables, so light and dark follow the app's theme.
+ * Classes are prefixed bp-cm-.
+ */
+.bp-cm {
+  display: block;
+  width: 100%;
+}
+
+.bp-cm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bp-cm-list--root > .bp-cm-item {
+  padding: var(--mantine-spacing-sm) 0;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.bp-cm-item > .bp-cm-list {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+.bp-cm-item + .bp-cm-item {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+.bp-cm-msg {
+  padding: 2px 0;
+  border-radius: var(--mantine-radius-sm);
+  scroll-margin-block: 80px;
+}
+
+.bp-cm-msg[data-linked] {
+  background: var(--mantine-color-yellow-light);
+  outline: 2px solid var(--mantine-color-yellow-light-color);
+  outline-offset: 2px;
+}
+
+.bp-cm-msg[data-new] {
+  border-inline-start: 3px solid var(--mantine-primary-color-filled);
+  padding-inline-start: var(--mantine-spacing-xs);
+}
+
+.bp-cm-body {
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.bp-cm-body p {
+  margin: 0;
+  min-height: 1.5em;
+}
+
+.bp-cm-body ul {
+  margin: 2px 0;
+  padding-inline-start: 1.25rem;
+}
+
+.bp-cm-actions {
+  opacity: 0.85;
+}
+
+.bp-cm-reply-box,
+.bp-cm-new {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+.bp-cm-new {
+  padding-top: var(--mantine-spacing-sm);
+}
+
+/* Reactions */
+.bp-cm-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.bp-cm-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.6;
+  color: var(--mantine-color-text);
+  background: var(--mantine-color-default);
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 999px;
+  cursor: default;
+}
+
+button.bp-cm-reaction {
+  cursor: pointer;
+}
+
+button.bp-cm-reaction:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.bp-cm-reaction[aria-pressed='true'] {
+  color: var(--mantine-primary-color-light-color);
+  background: var(--mantine-primary-color-light);
+  border-color: var(--mantine-primary-color-filled);
+}
+
+.bp-cm-reaction-n {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Emoji picker and reaction picker */
+.bp-cm-emoji-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: var(--mantine-spacing-xs);
+}
+
+.bp-cm-emoji-tab {
+  padding: 2px 8px;
+  font: inherit;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+  background: transparent;
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
+}
+
+.bp-cm-emoji-tab[data-active] {
+  color: var(--mantine-primary-color-light-color);
+  background: var(--mantine-primary-color-light);
+}
+
+.bp-cm-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  max-width: 320px;
+}
+
+.bp-cm-emoji-grid--reactions {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.bp-cm-emoji-grid button {
+  padding: 4px;
+  font-size: 18px;
+  line-height: 1;
+  background: transparent;
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  cursor: pointer;
+}
+
+.bp-cm-emoji-grid button:hover,
+.bp-cm-emoji-grid button[aria-pressed='true'] {
+  background: var(--mantine-color-default-hover);
+}
+
+@media (max-width: 480px) {
+  .bp-cm-emoji-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}

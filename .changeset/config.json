@@ -10,6 +10,7 @@
       "@buildpad/services",
       "@buildpad/types",
       "@buildpad/ui-chat",
+      "@buildpad/ui-comments",
       "@buildpad/ui-collections",
       "@buildpad/ui-cron",
       "@buildpad/ui-files",
