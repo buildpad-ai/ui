@@ -4024,7 +4024,7 @@
       "name": "comments",
       "title": "CommentsKit",
       "excludeFromAll": true,
-      "description": "Comments for any record: threads with replies at any depth, a comment box with bold, italic, underline, bullets and an emoji picker, and one-click emoji reactions (CommentsKit). It talks to its data through a CommentsAdapter; itemsAdapter is the default, over the app's /api/items routes, with the column names of the add-comments skill (parent, root, author, body, photos, created_at; reactions with emoji, reacted_by, target_comment) and the skill's create hook stamping author, thread root and access. Comments are immutable unless the adapter offers edit, remove or resolve; without react the chips are read-only. Optimistic reactions, and the list stays on screen while it refreshes. Mentions, pictures and emails are not in this version.",
+      "description": "Comments for any record: threads with replies at any depth, a comment box with bold, italic, underline, bullets and an emoji picker, and one-click emoji reactions (CommentsKit). It talks to its data through a CommentsAdapter; itemsAdapter is the default, over the app's /api/items routes, with the column names of the add-comments skill (parent, root, author, body, photos, created_at; reactions with emoji, reacted_by, target_comment) and the skill's create hook stamping author, thread root and access. Comments are immutable unless the adapter offers edit, remove or resolve; without react the chips are read-only. Optimistic reactions, and the list stays on screen while it refreshes. @mentions with a picker (people from /api/users) and chips. Pictures and emails are not in this version.",
       "category": "collaboration",
       "files": [
         {
@@ -4068,6 +4068,10 @@
           "target": "components/ui/comments/emoji-picker.tsx"
         },
         {
+          "source": "ui-comments/src/MentionPicker.tsx",
+          "target": "components/ui/comments/mention-picker.tsx"
+        },
+        {
           "source": "ui-comments/src/core/richtext.ts",
           "target": "components/ui/comments/core/richtext.ts"
         },
@@ -4086,6 +4090,14 @@
         {
           "source": "ui-comments/src/core/people.ts",
           "target": "components/ui/comments/core/people.ts"
+        },
+        {
+          "source": "ui-comments/src/core/mentions.ts",
+          "target": "components/ui/comments/core/mentions.ts"
+        },
+        {
+          "source": "ui-comments/src/core/caret.ts",
+          "target": "components/ui/comments/core/caret.ts"
         },
         {
           "source": "ui-comments/src/core/types.ts",

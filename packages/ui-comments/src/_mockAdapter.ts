@@ -24,6 +24,8 @@ export interface MockOptions {
   remove?: boolean;
   resolve?: boolean;
   react?: boolean;
+  /** Offer the @ picker (default true). */
+  mentions?: boolean;
   link?: (id: string) => string;
 }
 
@@ -147,6 +149,15 @@ export function mockAdapter(options: MockOptions): MockAdapter {
       );
       if (on && at === -1) reactions.push({ commentId, emoji: canonical, by: options.me.id });
       if (!on && at !== -1) reactions.splice(at, 1);
+    };
+  }
+
+  if (options.mentions !== false) {
+    adapter.searchPeople = async (query) => {
+      adapter.calls.push('people:' + query);
+      await pause();
+      const q = query.toLowerCase();
+      return [...people.values()].filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8);
     };
   }
 

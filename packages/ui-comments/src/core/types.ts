@@ -4,6 +4,13 @@ import type { ReactionSummary } from './reactions';
 export const MAX_BODY = 20000;
 export const MAX_PHOTOS = 20;
 
+/** Someone who can be @mentioned. */
+export interface Person {
+  id: string;
+  name: string;
+  email?: string;
+}
+
 export interface CommentAuthor {
   id: string;
   name: string;

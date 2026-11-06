@@ -93,6 +93,14 @@ export interface CommentsTranslations {
     /** After the first three names in a chip's tooltip — "{count}" is the rest */
     andMore: PluralForms;
   };
+  mentions: {
+    /** Accessible name of the list of people */
+    listLabel: string;
+    /** No one matches — "{query}" is what was typed */
+    none: string;
+    /** While the first search is running */
+    searching: string;
+  };
   errors: {
     empty: string;
     /** "{max}" is the limit */
@@ -167,6 +175,11 @@ export const commentsDefaults: CommentsTranslations = {
     chipMine: '{emoji} {count}, you reacted',
     andMore: { one: 'and {count} more', other: 'and {count} more' },
   },
+  mentions: {
+    listLabel: 'People you can mention',
+    none: 'No one named “{query}”.',
+    searching: 'Searching…',
+  },
   errors: {
     empty: 'Write a comment',
     tooLong: 'Comments can be up to {max} characters',
@@ -239,6 +252,11 @@ export const commentsId: CommentsTranslations = {
     chip: '{emoji} {count}',
     chipMine: '{emoji} {count}, Anda bereaksi',
     andMore: { other: 'dan {count} lainnya' },
+  },
+  mentions: {
+    listLabel: 'Orang yang dapat disebut',
+    none: 'Tidak ada yang bernama “{query}”.',
+    searching: 'Mencari…',
   },
   errors: {
     empty: 'Tulis komentar',

@@ -115,6 +115,8 @@ export function CommentsKit({
           canDelete={!!adapter.remove && (authored || canModerate)}
           canResolve={!!adapter.resolve && (authored || canModerate)}
           link={adapter.linkFor?.(comment.id)}
+          meId={meId}
+          searchPeople={adapter.searchPeople}
           onReply={() => setReplyTo((open) => (open === comment.id ? null : comment.id))}
           onEdit={(body) => edit(comment.id, body)}
           onDelete={guarded(() => remove(comment.id))}
@@ -127,6 +129,7 @@ export function CommentsKit({
               strings={strings}
               placeholder={strings.composer.replyPlaceholder}
               submitLabel={strings.composer.reply}
+              searchPeople={adapter.searchPeople}
               autoFocus
               onCancel={() => setReplyTo(null)}
               onSubmit={async (body) => {
@@ -178,6 +181,7 @@ export function CommentsKit({
             strings={strings}
             placeholder={strings.composer.placeholder}
             submitLabel={strings.composer.submit}
+            searchPeople={adapter.searchPeople}
             onSubmit={async (body) => {
               setProblem(null);
               await add({ body });

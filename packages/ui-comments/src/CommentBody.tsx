@@ -1,14 +1,21 @@
 'use client';
 
 import { Fragment } from 'react';
+import { segments } from './core/mentions';
 import { blocks, inline } from './core/richtext';
 
+export interface CommentBodyProps {
+  body: string;
+  /** The viewer's id: a mention of them stands out. */
+  meId?: string;
+}
+
 /**
- * A comment's text as React nodes: paragraphs, bullet lists, bold, italic and underline. It never
- * sees HTML — anything that is not one of those marks stays plain text, so a comment cannot
- * inject markup.
+ * A comment's text as React nodes: paragraphs, bullet lists, bold, italic, underline and mention
+ * chips. It never sees HTML — anything that is not one of those stays plain text, so a comment
+ * cannot inject markup.
  */
-export function CommentBody({ body }: { body: string }) {
+export function CommentBody({ body, meId }: CommentBodyProps) {
   return (
     <div className="bp-cm-body">
       {blocks(body).map((block, index) =>
@@ -16,13 +23,13 @@ export function CommentBody({ body }: { body: string }) {
           <ul key={index}>
             {block.items.map((item, i) => (
               <li key={i}>
-                <Runs line={item} />
+                <Line line={item} meId={meId} />
               </li>
             ))}
           </ul>
         ) : (
           <p key={index}>
-            <Runs line={block.text} />
+            <Line line={block.text} meId={meId} />
           </p>
         )
       )}
@@ -30,10 +37,28 @@ export function CommentBody({ body }: { body: string }) {
   );
 }
 
-function Runs({ line }: { line: string }) {
+/** A line cut into text and mentions; the marks (bold…) are read inside each text part. */
+function Line({ line, meId }: { line: string; meId?: string }) {
+  const me = meId?.toLowerCase();
   return (
     <>
-      {inline(line).map((run, index) => {
+      {segments(line).map((part, index) =>
+        part.type === 'mention' ? (
+          <span key={index} className="bp-cm-mention" data-me={part.id === me || undefined} data-user-id={part.id}>
+            @{part.name}
+          </span>
+        ) : (
+          <Runs key={index} text={part.text} />
+        )
+      )}
+    </>
+  );
+}
+
+function Runs({ text }: { text: string }) {
+  return (
+    <>
+      {inline(text).map((run, index) => {
         switch (run.kind) {
           case 'bold':
             return <strong key={index}>{run.text}</strong>;

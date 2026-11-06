@@ -1,6 +1,6 @@
 ---
 title: Comments Module Recipe
-description: Add a comment thread to any record with one CLI command — replies at any depth, a comment box with formatting and an emoji picker, and one-click reactions, behind a small adapter.
+description: Add a comment thread to any record with one CLI command — replies at any depth, a comment box with formatting, an emoji picker and @mentions, and one-click reactions, behind a small adapter.
 ---
 
 import { Callout, Steps } from 'nextra/components'
@@ -18,6 +18,7 @@ at any depth, and lets them react with an emoji.
   picker. <kbd>Ctrl</kbd> <kbd>Enter</kbd> (<kbd>⌘</kbd> <kbd>Enter</kbd> on macOS)
   sends, <kbd>Esc</kbd> cancels a reply, and <kbd>Enter</kbd> inside a bullet
   starts the next one.
+- **@Mentions.** Type `@` and a name: people are searched after a short pause, <kbd>↑</kbd> <kbd>↓</kbd> move, <kbd>Enter</kbd> or <kbd>Tab</kbd> chooses, <kbd>Esc</kbd> closes the list. A mention is stored in the text as `@[Name](user:<uuid>)` and shown as a chip; a mention of you stands out.
 - **Reactions.** Twelve fixed emoji, one chip per emoji in use with its count,
   highlighted when it is yours, with the names in the tooltip. They change at
   once and roll back if the server refuses.
@@ -29,8 +30,8 @@ at any depth, and lets them react with an emoji.
 ![CommentsKit on a ticket — a thread four levels deep with reactions, a bulleted reply and the comment box (from the Comments Storybook)](/comments-thread.png)
 
 <Callout type="info">
-This version covers threads, formatting, emoji and reactions. **@mentions,
-pictures and notification emails are not in it yet.** The
+This version covers threads, formatting, emoji, @mentions and reactions.
+**Pictures and notification emails are not in it yet.** The
 [`add-comments` skill](https://github.com/buildpad-ai/skills) describes the full
 standard comment field; this module is being built up to it in steps.
 </Callout>
@@ -140,6 +141,7 @@ A method an adapter leaves out switches that feature off:
 
 | To get | Give the adapter |
 |---|---|
+| @Mentions | `mentions: true` (searches `/api/users`), or a function `(query) => Promise<Person[]>` |
 | Reactions | `reactionsCollection` (without it the chips are not shown) |
 | Edit your own comment | `allowEdit: true` |
 | Delete (your own, or anyone's with `canModerate`) | `allowDelete: true` |
@@ -178,6 +180,17 @@ itemsAdapter({
 });
 ```
 
+## Mentions: what the server must do
+
+The browser only writes the token. **Who may be mentioned is the server's job**: the
+create hook of the `add-comments` skill rewrites the token of anyone who may not
+read the record into plain `@Name`, so a forged id notifies nobody. The picker
+searches `/api/users` (active users), so it can offer people who cannot read the
+record; pass your own `mentions` function to narrow it. At most 10 distinct people
+become mentions in one comment; the rest stay plain text. The text is the source of
+truth: there is no separate mentions column. A name inside a token is the name on
+the day it was written.
+
 ## How it loads
 
 A whole thread is read in two requests however deep it is: the top-level
@@ -193,8 +206,8 @@ English and Bahasa Indonesia. Override them with `BuildpadI18nProvider` or the
 
 ## Not in this version
 
-- **@mentions**, with a picker, chips, access and an email to the person
-  mentioned.
+- **Emails** to a person mentioned (the hook that sends them), an unread marker
+  and a Mentioned page. The mention itself is stored and shown.
 - **Pictures**: an Image button, paste from the clipboard, thumbnails and a
   viewer. The `photos` column exists and the kit validates it, but nothing
   attaches to it yet.

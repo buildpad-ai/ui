@@ -15,7 +15,7 @@
 export { CommentsKit } from './CommentsKit';
 export type { CommentsKitProps } from './CommentsKit';
 
-export { itemsAdapter, DEFAULT_FIELDS, REPLY_CHUNK } from './CommentsAdapter';
+export { itemsAdapter, usersSearch, DEFAULT_FIELDS, REPLY_CHUNK } from './CommentsAdapter';
 export type { CommentsAdapter, CommentFields, ItemsAdapterOptions } from './CommentsAdapter';
 
 export { useComments } from './useComments';
@@ -27,6 +27,9 @@ export type { ComposerProps } from './Composer';
 export { CommentMessage, relativeTime } from './CommentMessage';
 export type { CommentMessageProps } from './CommentMessage';
 export { CommentBody } from './CommentBody';
+export type { CommentBodyProps } from './CommentBody';
+export { MentionPicker } from './MentionPicker';
+export type { MentionPickerProps } from './MentionPicker';
 export { ReactionBar } from './ReactionBar';
 export type { ReactionBarProps } from './ReactionBar';
 export { EmojiPicker, EMOJI_TABS } from './EmojiPicker';
@@ -40,5 +43,20 @@ export { buildThreads, countThread, indentFor, MAX_DEPTH } from './core/thread';
 export { checkBody, checkPhotos } from './core/validation';
 export type { CommentError } from './core/validation';
 export { displayName } from './core/people';
+export {
+  MAX_MENTIONS,
+  capMentions,
+  cleanName,
+  findTrigger,
+  makeToken,
+  mentionIds,
+  parseTokens,
+  segments,
+  stripTokens,
+  toDisplay,
+  toStored,
+} from './core/mentions';
+export type { Segment, Token } from './core/mentions';
+export { caretOffset } from './core/caret';
 export { MAX_BODY, MAX_PHOTOS } from './core/types';
-export type { Comment, CommentAuthor, NewComment, ThreadNode } from './core/types';
+export type { Comment, CommentAuthor, NewComment, Person, ThreadNode } from './core/types';

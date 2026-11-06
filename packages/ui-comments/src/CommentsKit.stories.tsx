@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Stack, Text, Title } from '@mantine/core';
 import { CommentsKit, type CommentsKitProps } from './CommentsKit';
 import { mockAdapter, type MockOptions } from './_mockAdapter';
+import { makeToken } from './core/mentions';
 import type { Comment } from './core/types';
 
 /**
@@ -19,10 +20,10 @@ const meta: Meta<typeof CommentsKit> = {
 export default meta;
 type Story = StoryObj<typeof CommentsKit>;
 
-const ME = { id: 'me', name: 'Mira Santoso' };
-const ANA = { id: 'ana', name: 'Ana Putri' };
-const BUDI = { id: 'budi', name: 'Budi Hartono' };
-const CITRA = { id: 'citra', name: 'Citra Dewi' };
+const ME = { id: '99999999-9999-4999-8999-999999999999', name: 'Mira Santoso' };
+const ANA = { id: '11111111-1111-4111-8111-111111111111', name: 'Ana Putri' };
+const BUDI = { id: '33333333-3333-4333-8333-333333333333', name: 'Budi Hartono' };
+const CITRA = { id: '44444444-4444-4444-8444-444444444444', name: 'Citra Dewi' };
 
 const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 
@@ -42,12 +43,12 @@ const seed = (): Comment[] => [
   comment('c1', null, ANA, 'The **invoice export** still drops the last row when a filter is on. Can someone look at it before Friday?', 190, {
     reactions: [chip('👀', [BUDI.name, CITRA.name]), chip('👍', [ME.name])],
   }),
-  comment('c2', 'c1', BUDI, 'Reproduced. It only happens when the filter matches more than 500 rows.', 150),
+  comment('c2', 'c1', BUDI, `${makeToken(ME.name, ME.id)} reproduced. It only happens when the filter matches more than 500 rows.`, 150),
   comment('c3', 'c2', ME, 'That matches the page size. I think the export asks for one page too few.', 95, {
     reactions: [chip('🎉', [ANA.name])],
   }),
   comment('c4', 'c3', CITRA, 'Agreed. I can take it:\n- fix the off-by-one\n- add a test with 501 rows\n- check the CSV and the PDF', 40),
-  comment('c5', 'c4', ANA, 'Thanks Citra ++please also check the Excel export++ 🙏', 12),
+  comment('c5', 'c4', ANA, `Thanks ${makeToken(CITRA.name, CITRA.id)} ++please also check the Excel export++ 🙏`, 12),
   comment('c6', null, BUDI, 'Separate thing: can we show the total on the *last* page only?', 55, {
     reactions: [chip('👎', [CITRA.name]), chip('🚀', [ANA.name, ME.name, BUDI.name, CITRA.name])],
   }),
@@ -102,3 +103,9 @@ export const WhenCallsFail: Story = { render: () => <Kit adapter={{ failOn: ['ad
 
 /** A link to one comment (`?comment=`) scrolls to it and highlights it; `newIds` marks comments the viewer has not seen. */
 export const LinkedAndNew: Story = { render: () => <Kit kit={{ focusId: 'c4', newIds: ['c5', 'c6'] }} /> };
+
+/** Type @ and a name: people are searched after a short pause, arrow keys move, Enter or Tab chooses, Esc closes the list. Mentions of you stand out. */
+export const Mentions: Story = { render: () => <Kit adapter={{ latency: 250 }} /> };
+
+/** No people search on the adapter: @ is just text. */
+export const NoMentions: Story = { render: () => <Kit adapter={{ mentions: false }} /> };

@@ -8,7 +8,7 @@ import { interpolate, type CommentsTranslations } from '@buildpad/utils';
 import { CommentBody } from './CommentBody';
 import { Composer } from './Composer';
 import { ReactionBar } from './ReactionBar';
-import type { Comment } from './core/types';
+import type { Comment, Person } from './core/types';
 
 export interface CommentMessageProps {
   comment: Comment;
@@ -28,6 +28,10 @@ export interface CommentMessageProps {
   onDelete: () => Promise<void>;
   onResolve: (resolved: boolean) => Promise<void>;
   onReact?: (emoji: string, on: boolean) => void;
+  /** The signed-in user's id: a mention of them stands out. */
+  meId?: string;
+  /** People for the @ picker (also used when editing). */
+  searchPeople?: (query: string) => Promise<Person[]>;
   /** The link for "Copy link", or undefined to hide the button. */
   link?: string;
 }
@@ -70,6 +74,8 @@ export function CommentMessage({
   onResolve,
   onReact,
   link,
+  meId,
+  searchPeople,
 }: CommentMessageProps) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -138,6 +144,7 @@ export function CommentMessage({
           placeholder={strings.composer.placeholder}
           submitLabel={strings.composer.save}
           initial={comment.body}
+          searchPeople={searchPeople}
           autoFocus
           onCancel={() => setEditing(false)}
           onSubmit={async (body) => {
@@ -147,7 +154,7 @@ export function CommentMessage({
         />
       ) : (
         <>
-          <CommentBody body={comment.body} />
+          <CommentBody body={comment.body} meId={meId} />
           <ReactionBar chips={comment.reactions ?? []} onToggle={onReact} strings={strings} />
           <Group gap={2} mt={4} className="bp-cm-actions">
             {canReply &&

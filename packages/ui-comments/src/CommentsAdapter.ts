@@ -12,8 +12,8 @@
  */
 import { apiRequest } from '@buildpad/services';
 import { summarize, type ReactionSummary } from './core/reactions';
-import { displayName } from './core/people';
-import type { Comment, NewComment } from './core/types';
+import { displayName, type PersonRow } from './core/people';
+import type { Comment, NewComment, Person } from './core/types';
 
 export interface CommentsAdapter {
   /** Every comment of the thread(s), top-level and replies, in any order. */
@@ -26,6 +26,24 @@ export interface CommentsAdapter {
   react?(commentId: string, emoji: string, on: boolean): Promise<void>;
   /** A link that opens the page on this comment, for "Copy link". */
   linkFor?(commentId: string): string;
+  /**
+   * People matching what was typed after `@`. Leave out and `@` is just text. The server side
+   * (the create hook) is what makes a mention safe: it turns a token of someone who may not
+   * read the record into plain text.
+   */
+  searchPeople?(query: string): Promise<Person[]>;
+}
+
+/** People search over the app's `/api/users` route (active users, matched on name and email). */
+export function usersSearch(request: Request = (path, init) => apiRequest(path, init), limit = 8) {
+  return async (query: string): Promise<Person[]> => {
+    const params = new URLSearchParams({ limit: String(limit), fields: 'id,first_name,last_name,email', status: 'active' });
+    if (query) params.set('search', query);
+    const res = await request<{ data?: PersonRow[] }>(`/api/users?${params.toString()}`);
+    return (res?.data ?? [])
+      .filter((row): row is PersonRow & { id: string } => typeof row.id === 'string')
+      .map((row) => ({ id: row.id.toLowerCase(), name: displayName(row), email: row.email ?? undefined }));
+  };
 }
 
 /** Column names of the comment collection and its reactions collection. Defaults follow the `add-comments` skill. */
@@ -67,6 +85,11 @@ export interface ItemsAdapterOptions {
   /** The signed-in user's id and name (for the optimistic chips and "mine"). */
   meId: string;
   fields?: Partial<Omit<CommentFields, 'reaction'>> & { reaction?: Partial<CommentFields['reaction']> };
+  /**
+   * People for the @ picker. `true` searches `/api/users`; a function replaces that; leave out and
+   * `@` is just text.
+   */
+  mentions?: boolean | ((query: string) => Promise<Person[]>);
   /** Edit and delete are off unless asked for: comments are immutable by default. */
   allowEdit?: boolean;
   allowDelete?: boolean;
@@ -196,6 +219,10 @@ export function itemsAdapter(options: ItemsAdapterOptions): CommentsAdapter {
   };
 
   if (options.linkFor) adapter.linkFor = options.linkFor;
+
+  if (options.mentions) {
+    adapter.searchPeople = typeof options.mentions === 'function' ? options.mentions : usersSearch(request);
+  }
 
   if (options.allowEdit) {
     adapter.edit = async (commentId, body) => {
