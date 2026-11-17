@@ -2,7 +2,10 @@
  * DaaS Provider Wrapper
  *
  * A 'use client' wrapper that configures DaaSProvider with the DaaS URL
- * and a getToken callback that reads the live Supabase session JWT.
+ * and a getToken callback that reads the live Supabase session JWT. A token
+ * that has expired or is missing in the browser is renewed from the server's
+ * session (lib/daas-token), and a request DaaS rejects with 401 is retried
+ * once with a renewed token, so an idle tab keeps working without a reload.
  * Also reads the `daas_resource_uri` cookie and injects it as the
  * `X-Resource-Uri` header so scope-based RBAC works on direct DaaS calls.
  *
@@ -13,16 +16,33 @@
  *   }
  *
  * @buildpad/origin: components/DaaSProviderWrapper
- * @buildpad/version: 1.0.0
+ * @buildpad/version: 1.1.0
  */
 
 "use client";
 
 import { DaaSProvider } from "@/lib/buildpad/services";
-import { createClient } from "@/lib/supabase/client";
+import { getDaaSToken, renewDaaSToken } from "@/lib/daas-token";
 import { useRouter } from "next/navigation";
 import { registerUrlStateWriter } from "@/lib/buildpad/hooks";
 import { useEffect, useMemo, type ReactNode } from "react";
+
+/**
+ * When neither the browser nor the server has a session, the person is signed
+ * out. Reload: the middleware then sends them to the login page. At most once
+ * per 30 seconds, so a session the server also rejects cannot loop.
+ */
+function reloadForFreshSession() {
+  if (typeof window === "undefined") return;
+  try {
+    const last = Number(window.sessionStorage.getItem("buildpad_session_reload") ?? 0);
+    if (Date.now() - last < 30_000) return;
+    window.sessionStorage.setItem("buildpad_session_reload", String(Date.now()));
+  } catch {
+    return;
+  }
+  window.location.reload();
+}
 
 export function DaaSProviderWrapper({ children }: { children: ReactNode }) {
   // Route the URL-state writes of Buildpad's list managers through the App
@@ -40,9 +60,14 @@ export function DaaSProviderWrapper({ children }: { children: ReactNode }) {
     () => ({
       url: process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL ?? "",
       getToken: async () => {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getSession();
-        return data.session?.access_token ?? null;
+        const token = await getDaaSToken();
+        if (!token) reloadForFreshSession();
+        return token;
+      },
+      renewToken: async () => {
+        const token = await renewDaaSToken();
+        if (!token) reloadForFreshSession();
+        return token;
       },
       /**
        * Inject the active tenant scope header into every direct DaaS call.
