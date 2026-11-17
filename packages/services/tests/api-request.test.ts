@@ -12,6 +12,7 @@ import { apiRequest, ApiRequestError } from '../src/api-request';
 vi.mock('../src/daas-context', () => ({
   buildApiUrl: (path: string) => `https://daas.test${path}`,
   getApiHeadersAsync: async () => ({}),
+  getGlobalDaaSConfig: () => null,
 }));
 
 function respond(status: number, body: string) {
@@ -59,5 +60,53 @@ describe('apiRequest', () => {
 
   it('reads a bare { message } body', () => {
     expect(new ApiRequestError(409, '{"message":"Transition not allowed"}').detail).toBe('Transition not allowed');
+  });
+});
+
+describe('apiRequest on a 401', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function sequence(...responses: Response[]) {
+    const fetchMock = vi.fn();
+    responses.forEach((r) => fetchMock.mockResolvedValueOnce(r));
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  it('renews the token once and retries with it', async () => {
+    const renewToken = vi.fn(async () => 'fresh');
+    const fetchMock = sequence(json(401, { errors: [{ message: 'invalid token' }] }), json(200, { data: [{ id: 1 }] }));
+
+    const result = await apiRequest('/api/items/posts', { daasConfig: { url: 'https://daas.test', getToken: async () => 'stale', renewToken } });
+
+    expect(result).toEqual({ data: [{ id: 1 }] });
+    expect(renewToken).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer fresh');
+  });
+
+  it('fails with the original 401 when no new token can be had', async () => {
+    const fetchMock = sequence(json(401, { errors: [{ message: 'invalid token' }] }));
+
+    const error = await apiRequest('/api/items/posts', {
+      daasConfig: { url: 'https://daas.test', getToken: async () => 'stale', renewToken: async () => null },
+    }).catch((e: unknown) => e);
+
+    expect((error as ApiRequestError).status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not renew a static token', async () => {
+    const renewToken = vi.fn(async () => 'fresh');
+    sequence(json(401, {}));
+
+    const error = await apiRequest('/api/items/posts', { daasConfig: { url: 'https://daas.test', token: 'static', renewToken } }).catch((e: unknown) => e);
+
+    expect((error as ApiRequestError).status).toBe(401);
+    expect(renewToken).not.toHaveBeenCalled();
   });
 });

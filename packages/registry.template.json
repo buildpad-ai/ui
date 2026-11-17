@@ -776,6 +776,14 @@
           "target": "app/api/auth/user/route.ts"
         },
         {
+          "source": "cli/templates/api/auth-token-route.ts",
+          "target": "app/api/auth/token/route.ts"
+        },
+        {
+          "source": "cli/templates/lib/daas-token.ts",
+          "target": "lib/daas-token.ts"
+        },
+        {
           "source": "cli/templates/api/auth-callback-route.ts",
           "target": "app/api/auth/callback/route.ts"
         },
@@ -886,6 +894,14 @@
         {
           "source": "cli/templates/api/auth-user-route.ts",
           "target": "app/api/auth/user/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-token-route.ts",
+          "target": "app/api/auth/token/route.ts"
+        },
+        {
+          "source": "cli/templates/lib/daas-token.ts",
+          "target": "lib/daas-token.ts"
         },
         {
           "source": "cli/templates/api/auth-callback-route.ts",

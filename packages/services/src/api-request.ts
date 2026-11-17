@@ -8,7 +8,7 @@
  * CORS is handled on the DaaS side via the CORS_ORIGINS environment variable.
  */
 
-import { buildApiUrl, getApiHeadersAsync, type DaaSConfig } from './daas-context';
+import { buildApiUrl, getApiHeadersAsync, getGlobalDaaSConfig, type DaaSConfig } from './daas-context';
 
 export interface ApiRequestOptions extends RequestInit {
   /** Optional DaaS config override */
@@ -79,13 +79,30 @@ export async function apiRequest<T = unknown>(
   // Get auth headers (async — resolves dynamic Supabase JWT if needed)
   const headers = await getApiHeadersAsync(daasConfig);
   
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...fetchOptions,
     headers: {
       ...headers,
       ...fetchOptions.headers,
     },
   });
+
+  // An expired or missing session token gets a 401. Get a new token once and retry, instead of
+  // failing until the person reloads the page. Never for a static token.
+  const effectiveConfig = daasConfig ?? getGlobalDaaSConfig();
+  if (response.status === 401 && !effectiveConfig?.token && effectiveConfig?.renewToken) {
+    const renewed = await effectiveConfig.renewToken();
+    if (renewed) {
+      response = await fetch(url, {
+        ...fetchOptions,
+        headers: {
+          ...headers,
+          ...fetchOptions.headers,
+          Authorization: `Bearer ${renewed}`,
+        },
+      });
+    }
+  }
 
   if (!response.ok) {
     const error = await response.text();

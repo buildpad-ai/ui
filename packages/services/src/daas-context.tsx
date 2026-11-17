@@ -25,6 +25,14 @@ export interface DaaSConfig {
    */
   getToken?: () => Promise<string | null>;
   /**
+   * Async function to get a NEW token after DaaS rejected the current one with 401.
+   * `apiRequest` calls it once and retries the request with the result. Use it when the
+   * browser's session can run out while the server still has a valid one (an idle tab):
+   * fetch the token from a route that reads the server session. Return null when there is
+   * no session; the request then fails with the original 401.
+   */
+  renewToken?: () => Promise<string | null>;
+  /**
    * Async function to provide extra request headers for every DaaS call.
    * Use for scope-based RBAC: inject `X-Resource-Uri` from the active tenant cookie.
    * @example
@@ -166,6 +174,23 @@ export function DaaSProvider({
   useEffect(() => {
     refreshToken();
   }, [refreshToken]);
+
+  // The stored token feeds the sync getHeaders() (useAuth, usePermissions, VForm). Read it again
+  // when the tab comes back and every few minutes, so it never outlives a short-lived session token.
+  useEffect(() => {
+    if (config?.token || !config?.getToken || typeof window === 'undefined') return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshToken();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    const timer = window.setInterval(() => void refreshToken(), 4 * 60_000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      window.clearInterval(timer);
+    };
+  }, [config, refreshToken]);
 
   /** Build a full DaaS URL from a path like /api/items/orders */
   const buildUrl = useCallback((path: string): string => {
