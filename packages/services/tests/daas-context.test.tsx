@@ -149,6 +149,73 @@ describe('DaaSProvider context value', () => {
     expect(result.current.getHeaders().Authorization).toBeUndefined();
   });
 
+  test('reads the token again when the tab becomes visible or the window gets focus', async () => {
+    const getToken = vi.fn().mockResolvedValue('jwt-1');
+    const { result } = renderHook(() => useDaaSContext(), {
+      wrapper: wrapper({ config: { url: '', getToken }, autoFetchUser: false }),
+    });
+    await waitFor(() => expect(result.current.getHeaders().Authorization).toBe('Bearer jwt-1'));
+
+    getToken.mockResolvedValue('jwt-2');
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(result.current.getHeaders().Authorization).toBe('Bearer jwt-2'));
+
+    getToken.mockResolvedValue('jwt-3');
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    await waitFor(() => expect(result.current.getHeaders().Authorization).toBe('Bearer jwt-3'));
+  });
+
+  test('reads the token again every 4 minutes', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      const getToken = vi.fn().mockResolvedValue('jwt-1');
+      const { result } = renderHook(() => useDaaSContext(), {
+        wrapper: wrapper({ config: { url: '', getToken }, autoFetchUser: false }),
+      });
+      // waitFor polls with setInterval, which is faked here: flush the initial read by hand.
+      await act(async () => {});
+      expect(result.current.getHeaders().Authorization).toBe('Bearer jwt-1');
+      const calls = getToken.mock.calls.length;
+
+      getToken.mockResolvedValue('jwt-2');
+      await act(async () => {
+        vi.advanceTimersByTime(4 * 60_000 - 1);
+      });
+      expect(getToken.mock.calls.length).toBe(calls);
+      await act(async () => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(getToken.mock.calls.length).toBe(calls + 1);
+      expect(result.current.getHeaders().Authorization).toBe('Bearer jwt-2');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('stops listening once unmounted, and never re-reads a static token', async () => {
+    const getToken = vi.fn().mockResolvedValue('jwt-1');
+    const { unmount } = renderHook(() => useDaaSContext(), {
+      wrapper: wrapper({ config: { url: '', getToken }, autoFetchUser: false }),
+    });
+    await waitFor(() => expect(getToken).toHaveBeenCalled());
+    unmount();
+    const calls = getToken.mock.calls.length;
+    window.dispatchEvent(new Event('focus'));
+    expect(getToken.mock.calls.length).toBe(calls);
+
+    const staticGetToken = vi.fn().mockResolvedValue('dynamic');
+    const { result } = renderHook(() => useDaaSContext(), {
+      wrapper: wrapper({ config: { url: '', token: 'static', getToken: staticGetToken }, autoFetchUser: false }),
+    });
+    window.dispatchEvent(new Event('focus'));
+    expect(staticGetToken).not.toHaveBeenCalled();
+    expect(result.current.getHeaders().Authorization).toBe('Bearer static');
+  });
+
   test('has nothing to refresh without a token source', async () => {
     const { result } = renderHook(() => useDaaSContext(), { wrapper: wrapper({ config: { url: '' }, autoFetchUser: false }) });
 
