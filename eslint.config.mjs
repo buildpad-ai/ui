@@ -11,7 +11,7 @@ import noUntranslatedLiteral from './scripts/eslint/no-untranslated-literal.mjs'
  * a regression cannot merge, and a WARNING everywhere else until that package
  * is migrated — promote a package here as part of its migration PR.
  */
-const I18N_MIGRATED = ['ui-form', 'ui-table', 'ui-collections', 'ui-interfaces', 'ui-files', 'ui-users', 'ui-forms', 'ui-workflows', 'ui-cron', 'ui-chat', 'ui-comments', 'hooks'];
+const I18N_MIGRATED = ['ui-form', 'ui-table', 'ui-collections', 'ui-interfaces', 'ui-files', 'ui-users', 'ui-forms', 'ui-workflows', 'ui-cron', 'ui-chat', 'ui-comments', 'ui-notifications', 'hooks'];
 
 export default [
   {
@@ -26,6 +26,7 @@ export default [
       // checked instead by packages/ui-comments/tests/daas-mail.test.ts, which runs it in a
       // sandbox built like the DaaS's.
       'packages/ui-comments/schema/',
+      'packages/ui-notifications/schema/',
     ],
   },
   {

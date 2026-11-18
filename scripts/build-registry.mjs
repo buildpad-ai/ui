@@ -53,6 +53,7 @@ export const PACKAGE_FOLDERS = {
   '@buildpad/ui-cron': 'ui-cron',
   '@buildpad/ui-chat': 'ui-chat',
   '@buildpad/ui-comments': 'ui-comments',
+  '@buildpad/ui-notifications': 'ui-notifications',
   '@buildpad/hooks': 'hooks',
   '@buildpad/services': 'services',
   '@buildpad/types': 'types',
@@ -262,6 +263,7 @@ export function inferSourcePackage(source) {
   if (source.startsWith('ui-cron/'))        return '@buildpad/ui-cron';
   if (source.startsWith('ui-chat/'))        return '@buildpad/ui-chat';
   if (source.startsWith('ui-comments/'))    return '@buildpad/ui-comments';
+  if (source.startsWith('ui-notifications/')) return '@buildpad/ui-notifications';
   if (source.startsWith('hooks/'))          return '@buildpad/hooks';
   if (source.startsWith('services/'))       return '@buildpad/services';
   if (source.startsWith('types/'))          return '@buildpad/types';

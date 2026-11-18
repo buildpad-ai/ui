@@ -196,6 +196,10 @@
           "target": "lib/buildpad/i18n/namespaces/comments.ts"
         },
         {
+          "source": "utils/src/i18n/namespaces/notifications.ts",
+          "target": "lib/buildpad/i18n/namespaces/notifications.ts"
+        },
+        {
           "source": "utils/src/i18n/namespaces/forms.ts",
           "target": "lib/buildpad/i18n/namespaces/forms.ts"
         },
@@ -4142,6 +4146,93 @@
         "utils"
       ],
       "registryDependencies": []
+    },
+    {
+      "name": "notifications",
+      "title": "Notifications",
+      "excludeFromAll": true,
+      "description": "One notification bell and inbox for every Buildpad app: unread badge, filtered inbox with a detail pane where users can reply and act, behind a small adapter.",
+      "category": "collaboration",
+      "files": [
+        {
+          "source": "ui-notifications/src/NotificationsProvider.tsx",
+          "target": "components/ui/notifications/notifications-provider.tsx"
+        },
+        {
+          "source": "ui-notifications/src/NotificationsAdapter.ts",
+          "target": "components/ui/notifications/notifications-adapter.ts"
+        },
+        {
+          "source": "ui-notifications/src/NotificationBell.tsx",
+          "target": "components/ui/notifications/notification-bell.tsx"
+        },
+        {
+          "source": "ui-notifications/src/NotificationsInbox.tsx",
+          "target": "components/ui/notifications/notifications-inbox.tsx"
+        },
+        {
+          "source": "ui-notifications/src/NotificationDetail.tsx",
+          "target": "components/ui/notifications/notification-detail.tsx"
+        },
+        {
+          "source": "ui-notifications/src/shared.tsx",
+          "target": "components/ui/notifications/shared.tsx"
+        },
+        {
+          "source": "ui-notifications/src/urlState.ts",
+          "target": "components/ui/notifications/url-state.ts"
+        },
+        {
+          "source": "ui-notifications/src/useNotificationsPage.ts",
+          "target": "components/ui/notifications/use-notifications-page.ts"
+        },
+        {
+          "source": "ui-notifications/src/useNotificationsStrings.ts",
+          "target": "components/ui/notifications/use-notifications-strings.ts"
+        },
+        {
+          "source": "ui-notifications/src/core/filters.ts",
+          "target": "components/ui/notifications/core/filters.ts"
+        },
+        {
+          "source": "ui-notifications/src/core/mentions.ts",
+          "target": "components/ui/notifications/core/mentions.ts"
+        },
+        {
+          "source": "ui-notifications/src/core/merge.ts",
+          "target": "components/ui/notifications/core/merge.ts"
+        },
+        {
+          "source": "ui-notifications/src/core/paging.ts",
+          "target": "components/ui/notifications/core/paging.ts"
+        },
+        {
+          "source": "ui-notifications/src/core/time.ts",
+          "target": "components/ui/notifications/core/time.ts"
+        },
+        {
+          "source": "ui-notifications/src/core/typeStyles.ts",
+          "target": "components/ui/notifications/core/typeStyles.ts"
+        },
+        {
+          "source": "ui-notifications/src/core/types.ts",
+          "target": "components/ui/notifications/core/types.ts"
+        },
+        {
+          "source": "ui-notifications/src/index.ts",
+          "target": "components/ui/notifications/index.ts"
+        }
+      ],
+      "dependencies": [
+        "@mantine/core",
+        "@mantine/hooks",
+        "@tabler/icons-react"
+      ],
+      "internalDependencies": [
+        "services",
+        "utils"
+      ],
+      "registryDependencies": []
     }
   ],
   "categories": [
@@ -4208,7 +4299,7 @@
     {
       "name": "collaboration",
       "title": "Collaboration",
-      "description": "Working together on a record: comments, replies and reactions"
+      "description": "Working together on a record: comments, replies and reactions, and the notifications they send"
     }
   ]
 }

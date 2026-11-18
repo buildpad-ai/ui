@@ -139,6 +139,14 @@ const catalog: CatalogTier[] = [
         blurb:
           "Comment threads with replies at any depth, formatting, an emoji picker and one-click reactions.",
       },
+      {
+        emoji: "🔔",
+        name: "Notifications",
+        path: "/storybook/notifications",
+        port: 6017,
+        blurb:
+          "One bell and inbox: an unread badge, a filtered list and a detail pane to reply and act.",
+      },
     ],
   },
 ];
@@ -566,7 +574,8 @@ pnpm storybook:users        # Port 6011 (users/roles/policies)
 pnpm storybook:workflows    # Port 6013 (workflow definitions/assignments/instances)
 pnpm storybook:cron         # Port 6014 (cron jobs/editor/run history)
 pnpm storybook:chat         # Port 6015 (AI chat panel and widget)
-pnpm storybook:comments     # Port 6016 (comment threads, replies and reactions)`}</pre>
+pnpm storybook:comments     # Port 6016 (comment threads, replies and reactions)
+pnpm storybook:notifications # Port 6017 (notification bell, inbox and detail pane)`}</pre>
               </div>
             )}
           </section>
