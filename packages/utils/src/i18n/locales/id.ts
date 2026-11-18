@@ -18,6 +18,7 @@ import { workflowsId } from '../namespaces/workflows';
 import { cronId } from '../namespaces/cron';
 import { chatId } from '../namespaces/chat';
 import { commentsId } from '../namespaces/comments';
+import { notificationsId } from '../namespaces/notifications';
 import { formsId } from '../namespaces/forms';
 import { hooksId } from '../namespaces/hooks';
 
@@ -33,6 +34,7 @@ export const id: BuildpadTranslations = {
   cron: cronId,
   chat: chatId,
   comments: commentsId,
+  notifications: notificationsId,
   forms: formsId,
   hooks: hooksId,
 };

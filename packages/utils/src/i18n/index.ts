@@ -17,6 +17,7 @@ export type {
   CronTranslations,
   ChatTranslations,
   CommentsTranslations,
+  NotificationsTranslations,
   FormsTranslations,
   HooksTranslations,
   DateTimeTranslations,
