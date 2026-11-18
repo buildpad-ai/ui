@@ -91,6 +91,12 @@ export interface FakeDaaS {
   /** The most `services.mail` calls that were in progress at the same moment. */
   maxMailsInFlight: number;
   env: Record<string, string>;
+  /** Rows handed to a fake `notifications` service (CONFIG.inAppNotifications), one array per call. */
+  inApp: unknown[][];
+  /** Make the fake `notifications` service throw. */
+  breakInApp: boolean;
+  /** When set, the fake `notify` waits for this promise before it resolves (to test concurrency). */
+  inAppGate?: Promise<void>;
   /** Run a hook body with a create event. */
   runHook(file: string, meta: Record<string, unknown>): Promise<void>;
   /** The compiled mail service. */
@@ -113,6 +119,13 @@ export const trustCreateHook = (code: string) => {
   const from = 'mentionsCheckedByCreateHook: false,';
   if (!code.includes(from)) throw new Error(`comment_mail CONFIG no longer contains "${from}"`);
   return code.replace(from, 'mentionsCheckedByCreateHook: true,');
+};
+
+/** Also turn on in-app notifications (CONFIG.inAppNotifications). */
+export const withInApp = (code: string) => {
+  const from = 'inAppNotifications: false,';
+  if (!code.includes(from)) throw new Error(`comment_mail CONFIG no longer contains "${from}"`);
+  return trustCreateHook(code).replace(from, 'inAppNotifications: true,');
 };
 
 /** The service exactly as shipped: no access rule configured. */
@@ -140,6 +153,8 @@ export function fakeDaaS(
     mailLatencyMs: 0,
     maxMailsInFlight: 0,
     env: {},
+    inApp: [],
+    breakInApp: false,
     runHook: async () => {},
     service: () => {
       throw new Error('not built');
@@ -180,6 +195,16 @@ export function fakeDaaS(
       }
     },
     async custom(name: string) {
+      if (name === 'notifications') {
+        return {
+          async notify(rows: unknown[]) {
+            if (daas.breakInApp) throw new Error('notifications service is down');
+            daas.inApp.push(rows);
+            if (daas.inAppGate) await daas.inAppGate;
+            return { created: rows.length, merged: 0, skipped: 0, ids: [] };
+          },
+        };
+      }
       if (name !== 'comment_mail') throw new Error(`No such service: ${name}`);
       return daas.service();
     },
