@@ -30,6 +30,7 @@ const meta: MetaRecord = {
   cron: 'Cron Jobs',
   'ai-chat': 'AI Chat',
   comments: 'Comments',
+  notifications: 'Notifications',
   '--- reference': {
     type: 'separator',
     title: 'Reference',
