@@ -1,5 +1,17 @@
 # @buildpad/ui-workflows
 
+## 3.8.0
+
+### Patch Changes
+
+- Updated dependencies [60b6390]
+- Updated dependencies [2621772]
+  - @buildpad/services@3.8.0
+  - @buildpad/utils@3.8.0
+  - @buildpad/hooks@3.8.0
+  - @buildpad/ui-table@3.8.0
+  - @buildpad/types@3.8.0
+
 ## 3.7.0
 
 ### Patch Changes

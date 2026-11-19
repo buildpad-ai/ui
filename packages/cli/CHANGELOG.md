@@ -1,5 +1,15 @@
 # @buildpad/cli
 
+## 3.8.0
+
+### Minor Changes
+
+- 60b6390: An idle tab no longer shows "Could not load …" until it is reloaded. `DaaSConfig` gains `renewToken`: on a 401, `apiRequest` gets a new token once and retries. `DaaSProvider` re-reads its stored token when the tab comes back and every 4 minutes. `api-routes` (and `api-routes-engine`) now install `app/api/auth/token` and `lib/daas-token`, and `DaaSProviderWrapper` renews an expired or missing browser token from the server's session, reloading to the login page only when there is no session at all.
+
+### Patch Changes
+
+- 2621772: New `@buildpad/ui-notifications` package (registry component `notifications`): one notification bell and inbox for every Buildpad app, with an unread badge, a filtered inbox and a detail pane to reply and act, behind a small adapter. `@buildpad/utils` gains the notifications i18n strings, `@buildpad/ui-comments`' comment mail service can also create in-app notifications (off by default), and the CLI maps `@buildpad/ui-notifications` imports to `components/ui/notifications`.
+
 ## 3.7.0
 
 ### Minor Changes
