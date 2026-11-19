@@ -1,0 +1,63 @@
+{
+  "$comment": "Schema for the collections the notification bell reads and the notifications service writes. Nothing applies this file for you: create the collections and fields with your backend's own tools (the DaaS MCP / Studio), then create EVERY foreign key with a relation call. Rows are written only by the notifications service (elevated); people read their own rows and may only set read_at.",
+  "version": 1,
+  "collections": [
+    {
+      "collection": "notifications",
+      "note": "One row per notification. recipient is a user; recipient_email (lower-case) is for a person without an account, who gets the digest email only.",
+      "fields": [
+        { "field": "id", "type": "uuid", "primaryKey": true },
+        { "field": "recipient", "type": "uuid", "required": false, "note": "The user notified. Null when recipient_email is used." },
+        { "field": "recipient_email", "type": "string", "maxLength": 255, "required": false, "note": "Lower-case address of a person without an account (digest only)." },
+        { "field": "type", "type": "string", "maxLength": 64, "required": true, "note": "mention, reply, assigned, ... (your own words)" },
+        { "field": "title", "type": "string", "maxLength": 255, "required": true },
+        { "field": "message", "type": "text", "required": false },
+        { "field": "link", "type": "string", "maxLength": 1000, "required": false, "note": "App-relative deep link, e.g. /tickets/T1?comment=C9" },
+        { "field": "actor", "type": "uuid", "required": false, "note": "Who caused it" },
+        { "field": "actor_name", "type": "string", "maxLength": 120, "required": false },
+        { "field": "source_collection", "type": "string", "maxLength": 64, "required": false, "note": "The record it is about (checked by the optional visibility hook)" },
+        { "field": "source_id", "type": "string", "maxLength": 64, "required": false },
+        { "field": "dedupe_key", "type": "string", "maxLength": 200, "unique": true, "required": false, "hidden": true, "note": "At most one row per key; the service tolerates the unique violation (23505) of a concurrent insert." },
+        { "field": "read_at", "type": "timestamp", "required": false, "note": "Set by the bell. The only field people may update." },
+        { "field": "emailed_at", "type": "timestamp", "required": false, "note": "Set when emailed (immediate or digest) or handled by the digest." },
+        { "field": "created_at", "type": "timestamp", "required": true, "note": "Set by the service; bumped when a row is merged." }
+      ],
+      "relations": [
+        { "field": "recipient", "related_collection": "daas_users", "on_delete": "CASCADE" },
+        { "field": "actor", "related_collection": "daas_users", "on_delete": "SET NULL" }
+      ],
+      "indexes": [
+        { "fields": ["recipient", "read_at", "created_at"], "note": "The bell's list and unread count" },
+        { "fields": ["emailed_at", "created_at"], "note": "The digest's scan" }
+      ]
+    },
+    {
+      "collection": "notification_prefs",
+      "optional": true,
+      "note": "Optional. One row per person who changed the default. No row: email_mode immediate.",
+      "fields": [
+        { "field": "id", "type": "uuid", "primaryKey": true },
+        { "field": "user", "type": "uuid", "required": true, "unique": true },
+        { "field": "email_mode", "type": "string", "required": true, "default": "immediate", "choices": ["immediate", "digest", "off"] }
+      ],
+      "relations": [{ "field": "user", "related_collection": "daas_users", "on_delete": "CASCADE" }]
+    }
+  ],
+  "permissions": {
+    "notifications": {
+      "read": { "role": "authenticated", "filter": { "recipient": { "_eq": "$CURRENT_USER" } }, "fields": ["id", "recipient", "type", "title", "message", "link", "actor", "actor_name", "source_collection", "source_id", "read_at", "created_at"] },
+      "create": null,
+      "update": { "role": "authenticated", "filter": { "recipient": { "_eq": "$CURRENT_USER" } }, "fields": ["read_at"] },
+      "delete": null
+    },
+    "notification_prefs": {
+      "read": { "role": "authenticated", "filter": { "user": { "_eq": "$CURRENT_USER" } }, "fields": ["id", "user", "email_mode"] },
+      "create": { "role": "authenticated", "fields": ["email_mode"], "note": "A create hook stamps user = the caller" },
+      "update": { "role": "authenticated", "filter": { "user": { "_eq": "$CURRENT_USER" } }, "fields": ["email_mode"] },
+      "delete": null
+    }
+  },
+  "services": "./services/notifications.js, as a custom service named notifications",
+  "hooks": "./hooks/*.hook.js: mention and reply (on <comments>.items.create), assign (on <collection>.items.update), and the optional visibility filter (on notifications.items.read)",
+  "cron": "./cron/notification-digest.js, daily"
+}

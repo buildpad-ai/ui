@@ -1,0 +1,4 @@
+/* ui-notifications — room for the inbox and the bell popover */
+.sb-notifications-wrapper {
+  min-height: 560px;
+}

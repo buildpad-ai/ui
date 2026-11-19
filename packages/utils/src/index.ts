@@ -235,6 +235,7 @@ export {
   type CronTranslations,
   type ChatTranslations,
   type CommentsTranslations,
+  type NotificationsTranslations,
   type FormsTranslations,
   type HooksTranslations,
   type DateTimeTranslations,

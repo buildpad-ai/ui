@@ -1,0 +1,333 @@
+---
+title: Notifications Module Recipe
+description: Add one notification bell and inbox to your app with one CLI command — an unread badge, a filtered inbox with a detail pane to reply and act, and the DaaS service, hooks and daily digest behind it.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Notifications Module Recipe
+
+The Notifications module gives every Buildpad app the same bell and inbox. Anything
+on the server — a mention, a reply, an assignment, a job of your own — calls one
+service, and the person sees it in the app and, if you want, by email.
+
+- **The bell.** An icon in your header with an unread badge (“99+” past 99). It
+  opens the latest 20 notifications, newest first; a click marks one read and goes
+  to its link. **Mark all read** sits at the top, **See all** at the bottom.
+- **The inbox page.** `/notifications` with tabs (**All**, **Unread**, and your
+  own, such as **Mentions**), rows grouped by day (Today, Yesterday, then dates),
+  infinite scroll, and a detail pane beside the list.
+- **The detail pane.** Title, sender, time, message and an **Open** button, plus
+  three slots of your own: a preview of the record, action buttons, and a reply
+  box (for example the Comments `Composer`).
+- **Keyboard.** <kbd>j</kbd> / <kbd>↓</kbd> next, <kbd>k</kbd> / <kbd>↑</kbd>
+  previous, <kbd>u</kbd> marks the selected one read or unread.
+- **Shareable state.** The tab and the selected notification live in the URL
+  (`?filter=unread&id=…`), so a link opens the same view.
+- **Server side included.** A `notifications` collection, a custom service that
+  writes rows (self-exclusion, idempotency, merging “3 new replies”), hooks for
+  mentions, replies and assignments, and a daily digest email.
+
+![The notifications inbox — tabs, rows grouped by day and the detail pane (from the Notifications Storybook)](/notifications-inbox.png)
+
+<Callout type="info">
+The bell **polls** every 30 seconds while the tab is visible, and refreshes at once when
+you come back to the tab (focus and visibility events close together make one request). It
+is not realtime.
+</Callout>
+
+## The pieces
+
+| Piece | Role |
+|---|---|
+| `NotificationsProvider` | Holds the unread count and the latest rows, polls, and shares them with the bell and the page |
+| `NotificationBell` | The header icon, badge and dropdown |
+| `NotificationsInbox` | The `/notifications` page: tabs, list and detail pane |
+| `NotificationDetail` | The detail pane on its own, for a layout of your own |
+| `notificationsItemsAdapter` | The default adapter: reads and writes through your app's `/api/items/...` routes |
+| `NotificationsAdapter` | The interface the components talk to; write your own for another data source |
+| `useNotifications`, `useNotificationsPage` | The state behind the bell and the page, for a shell of your own |
+| `nextUrlState`, `useLocalUrlState` | Where `?filter=` and `?id=` live: the Next.js URL, or memory |
+| `schema/` | The DaaS collection, service, hooks and digest (install guide in `schema/README.md`) |
+| Strings | The `notifications` namespace of `@buildpad/utils` (English and Bahasa Indonesia) |
+
+## Install
+
+<Steps>
+
+### Add the component
+
+```bash copy
+buildpad add notifications
+```
+
+This copies 17 files into `components/ui/notifications/` and installs
+`@mantine/core`, `@mantine/hooks` and `@tabler/icons-react` if they are missing,
+plus the `services` and `utils` lib modules it needs. In a generated app the
+imports point at your local copy (`@/components/ui/notifications`). Outside the
+CLI, `pnpm add @buildpad/ui-notifications`. The component is opt-in: it is not
+part of `bootstrap`.
+
+### Set up the DaaS
+
+Create the `notifications` collection, the `notifications` service, the hooks you
+want and the digest cron job from the package's `schema/` folder. See
+[Server setup](#server-setup) below.
+
+</Steps>
+
+## Usage
+
+### The provider
+
+Mount it once, **under the provider that knows the signed-in user**, so the bell and
+the page share one poll:
+
+```tsx filename="components/app-notifications.tsx" copy
+'use client';
+
+import { useMemo } from 'react';
+import { NotificationsProvider, notificationsItemsAdapter } from '@/components/ui/notifications';
+
+export function AppNotifications({ user, children }: { user: { id: string }; children: React.ReactNode }) {
+  const adapter = useMemo(() => notificationsItemsAdapter({ meId: user.id }), [user.id]);
+  return (
+    <NotificationsProvider adapter={adapter} meId={user.id}>
+      {children}
+    </NotificationsProvider>
+  );
+}
+```
+
+Keep the adapter stable (`useMemo`). Everything resets when `meId` changes.
+
+### The bell
+
+```tsx filename="components/header-bell.tsx" copy
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { NotificationBell } from '@/components/ui/notifications';
+
+export function HeaderBell() {
+  const router = useRouter();
+  return <NotificationBell href="/notifications" onNavigate={(href) => router.push(href)} />;
+}
+```
+
+![The bell's dropdown — unread badge, the latest notifications, Mark all read and See all](/notifications-bell.png)
+
+### The inbox page
+
+`nextUrlState` keeps the tab and the selection in the URL. It reads `useSearchParams`,
+so wrap the page in `Suspense`:
+
+```tsx filename="app/notifications/page.tsx" copy
+'use client';
+
+import { Suspense } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { NotificationsInbox, nextUrlState } from '@/components/ui/notifications';
+
+function Inbox() {
+  const router = useRouter();
+  const urlState = nextUrlState(useSearchParams(), router, usePathname());
+  return (
+    <NotificationsInbox
+      urlState={urlState}
+      onNavigate={(href) => router.push(href)}
+      tabs={[{ key: 'mentions', label: 'Mentions', clause: { type: { _eq: 'mention' } } }]}
+    />
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <Suspense>
+      <Inbox />
+    </Suspense>
+  );
+}
+```
+
+Without `urlState` the inbox keeps its state in memory (`useLocalUrlState`).
+
+### Reply and act from the detail pane
+
+```tsx
+import { Composer, useCommentsStrings } from '@/components/ui/comments';
+
+const strings = useCommentsStrings();
+
+<NotificationsInbox
+  urlState={urlState}
+  renderPreview={(n) => (n.source_collection === 'tickets' ? <TicketCard id={n.source_id!} /> : null)}
+  renderActions={(n) => (n.type === 'assigned' ? <Button onClick={() => accept(n.source_id!)}>Accept</Button> : null)}
+  renderReply={(n) =>
+    n.source_collection === 'tickets' ? (
+      <Composer
+        strings={strings}
+        placeholder={`Reply to ${n.actor_name ?? 'them'}…`}
+        submitLabel="Reply"
+        onSubmit={(body) => postTicketComment(n.source_id!, body)}
+      />
+    ) : null
+  }
+/>;
+```
+
+### Types and tabs
+
+Each `type` has a label, a Mantine color and an icon. The built-ins are `info`,
+`mention`, `comment`, `reply`, `assigned`, `status` and `system`; anything else
+falls back to `info`. Add or change them with `typeStyles`:
+
+```tsx
+import { IconChecklist } from '@tabler/icons-react';
+
+<NotificationBell typeStyles={{ approval: { label: 'Approval', color: 'grape', icon: IconChecklist } }} />
+```
+
+A tab is `{ key, label, clause }`; the clause is a DaaS filter ANDed with
+`recipient = me`. **All** and **Unread** are always there.
+
+## Props
+
+### `NotificationsProvider`
+
+| Prop | Meaning |
+|---|---|
+| `adapter` | Where the notifications come from (required) |
+| `meId` | The signed-in user's id (required). Everything resets when it changes |
+| `pollMs` | Poll interval in ms. Default `30000`; `0` switches polling off |
+| `bellLimit` | How many latest rows the bell shows. Default `20` |
+| `now` | Clock for the optimistic `read_at` (tests) |
+
+### `NotificationBell`
+
+| Prop | Meaning |
+|---|---|
+| `href` | The inbox page. Default `/notifications` |
+| `onNavigate` | `(href, notification?) => void`; pass `router.push`. Default: a full page load |
+| `resolveLink` | `(notification) => href` when the link is not the stored `link` |
+| `typeStyles` | Label, color and icon per type |
+| `width` | Dropdown width. Default `360` |
+| `translations` | Overrides for the strings |
+
+### `NotificationsInbox`
+
+| Prop | Meaning |
+|---|---|
+| `tabs` | App tabs after **All** and **Unread** |
+| `urlState` | Where `?filter=` and `?id=` live (`nextUrlState(...)`). Default: in memory |
+| `onNavigate`, `resolveLink`, `typeStyles` | As on the bell |
+| `renderPreview`, `renderActions`, `renderReply` | Slots in the detail pane |
+| `pageSize` | Rows per page. Default `30` |
+| `height` | Height of the two panes. Default `calc(100dvh - 120px)` |
+| `headingLevel` | Level of the page title (default `1`); the detail title is one below |
+| `translations` | Overrides for the strings |
+
+### `NotificationDetail`
+
+| Prop | Meaning |
+|---|---|
+| `notification` | The notification to show (required) |
+| `onToggleRead` | Mark read / unread; leave out to hide the button |
+| `headingLevel` | Level of the title. Default `2` |
+| `onNavigate`, `resolveLink`, `typeStyles`, `translations` | As above |
+| `renderPreview`, `renderActions`, `renderReply` | The slots |
+
+### Hooks
+
+| Hook | Returns |
+|---|---|
+| `useNotifications()` | `unreadCount`, `latest`, `isLoading`, `error`, `refetch`, `markRead`, `markUnread`, `markAllRead`, the `adapter` and `meId` |
+| `useNotificationsPage(filterKey, { tabs, selectedId, pageSize })` | `items`, `selected`, `isLoading`, `isLoadingMore`, `hasMore`, `error`, `loadMore`, `refetch`, `patchLocal` |
+
+## The adapter
+
+`notificationsItemsAdapter({ meId })` reads and writes the `notifications`
+collection through `apiRequest`, always limited to `recipient = meId`:
+
+| Option | Meaning |
+|---|---|
+| `meId` | The signed-in user (required) |
+| `collection` | Default `notifications` |
+| `fields` | Column names, when yours are not the defaults |
+| `request` | Replaces `apiRequest` (tests, custom transports) |
+
+The list asks only for the fields the shipped read permission grants
+(`READABLE_NOTIFICATION_FIELDS`), never `recipient_email`, `dedupe_key` or `emailed_at`. The
+unread count asks for at most 100 ids (never `limit=-1`). **Mark all read** is one
+filtered PATCH. Paging is keyset on `created_at` with a small overlap, so rows that share
+a timestamp are not lost; a short page keeps paging (a read filter may have hidden rows),
+and only a page with nothing new ends it. Links are followed only when app-relative (one
+leading `/`; `isAppRelativeLink`), otherwise the inbox opens. A custom `NotificationsAdapter` implements `list`,
+`unreadCount`, `markRead`, `markAllRead`, and optionally `markUnread` and `get`.
+
+## Server setup
+
+The DaaS side ships in the package's `schema/` folder and is **pasted into your DaaS**;
+`buildpad add notifications` does not copy it. The folder's `README.md` has every step.
+In short:
+
+1. **The collection** `notifications` (and optionally `notification_prefs`), every foreign
+   key made with a relation call. People **read** their own rows and **update `read_at`
+   only**; nobody creates or deletes. A row can name a `recipient_email` instead of a
+   user: that person gets the digest email only, never a bell.
+2. **The service** `notifications` with its `CONFIG` edited, and `APP_URL` exposed with
+   `RUNTIME_ENV_WHITELIST_CUSTOM_SERVICE`. `notify()` never notifies people of their own
+   action, never creates two rows for one `dedupe_key`, merges replies into “3 new replies
+   on …”, emails immediate types at once (not rows passed with `emailed: true`), stores only
+   app-relative links, and never throws.
+3. **The hooks** you want: mention and reply on `<comments>.items.create`, assign on
+   `<collection>.items.update` (action hooks, 25 s). Assignment notifies only when the
+   assignee changed.
+4. **The digest** cron job, `0 9 * * *` in the DaaS's timezone, created inactive and dry-run
+   first.
+5. Optionally, a **visibility filter** on `notifications.items.read` that hides rows about
+   records the reader can no longer read; then also set `checkAccess: true` (with
+   `accessFilters`) in the digest, which runs as the system. **SMTP** for the emails.
+
+<Callout type="warning">
+**Comments: choose one path.** Either set `CONFIG.inAppNotifications: true` in the Comments
+module's `comment_mail` service, **or** install this package's two comment hooks — never both,
+or everyone gets double notifications.
+</Callout>
+
+<Callout type="warning">
+The schema files were tested in a sandbox built like the DaaS's own, against fake services, not
+against a real DaaS. Overlapping digest runs could rarely send twice, so schedule one. Read the
+**Known limits** in the schema guide before going live.
+</Callout>
+
+## Accessibility and keyboard
+
+- The bell is a button labelled with the unread count, with `aria-expanded`; the dropdown
+  is a list, and loading is announced.
+- On the inbox, <kbd>j</kbd> or <kbd>↓</kbd> selects the next notification,
+  <kbd>k</kbd> or <kbd>↑</kbd> the previous one, and <kbd>u</kbd> toggles read on the
+  selected one. Keys are ignored while you type in a field or a dialog is open, and with
+  <kbd>Ctrl</kbd>, <kbd>⌘</kbd> or <kbd>Alt</kbd>.
+- The selected row has `aria-current`, day headers are headings one level below the page
+  title, the tabs are labelled, and errors use `role="alert"`.
+- Unread is shown by a dot **and** bold text, never by color alone.
+
+## Mobile
+
+Below 768 px the inbox shows one pane at a time: the list, then the detail with a **Back**
+button that returns to the list. The tab and the selection stay in the URL as on desktop.
+
+![The detail pane on a phone, with the Back button](/notifications-mobile-detail.png)
+
+## Strings
+
+Every word comes from the `notifications` namespace of the shared dictionary, in English
+and Bahasa Indonesia. Override them with `BuildpadI18nProvider` or each component's
+`translations` prop.
+
+## Not in this version
+
+- Realtime delivery (it polls), push notifications and browser notifications.
+- A preferences screen for `notification_prefs` (and the create hook it needs).
+- Deleting or archiving notifications.

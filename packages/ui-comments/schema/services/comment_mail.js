@@ -56,6 +56,13 @@ const CONFIG = {
   // mailed to any active user, just by typing a mention token for that person's id.
   mentionsCheckedByCreateHook: false,
   canRead: null,
+  // Also create in-app (bell) notifications through the `notifications` custom service from
+  // @buildpad/ui-notifications (schema/services/notifications.js). Off by default. When on, the same
+  // people are notified in the app (inactive or undeliverable addresses included: the bell needs no
+  // email), under the same access rule. A row for someone emailed here is passed as emailed: true, so
+  // the notifications digest does not email it again. Do not also install that package's comment hooks.
+  inAppNotifications: false,
+  notificationsService: 'notifications',
 };
 
 // ── helpers ─────────────────────────────────────────────────────────────
@@ -151,11 +158,12 @@ const clip = (text, max) => (text.length > max ? text.slice(0, max - 1).trimEnd(
 
 const appUrl = () => String(env.APP_URL || CONFIG.appUrl || '').replace(/\/+$/, '');
 
+/** The app-relative path of a comment (the in-app row's link); `linkTo` is the same, absolute (emails). */
+const pathTo = (hostId, commentId) =>
+  CONFIG.linkPath.replace('{host}', encodeURIComponent(hostId)).replace('{comment}', encodeURIComponent(commentId));
+
 function linkTo(hostId, commentId) {
-  return (
-    appUrl() +
-    CONFIG.linkPath.replace('{host}', encodeURIComponent(hostId)).replace('{comment}', encodeURIComponent(commentId))
-  );
+  return appUrl() + pathTo(hostId, commentId);
 }
 
 /** One item by id, read with the service's own rights (the people involved cannot read each other's rows). */
@@ -244,6 +252,29 @@ const bodyOf = (comment, nameOf) => {
   return Array.isArray(comment[CONFIG.fields.photos]) && comment[CONFIG.fields.photos].length ? '(sent a picture)' : '';
 };
 
+/** Hand rows to the notifications service when CONFIG.inAppNotifications is on. Never throws. */
+async function inApp(rows) {
+  if (CONFIG.inAppNotifications !== true || rows.length === 0) return;
+  try {
+    const notifications = await services.custom(CONFIG.notificationsService);
+    await notifications.notify(rows);
+  } catch (error) {
+    console.error('comment in-app notification failed:', String((error && error.message) || error).slice(0, 300));
+  }
+}
+
+const inAppRow = (type, recipient, title, comment, hostId, authorId, authorName, bodyText) => ({
+  recipient,
+  type,
+  title,
+  message: clip(String(bodyText || '').replace(/\s+/g, ' ').trim(), 300),
+  link: pathTo(hostId, comment.id),
+  actor: authorId,
+  actor_name: authorName,
+  source_collection: CONFIG.host,
+  source_id: String(hostId),
+});
+
 // ── the two entry points ────────────────────────────────────────────────
 
 return {
@@ -304,7 +335,25 @@ return {
           },
         });
       }
-      const settled = await Promise.allSettled(outgoing.map((o) => send(o.message)));
+      // In-app rows, handed over WHILE the emails go out (not before them: the 20 s budget is shared).
+      // A row for someone emailed here carries emailed: true, so the digest does not email it again
+      // and the notifications service sends no immediate email of its own.
+      let inAppDone = Promise.resolve();
+      if (CONFIG.inAppNotifications === true) {
+        const heading = authorName + ' mentioned you in “' + hostTitle + '”';
+        const text = bodyOf(comment, nameOf);
+        const emailed = new Set(outgoing.map((o) => o.id));
+        inAppDone = inApp(
+          ids
+            .filter((id) => id !== authorId && mayRead(host, id))
+            .map((id) =>
+              Object.assign(inAppRow('mention', id, heading, comment, hostId, authorId, authorName, text), {
+                dedupe_key: 'mention:' + comment.id + ':' + id,
+              }, emailed.has(id) ? { emailed: true } : {}),
+            ),
+        );
+      }
+      const [settled] = await Promise.all([Promise.allSettled(outgoing.map((o) => send(o.message))), inAppDone]);
       outgoing.forEach((o, i) => {
         const sent = settled[i].status === 'fulfilled' && settled[i].value === 'sent';
         (sent ? result.sent : result.skipped).push(o.id);
@@ -329,8 +378,9 @@ return {
 
       const authorId = comment[f.author] ? String(comment[f.author]).toLowerCase() : null;
       const recipientId = String(parent[f.author]).toLowerCase();
-      // Never the replier themself, and not someone this reply already @mentions (they get that email).
-      if (recipientId === authorId || mentionIds(comment[f.body]).indexOf(recipientId) !== -1) return result;
+      // Never the replier themself, and not someone this reply already @mentions (they get that email):
+      // only the first maxMentions ids are mentioned (notifyMentions' cap), so one past it still gets this.
+      if (recipientId === authorId || mentionIds(comment[f.body]).slice(0, CONFIG.maxMentions).indexOf(recipientId) !== -1) return result;
       if (!accessRuleConfigured()) {
         result.skipped.push(recipientId);
         return result;
@@ -338,15 +388,27 @@ return {
 
       const people = await readPeople([authorId, recipientId].concat(mentionIds(comment[f.body])));
       const recipient = people.get(recipientId);
-      if (!deliverable(recipient) || !mayRead(host, recipientId)) {
-        result.skipped.push(recipientId);
-        return result;
-      }
       const nameOf = (id) => (people.has(id) ? personName(people.get(id)) : null);
       const author = authorId ? people.get(authorId) : null;
       const authorName = personName(author);
       const noun = parent[f.parent] ? CONFIG.words.reply : CONFIG.words.root;
       const heading = authorName + ' replied to your ' + noun + ' in “' + hostTitle + '”';
+      const readable = mayRead(host, recipientId);
+      const emailing = deliverable(recipient) && readable;
+      // In-app row alongside the email (see notifyMentions); emailed: true when an email goes out here.
+      const inAppDone = readable
+        ? inApp([
+            Object.assign(inAppRow('reply', recipientId, heading, comment, hostId, authorId, authorName, bodyOf(comment, nameOf)), {
+              merge: 'replies',
+              subject: hostTitle,
+            }, emailing ? { emailed: true } : {}),
+          ])
+        : Promise.resolve();
+      if (!emailing) {
+        await inAppDone;
+        result.skipped.push(recipientId);
+        return result;
+      }
       const mail = compose({
         heading,
         hostTitle,
@@ -356,13 +418,16 @@ return {
         link: linkTo(hostId, comment.id),
         note: recipient.last_access ? '' : CONFIG.firstTimeHint,
       });
-      const status = await send({
-        to: recipient.email,
-        subject: heading,
-        text: mail.text,
-        html: mail.html,
-        replyTo: CONFIG.replyToAuthor && author && !undeliverable(author.email) ? author.email : undefined,
-      });
+      const [status] = await Promise.all([
+        send({
+          to: recipient.email,
+          subject: heading,
+          text: mail.text,
+          html: mail.html,
+          replyTo: CONFIG.replyToAuthor && author && !undeliverable(author.email) ? author.email : undefined,
+        }),
+        inAppDone,
+      ]);
       (status === 'sent' ? result.sent : result.skipped).push(recipientId);
     } catch (error) {
       console.error('comment reply mail failed:', String((error && error.message) || error).slice(0, 300));

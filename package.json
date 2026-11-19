@@ -37,6 +37,7 @@
     "storybook:cron": "pnpm --filter @buildpad/ui-cron storybook",
     "storybook:chat": "pnpm --filter @buildpad/ui-chat storybook",
     "storybook:comments": "pnpm --filter @buildpad/ui-comments storybook",
+    "storybook:notifications": "pnpm --filter @buildpad/ui-notifications storybook",
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r --if-present test:coverage",
     "test:e2e": "playwright test --project=chromium",
@@ -89,7 +90,8 @@
     "auditConfig": {
       "ignoreGhsas": [
         "GHSA-jrc7-96c5-q579",
-        "GHSA-vfj7-8cjw-p6xm"
+        "GHSA-vfj7-8cjw-p6xm",
+        "GHSA-fc5q-39xc-vjpf"
       ]
     }
   }

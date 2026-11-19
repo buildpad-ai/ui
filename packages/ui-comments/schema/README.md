@@ -23,7 +23,8 @@ not copied here.
 - **A reply** emails the author of the comment that was answered: "Ana replied to your post in
   “Title”".
 - Never the author themself. Never the same person twice for one comment: a person this reply
-  already mentions gets the mention email only.
+  already mentions gets the mention email only (only the first `maxMentions` people are emailed
+  as mentions, so someone mentioned past that cap gets the reply email).
 - At most 10 people per comment.
 - Not to people who are not `active`, who have no email, or whose address cannot receive mail
   (`.test`, `.invalid`, `.localhost`, `.example`, `example.com/.org/.net`, `daas.internal`,
@@ -84,3 +85,26 @@ errors) are each caught.
 
 **Not checked:** a real DaaS and a real mail server. Send a test comment with a mention and a reply
 between two real accounts before relying on it, and look at `/logs` for `comment mail` errors.
+
+## In-app notifications (the bell)
+
+`comment_mail.js` can also put a notification in the bell of everyone it decides to tell, through
+the `notifications` custom service of `@buildpad/ui-notifications`
+(`packages/ui-notifications/schema/`). Install that service first, then set in `CONFIG`:
+
+- `inAppNotifications: true` (off by default).
+- `notificationsService`: the service's name, `notifications` unless you renamed it.
+
+The same people are notified in the app as by email, under the same access rule
+(`mentionsCheckedByCreateHook` / `canRead`). People whose address cannot receive mail, or who have no
+email, still get the bell notification: the bell needs no email. Mentions carry a `dedupe_key`
+(`mention:<comment>:<person>`); replies merge into the person's unread reply row for the same record.
+A row for someone this service emails carries `emailed: true`: it is stored as already emailed, so
+the notifications digest does not email it a second time and no immediate email is sent for it (if
+that one send fails, the bell still has it). The in-app call runs alongside the emails, not before
+them, inside the same 20 s budget. A failure there is logged and never affects the email or the
+comment.
+
+**Choose one path only.** Either this option, or the `notify-on-comment-mention` and
+`notify-on-comment-reply` hooks of `@buildpad/ui-notifications`, never both: with both, each comment is
+processed twice and people get double notifications (one reply shows as “2 new replies”).
