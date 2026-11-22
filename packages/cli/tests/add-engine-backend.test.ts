@@ -7,7 +7,10 @@
  * copies external-oauth and api-routes wrote on the targets they share; and
  * api-routes — asked for by name, by `--with-api`, or as a route module's
  * dependency — is `api-routes-engine`. A Supabase project, or one that records
- * no backend, keeps external-oauth and api-routes.
+ * no backend, keeps external-oauth and api-routes. An Engine project whose
+ * project.json also says `"tenancy": "customer-tenants"` gets
+ * external-oauth-engine-customers, which supersedes external-oauth-engine and
+ * writes the app-owned customer map once.
  */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'fs-extra';
@@ -78,6 +81,7 @@ const MOCK_REGISTRY = {
       name: 'external-oauth-engine',
       description: 'XAppHub sign-in (Engine project)',
       backend: 'engine',
+      customerTenantsVariant: 'external-oauth-engine-customers',
       replaces: ['external-oauth', 'api-routes', 'api-routes-engine'],
       sourcePackage: '@buildpad/cli',
       version: '2.0.0',
@@ -87,6 +91,24 @@ const MOCK_REGISTRY = {
         { source: 'cli/templates/lib/oauth/config.ts', target: 'lib/oauth/config.ts', sourceSha256: 'config' },
         { source: 'cli/templates/lib/oauth/engine.ts', target: 'lib/oauth/engine.ts', sourceSha256: 'engine' },
         { source: 'cli/templates/api/auth-callback-oauth-engine-route.ts', target: 'app/api/auth/callback/route.ts', sourceSha256: 'engine-callback' },
+      ],
+    },
+    'external-oauth-engine-customers': {
+      name: 'external-oauth-engine-customers',
+      description: 'XAppHub sign-in (Engine project with customer tenants)',
+      backend: 'engine',
+      tenancy: 'customer-tenants',
+      replaces: ['external-oauth-engine', 'external-oauth', 'api-routes', 'api-routes-engine'],
+      sourcePackage: '@buildpad/cli',
+      version: '2.0.0',
+      lastChangedIn: '2.0.0',
+      internalDependencies: ['api-routes-engine'],
+      files: [
+        { source: 'cli/templates/lib/oauth/config.ts', target: 'lib/oauth/config.ts', sourceSha256: 'config' },
+        { source: 'cli/templates/lib/oauth/engine.ts', target: 'lib/oauth/engine.ts', sourceSha256: 'engine' },
+        { source: 'cli/templates/lib/oauth/tenant.ts', target: 'lib/oauth/tenant.ts', sourceSha256: 'tenant' },
+        { source: 'cli/templates/lib/customer-hosts.ts', target: 'lib/customer-hosts.ts', sourceSha256: 'hosts', adoptOnce: true },
+        { source: 'cli/templates/api/auth-callback-oauth-engine-customers-route.ts', target: 'app/api/auth/callback/route.ts', sourceSha256: 'customers-callback' },
       ],
     },
   },
@@ -100,6 +122,9 @@ const SOURCES: Record<string, string> = {
   'cli/templates/api/auth-callback-oauth-route.ts': `export const callback = 'supabase-oauth';\n`,
   'cli/templates/lib/oauth/engine.ts': `export const engine = 'engine';\n`,
   'cli/templates/api/auth-callback-oauth-engine-route.ts': `export const callback = 'engine-oauth';\n`,
+  'cli/templates/lib/oauth/tenant.ts': `export const tenant = 'by-host';\n`,
+  'cli/templates/lib/customer-hosts.ts': `export const CUSTOMER_HOSTS = {};\n`,
+  'cli/templates/api/auth-callback-oauth-engine-customers-route.ts': `export const callback = 'engine-customers-oauth';\n`,
   'cli/templates/components/DaaSProviderWrapper.tsx': `export const url = process.env.NEXT_PUBLIC_BUILDPAD_DAAS_URL;\n`,
   'cli/templates/components/DaaSProviderWrapperEngine.tsx': `export const url = '';\n`,
   'cli/templates/api/daas-users-me-engine-route.ts': `export const route = 'users-me';\n`,
@@ -162,8 +187,9 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function writeSignal(backend: string, file = '.buildpad/project.json') {
-  await fs.outputFile(path.join(tmpdir, file), `${JSON.stringify({ buildpadProject: 1, backend }, null, 2)}\n`);
+async function writeSignal(backend: string, file = '.buildpad/project.json', tenancy?: string) {
+  const signal = tenancy ? { buildpadProject: 1, backend, tenancy } : { buildpadProject: 1, backend };
+  await fs.outputFile(path.join(tmpdir, file), `${JSON.stringify(signal, null, 2)}\n`);
 }
 
 const manifest = () => fs.readJSON(path.join(tmpdir, 'buildpad.json'));
@@ -351,5 +377,79 @@ describe('a route module that depends on api-routes', () => {
 
     expect(exit).toHaveBeenCalledWith(1);
     expect(log.mock.calls.flat().join('\n')).toContain('Install api-routes instead');
+  });
+});
+
+describe('an Engine project with customer tenants', () => {
+  const hostsPath = () => path.join(tmpdir, 'lib/customer-hosts.ts');
+  const appMap = `export const CUSTOMER_HOSTS = { acme: { tenantId: 't-acme', name: 'Acme' } };\n`;
+
+  test('"tenancy": "scope" installs external-oauth-engine, exactly as before', async () => {
+    await writeSignal('engine', '.buildpad/project.json', 'scope');
+
+    await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+
+    const after = await manifest();
+    expect(after.installedLib).toContain('external-oauth-engine');
+    expect(after.installedLib).not.toContain('external-oauth-engine-customers');
+    expect(await callback()).toContain(`'engine-oauth'`);
+    expect(await fs.pathExists(path.join(tmpdir, 'lib/oauth/tenant.ts'))).toBe(false);
+    expect(await fs.pathExists(hostsPath())).toBe(false);
+  });
+
+  test.each([
+    ['add external-oauth', ['external-oauth'], {}],
+    ['add external-oauth-engine', ['external-oauth-engine'], {}],
+    ['add --with-api', [], { withApi: true }],
+  ])('"tenancy": "customer-tenants": %s installs external-oauth-engine-customers', async (_label, names, opts) => {
+    await writeSignal('engine', '.buildpad/project.json', 'customer-tenants');
+
+    await add(names, { cwd: tmpdir, nonInteractive: true, ...opts });
+
+    const after = await manifest();
+    expect(after.installedLib).toContain('external-oauth-engine-customers');
+    expect(after.installedLib).not.toContain('external-oauth-engine');
+    expect(await callback()).toContain('engine-customers-oauth');
+    expect(await fs.pathExists(path.join(tmpdir, 'lib/oauth/tenant.ts'))).toBe(true);
+    expect(await fs.readFile(hostsPath(), 'utf-8')).toContain('CUSTOMER_HOSTS = {}');
+  });
+
+  test('replaces an unmodified external-oauth-engine once the project has customer tenants, and supersedes it', async () => {
+    await writeSignal('engine', '.buildpad/project.json', 'scope');
+    await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+
+    await writeSignal('engine', '.buildpad/project.json', 'customer-tenants');
+    await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+
+    const after = await manifest();
+    expect(after.installedLib).toContain('external-oauth-engine-customers');
+    expect(after.installedLib).not.toContain('external-oauth-engine');
+    expect(after.lib['external-oauth-engine']).toBeUndefined();
+    expect(await callback()).toContain('engine-customers-oauth');
+  });
+
+  test('never overwrites the app’s own customer map, not even with --overwrite', async () => {
+    await writeSignal('engine', '.buildpad/project.json', 'customer-tenants');
+    await fs.outputFile(hostsPath(), appMap);
+
+    await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+    expect(await fs.readFile(hostsPath(), 'utf-8')).toBe(appMap);
+
+    await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true, overwrite: true });
+    expect(await fs.readFile(hostsPath(), 'utf-8')).toBe(appMap);
+    expect(await callback()).toContain('engine-customers-oauth');
+  });
+
+  test('external-oauth-engine-customers is refused on a "scope" project', async () => {
+    await writeSignal('engine', '.buildpad/project.json', 'scope');
+    vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
+      throw new Error(`exit ${code}`);
+    }) as never);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await expect(add(['external-oauth-engine-customers'], { cwd: tmpdir, nonInteractive: true })).rejects.toThrow('exit 1');
+
+    expect(log.mock.calls.flat().join('\n')).toContain('Install external-oauth-engine instead');
+    expect(await fs.pathExists(path.join(tmpdir, 'app/api/auth/callback/route.ts'))).toBe(false);
   });
 });

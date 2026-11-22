@@ -56,6 +56,8 @@ export interface RegistryFileEntry {
   source: string;
   target: string;
   sourceSha256?: string;
+  /** Written once and never overwritten afterwards (see FileMapping.adoptOnce). */
+  adoptOnce?: boolean;
 }
 
 const EMPTY: EntryStaleness = { stale: false, files: [], needsMigrate: false, untracked: false };

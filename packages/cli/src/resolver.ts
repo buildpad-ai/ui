@@ -179,6 +179,12 @@ export interface FileMapping {
   target: string;
   /** SHA-256 of the raw (untransformed) source file bytes (v2 only). */
   sourceSha256?: string;
+  /**
+   * Written once, when missing, and never overwritten, merged or refreshed
+   * afterwards (not even by `--overwrite`): the app owns its content, such as
+   * the customer map `lib/customer-hosts.ts`.
+   */
+  adoptOnce?: boolean;
 }
 
 export interface LibModule {
@@ -225,6 +231,17 @@ export interface LibModule {
    * says the backend is the Engine (external-oauth → external-oauth-engine).
    */
   engineVariant?: string;
+  /**
+   * The module `add` installs instead of this Engine module when
+   * `.buildpad/project.json` also says `"tenancy": "customer-tenants"`
+   * (external-oauth-engine → external-oauth-engine-customers).
+   */
+  customerTenantsVariant?: string;
+  /**
+   * The tenancy mode this module is written for (a `customerTenantsVariant`).
+   * Unset: every mode.
+   */
+  tenancy?: 'scope' | 'customer-tenants';
   /**
    * Modules whose copies of this module's targets it may replace when they
    * are still pristine, and which it supersedes in the manifest when it ships

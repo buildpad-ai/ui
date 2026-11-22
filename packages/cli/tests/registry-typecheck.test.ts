@@ -71,17 +71,19 @@ const TSCONFIG = {
 
 /**
  * The install a project of one backend gets. A lib module that names an
- * `engineVariant` is swapped for it on an Engine project (add.ts), so each
- * backend's corpus holds one of the two; they share targets, and a single
- * corpus would type-check only whichever came last.
+ * `engineVariant` is swapped for it on an Engine project (add.ts), and one
+ * that names a `customerTenantsVariant` again on an Engine project with
+ * customer tenants, so each corpus holds one of them; they share targets, and
+ * a single corpus would type-check only whichever came last.
  */
-function registryFor(registry: Registry, backend: 'engine' | 'supabase'): Registry {
+function registryFor(registry: Registry, backend: 'engine' | 'supabase' | 'customer-tenants'): Registry {
   const lib = Object.fromEntries(
-    Object.entries(registry.lib).filter(([, mod]) =>
-      backend === 'engine'
-        ? !(mod.engineVariant && registry.lib[mod.engineVariant])
-        : (mod.backend ?? 'supabase') === 'supabase'
-    )
+    Object.entries(registry.lib).filter(([, mod]) => {
+      if (backend === 'supabase') return (mod.backend ?? 'supabase') === 'supabase';
+      if (mod.engineVariant && registry.lib[mod.engineVariant]) return false;
+      if (backend === 'engine') return !mod.tenancy || mod.tenancy === 'scope';
+      return !(mod.customerTenantsVariant && registry.lib[mod.customerTenantsVariant]);
+    })
   );
   return { ...registry, lib };
 }
@@ -146,8 +148,19 @@ describe('registry corpus: offline typecheck of a full install', () => {
     // The swap is real: the Engine corpus holds the variant, not the original.
     expect(Object.keys(engine.lib)).toContain('external-oauth-engine');
     expect(Object.keys(engine.lib)).not.toContain('external-oauth');
+    expect(Object.keys(engine.lib)).not.toContain('external-oauth-engine-customers');
     expect(Object.keys(registryFor(registry, 'supabase').lib)).not.toContain('external-oauth-engine');
     const { errors, output } = typecheck(engine, tempDir());
+    expect(errors).toEqual([]);
+    expect(output).toBe('');
+  }, 180_000);
+
+  test('tsc --noEmit reports no errors for an Engine project with customer tenants', () => {
+    const registry = loadRegistry();
+    const customers = registryFor(registry, 'customer-tenants');
+    expect(Object.keys(customers.lib)).toContain('external-oauth-engine-customers');
+    expect(Object.keys(customers.lib)).not.toContain('external-oauth-engine');
+    const { errors, output } = typecheck(customers, tempDir());
     expect(errors).toEqual([]);
     expect(output).toBe('');
   }, 180_000);
