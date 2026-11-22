@@ -1391,6 +1391,7 @@
       "name": "external-oauth-engine",
       "description": "XAppHub sign-in for an Engine project (.buildpad/project.json backend \"engine\"): Next.js finishes the OIDC authorization-code flow (PKCE, state, SHA-256 nonce) and signs the user in to the project's Buildpad Engine with signInWithIdToken, sending X-Tenant-Id. No service-role key, admin API, magic link or role write. An account without a role is sent to a pending-access page. `add external-oauth` installs this module on an Engine project.",
       "backend": "engine",
+      "customerTenantsVariant": "external-oauth-engine-customers",
       "replaces": [
         "external-oauth",
         "api-routes",
@@ -1430,6 +1431,72 @@
         },
         {
           "source": "cli/templates/api/auth-oauth-provider-engine-route.ts",
+          "target": "app/api/auth/oauth/[provider]/route.ts"
+        },
+        {
+          "source": "cli/templates/components/auth/OAuthLoginButtonsEngine.tsx",
+          "target": "components/auth/OAuthLoginButtons.tsx"
+        },
+        {
+          "source": "cli/templates/app/auth-pending-access-page.tsx",
+          "target": "app/[lang]/auth/pending-access/page.tsx"
+        }
+      ]
+    },
+    "external-oauth-engine-customers": {
+      "name": "external-oauth-engine-customers",
+      "description": "XAppHub sign-in for an Engine project with customer tenants (.buildpad/project.json backend \"engine\", tenancy \"customer-tenants\"): external-oauth-engine, signing each person in to the customer whose host (<slug>.<customer domain>) the request came to. lib/oauth/tenant.ts resolves the host against the app-owned slug map lib/customer-hosts.ts (written once, empty; fill it from get_project_detail customers[]): an unknown customer host answers 404 before any redirect, redirect_uri is the customer host's own origin, and the callback sends that customer's tenant id as X-Tenant-Id (the Blueprint on the bare host). Needs the project's XAppHub sign-in at customers confirmed on the Platform first. `add external-oauth` installs this module on such a project.",
+      "backend": "engine",
+      "tenancy": "customer-tenants",
+      "replaces": [
+        "external-oauth-engine",
+        "external-oauth",
+        "api-routes",
+        "api-routes-engine"
+      ],
+      "dependencies": [
+        "jose"
+      ],
+      "internalDependencies": [
+        "supabase-auth",
+        "api-routes-engine"
+      ],
+      "files": [
+        {
+          "source": "cli/templates/lib/oauth/config.ts",
+          "target": "lib/oauth/config.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/pkce.ts",
+          "target": "lib/oauth/pkce.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/validate.ts",
+          "target": "lib/oauth/validate.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/index.ts",
+          "target": "lib/oauth/index.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/engine.ts",
+          "target": "lib/oauth/engine.ts"
+        },
+        {
+          "source": "cli/templates/lib/oauth/tenant.ts",
+          "target": "lib/oauth/tenant.ts"
+        },
+        {
+          "source": "cli/templates/lib/customer-hosts.ts",
+          "target": "lib/customer-hosts.ts",
+          "adoptOnce": true
+        },
+        {
+          "source": "cli/templates/api/auth-callback-oauth-engine-customers-route.ts",
+          "target": "app/api/auth/callback/route.ts"
+        },
+        {
+          "source": "cli/templates/api/auth-oauth-provider-engine-customers-route.ts",
           "target": "app/api/auth/oauth/[provider]/route.ts"
         },
         {

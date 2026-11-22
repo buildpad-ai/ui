@@ -64,6 +64,21 @@ const MOCK_REGISTRY = {
         },
       ],
     },
+    'customer-map': {
+      name: 'customer-map',
+      description: 'An app-owned file the registry marks adoptOnce',
+      sourcePackage: '@buildpad/cli',
+      version: '2.0.0',
+      lastChangedIn: '2.0.0',
+      files: [
+        {
+          source: 'cli/templates/lib/customer-hosts.ts',
+          target: 'lib/customer-hosts.ts',
+          sourceSha256: 'stub',
+          adoptOnce: true,
+        },
+      ],
+    },
   },
   categories: [],
 };
@@ -92,6 +107,7 @@ vi.mock('../src/resolver.js', () => ({
   resolveSourceFile: vi.fn(async (source: string) => {
     if (source === 'ui-interfaces/src/demo/Demo.tsx') return NEW_SOURCE;
     if (source === 'cli/templates/app/globals.css') return NEW_GLOBALS;
+    if (source === 'cli/templates/lib/customer-hosts.ts') return 'export const CUSTOMER_HOSTS = {};\n';
     throw new Error(`unexpected source: ${source}`);
   }),
   sourceFileExists: vi.fn(async () => true),
@@ -851,5 +867,45 @@ describe('upgrade — diff3 base (Issue 10)', () => {
 
     expect(await fs.pathExists(targetAbs + '.new')).toBe(true);
     expect((await readManifest()).components.demo.files[0].state).toBe('pending');
+  });
+});
+
+describe('upgrade — an adoptOnce file', () => {
+  test('is never overwritten or merged, even stale upstream with --force --strategy=overwrite', async () => {
+    const APP_MAP = `export const CUSTOMER_HOSTS = { acme: { tenantId: 't-acme', name: 'Acme' } };\n`;
+    const target = path.join(tmpdir, 'lib/customer-hosts.ts');
+    await fs.outputFile(target, APP_MAP);
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), {
+      $schema: 'https://buildpad.dev/schema.json',
+      schemaVersion: 3,
+      release: '1.0.0',
+      model: 'copy-own',
+      tsx: true,
+      srcDir: false,
+      aliases: { components: '@/components/ui', lib: '@/lib/buildpad' },
+      installedLib: ['customer-map'],
+      installedComponents: [],
+      components: {},
+      lib: {
+        'customer-map': {
+          release: '1.0.0',
+          ref: 'v1.0.0',
+          sourcePackage: '@buildpad/cli',
+          installedAt: '2026-01-01T00:00:00Z',
+          files: [{
+            target: 'lib/customer-hosts.ts',
+            sourceSha256: 'stub-v1',
+            sha256: hashTransformed('export const CUSTOMER_HOSTS = {};\n'),
+            ref: 'v1.0.0',
+            state: 'clean',
+          }],
+        },
+      },
+    });
+
+    await upgrade({ components: ['customer-map'], cwd: tmpdir, force: true, strategy: 'overwrite' });
+
+    expect(await fs.readFile(target, 'utf8')).toBe(APP_MAP);
+    expect(await fs.pathExists(target + '.new')).toBe(false);
   });
 });

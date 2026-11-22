@@ -78,7 +78,7 @@ import {
 import { threeWayMerge } from '../utils/three-way-merge.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
 import { applyNavItems, copyLibModule, generateComponentsIndex } from './add.js';
-import { libForBackend, readProjectBackend } from '../utils/project-backend.js';
+import { libForBackend, readProjectBackend, readProjectTenancy } from '../utils/project-backend.js';
 import { componentFilePath } from '../utils/paths.js';
 import { entryKey, isEmptyPlan, planDependencies, type DependencyPlan, type EntryRef } from '../utils/upgrade-plan.js';
 
@@ -357,11 +357,12 @@ async function installMissingLibDeps(
 ): Promise<boolean> {
   let installed = false;
   const backend = readProjectBackend(cwd);
+  const tenancy = readProjectTenancy(cwd);
   for (const declared of deps ?? []) {
     // On an Engine project a missing dependency with an Engine variant is
     // installed as that variant. An installed Supabase variant still counts:
     // upgrade does not switch it (the warning above says how).
-    const dep = libForBackend(declared, registry, backend);
+    const dep = libForBackend(declared, registry, backend, tenancy);
     if (config.installedLib.includes(declared) || config.installedLib.includes(dep) || !registry.lib[dep]) continue;
     if (dryRun) {
       console.log(chalk.dim(`    would install missing lib dependency: ${dep}`));
@@ -638,9 +639,10 @@ async function upgradeOneLibModule(
 
     // The nav config is adopt-once: it accumulates user edits and
     // CLI-inserted route-module entries — upgrades create it when missing
-    // but never overwrite or merge it.
+    // but never overwrite or merge it. So is any file the registry marks
+    // `adoptOnce` (the app's customer map).
     if (
-      file.target.endsWith('components/layout/navigation.ts') &&
+      (file.adoptOnce || file.target.endsWith('components/layout/navigation.ts')) &&
       fs.existsSync(finalPath)
     ) {
       const existing = await fs.readFile(finalPath, 'utf-8');
@@ -810,12 +812,25 @@ export async function upgrade(options: UpgradeOptions) {
   // earlier bootstrap installed external-oauth): upgrading it keeps the
   // Supabase files. Say how to switch; `add` replaces unmodified copies.
   if (readProjectBackend(cwd) === 'engine') {
+    const tenancy = readProjectTenancy(cwd);
     for (const name of config.installedLib) {
-      const variant = libForBackend(name, registry, 'engine');
-      if (variant !== name && !config.installedLib.includes(variant)) {
+      const engineVariant = libForBackend(name, registry, 'engine');
+      if (engineVariant !== name && !config.installedLib.includes(engineVariant)) {
         console.log(chalk.yellow(
           `\n⚠ ${name} is the Supabase variant; this is an Engine project (.buildpad/project.json). ` +
           `Switch with: npx buildpad add ${name}`
+        ));
+        continue;
+      }
+      // Customer tenants (`"tenancy": "customer-tenants"`): the variant that
+      // signs each customer's people in to that customer. Not switched on
+      // upgrade either: the project's XAppHub confirmation comes first.
+      const customersVariant = libForBackend(name, registry, 'engine', tenancy);
+      if (customersVariant !== name && !config.installedLib.includes(customersVariant)) {
+        console.log(chalk.yellow(
+          `\n⚠ ${name} signs everyone in to the Blueprint tenant; this project has customer tenants ` +
+          `(.buildpad/project.json). Once the project's XAppHub sign-in at customers is confirmed, ` +
+          `switch with: npx buildpad add ${name}`
         ));
       }
     }

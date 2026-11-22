@@ -20,7 +20,14 @@ import { renderComponentsIndex } from '../utils/components-index.js';
 import { componentFilePath, sourceRoot } from '../utils/paths.js';
 import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
-import { libBackendMismatch, libForBackend, readProjectBackend, type ProjectBackend } from '../utils/project-backend.js';
+import {
+  libBackendMismatch,
+  libForBackend,
+  readProjectBackend,
+  readProjectTenancy,
+  type ProjectBackend,
+  type ProjectTenancy,
+} from '../utils/project-backend.js';
 import { validate } from './validate.js';
 import {
   getRegistry as fetchRegistry,
@@ -269,8 +276,9 @@ export async function copyLibModule(
   // project (files-routes → api-routes-engine there).
   if (libModule.internalDependencies) {
     const backend = readProjectBackend(cwd);
+    const tenancy = readProjectTenancy(cwd);
     for (const dep of libModule.internalDependencies) {
-      await copyLibModule(libForBackend(dep, registry, backend), registry, config, cwd, spinner, false, opts);
+      await copyLibModule(libForBackend(dep, registry, backend, tenancy), registry, config, cwd, spinner, false, opts);
     }
   }
 
@@ -347,8 +355,9 @@ export async function copyLibModule(
 
       // The nav config is adopt-once: it accumulates user edits and
       // CLI-inserted route-module entries, so overwrites would lose them.
+      // So is any file the registry marks `adoptOnce` (the app's customer map).
       if (
-        file.target.endsWith('components/layout/navigation.ts') &&
+        (file.adoptOnce || file.target.endsWith('components/layout/navigation.ts')) &&
         fs.existsSync(targetPath)
       ) {
         const existing = await fs.readFile(targetPath, 'utf-8');
@@ -912,6 +921,7 @@ export function libComponentDependencies(
   registry: Pick<Registry, 'lib'>,
   installedLib: readonly string[],
   backend: ProjectBackend | null = null,
+  tenancy: ProjectTenancy | null = null,
 ): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -922,7 +932,7 @@ export function libComponentDependencies(
     if (!mod) return;
     if (!direct && installedLib.includes(lib)) return;
     for (const dep of mod.registryDependencies ?? []) if (!out.includes(dep)) out.push(dep);
-    for (const dep of mod.internalDependencies ?? []) visit(libForBackend(dep, registry, backend), false);
+    for (const dep of mod.internalDependencies ?? []) visit(libForBackend(dep, registry, backend, tenancy), false);
   };
   visit(name, true);
   return out;
@@ -964,10 +974,13 @@ export async function add(
 
   const registry = await getRegistry();
   // `.buildpad/project.json` (a Buildpad starter's Backend_Signal) picks the
-  // Engine variant of a lib module that has one (external-oauth).
+  // Engine variant of a lib module that has one (external-oauth), and its
+  // `tenancy` member the customer-tenants variant of that (XAppHub sign-in
+  // at each customer's host).
   const backend = readProjectBackend(cwd);
-  const apiLib = libForBackend('api-routes', registry, backend);
-  const oauthLib = libForBackend('external-oauth', registry, backend);
+  const tenancy = readProjectTenancy(cwd);
+  const apiLib = libForBackend('api-routes', registry, backend, tenancy);
+  const oauthLib = libForBackend('external-oauth', registry, backend, tenancy);
 
   // If --with-api flag is set, add api-routes and supabase-auth lib modules
   // Components the API lib modules need (api-routes' authenticated layout
@@ -982,7 +995,7 @@ export async function add(
 
     for (const libName of ['supabase-auth', 'i18n', apiLib, oauthLib]) {
       if (!registry.lib[libName] || config.installedLib.includes(libName)) continue;
-      for (const dep of libComponentDependencies(libName, registry, config.installedLib, backend)) {
+      for (const dep of libComponentDependencies(libName, registry, config.installedLib, backend, tenancy)) {
         if (!apiComponentDeps.includes(dep)) apiComponentDeps.push(dep);
       }
     }
@@ -1019,7 +1032,10 @@ export async function add(
     // through the Engine), which also replaces an unmodified external-oauth.
     if (registry.lib[oauthLib] && !config.installedLib.includes(oauthLib)) {
       if (oauthLib !== 'external-oauth') {
-        spinner.info(`Engine project (.buildpad/project.json): installing ${oauthLib}`);
+        spinner.info(
+          `Engine project${registry.lib[oauthLib].tenancy === 'customer-tenants' ? ' with customer tenants' : ''} ` +
+          `(.buildpad/project.json): installing ${oauthLib}`
+        );
       }
       await copyLibModule(oauthLib, registry, config, cwd, spinner);
     }
@@ -1049,11 +1065,11 @@ export async function add(
       // Check lib modules first — before searching components so we don't print
       // "Component not found" for valid lib module names like api-routes, supabase-auth.
       if (registry.lib[requested]) {
-        const name = libForBackend(requested, registry, backend);
+        const name = libForBackend(requested, registry, backend, tenancy);
         if (name !== requested) {
           console.log(chalk.dim(`  Engine project (.buildpad/project.json): ${requested} → ${name}`));
         }
-        const mismatch = libBackendMismatch(name, registry, backend);
+        const mismatch = libBackendMismatch(name, registry, backend, tenancy);
         if (mismatch) {
           console.log(chalk.red(`\n✗ ${mismatch}\n`));
           process.exit(1);
@@ -1063,7 +1079,7 @@ export async function add(
         // users-management, files-routes → file-manager) — queue them so a
         // single `add <module>-routes` installs the whole feature. So can a
         // lib module it pulls in (external-oauth → api-routes → collection-form).
-        for (const depName of libComponentDependencies(name, registry, config.installedLib, backend)) {
+        for (const depName of libComponentDependencies(name, registry, config.installedLib, backend, tenancy)) {
           const depComponent = registry.components.find(c => c.name === depName);
           if (depComponent && !componentsToAdd.some(c => c.name === depComponent.name)) {
             componentsToAdd.push(depComponent);
