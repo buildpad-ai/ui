@@ -1,6 +1,6 @@
 {
   "name": "@buildpad/ui-notifications",
-  "version": "3.8.0",
+  "version": "3.9.0",
   "description": "One notification bell and inbox for every Buildpad app: unread badge, filtered inbox with a detail pane where users can reply and act, behind a small adapter",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,5 +1,15 @@
 # @buildpad/ui-workflows
 
+## 3.9.0
+
+### Patch Changes
+
+- @buildpad/hooks@3.9.0
+- @buildpad/services@3.9.0
+- @buildpad/types@3.9.0
+- @buildpad/ui-table@3.9.0
+- @buildpad/utils@3.9.0
+
 ## 3.8.0
 
 ### Patch Changes
