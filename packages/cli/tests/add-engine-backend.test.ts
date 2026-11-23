@@ -10,7 +10,9 @@
  * no backend, keeps external-oauth and api-routes. An Engine project whose
  * project.json also says `"tenancy": "customer-tenants"` gets
  * external-oauth-engine-customers, which supersedes external-oauth-engine and
- * writes the app-owned customer map once.
+ * writes the app-owned customer map once, and makes the app's amplify.yml
+ * write the map's server variable, BUILDPAD_CUSTOMER_HOSTS, into
+ * .env.production.
  */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'fs-extra';
@@ -98,6 +100,7 @@ const MOCK_REGISTRY = {
       description: 'XAppHub sign-in (Engine project with customer tenants)',
       backend: 'engine',
       tenancy: 'customer-tenants',
+      serverEnv: ['BUILDPAD_CUSTOMER_HOSTS'],
       replaces: ['external-oauth-engine', 'external-oauth', 'api-routes', 'api-routes-engine'],
       sourcePackage: '@buildpad/cli',
       version: '2.0.0',
@@ -438,6 +441,69 @@ describe('an Engine project with customer tenants', () => {
     await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true, overwrite: true });
     expect(await fs.readFile(hostsPath(), 'utf-8')).toBe(appMap);
     expect(await callback()).toContain('engine-customers-oauth');
+  });
+
+  describe('amplify.yml writes BUILDPAD_CUSTOMER_HOSTS into .env.production', () => {
+    const amplifyPath = () => path.join(tmpdir, 'amplify.yml');
+    const KEY_LINE = `- '[ -z "$BUILDPAD_ONBOARDING_KEY" ] || echo "BUILDPAD_ONBOARDING_KEY=$BUILDPAD_ONBOARDING_KEY" >> .env.production'`;
+    const HOSTS_LINE = `- '[ -z "$BUILDPAD_CUSTOMER_HOSTS" ] || echo "BUILDPAD_CUSTOMER_HOSTS=$BUILDPAD_CUSTOMER_HOSTS" >> .env.production'`;
+    const AMPLIFY = [
+      'frontend:',
+      '  phases:',
+      '    build:',
+      '      commands:',
+      `        - env | grep -E '^(NEXT_PUBLIC_|OAUTH_)' >> .env.production`,
+      `        ${KEY_LINE}`,
+      '        - npm run build',
+      '',
+    ].join('\n');
+
+    test('customer-tenants: the line goes beside BUILDPAD_ONBOARDING_KEY, once', async () => {
+      await writeSignal('engine', '.buildpad/project.json', 'customer-tenants');
+      await fs.writeFile(amplifyPath(), AMPLIFY);
+
+      await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+      const after = await fs.readFile(amplifyPath(), 'utf-8');
+      expect(after).toBe(AMPLIFY.replace(`${KEY_LINE}\n`, `${KEY_LINE}\n        ${HOSTS_LINE}\n`));
+      expect(after).not.toContain('NEXT_PUBLIC_BUILDPAD_CUSTOMER_HOSTS');
+
+      await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true, overwrite: true });
+      expect(await fs.readFile(amplifyPath(), 'utf-8')).toBe(after);
+    });
+
+    test('"tenancy": "scope" leaves amplify.yml as it was', async () => {
+      await writeSignal('engine', '.buildpad/project.json', 'scope');
+      await fs.writeFile(amplifyPath(), AMPLIFY);
+
+      await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+
+      expect(await fs.readFile(amplifyPath(), 'utf-8')).toBe(AMPLIFY);
+    });
+
+    test('with no amplify.yml, none is created', async () => {
+      await writeSignal('engine', '.buildpad/project.json', 'customer-tenants');
+
+      await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+
+      expect(await fs.pathExists(amplifyPath())).toBe(false);
+      expect(await fs.pathExists(hostsPath())).toBe(true);
+    });
+  });
+
+  test('an app that deletes its committed map gets the generated one back from add, and keeps its other files', async () => {
+    await writeSignal('engine', '.buildpad/project.json', 'customer-tenants');
+    await fs.outputFile(hostsPath(), appMap);
+    await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
+    const tenantPath = path.join(tmpdir, 'lib/oauth/tenant.ts');
+    await fs.writeFile(tenantPath, `export const tenant = 'edited';\n`);
+
+    await fs.remove(hostsPath());
+    await add(['external-oauth-engine-customers'], { cwd: tmpdir, nonInteractive: true });
+
+    const regenerated = await fs.readFile(hostsPath(), 'utf-8');
+    expect(regenerated).not.toBe(appMap);
+    expect(regenerated).toContain(SOURCES['cli/templates/lib/customer-hosts.ts']);
+    expect(await fs.readFile(tenantPath, 'utf-8')).toBe(`export const tenant = 'edited';\n`);
   });
 
   test('external-oauth-engine-customers is refused on a "scope" project', async () => {

@@ -1445,9 +1445,12 @@
     },
     "external-oauth-engine-customers": {
       "name": "external-oauth-engine-customers",
-      "description": "XAppHub sign-in for an Engine project with customer tenants (.buildpad/project.json backend \"engine\", tenancy \"customer-tenants\"): external-oauth-engine, signing each person in to the customer whose host (<slug>.<customer domain>) the request came to. lib/oauth/tenant.ts resolves the host against the app-owned slug map lib/customer-hosts.ts (written once, empty; fill it from get_project_detail customers[]): an unknown customer host answers 404 before any redirect, redirect_uri is the customer host's own origin, and the callback sends that customer's tenant id as X-Tenant-Id (the Blueprint on the bare host). Needs the project's XAppHub sign-in at customers confirmed on the Platform first. `add external-oauth` installs this module on such a project.",
+      "description": "XAppHub sign-in for an Engine project with customer tenants (.buildpad/project.json backend \"engine\", tenancy \"customer-tenants\"): external-oauth-engine, signing each person in to the customer whose host (<slug>.<customer domain>) the request came to. lib/oauth/tenant.ts resolves the host against the app-owned slug map lib/customer-hosts.ts (written once), which reads the server variable BUILDPAD_CUSTOMER_HOSTS ({ slug: tenant id }) that the Platform writes on each Amplify branch; add makes amplify.yml write it into .env.production: an unknown customer host answers 404 before any redirect, redirect_uri is the customer host's own origin, and the callback sends that customer's tenant id as X-Tenant-Id (the Blueprint on the bare host). Needs the project's XAppHub sign-in at customers confirmed on the Platform first. `add external-oauth` installs this module on such a project.",
       "backend": "engine",
       "tenancy": "customer-tenants",
+      "serverEnv": [
+        "BUILDPAD_CUSTOMER_HOSTS"
+      ],
       "replaces": [
         "external-oauth-engine",
         "external-oauth",

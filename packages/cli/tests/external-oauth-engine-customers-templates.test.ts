@@ -8,9 +8,13 @@
  * at a fake client, so each test drives the start route or the callback and
  * reads the `redirect_uri` and the `X-Tenant-Id` they produce.
  *
+ * The real `lib/customer-hosts.ts` reads the server variable
+ * `BUILDPAD_CUSTOMER_HOSTS` when it loads; its block re-imports it with the
+ * variable stubbed.
+ *
  * The scope mode (and a project without the `tenancy` member) installs
  * external-oauth-engine, whose files this change leaves as they were: the
- * last block pins its registry entry.
+ * last block pins its registry entry and its sources' bytes.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -200,6 +204,144 @@ describe('lib/oauth/tenant: tenantForRequest', () => {
   });
 });
 
+describe('lib/customer-hosts: the map is the server variable BUILDPAD_CUSTOMER_HOSTS', () => {
+  const GLOBEX_TENANT = 'bbbbbbbb-0000-4000-8000-000000000002';
+  type HostsModule = typeof import('../templates/lib/customer-hosts');
+
+  /** The template as the server loads it, with `raw` as the variable (undefined: unset). */
+  async function load(raw: string | undefined): Promise<HostsModule> {
+    vi.resetModules();
+    if (raw === undefined) delete process.env.BUILDPAD_CUSTOMER_HOSTS;
+    else vi.stubEnv('BUILDPAD_CUSTOMER_HOSTS', raw);
+    return import('../templates/lib/customer-hosts');
+  }
+  const warnings = () => (console.warn as unknown as ReturnType<typeof vi.fn>).mock.calls.map(c => c.join(' '));
+
+  afterEach(() => {
+    delete process.env.BUILDPAD_CUSTOMER_HOSTS;
+    vi.resetModules();
+  });
+
+  test('parses a map: slug → tenant id, keys lower-cased', async () => {
+    const hosts = await load(JSON.stringify({ acme: ACME_TENANT, Globex: GLOBEX_TENANT }));
+
+    expect(hosts.tenantIdForSlug('acme')).toBe(ACME_TENANT);
+    expect(hosts.tenantIdForSlug('ACME')).toBe(ACME_TENANT);
+    expect(hosts.tenantIdForSlug('globex')).toBe(GLOBEX_TENANT);
+    expect(hosts.tenantIdForSlug('initech')).toBeNull();
+    expect(hosts.CUSTOMER_HOSTS).toEqual({
+      acme: { tenantId: ACME_TENANT, name: 'acme' },
+      globex: { tenantId: GLOBEX_TENANT, name: 'globex' },
+    });
+    expect(warnings()).toEqual([]);
+  });
+
+  test('drops a key that is not one DNS label, and a value that is not a non-empty string', async () => {
+    const { parseCustomerHosts } = await load(undefined);
+    const map = parseCustomerHosts(
+      JSON.stringify({
+        acme: ACME_TENANT,
+        'a.b': 't',
+        '-acme': 't',
+        'acme-': 't',
+        under_score: 't',
+        '': 't',
+        [`a${'b'.repeat(63)}`]: 't',
+        'xn--bcher-kva': GLOBEX_TENANT,
+        number: 42,
+        nothing: null,
+        object: { tenantId: 't' },
+        list: ['t'],
+        empty: '',
+        blank: '   ',
+      })
+    );
+    expect({ ...map }).toEqual({ acme: ACME_TENANT, 'xn--bcher-kva': GLOBEX_TENANT });
+  });
+
+  test('a slug that is an Object.prototype member, or __proto__, is never a customer', async () => {
+    const hosts = await load('{"__proto__": {"polluted": "yes"}, "acme": "' + ACME_TENANT + '"}');
+    expect(hosts.tenantIdForSlug('constructor')).toBeNull();
+    expect(hosts.tenantIdForSlug('__proto__')).toBeNull();
+    expect(hosts.tenantIdForSlug('toString')).toBeNull();
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  test.each([
+    ['missing', undefined, 'is not set'],
+    ['empty', '', 'is not set'],
+    ['blank', '   ', 'is not set'],
+    ['not JSON', '{acme: secret-tenant}', 'is not JSON'],
+    ['an array', '["secret-tenant"]', 'is not a JSON object'],
+    ['a string', '"secret-tenant"', 'is not a JSON object'],
+    ['null', 'null', 'is not a JSON object'],
+  ])('a value that is %s is the empty map, logged once without the value', async (_label, raw, reason) => {
+    const hosts = await load(raw);
+
+    expect(hosts.tenantIdForSlug('acme')).toBeNull();
+    expect(hosts.CUSTOMER_HOSTS).toEqual({});
+    // The same reason again (a second parse) is not logged again.
+    expect({ ...hosts.parseCustomerHosts(raw) }).toEqual({});
+    expect(warnings()).toHaveLength(1);
+    expect(warnings()[0]).toContain('BUILDPAD_CUSTOMER_HOSTS');
+    expect(warnings()[0]).toContain(reason);
+    expect(warnings()[0]).not.toContain('secret-tenant');
+  });
+
+  test('the variable is read once, when the module loads', async () => {
+    const hosts = await load(JSON.stringify({ acme: ACME_TENANT }));
+    vi.stubEnv('BUILDPAD_CUSTOMER_HOSTS', JSON.stringify({ acme: GLOBEX_TENANT }));
+    expect(hosts.tenantIdForSlug('acme')).toBe(ACME_TENANT);
+  });
+
+  test('lib/oauth/tenant serves the customers the variable names', async () => {
+    vi.resetModules();
+    vi.stubEnv('BUILDPAD_CUSTOMER_HOSTS', JSON.stringify({ acme: ACME_TENANT }));
+    vi.doMock('@/lib/customer-hosts', async () => import('../templates/lib/customer-hosts'));
+    try {
+      const fresh = await import('../templates/lib/oauth/tenant');
+      // The generated suffix is empty, so <slug>.localhost (development) is the customer host.
+      expect(fresh.tenantForRequest(headersOf({ host: 'acme.localhost:3000' }))).toEqual({
+        kind: 'customer',
+        slug: 'acme',
+        tenantId: ACME_TENANT,
+      });
+      expect(fresh.tenantForRequest(headersOf({ host: 'globex.localhost:3000' }))).toEqual({ kind: 'unknown', slug: 'globex' });
+    } finally {
+      vi.doUnmock('@/lib/customer-hosts');
+    }
+  });
+});
+
+describe('BUILDPAD_CUSTOMER_HOSTS stays on the server', () => {
+  const templatesRoot = path.join(__dirname, '../templates');
+  const walk = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry =>
+      entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]
+    );
+
+  test('no template, and no registry entry, names NEXT_PUBLIC_BUILDPAD_CUSTOMER_HOSTS', () => {
+    const offenders = walk(templatesRoot).filter(file =>
+      fs.readFileSync(file, 'utf8').includes('NEXT_PUBLIC_BUILDPAD_CUSTOMER_HOSTS')
+    );
+    expect(offenders).toEqual([]);
+    for (const file of ['../../registry.json', '../../registry.template.json']) {
+      expect(fs.readFileSync(path.join(__dirname, file), 'utf8')).not.toContain('NEXT_PUBLIC_BUILDPAD_CUSTOMER_HOSTS');
+    }
+  });
+
+  test('the map module reads the plain name and is not a client module', () => {
+    const text = fs.readFileSync(path.join(templatesRoot, 'lib/customer-hosts.ts'), 'utf8');
+    expect(text).toContain('process.env.BUILDPAD_CUSTOMER_HOSTS');
+    expect(text).not.toMatch(/^\s*['"]use client['"]/m);
+    // Only the resolver imports it; no component does.
+    const importers = walk(templatesRoot).filter(
+      file => file !== path.join(templatesRoot, 'lib/customer-hosts.ts') && fs.readFileSync(file, 'utf8').includes('@/lib/customer-hosts')
+    );
+    expect(importers.map(file => path.relative(templatesRoot, file))).toEqual(['lib/oauth/tenant.ts']);
+  });
+});
+
 describe('GET /api/auth/oauth/[provider] (Engine, customer tenants)', () => {
   test('an unknown customer host answers 404 before any redirect, cookie or configuration check', async () => {
     vi.stubEnv('OAUTH_CLIENT_SECRET', '');
@@ -346,6 +488,35 @@ describe('the scope mode is unchanged', () => {
     expect(libForBackend('external-oauth-engine', registry, 'engine', 'customer-tenants')).toBe('external-oauth-engine-customers');
     // A Supabase project never gets it, whatever the file says.
     expect(libForBackend('external-oauth', registry, 'supabase', 'customer-tenants')).toBe('external-oauth');
+  });
+
+  test("external-oauth-engine's sources are byte-for-byte those of 3.9.0, and it asks for no server variable", () => {
+    const PINNED: Record<string, string> = {
+      'lib/oauth/config.ts': 'fc29c703f02cc276e38a605e5e85a61eddd953e2f398d6abba594034f7177457',
+      'lib/oauth/pkce.ts': '7d3e305b8381791f8aef8bbe0374fea1c63092df8e1192adcae9b4481de9e68c',
+      'lib/oauth/validate.ts': '4eb09e0c3426d9472950739b9ce70c2aa374a344f5ea1a21d85b2038cc5b836c',
+      'lib/oauth/index.ts': '79ab2ac7632b26fe88715f24ebc88a068e7ed920b6bc9910737dcbd53a9bdeed',
+      'lib/oauth/engine.ts': 'a97eb6f6d246503a5aa06e26f061e26eba675eb7071ea5cb1ae1c64cbf02dacb',
+      'api/auth-callback-oauth-engine-route.ts': '97dcb7a5311cfc2feac871ccc89f952e366564a7aab1ba0d7eb5d6726ee1a72e',
+      'api/auth-oauth-provider-engine-route.ts': '0fa32600e94432776f968651e51f214cca6fcf9ed74247dd66fc4e4f51fd50f1',
+      'components/auth/OAuthLoginButtonsEngine.tsx': 'd93472739beacf50672f2798c41bfbb50ba45d5be41234ed99e150b4f4e46e9a',
+      'app/auth-pending-access-page.tsx': '17d70ba5223ad9acf5a7689a7a14481f82dfc1a4e319cdaf2f6f9048f1569726',
+    };
+    const mod = registry.lib['external-oauth-engine'];
+    const actual = Object.fromEntries(
+      mod.files!.map(f => {
+        const rel = f.source.replace(/^cli\/templates\//, '');
+        return [rel, crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, '../templates', rel))).digest('hex')];
+      })
+    );
+    expect(actual).toEqual(PINNED);
+    expect(mod.serverEnv).toBeUndefined();
+  });
+
+  test('the customers variant asks for BUILDPAD_CUSTOMER_HOSTS, a server variable', () => {
+    const serverEnv = registry.lib['external-oauth-engine-customers'].serverEnv;
+    expect(serverEnv).toEqual(['BUILDPAD_CUSTOMER_HOSTS']);
+    expect(serverEnv!.filter(name => name.startsWith('NEXT_PUBLIC_'))).toEqual([]);
   });
 
   test('the customers variant ships every target of external-oauth-engine (so it supersedes it), plus the resolver and the map', () => {
