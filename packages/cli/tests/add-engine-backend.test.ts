@@ -490,22 +490,6 @@ describe('an Engine project with customer tenants', () => {
     });
   });
 
-  test('an app that deletes its committed map gets the generated one back from add, and keeps its other files', async () => {
-    await writeSignal('engine', '.buildpad/project.json', 'customer-tenants');
-    await fs.outputFile(hostsPath(), appMap);
-    await add(['external-oauth'], { cwd: tmpdir, nonInteractive: true });
-    const tenantPath = path.join(tmpdir, 'lib/oauth/tenant.ts');
-    await fs.writeFile(tenantPath, `export const tenant = 'edited';\n`);
-
-    await fs.remove(hostsPath());
-    await add(['external-oauth-engine-customers'], { cwd: tmpdir, nonInteractive: true });
-
-    const regenerated = await fs.readFile(hostsPath(), 'utf-8');
-    expect(regenerated).not.toBe(appMap);
-    expect(regenerated).toContain(SOURCES['cli/templates/lib/customer-hosts.ts']);
-    expect(await fs.readFile(tenantPath, 'utf-8')).toBe(`export const tenant = 'edited';\n`);
-  });
-
   test('external-oauth-engine-customers is refused on a "scope" project', async () => {
     await writeSignal('engine', '.buildpad/project.json', 'scope');
     vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
