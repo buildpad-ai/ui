@@ -16,3 +16,9 @@ fe1bb14b6afcdbbc30c4ba992a645bd87884551c:apps/docs/app/layout.tsx:generic-api-ke
 # Test fixtures, not credentials.
 e1ba0d5f78f4498d1ff799f7c71b148899ad9749:packages/ui-collections/tests/collection-list.test.tsx:generic-api-key:640
 639c0c077cb4ddb2e2e80033dbd4c431060e8031:packages/ui-users/tests/TokenInput.test.tsx:generic-api-key:2
+
+# SHA-256 hashes of template files that a test pins to prove the
+# external-oauth-engine sources are unchanged since 3.9.0. Content digests,
+# not credentials.
+34088061070a6cf31322c61a5bffbd5ea002f013:packages/cli/tests/external-oauth-engine-customers-templates.test.ts:generic-api-key:500
+34088061070a6cf31322c61a5bffbd5ea002f013:packages/cli/tests/external-oauth-engine-customers-templates.test.ts:generic-api-key:503

@@ -20,6 +20,7 @@ import { renderComponentsIndex } from '../utils/components-index.js';
 import { componentFilePath, sourceRoot } from '../utils/paths.js';
 import { computeEntryStaleness, registryFilesOf } from '../utils/staleness.js';
 import { ensureExternalDeps } from '../utils/external-deps.js';
+import { ensureAmplifyServerEnv, envProductionLine } from '../utils/amplify-env.js';
 import {
   libBackendMismatch,
   libForBackend,
@@ -241,6 +242,24 @@ function supersedeReplacedModules(libModule: LibModule, config: Config, spinner:
   }
 }
 
+/**
+ * Makes `amplify.yml` write the module's server variables into
+ * `.env.production` (Amplify gives a Next.js server its variables only
+ * through that file), or says which line to add by hand.
+ */
+async function reportServerEnv(names: string[], cwd: string, spinner: Ora): Promise<void> {
+  if (names.length === 0) return;
+  const { added, manual } = await ensureAmplifyServerEnv(cwd, names);
+  for (const name of added) spinner.info(`amplify.yml — writes ${name} into .env.production`);
+  if (manual.length > 0) {
+    spinner.warn(
+      `Write ${manual.join(', ')} into .env.production at build time (Amplify Hosting): ` +
+      `add to the build commands in amplify.yml, before next build:\n` +
+      manual.map(name => `    ${envProductionLine(name)}`).join('\n')
+    );
+  }
+}
+
 export async function copyLibModule(
   moduleName: string,
   registry: Registry,
@@ -432,6 +451,7 @@ export async function copyLibModule(
     config.installedLib.push(moduleName);
   }
   supersedeReplacedModules(libModule, config, spinner);
+  await reportServerEnv(libModule.serverEnv ?? [], cwd, spinner);
 
   // v3: record per-file checksums in `config.lib[moduleName]`
   if ((config.schemaVersion ?? 1) >= 2 && writtenFiles.length > 0 && primarySource) {

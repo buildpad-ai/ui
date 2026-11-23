@@ -908,4 +908,39 @@ describe('upgrade — an adoptOnce file', () => {
     expect(await fs.readFile(target, 'utf8')).toBe(APP_MAP);
     expect(await fs.pathExists(target + '.new')).toBe(false);
   });
+
+  test('is written again when the app deleted it (switching a committed map to the generated one)', async () => {
+    const target = path.join(tmpdir, 'lib/customer-hosts.ts');
+    await fs.writeJSON(path.join(tmpdir, 'buildpad.json'), {
+      $schema: 'https://buildpad.dev/schema.json',
+      schemaVersion: 3,
+      release: '1.0.0',
+      model: 'copy-own',
+      tsx: true,
+      srcDir: false,
+      aliases: { components: '@/components/ui', lib: '@/lib/buildpad' },
+      installedLib: ['customer-map'],
+      installedComponents: [],
+      components: {},
+      lib: {
+        'customer-map': {
+          release: '1.0.0',
+          ref: 'v1.0.0',
+          sourcePackage: '@buildpad/cli',
+          installedAt: '2026-01-01T00:00:00Z',
+          files: [{
+            target: 'lib/customer-hosts.ts',
+            sourceSha256: 'stub-v1',
+            sha256: hashTransformed(`export const CUSTOMER_HOSTS = { acme: { tenantId: 't-acme', name: 'Acme' } };\n`),
+            ref: 'v1.0.0',
+            state: 'clean',
+          }],
+        },
+      },
+    });
+
+    await upgrade({ components: ['customer-map'], cwd: tmpdir });
+
+    expect(await fs.readFile(target, 'utf8')).toContain('export const CUSTOMER_HOSTS = {};');
+  });
 });

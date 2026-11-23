@@ -243,6 +243,13 @@ export interface LibModule {
    */
   tenancy?: 'scope' | 'customer-tenants';
   /**
+   * Server variables (never `NEXT_PUBLIC_`) the module's files read at run
+   * time. On install, `add` makes the app's `amplify.yml` write each one into
+   * `.env.production`, beside `BUILDPAD_ONBOARDING_KEY`, or prints the line
+   * to add (see utils/amplify-env.ts).
+   */
+  serverEnv?: string[];
+  /**
    * Modules whose copies of this module's targets it may replace when they
    * are still pristine, and which it supersedes in the manifest when it ships
    * every one of their targets.

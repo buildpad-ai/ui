@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/buildpad-ai/ui/refs/heads/main/packages/registry.json",
   "schemaVersion": 2,
-  "generatedAt": "2026-11-22T11:16:11.676Z",
+  "generatedAt": "2026-11-23T06:13:16.393Z",
   "version": "3.9.0",
   "name": "buildpad",
   "description": "A collection of copy-and-own components for building DaaS-compatible Nextjs frontends",
@@ -1831,9 +1831,12 @@
     },
     "external-oauth-engine-customers": {
       "name": "external-oauth-engine-customers",
-      "description": "XAppHub sign-in for an Engine project with customer tenants (.buildpad/project.json backend \"engine\", tenancy \"customer-tenants\"): external-oauth-engine, signing each person in to the customer whose host (<slug>.<customer domain>) the request came to. lib/oauth/tenant.ts resolves the host against the app-owned slug map lib/customer-hosts.ts (written once, empty; fill it from get_project_detail customers[]): an unknown customer host answers 404 before any redirect, redirect_uri is the customer host's own origin, and the callback sends that customer's tenant id as X-Tenant-Id (the Blueprint on the bare host). Needs the project's XAppHub sign-in at customers confirmed on the Platform first. `add external-oauth` installs this module on such a project.",
+      "description": "XAppHub sign-in for an Engine project with customer tenants (.buildpad/project.json backend \"engine\", tenancy \"customer-tenants\"): external-oauth-engine, signing each person in to the customer whose host (<slug>.<customer domain>) the request came to. lib/oauth/tenant.ts resolves the host against the app-owned slug map lib/customer-hosts.ts (written once), which reads the server variable BUILDPAD_CUSTOMER_HOSTS ({ slug: tenant id }) that the Platform writes on each Amplify branch; add makes amplify.yml write it into .env.production: an unknown customer host answers 404 before any redirect, redirect_uri is the customer host's own origin, and the callback sends that customer's tenant id as X-Tenant-Id (the Blueprint on the bare host). Needs the project's XAppHub sign-in at customers confirmed on the Platform first. `add external-oauth` installs this module on such a project.",
       "backend": "engine",
       "tenancy": "customer-tenants",
+      "serverEnv": [
+        "BUILDPAD_CUSTOMER_HOSTS"
+      ],
       "replaces": [
         "external-oauth-engine",
         "external-oauth",
@@ -1882,7 +1885,7 @@
           "source": "cli/templates/lib/customer-hosts.ts",
           "target": "lib/customer-hosts.ts",
           "adoptOnce": true,
-          "sourceSha256": "87ae646c2f13f42649f2d093684727fa7de0eb7d822bb234cd37f992377ba95c"
+          "sourceSha256": "fb5f9df4f532cdfdf4b8853edf8f650f87004319bc6de8e564c067e968d297a1"
         },
         {
           "source": "cli/templates/api/auth-callback-oauth-engine-customers-route.ts",
