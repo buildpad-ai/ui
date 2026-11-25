@@ -198,7 +198,10 @@ export interface CollectionListProps {
   locale?: string;
 }
 
-// System fields to exclude from default display
+// Audit fields (who/when created and updated). They are left out of the
+// DEFAULT columns only: they stay in the field list, so "Add field", the
+// filter panel and sorting still offer them — sorting by date_created is the
+// usual reason someone reaches for them.
 const SYSTEM_FIELDS = new Set([
   "user_created",
   "user_updated",
@@ -401,9 +404,8 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           permFields = readAccess.fields ?? null;
           if (permFields && permFields.includes("*")) permFields = null;
         }
-        // All non-system, non-hidden, non-alias fields
+        // All non-hidden, non-alias fields (audit fields included)
         let visible = fieldsResult.filter((f: Field) => {
-          if (SYSTEM_FIELDS.has(f.field)) return false;
           if (f.type === "alias") return false;
           // Some DaaS backends don't mark O2M/M2M/M2A relational fields with
           // type: "alias" even though they have no real flat column value —
@@ -437,6 +439,13 @@ export const CollectionList: React.FC<CollectionListProps> = ({
         const pkField = primaryKeyFieldProp ?? schemaPk ?? "id";
         setResolvedPk(schemaPk ?? "id");
 
+        // Default columns: the first five non-audit fields. Falls back to the
+        // audit fields only when a collection has nothing else to show.
+        const nonAudit = visible.filter((f: Field) => !SYSTEM_FIELDS.has(f.field));
+        const defaultFields = (nonAudit.length > 0 ? nonAudit : visible)
+          .slice(0, 5)
+          .map((f: Field) => f.field);
+
         // Set initial visible columns (already permission-filtered)
         if (displayFields) {
           const keys = hasRestriction
@@ -445,10 +454,10 @@ export const CollectionList: React.FC<CollectionListProps> = ({
           setVisibleFieldKeys(
             keys.length > 0
               ? keys
-              : visible.slice(0, 5).map((f: Field) => f.field),
+              : defaultFields,
           );
         } else {
-          const initial = visible.slice(0, 5).map((f: Field) => f.field);
+          const initial = [...defaultFields];
           // Always include PK if visible
           if (
             !initial.includes(pkField) &&

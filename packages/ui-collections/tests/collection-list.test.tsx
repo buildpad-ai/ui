@@ -71,6 +71,7 @@ vi.mock("@buildpad/ui-table", () => ({
     onHeadersChange,
     itemKey,
     selectionUseKeys,
+    renderHeaderAppend,
   }: {
     items: Array<Record<string, unknown>>;
     headers: Array<{ text: string; value: string; align?: string }>;
@@ -86,8 +87,10 @@ vi.mock("@buildpad/ui-table", () => ({
     onHeadersChange?: (headers: any[]) => void;
     itemKey?: string;
     selectionUseKeys?: boolean;
+    renderHeaderAppend?: () => React.ReactNode;
   }) => (
     <div data-testid="vtable-mock">
+      {renderHeaderAppend && <div data-testid="vtable-header-append">{renderHeaderAppend()}</div>}
       {/* What a column resize does on each pointer move: the same columns,
           the first one wider. */}
       <button
@@ -1528,6 +1531,51 @@ describe("CollectionList", () => {
       expect(statusCell).toHaveTextContent("draft");
       expect(statusCell).not.toHaveTextContent("Draft");
     });
+  });
+});
+
+describe("audit fields (date_created, date_updated, user_created, user_updated)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultMocks();
+  });
+
+  const AUDIT_FIELDS = [
+    { field: "user_created", type: "uuid", meta: { special: ["user-created"], sort: 5, hidden: false } },
+    { field: "date_created", type: "timestamp", meta: { special: ["date-created"], sort: 6, hidden: false } },
+    { field: "user_updated", type: "uuid", meta: { special: ["user-updated"], sort: 7, hidden: false } },
+    { field: "date_updated", type: "timestamp", meta: { special: ["date-updated"], sort: 8, hidden: false } },
+  ];
+
+  it("leaves them out of the default columns but offers them under Add field", async () => {
+    mockFieldsReadAll.mockResolvedValue([...SAMPLE_FIELDS, ...AUDIT_FIELDS]);
+
+    renderList();
+
+    await waitFor(() => expect(screen.getByText("Title")).toBeInTheDocument());
+    const headerRow = screen.getByTestId("vtable-mock").querySelector("thead tr")!;
+    expect(within(headerRow as HTMLElement).queryByText("Date Created")).not.toBeInTheDocument();
+
+    // The "Add field" menu (Mantine is mocked here, so its items render inline).
+    const append = screen.getByTestId("vtable-header-append");
+    for (const label of ["Date Created", "Date Updated", "User Created", "User Updated"]) {
+      expect(within(append).getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("keeps a display_fields choice that names an audit field", async () => {
+    mockFieldsReadAll.mockResolvedValue([...SAMPLE_FIELDS, ...AUDIT_FIELDS]);
+
+    renderList({ fields: ["title", "date_created"] });
+
+    await waitFor(() => {
+      const itemCalls = mockApiRequest.mock.calls.filter(([url]) => !String(url).includes("aggregate"));
+      expect(itemCalls.length).toBeGreaterThan(0);
+    });
+    const itemUrl = String(
+      mockApiRequest.mock.calls.filter(([url]) => !String(url).includes("aggregate")).at(-1)![0],
+    );
+    expect(itemUrl).toContain("date_created");
   });
 });
 
