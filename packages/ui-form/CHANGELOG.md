@@ -1,5 +1,14 @@
 # @buildpad/ui-form
 
+## 3.11.0
+
+### Patch Changes
+
+- @buildpad/services@3.11.0
+- @buildpad/types@3.11.0
+- @buildpad/ui-interfaces@3.11.0
+- @buildpad/utils@3.11.0
+
 ## 3.10.0
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @buildpad/utils
 
+## 3.11.0
+
+### Patch Changes
+
+- @buildpad/types@3.11.0
+
 ## 3.10.0
 
 ### Patch Changes

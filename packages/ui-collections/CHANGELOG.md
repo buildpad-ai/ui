@@ -1,5 +1,19 @@
 # @buildpad/ui-collections
 
+## 3.11.0
+
+### Minor Changes
+
+- 7edf911: `CollectionList` offers the audit fields again. `date_created`, `date_updated`, `user_created` and `user_updated` were dropped from the field list entirely, so they could never be added as a column under **Add field**, filtered on or sorted by. They are now in the field list like any other field, and are still left out when the list picks its first five default columns.
+
+### Patch Changes
+
+- @buildpad/services@3.11.0
+- @buildpad/types@3.11.0
+- @buildpad/ui-form@3.11.0
+- @buildpad/ui-table@3.11.0
+- @buildpad/utils@3.11.0
+
 ## 3.10.0
 
 ### Patch Changes
